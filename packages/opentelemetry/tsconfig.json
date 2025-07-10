@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "files": [],
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts"
+  ],
+  "typedocOptions": {
+    "out": "docs",
+    "exclude": [
+      "**/dist/**",
+      "**/build/**",
+      "**/node_modules/**",
+      "**/*.spec.ts"
+    ],
+    "name": "OpenTelemetry SDK",
+    "excludePrivate": true
+  },
+  "references": []
+}

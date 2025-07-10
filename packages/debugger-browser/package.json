@@ -1,0 +1,76 @@
+{
+  "name": "@multiplayer-app/debugger-browser",
+  "version": "1.0.0",
+  "description": "Multiplayer Debugger",
+  "author": {
+    "name": "Multiplayer Software, Inc.",
+    "url": "https://www.multiplayer.app"
+  },
+  "license": "MIT",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=18",
+    "npm": ">=8"
+  },
+  "keywords": [
+    "multiplayer",
+    "debugger",
+    "platform",
+    "platform debugger",
+    "session recorder",
+    "otlp",
+    "fullstack session recorder",
+    "browser"
+  ],
+  "scripts": {
+    "lint": "eslint src/**/*.ts --config ../../.eslintrc",
+    "preversion": "npm run lint",
+    "postversion:skip": "git push && git push --tags",
+    "build": "webpack",
+    "browserify:lib": "browserify dist/browser/index.js -o dist/browser/debugger-lib.js",
+    "browserify:exporters": "browserify dist/exporters/index.js -o dist/exporters/exporters.js",
+    "moveDist": "cp dist/browser/debugger-lib.js ../../../multiplayer-debugger-extension/lib/debugger-lib.js && cp dist/exporters/exporters.js ../../../multiplayer-debugger-extension/lib/exporters.js",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "browserify": "17.0.1",
+    "clean-webpack-plugin": "4.0.0",
+    "css-loader": "6.0.0",
+    "css-minimizer-webpack-plugin": "7.0.0",
+    "eslint": "8.48.0",
+    "mini-css-extract-plugin": "2.9.1",
+    "sass": "1.79.4",
+    "sass-loader": "16.0.2",
+    "style-loader": "3.0.0",
+    "terser-webpack-plugin": "5.3.10",
+    "ts-loader": "9.5.1",
+    "typescript": "5.7.3",
+    "webpack": "5.95.0",
+    "webpack-bundle-analyzer": "4.10.2",
+    "webpack-cli": "5.1.4"
+  },
+  "dependencies": {
+    "@multiplayer-app/opentelemetry": "1.0.0",
+    "@opentelemetry/auto-instrumentations-web": "0.44.0",
+    "@opentelemetry/context-zone": "1.29.0",
+    "@opentelemetry/core": "1.29.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.56.0",
+    "@opentelemetry/instrumentation": "0.56.0",
+    "@opentelemetry/otlp-exporter-base": "0.56.0",
+    "@opentelemetry/otlp-transformer": "0.56.0",
+    "@opentelemetry/resources": "1.29.0",
+    "@opentelemetry/sdk-trace-base": "1.29.0",
+    "@opentelemetry/sdk-trace-web": "1.29.0",
+    "@opentelemetry/semantic-conventions": "1.28.0",
+    "@rrweb/packer": "2.0.0-alpha.15",
+    "@rrweb/rrweb-plugin-console-record": "2.0.0-alpha.15",
+    "dompurify": "3.2.5",
+    "lib0": "0.2.82",
+    "rrweb": "2.0.0-alpha.15",
+    "rrweb-player": "2.0.0-alpha.15",
+    "socket.io-client": "4.7.5"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "1.9.0"
+  }
+}

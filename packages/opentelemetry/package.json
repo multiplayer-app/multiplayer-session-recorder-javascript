@@ -1,0 +1,49 @@
+{
+  "name": "@multiplayer-app/opentelemetry",
+  "version": "1.0.0",
+  "description": "Multiplayer opentelemetry",
+  "author": {
+    "name": "Multiplayer Software, Inc.",
+    "url": "https://www.multiplayer.app"
+  },
+  "license": "MIT",
+  "main": "dist/src/index.js",
+  "module": "dist/esm/index.js",
+  "esnext": "dist/esnext/index.js",
+  "types": "dist/src/index.d.ts",
+  "browser": {
+    "./src/index.ts": "./src/index-browser.ts",
+    "./dist/esm/index.js": "./dist/esm/index-browser.js",
+    "./dist/esnext/index.js": "./dist/esnext/index-browser.js",
+    "./dist/src/index.js": "./dist/src/index-browser.js"
+  },
+  "engines": {
+    "node": ">=18",
+    "npm": ">=8"
+  },
+  "keywords": [
+    "multiplayer",
+    "opentelemetry",
+    "otlp"
+  ],
+  "scripts": {
+    "lint": "eslint src/**/*.ts --config ../../.eslintrc",
+    "preversion": "npm run lint",
+    "postversion:skip": "git push && git push --tags",
+    "build": "tsc --build tsconfig.json tsconfig.esm.json tsconfig.esnext.json",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.9.0"
+  },
+  "dependencies": {
+    "@opentelemetry/core": "^1.29.0",
+    "@opentelemetry/otlp-exporter-base": "^0.56.0",
+    "@opentelemetry/otlp-transformer": "^0.56.0",
+    "@opentelemetry/sdk-trace-base": "^1.29.0",
+    "to-json-schema": "^0.2.5"
+  },
+  "devDependencies": {
+    "@types/to-json-schema": "0.2.4"
+  }
+}

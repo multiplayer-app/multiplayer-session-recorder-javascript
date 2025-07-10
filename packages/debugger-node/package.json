@@ -1,0 +1,38 @@
+{
+  "name": "@multiplayer-app/debugger-node",
+  "version": "1.0.0",
+  "description": "Multiplayer Debugger",
+  "author": {
+    "name": "Multiplayer Software, Inc.",
+    "url": "https://www.multiplayer.app"
+  },
+  "license": "MIT",
+  "main": "dist/src/index.js",
+  "engines": {
+    "node": ">=18",
+    "npm": ">=8"
+  },
+  "keywords": [
+    "multiplayer",
+    "debugger",
+    "platform",
+    "platform debugger",
+    "session recorder",
+    "otlp",
+    "fullstack session recorder"
+  ],
+  "scripts": {
+    "lint": "eslint src/**/*.ts --config ../../.eslintrc",
+    "preversion": "npm run lint",
+    "postversion:skip": "git push && git push --tags",
+    "build": "tsc --build tsconfig.json",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "axios": "1.10.0",
+    "@multiplayer-app/opentelemetry": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.0.12"
+  }
+}

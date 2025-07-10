@@ -1,0 +1,5 @@
+export * from './constants.base'
+
+export const MULTIPLAYER_MAX_HTTP_REQUEST_RESPONSE_SIZE = process.env.MULTIPLAYER_MAX_HTTP_REQUEST_RESPONSE_SIZE
+  ? Number(process.env.MULTIPLAYER_MAX_HTTP_REQUEST_RESPONSE_SIZE)
+  : 500000

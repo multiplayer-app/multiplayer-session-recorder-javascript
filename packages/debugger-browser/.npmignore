@@ -1,0 +1,11 @@
+src/
+tests/
+.vscode/
+*.log
+*.ts
+tsconfig.json
+webpack.config.js
+.eslintrc
+.eslintignnore
+node_modules
+README.md

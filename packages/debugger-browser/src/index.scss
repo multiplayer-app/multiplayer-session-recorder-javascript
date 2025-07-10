@@ -1,0 +1,912 @@
+// Variables
+$font-family-base: "PP Neue Montreal", Montserrat, Roboto, Arial, sans-serif;
+$font-family-inter: Inter, sans-serif;
+
+// Colors
+$color-primary: #493bff;
+$color-primary-dark: #382be4;
+$color-primary-darker: #160d9c;
+$color-text-primary: #2d3748;
+$color-text-secondary: #718096;
+$color-border: #e1e8f1;
+$color-background: #ffffff;
+$color-overlay: rgba(0, 0, 0, 0.5);
+
+// Spacing
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 12px;
+$spacing-lg: 16px;
+$spacing-xl: 20px;
+$spacing-xxl: 24px;
+
+// Border radius
+$border-radius-sm: 8px;
+$border-radius-md: 12px;
+$border-radius-lg: 24px;
+$border-radius-full: 36px;
+
+// Z-index layers
+$z-index-base: 10000;
+$z-index-overlay: 10003;
+$z-index-modal: 10004;
+
+// Mixins
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin button-base {
+  cursor: pointer;
+  border-radius: $border-radius-md;
+  font-family: $font-family-inter;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+@mixin gradient-primary {
+  background: linear-gradient(
+    180deg,
+    $color-primary 0%,
+    $color-primary-dark 100%
+  );
+}
+
+@mixin box-shadow-sm {
+  box-shadow: 0 1px 1px -0.5px rgba(0, 0, 0, 0.06),
+    0 3px 3px -1.5px rgba(0, 0, 0, 0.06);
+}
+
+// Base styles
+.mp-root-wrapper {
+  * {
+    font-family: $font-family-base !important;
+    box-sizing: border-box;
+  }
+
+  textarea {
+    background: $color-background;
+    color: $color-text-primary;
+  }
+}
+
+// Button styles
+.mp-session-debugger-button {
+  @include button-base;
+  @include flex-center;
+  position: fixed;
+  z-index: 2247483003;
+  padding: 5px;
+  background-color: $color-background;
+  border: solid 1px #bebfc1;
+  border-radius: $border-radius-full;
+  color: $color-text-secondary;
+  transition: background 0.3s;
+
+  width: 42px;
+  height: 42px;
+  will-change: right, bottom;
+
+  &.is-started {
+    color: $color-primary;
+  }
+
+  // Position variants
+  &.top-left {
+    top: $spacing-xxl;
+    left: $spacing-xxl;
+  }
+
+  &.top-right {
+    top: $spacing-xxl;
+    right: $spacing-xxl;
+  }
+
+  &.bottom-left {
+    bottom: $spacing-xxl;
+    left: $spacing-xxl;
+  }
+
+  &.bottom-right {
+    bottom: $spacing-xxl;
+    right: $spacing-xxl;
+  }
+
+  &.no-draggable {
+    position: static;
+    &::before {
+      transform: translateY(-18px) !important;
+      top: -10px !important;
+      left: 10px !important;
+    }
+    &:hover::before {
+      z-index: 1;
+      transform: translateY(-18px);
+      top: -10px;
+      left: 10px;
+      right: unset;
+    }
+    &.no-tooltip::before {
+      display: none;
+    }
+  }
+  &.mp-button-blue {
+    border: 1px rgba(0, 0, 0, 0.2);
+    background: #493bff;
+    &::before {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  &:not([data-tooltip=""]) {
+    &:before {
+      content: attr(data-tooltip);
+      position: absolute;
+      pointer-events: none;
+      height: 28px;
+      top: 6px;
+      padding: 6px 8px 6px 8px;
+      border-radius: 8px;
+      font-family: Inter, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 16px;
+      opacity: 0;
+      transition: all 0.3s;
+      background: #1a202c;
+      color: white;
+      white-space: nowrap;
+      box-sizing: border-box;
+      z-index: -1;
+      transform: translateX(-8px);
+      left: unset;
+      right: 100%;
+    }
+    &.top-left:before,
+    &.bottom-left:before,
+    &.button-leftside:before {
+      transform: translateX(8px);
+      left: 100%;
+      right: unset;
+    }
+  }
+  &:not(.no-hover) {
+    &:hover {
+      color: #473cfb;
+      box-shadow: 0 3px 3px -1.5px rgba(0, 0, 0, 0.06),
+        0 1px 1px -0.5px rgba(0, 0, 0, 0.06);
+      &:before {
+        opacity: 1;
+      }
+      &:not(.no-draggable) {
+        .mp-drag-hint svg {
+          opacity: 1;
+        }
+      }
+    }
+  }
+  svg {
+    transform: rotate(0deg);
+    transition: transform 0.3s linear;
+  }
+  &.rotate-on-hover {
+    &:hover {
+      svg {
+        transform: rotate(-180deg);
+      }
+    }
+  }
+  &.animate-rotate svg {
+    animation: _rotateAnimation 3s linear infinite;
+  }
+}
+
+.animate-bounce {
+  animation: _bounceAnimation 1.6s infinite;
+  animation-timing-function: cubic-bezier(0.87, 0, 0.13, 1);
+}
+
+.mp-drag-hint svg {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  top: -3px;
+  right: -9px;
+  opacity: 0;
+  transform: unset !important;
+  transition: opacity 0.1ms ease-in !important;
+  cursor: grab;
+}
+
+.mp-session-debugger-popover-textarea {
+  border: 1px solid #cbd5e0;
+  box-shadow: 0 12px 12px -12px #0000000f, 0 6px 6px -3px #0000000f,
+    0 3px 3px -1.5px #0000000f, 0 1px 1px -0.5px #0000000f;
+  padding: 10px 13px 10px 13px;
+  border-radius: 12px;
+  font-family: Inter, serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #718096;
+  margin-bottom: 32px;
+  width: 100%;
+  height: 80px;
+  resize: none;
+}
+
+.mp-session-debugger {
+  &-popover {
+    position: fixed;
+    bottom: 90px;
+    right: $spacing-xxl;
+    width: 300px;
+    background: $color-background;
+    border-radius: $border-radius-lg;
+    overflow: hidden;
+    border: 1px solid rgba(245, 245, 245, 1);
+    @include box-shadow-sm;
+    z-index: $z-index-base;
+
+    &.hidden {
+      display: none;
+    }
+
+    &-content {
+      position: relative;
+      padding: 65px $spacing-lg $spacing-lg;
+    }
+
+    &-header {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      right: 0;
+      @include flex-between;
+      padding: $spacing-lg;
+      background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0) 50%,
+          rgba(255, 255, 255, 1) 100%
+        ),
+        linear-gradient(90deg, #d8f3fd 0%, #e3ecfd 100%);
+
+      a {
+        text-decoration: none;
+        color: inherit;
+      }
+    }
+
+    &-body {
+      h2 {
+        margin-bottom: $spacing-xs;
+        font-size: 18px;
+        font-weight: 600;
+        color: $color-text-primary;
+        font-family: $font-family-base;
+      }
+
+      p {
+        font-family: $font-family-base;
+        font-size: 14px;
+        font-weight: 400;
+        color: $color-text-secondary;
+        margin-bottom: 32px;
+      }
+      &:has(#mp-session-debugger-continuous-debugging-checkbox:checked) {
+        .mp-session-debugger-continuous-debugging-overlay {
+          display: flex;
+        }
+      }
+    }
+
+    &-footer {
+      @include flex-between;
+      gap: $spacing-md;
+    }
+
+    &-button {
+      @include button-base;
+      border: none;
+      color: $color-background;
+      width: 100%;
+      position: relative;
+      padding: $spacing-md $spacing-lg;
+      border-radius: $border-radius-md;
+      background: transparent;
+      overflow: hidden;
+      z-index: 1;
+
+      &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        @include gradient-primary;
+        transition: opacity 0.3s linear;
+        z-index: -1;
+      }
+
+      &::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          180deg,
+          $color-primary-darker 0%,
+          #160d9c 100%
+        );
+        transition: opacity 0.3s linear;
+        z-index: -1;
+        opacity: 0;
+      }
+
+      &:hover::after {
+        opacity: 1;
+      }
+
+      &:disabled,
+      &.disabled {
+        pointer-events: none;
+        opacity: 0.6;
+        cursor: not-allowed;
+        transition: opacity 0.2s ease;
+
+        &:hover,
+        &:focus {
+          background-color: inherit;
+          box-shadow: none;
+        }
+      }
+    }
+  }
+
+  &-continuous-debugging {
+    position: relative;
+    z-index: 3;
+    @include flex-between;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    border-radius: $border-radius-md;
+    border: 1px solid $color-border;
+    @include box-shadow-sm;
+    margin-bottom: $spacing-xl;
+
+    &-overlay {
+      position: absolute;
+      inset: 65px 0 0 0;
+      z-index: 2;
+      display: none;
+      border-radius: $border-radius-md;
+      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.5);
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: $spacing-md;
+      gap: $spacing-md;
+
+      &-content {
+        padding: $spacing-md;
+        background: $color-background;
+        border-radius: $border-radius-md;
+        border: 1px solid $color-border;
+        @include box-shadow-sm;
+
+        h3 {
+          @include flex-center;
+          justify-content: flex-start;
+          margin: 0;
+          gap: $spacing-sm;
+          font-size: 14px;
+          font-weight: 500;
+          svg {
+            width: 20px;
+            height: 20px;
+            animation: _bounceAnimation 1.6s infinite;
+            animation-timing-function: cubic-bezier(0.87, 0, 0.13, 1);
+          }
+        }
+        p {
+          margin: 0;
+        }
+      }
+    }
+
+    &-label {
+      gap: $spacing-sm;
+      display: flex;
+      font-size: 14px;
+      color: $color-text-primary;
+      font-weight: 500;
+    }
+
+    &-switch {
+      display: flex;
+      align-items: center;
+      width: 44px;
+      height: 24px;
+      padding: 2px;
+      cursor: pointer;
+      border-radius: $border-radius-full;
+      background: #e2e8f0;
+
+      &:has(input:checked) {
+        background: $color-primary;
+        justify-content: flex-end;
+      }
+
+      input {
+        display: none;
+      }
+
+      span {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: $color-background;
+        transition: transform 0.2s;
+      }
+    }
+  }
+}
+
+// Recording overlay
+.mp-recording {
+  &-overlay {
+    background: #5c5d5d;
+    color: $color-background;
+    display: flex;
+    z-index: 2147483007;
+    left: 50%;
+    bottom: $spacing-xl;
+    position: fixed;
+    transform: translate(-50%, 0);
+    border: 0.5px solid #5c5d5d;
+    border-radius: $border-radius-lg;
+    font-family: Arial, sans-serif;
+    flex-direction: row;
+    font-size: 14px;
+    box-shadow: 0 1px 1px -0.5px rgba(0, 0, 0, 0.3);
+
+    &.hidden {
+      display: none;
+    }
+  }
+
+  &-status {
+    gap: $spacing-sm;
+    display: flex;
+    padding: $spacing-md $spacing-md;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  &-indicator {
+    width: 24px;
+    height: 24px;
+    animation: pulse 1.5s infinite;
+  }
+
+  &-controls {
+    display: flex;
+  }
+
+  &-btn {
+    border: none;
+    border-right: 0.5px solid #5c5d5d;
+    background: #414141;
+    padding: 6px $spacing-md;
+    font-weight: bold;
+    cursor: pointer;
+    color: $color-background;
+    gap: $spacing-sm;
+  }
+}
+
+.mp-session-debugger-modal.hidden {
+  display: none;
+}
+
+.mp-session-debugger-popover-logo svg {
+  width: 30px;
+}
+
+.mp-session-debugger-dismiss-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 6px 16px;
+  background: white;
+  border: 1px solid #e1e8f1;
+  box-shadow: 0 3px 3px -1.5px #0000000f, 0 1px 1px -0.5px #0000000f;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #2d3748;
+  font-weight: 500;
+}
+
+.mp-session-debugger-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 10003;
+}
+
+/* Modal content */
+.mp-session-debugger-modal-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 80vw;
+  min-height: 70vh;
+  max-height: 90vh;
+  z-index: 10004;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Close button */
+.mp-session-debugger-modal-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: none;
+  border: none;
+  padding: $spacing-lg;
+  cursor: pointer;
+  color: grey;
+}
+
+/* Modal body */
+.mp-session-debugger-modal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+  height: 100%;
+  overflow: hidden;
+  background: white;
+  .rr-player {
+    border-radius: 4px;
+    border: 1px solid #c1c5ca;
+    box-shadow: unset;
+    overflow: hidden;
+  }
+}
+
+.mp-session-debugger-modal-header {
+  position: relative;
+  header {
+    font-size: 20px;
+    font-weight: 600;
+  }
+}
+
+.mp-session-debugger-player-frame {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  .replayer-wrapper {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+}
+
+/* Modal footer */
+.mp-session-debugger-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Buttons */
+.mp-session-debugger-modal-button {
+  width: auto;
+}
+
+.mp-dismiss-recording,
+.mp-dismiss-recording:before,
+.mp-dismiss-recording:after {
+  background: white;
+  border: 1px solid #e1e8f1;
+  color: #2d3748;
+}
+
+@keyframes _rotateAnimation {
+  0% {
+    transform: rotate(0);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes _bounceAnimation {
+  0%,
+  100% {
+    padding: 3px;
+  }
+  50% {
+    padding: 0;
+  }
+}
+
+// Dialog styles
+#mp-submission-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99999;
+  @include flex-center;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+
+  &.hidden {
+    display: none;
+  }
+
+  .mp-dialog {
+    &-backdrop {
+      background: rgba(0, 0, 0, 0.4);
+      position: fixed;
+      width: 100%;
+      height: 100%;
+    }
+
+    &-content {
+      top: 30%;
+      left: 40%;
+      position: absolute;
+      background: $color-background;
+      border-radius: $border-radius-lg;
+      padding: $spacing-xxl;
+      width: 90%;
+      max-width: 450px;
+      z-index: 100000;
+      animation: fadeIn 0.3s ease-out;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    &-actions {
+      @include flex-between;
+      gap: $spacing-md;
+    }
+  }
+
+  h3 {
+    margin-bottom: $spacing-lg;
+    font-size: 20px;
+    color: #2a374a;
+  }
+
+  .subtitle {
+    font-size: 12px;
+    color: #6d8198;
+    margin-bottom: $spacing-lg;
+  }
+
+  .form-group {
+    margin-bottom: $spacing-xl;
+  }
+
+  label {
+    display: block;
+    margin-bottom: $spacing-sm;
+    color: #555;
+    font-size: 14px;
+  }
+
+  textarea {
+    width: 100%;
+    padding: $spacing-md;
+    border: 1px solid #e0e0e0;
+    border-radius: $border-radius-sm;
+    resize: vertical;
+    min-height: 100px;
+    max-height: 350px;
+    font-family: inherit;
+    font-size: 14px;
+    transition: border 0.2s;
+
+    &:focus {
+      outline: none;
+      border-color: $color-primary-dark;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+    }
+
+    &::placeholder {
+      color: #6d8198;
+      opacity: 1;
+    }
+  }
+
+  button {
+    padding: $spacing-md $spacing-lg;
+    border-radius: $border-radius-md;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  #mp-cancel-submission {
+    background: #f5f5f5;
+    border: 1px solid $color-border;
+    color: $color-text-primary;
+    @include box-shadow-sm;
+  }
+
+  #mp-submit-recording {
+    @include gradient-primary;
+    border: none;
+    color: $color-background;
+
+    &:hover {
+      background: linear-gradient(
+        180deg,
+        $color-primary 0%,
+        $color-primary-darker 100%
+      );
+    }
+  }
+}
+
+#mp-confirmation-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  font-size: 14px;
+  background: rgba(0, 0, 0, 0.4);
+  @include flex-center;
+  z-index: 9999;
+
+  .mp-dialog {
+    &-content {
+      padding: $spacing-xl;
+      color: #2a374a;
+      max-width: 410px;
+      background: $color-background;
+      border-radius: $border-radius-lg;
+    }
+
+    &-buttons {
+      gap: $spacing-md;
+      display: flex;
+      margin-top: $spacing-lg;
+      justify-content: flex-end;
+    }
+  }
+
+  button {
+    font-weight: 500;
+    cursor: pointer;
+    padding: $spacing-md $spacing-lg;
+    border-radius: $border-radius-md;
+    transition: all 0.2s;
+  }
+
+  #mp-dialog-confirm {
+    background: #dd524c;
+    color: $color-background;
+
+    &:hover {
+      background: #c53030;
+    }
+  }
+
+  #mp-dialog-cancel {
+    background: #f5f5f5;
+    border: 1px solid $color-border;
+    color: $color-text-primary;
+    @include box-shadow-sm;
+  }
+}
+
+// Utility classes
+.mp-drag-handle {
+  padding: $spacing-md $spacing-md;
+  @include flex-center;
+}
+
+
+
+// Toast styles
+.mp-toast {
+  left: 50%;
+  bottom: 40px;
+  position: fixed;
+  transform: translateX(-50%);
+  background: #535454 !important;
+  z-index: 10001;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 14px !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+  display: flex;
+  font-size: 14px !important;
+  font-weight: 500;
+  animation: slideUpCenter 0.3s cubic-bezier(0.4,0,0.2,1);
+
+  &.hidden {
+    display: none;
+  }
+
+  &-content {
+    padding: 0 !important;
+    gap: 12px !important;
+    color: white;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  &-icon {
+    margin-left: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  &-message {
+    flex: 1;
+    margin-right: 12px;
+    font-weight: 500;
+  }
+
+  &-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
+    padding: 12px 16px !important;
+    background: #414141 !important;
+    font-weight: 500 !important;
+    border: 0.5px solid #5C5D5D;
+    cursor: pointer;
+    text-decoration: none !important;
+    transition: background 0.18s;
+  }
+  &-button:hover, &-button:focus {
+    background: rgba(255,255,255,0.18);
+  }
+}
+
+@keyframes slideUpCenter {
+  from {
+    transform: translateX(-50%) translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
