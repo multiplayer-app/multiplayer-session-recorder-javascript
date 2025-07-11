@@ -39,7 +39,7 @@
     "css-minimizer-webpack-plugin": "7.0.0",
     "eslint": "8.48.0",
     "mini-css-extract-plugin": "2.9.1",
-    "sass": "1.79.4",
+    "sass": "^1.79.4",
     "sass-loader": "16.0.2",
     "style-loader": "3.0.0",
     "terser-webpack-plugin": "5.3.10",
