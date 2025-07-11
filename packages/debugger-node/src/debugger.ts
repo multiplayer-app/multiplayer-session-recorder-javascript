@@ -6,7 +6,7 @@ import { ApiService } from './services/api.service'
 import { IDebugSession } from './types'
 import { getFormattedDate } from './helper'
 
-export class MultiplayerSessionDebugger {
+export class Debugger {
   private _isInitialized = false
 
   private _debugSessionId: string | boolean = false
@@ -30,6 +30,7 @@ export class MultiplayerSessionDebugger {
   public init(
     apiKey: string,
     traceIdGenerator: MultiplayerIdGenerator,
+    debugSessionMetadata?: Omit<IDebugSession, '_id' | 'shortId'>
   ): void {
     this._isInitialized = true
 
@@ -123,7 +124,6 @@ export class MultiplayerSessionDebugger {
     }
   }
 
-
   /**
    * Stop the current session with an optional comment
    * @param comment - user-provided comment to include in session metadata
@@ -145,20 +145,20 @@ export class MultiplayerSessionDebugger {
         throw new Error('Debug session should be active or paused')
       }
 
-      if (this._debugSessionType !== DebugSessionType.PLAIN) {
-        throw new Error('Invalid debug session type')
+      if (this._debugSessionType === DebugSessionType.PLAIN) {
+        await this._apiService.stopSession(
+          this._debugSessionId,
+          debugSessionData,
+        )
+      } if (this._debugSessionType === DebugSessionType.CONTINUOUS) {
+        await this._apiService.cancelContinuousDebugSession(this._debugSessionId)
       }
-
-      await this._apiService.stopSession(
-        this._debugSessionId,
-        debugSessionData,
-      )
 
     } catch (e) {
       throw e
     } finally {
       (this._traceIdGenerator as MultiplayerIdGenerator).setSessionId('')
-      
+
       this._debugSessionId = false
       this._shortDebugSessionId = false
       this._debugSessionState = 'STOPPED'
@@ -197,7 +197,27 @@ export class MultiplayerSessionDebugger {
       this._debugSessionId = false
       this._shortDebugSessionId = false
       this._debugSessionState = 'STOPPED'
+    }
+  }
 
+  /**
+   * Check if remote debug session should be started
+   */
+  public async checkRemoteDebugSession(): Promise<boolean> {
+    try {
+      if (!this._isInitialized) {
+        throw new Error(
+          'Configuration not initialized. Call init() before performing any actions.',
+        )
+      }
+
+      const { shouldStart } = await this._apiService.checkRemoteDebugSession(
+        {},
+      )
+
+      return shouldStart
+    } catch (e) {
+      throw e
     }
   }
 }

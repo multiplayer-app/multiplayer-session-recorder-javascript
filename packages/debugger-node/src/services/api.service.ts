@@ -146,6 +146,21 @@ export class ApiService {
   }
 
   /**
+   * Check debug session should be started remotely
+   */
+  async checkRemoteDebugSession(
+    requestBody: StartSessionRequest,
+    signal?: AbortSignal,
+  ): Promise<{shouldStart: boolean}> {
+    return this.makeRequest(
+      `/remote-debug-session/check`,
+      'POST',
+      requestBody,
+      signal,
+    )
+  }
+
+  /**
    * Make a request to the session debugger API
    * @param path - API endpoint path (relative to the base URL)
    * @param method - HTTP method (GET, POST, PATCH, etc.)

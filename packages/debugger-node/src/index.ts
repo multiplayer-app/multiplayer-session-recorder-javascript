@@ -1,3 +1,3 @@
-import { MultiplayerSessionDebugger as _MultiplayerSessionDebugger } from './session-debugger'
+import { Debugger } from './debugger'
 
-export const multiplayerSessionDebugger = new _MultiplayerSessionDebugger()
+export const mpDebugger = new Debugger()
