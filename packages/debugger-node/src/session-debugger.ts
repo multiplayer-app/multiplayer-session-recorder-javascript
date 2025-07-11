@@ -30,7 +30,6 @@ export class Debugger {
   public init(
     apiKey: string,
     traceIdGenerator: MultiplayerIdGenerator,
-    debugSessionMetadata?: Omit<IDebugSession, '_id' | 'shortId'>
   ): void {
     this._isInitialized = true
 
@@ -124,6 +123,7 @@ export class Debugger {
     }
   }
 
+
   /**
    * Stop the current session with an optional comment
    * @param comment - user-provided comment to include in session metadata
@@ -145,14 +145,14 @@ export class Debugger {
         throw new Error('Debug session should be active or paused')
       }
 
-      if (this._debugSessionType === DebugSessionType.PLAIN) {
-        await this._apiService.stopSession(
-          this._debugSessionId,
-          debugSessionData,
-        )
-      } if (this._debugSessionType === DebugSessionType.CONTINUOUS) {
-        await this._apiService.stopContinuousDebugSession(this._debugSessionId)
+      if (this._debugSessionType !== DebugSessionType.PLAIN) {
+        throw new Error('Invalid debug session type')
       }
+
+      await this._apiService.stopSession(
+        this._debugSessionId,
+        debugSessionData,
+      )
 
     } catch (e) {
       throw e
@@ -197,27 +197,7 @@ export class Debugger {
       this._debugSessionId = false
       this._shortDebugSessionId = false
       this._debugSessionState = 'STOPPED'
-    }
-  }
 
-  /**
-   * Check if remote debug session should be started
-   */
-  public async checkRemoteDebugSession(): Promise<boolean> {
-    try {
-      if (!this._isInitialized) {
-        throw new Error(
-          'Configuration not initialized. Call init() before performing any actions.',
-        )
-      }
-
-      const { shouldStart } = await this._apiService.checkRemoteDebugSession(
-        {},
-      )
-
-      return shouldStart
-    } catch (e) {
-      throw e
     }
   }
 }

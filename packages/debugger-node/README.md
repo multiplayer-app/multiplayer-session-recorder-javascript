@@ -32,7 +32,7 @@ import {
   ATTR_MULTIPLAYER_HTTP_REQUEST_BODY,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
   ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
-  ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
+  ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS
 } from '@multiplayer-app/otlp-core'
 ```
 
@@ -41,59 +41,56 @@ import {
 Wrapper for node otlp exporter. This wrapper removes span attributes with `multiplayer.` prefix.
 
 ```javascript
-import { BasicTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { MultiplayerHttpTraceExporterNode } from '@multiplayer-app/otlp-core';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { BasicTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
+import { MultiplayerHttpTraceExporterNode } from '@multiplayer-app/otlp-core'
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 
 const multiplayerTraceExporter = new MultiplayerHttpTraceExporterNode({
   apiKey: MULTIPLAYER_OTLP_KEY
 })
 
 const apmProviderTraceExporter = new OTLPTraceExporter({
-  url: 'http://some.apm/v1/traces',
+  url: 'http://some.apm/v1/traces'
 })
 
 const apmFilteredTraceExporter = new MultiplayerFilterTraceExporter(apmProviderTraceExporter)
 
 const provider = new BasicTracerProvider({
-  spanProcessors: [
-    new BatchSpanProcessor(apmFilteredTraceExporter),
-    new BatchSpanProcessor(multiplayerTraceExporter),
-  ]
-});
+  spanProcessors: [new BatchSpanProcessor(apmFilteredTraceExporter), new BatchSpanProcessor(multiplayerTraceExporter)]
+})
 
-provider.register();
+provider.register()
 ```
 
 ### Multiplayer Grpc Trace Exporter Node
 
 ```javascript
-import { BasicTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { MultiplayerGrpcTraceExporterNode } from '@multiplayer-app/otlp-core';
+import { BasicTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
+import { MultiplayerGrpcTraceExporterNode } from '@multiplayer-app/otlp-core'
 
 const collectorOptions = {
   url: '<opentelemetry-collector-url>', // url is optional and can be omitted - default is https://api.multiplayer.app/v1/traces
-  apiKey: '<multiplayer-otlp-key>', // api key from multiplayer integration
-};
+  apiKey: '<multiplayer-otlp-key>' // api key from multiplayer integration
+}
 
-const exporter = new MultiplayerGrpcTraceExporterNode(collectorOptions);
+const exporter = new MultiplayerGrpcTraceExporterNode(collectorOptions)
 const provider = new BasicTracerProvider({
   spanProcessors: [
     new BatchSpanProcessor(exporter, {
       // The maximum queue size. After the size is reached spans are dropped.
       maxQueueSize: 1000,
       // The interval between two consecutive exports
-      scheduledDelayMillis: 30000,
+      scheduledDelayMillis: 30000
     })
   ]
-});
+})
 
-provider.register();
+provider.register()
 ```
 
 ### Multiplayer Http Instrumentation Hooks Node
 
-Multiplayer hooks for nodejs http instrumentation for injecting http request/response headers and payload to span. 
+Multiplayer hooks for nodejs http instrumentation for injecting http request/response headers and payload to span.
 
 ```javascript
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
@@ -107,14 +104,14 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
       headersToMask: ['<my-auth-header>'],
       maxPayloadSize: 5000,
       schemifyDocSpanPayload: true,
-      maskDebSpanPayload: true,
+      maskDebugSpanPayload: true,
       uncompressPayload: true
     }),
     requestHook: MultiplayerHttpInstrumentationHooks.requestHook({
       headersToMask: ['<my-auth-header>'],
       maxPayloadSize: 5000,
       schemifyDocSpanPayload: true,
-      maskDebSpanPayload: true
+      maskDebugSpanPayload: true
     }),
   },
 )
@@ -126,7 +123,7 @@ Multiplayer json serializer for logs exporter which filters out logs which doesn
 
 ```javascript
 import { LoggerProvider } from '@opentelemetry/sdk-logs'
-import { 
+import {
   MultiplayerHttpLogExporterNode
 } from '@multiplayer-app/otlp-core'
 
@@ -148,18 +145,15 @@ apiLogs.logs.setGlobalLoggerProvider(loggerProvider)
 ### Multiplayer Http Trace exporter web
 
 ```javascript
-import {
-  BatchSpanProcessor,
-  WebTracerProvider,
-} from '@opentelemetry/sdk-trace-web';
-import { MultiplayerHttpTraceExporterBrowser } from '@multiplayer-app/otlp-core';
+import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
+import { MultiplayerHttpTraceExporterBrowser } from '@multiplayer-app/otlp-core'
 
 const collectorOptions = {
   url: '<opentelemetry-collector-url>', // url is optional and can be omitted - default is https://api.multiplayer.app/v1/traces
-  apiKey: '<multiplayer-otlp-key>', // api key from multiplayer integration
-};
+  apiKey: '<multiplayer-otlp-key>' // api key from multiplayer integration
+}
 
-const exporter = new MultiplayerHttpTraceExporterBrowser(collectorOptions);
+const exporter = new MultiplayerHttpTraceExporterBrowser(collectorOptions)
 const provider = new WebTracerProvider({
   spanProcessors: [
     new BatchSpanProcessor(exporter, {
@@ -170,38 +164,38 @@ const provider = new WebTracerProvider({
       // The interval between two consecutive exports
       scheduledDelayMillis: 500,
       // How long the export can run before it is cancelled
-      exportTimeoutMillis: 30000,
+      exportTimeoutMillis: 30000
     })
   ]
-});
+})
 
-provider.register();
+provider.register()
 ```
 
 ### Multiplayer Http Trace exporter node
 
 ```javascript
-import { BasicTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { MultiplayerHttpTraceExporterNode } from '@multiplayer-app/otlp-core';
+import { BasicTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
+import { MultiplayerHttpTraceExporterNode } from '@multiplayer-app/otlp-core'
 
 const collectorOptions = {
   url: '<opentelemetry-collector-url>', // url is optional and can be omitted - default is https://api.multiplayer.app/v1/traces
-  apiKey: '<multiplayer-otlp-key>', // api key from multiplayer integration
-};
+  apiKey: '<multiplayer-otlp-key>' // api key from multiplayer integration
+}
 
-const exporter = new MultiplayerHttpTraceExporterNode(collectorOptions);
+const exporter = new MultiplayerHttpTraceExporterNode(collectorOptions)
 const provider = new BasicTracerProvider({
   spanProcessors: [
     new BatchSpanProcessor(exporter, {
       // The maximum queue size. After the size is reached spans are dropped.
       maxQueueSize: 1000,
       // The interval between two consecutive exports
-      scheduledDelayMillis: 30000,
+      scheduledDelayMillis: 30000
     })
   ]
-});
+})
 
-provider.register();
+provider.register()
 ```
 
 ### Multiplayer id generator
@@ -211,23 +205,17 @@ Multiplayer Id generator will set `debdeb` prefix to `traceId` if debug session 
 Put documentation traces ratio to constructor, by default it's `0`.
 
 ```javascript
-import {
-  BatchSpanProcessor,
-  WebTracerProvider,
-} from '@opentelemetry/sdk-trace-web';
-import {
-  MultiplayerIdGenerator,
-  MultiplayerExporterBrowser
-} from '@multiplayer-app/otlp-core';
+import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
+import { MultiplayerIdGenerator, MultiplayerExporterBrowser } from '@multiplayer-app/otlp-core'
 
 const idGenerator = new MultiplayerIdGenerator({ autoDocTracesRatio: 0.05 })
 
 const collectorOptions = {
   url: '<opentelemetry-collector-url>', // url is optional and can be omitted - default is https://api.multiplayer.app/v1/traces
-  apiKey: '<multiplayer-otlp-key>', // api key from multiplayer integration
-};
+  apiKey: '<multiplayer-otlp-key>' // api key from multiplayer integration
+}
 
-const exporter = new MultiplayerExporterBrowser(collectorOptions);
+const exporter = new MultiplayerExporterBrowser(collectorOptions)
 const provider = new WebTracerProvider({
   spanProcessors: [
     new BatchSpanProcessor(exporter, {
@@ -238,11 +226,11 @@ const provider = new WebTracerProvider({
       // The interval between two consecutive exports
       scheduledDelayMillis: 500,
       // How long the export can run before it is cancelled
-      exportTimeoutMillis: 30000,
+      exportTimeoutMillis: 30000
     })
   ],
   idGenerator
-});
+})
 
 idGenerator.setSessionId('<multiplayer-debug-session-short-id>')
 ```
@@ -251,27 +239,14 @@ idGenerator.setSessionId('<multiplayer-debug-session-short-id>')
 
 Multiplayer json serializer for exporter filters out traces which doesn't begin with debug or document prefix from being sent to collector.
 
-
 ```javascript
-import {
-  ReadableSpan,
-  SpanExporter,
-} from '@opentelemetry/sdk-trace-base'
-import {
-  OTLPExporterConfigBase,
-  OTLPExporterBrowserBase,
-} from '@opentelemetry/otlp-exporter-base'
-import {
-  IExportTraceServiceResponse,
-} from '@opentelemetry/otlp-transformer'
-import { 
-  MultiplayerJsonTraceSerializer,
-  MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_URL
-} from '@multiplayer-app/otlp-core'
+import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base'
+import { OTLPExporterConfigBase, OTLPExporterBrowserBase } from '@opentelemetry/otlp-exporter-base'
+import { IExportTraceServiceResponse } from '@opentelemetry/otlp-transformer'
+import { MultiplayerJsonTraceSerializer, MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_URL } from '@multiplayer-app/otlp-core'
 
-interface MultiplayerExporterConfig
-  extends OTLPExporterConfigBase {
-  apiKey?: string
+interface MultiplayerExporterConfig extends OTLPExporterConfigBase {
+  apiKey?: string;
 }
 
 export class MultiplayerHttpExporter
@@ -283,11 +258,11 @@ export class MultiplayerHttpExporter
       {
         ...config,
         url: config.url || MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_URL,
-        headers: {},
+        headers: {}
       },
       MultiplayerJsonTraceSerializer,
       { 'Content-Type': 'application/json' },
-      '',
+      ''
     )
   }
 
@@ -302,21 +277,15 @@ export class MultiplayerHttpExporter
 Multiplayer sampler will always sample debug and document traces with appropriate prefixes, other traces will be sampled using ration provided to constructor.
 
 ```javascript
-import {
-  BatchSpanProcessor,
-  WebTracerProvider,
-} from '@opentelemetry/sdk-trace-web';
-import {
-  MultiplayerTraceIdRatioBasedSampler,
-  MultiplayerExporterBrowser
-} from '@multiplayer-app/otlp-core';
+import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
+import { MultiplayerTraceIdRatioBasedSampler, MultiplayerExporterBrowser } from '@multiplayer-app/otlp-core'
 
 const collectorOptions = {
   url: '<opentelemetry-collector-url>', // url is optional and can be omitted - default is https://api.multiplayer.app/v1/traces
-  apiKey: '<multiplayer-otlp-key>', // api key from multiplayer integration
-};
+  apiKey: '<multiplayer-otlp-key>' // api key from multiplayer integration
+}
 
-const exporter = new MultiplayerExporterBrowser(collectorOptions);
+const exporter = new MultiplayerExporterBrowser(collectorOptions)
 const provider = new WebTracerProvider({
   spanProcessors: [
     new BatchSpanProcessor(exporter, {
@@ -327,11 +296,11 @@ const provider = new WebTracerProvider({
       // The interval between two consecutive exports
       scheduledDelayMillis: 500,
       // How long the export can run before it is cancelled
-      exportTimeoutMillis: 30000,
+      exportTimeoutMillis: 30000
     })
   ],
   sampler: new MultiplayerTraceIdRatioBasedSampler(0.05)
-});
+})
 ```
 
 ## License

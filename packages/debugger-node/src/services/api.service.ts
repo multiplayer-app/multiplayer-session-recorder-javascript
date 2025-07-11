@@ -138,7 +138,7 @@ export class ApiService {
    * Cancel an active debug session
    * @param sessionId - ID of the session to cancel
    */
-  async cancelContinuousDebugSession(sessionId: string): Promise<any> {
+  async stopContinuousDebugSession(sessionId: string): Promise<any> {
     return this.makeRequest(
       `/continuous-debug-sessions/${sessionId}/cancel`,
       'DELETE',
@@ -151,7 +151,7 @@ export class ApiService {
   async checkRemoteDebugSession(
     requestBody: StartSessionRequest,
     signal?: AbortSignal,
-  ): Promise<{shouldStart: boolean}> {
+  ): Promise<{ shouldStart: boolean }> {
     return this.makeRequest(
       `/remote-debug-session/check`,
       'POST',

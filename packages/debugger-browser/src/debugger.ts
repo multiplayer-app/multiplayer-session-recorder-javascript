@@ -169,7 +169,7 @@ export class Debugger implements IDebugger {
       ignoreUrls: [],
       showWidget: true,
       canvasEnabled: false,
-      maskDebSpanPayload: true,
+      maskDebugSpanPayload: true,
       schemifyDocSpanPayload: true,
       usePostMessageFallback: false,
       propagateTraceHeaderCorsUrls: [],
@@ -299,7 +299,7 @@ export class Debugger implements IDebugger {
       this._checkOperation('stop')
       this._stop()
       if (this.continuesDebugging) {
-        await this._apiService.cancelContinuousDebugSession(this._sessionId!)
+        await this._apiService.stopContinuousDebugSession(this._sessionId!)
         this.continuesDebugging = false
       } else {
         const request: StopSessionRequest = {
@@ -323,7 +323,7 @@ export class Debugger implements IDebugger {
       this._checkOperation('cancel')
       this._stop()
       if (this.continuesDebugging) {
-        await this._apiService.cancelContinuousDebugSession(this._sessionId!)
+        await this._apiService.stopContinuousDebugSession(this._sessionId!)
         this.continuesDebugging = false
       } else {
         await this._apiService.cancelSession(this._sessionId!)

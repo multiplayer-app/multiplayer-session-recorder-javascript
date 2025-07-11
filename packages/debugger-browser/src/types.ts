@@ -87,7 +87,7 @@ export interface SessionDebuggerOptions {
    * (Optional) Mask payload for debug traces.
    * @default true
    */
-  maskDebSpanPayload?: boolean
+  maskDebugSpanPayload?: boolean
 
   /**
    * (Optional) Disable capturing of http request/response payload.
@@ -173,7 +173,7 @@ export interface SessionDebuggerConfigs {
   sampleTraceRatio: number
   propagateTraceHeaderCorsUrls: string | RegExp | string[] | RegExp[]
   schemifyDocSpanPayload?: boolean
-  maskDebSpanPayload?: boolean
+  maskDebugSpanPayload?: boolean
   disableCapturingHttpPayload?: boolean
   maxCapturingHttpPayloadSize: number
   usePostMessageFallback?: boolean

@@ -110,7 +110,7 @@ export class TracerBrowserSDK {
                   responseBody = responseBody && MultiplayerHelpers.schemify(responseBody)
                 } else if (
                   traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
-                  && this.config?.maskDebSpanPayload
+                  && this.config?.maskDebugSpanPayload
                 ) {
                   requestBody = requestBody && MultiplayerHelpers.mask(requestBody)
                   responseBody = responseBody && MultiplayerHelpers.mask(responseBody)

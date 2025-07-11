@@ -138,10 +138,10 @@ export class ApiService {
 
 
   /**
-   * Cancel an active debug session
-   * @param sessionId - ID of the session to cancel
+   * Stop an active continuous debug session
+   * @param sessionId - ID of the session to stop
    */
-  async cancelContinuousDebugSession(sessionId: string): Promise<any> {
+  async stopContinuousDebugSession(sessionId: string): Promise<any> {
     return this.makeRequest(
       `/continuous-debug-sessions/${sessionId}/cancel`,
       'DELETE',

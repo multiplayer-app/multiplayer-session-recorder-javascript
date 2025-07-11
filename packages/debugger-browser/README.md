@@ -27,7 +27,7 @@ To initialize the Multiplayer Session Debugger in your application, follow the s
 #### Import the Debugger
 
 ```javascript
-import debuggerInstance from "@multiplayer-app/session-debugger";
+import debuggerInstance from '@multiplayer-app/session-debugger'
 ```
 
 #### Initialization
@@ -36,11 +36,11 @@ Use the following code to initialize the debugger with your application details:
 
 ```javascript
 debuggerInstance.init({
-  version: "{YOUR_APPLICATION_VERSION}",
-  application: "{YOUR_APPLICATION_NAME}",
-  environment: "{YOUR_APPLICATION_ENVIRONMENT}",
-  apiKey: "{YOUR_API_KEY}",
-});
+  version: '{YOUR_APPLICATION_VERSION}',
+  application: '{YOUR_APPLICATION_NAME}',
+  environment: '{YOUR_APPLICATION_ENVIRONMENT}',
+  apiKey: '{YOUR_API_KEY}'
+})
 ```
 
 Replace the placeholders with your application’s version, name, environment, and API key (OpenTelemetry Frontend Token).
@@ -50,10 +50,10 @@ Replace the placeholders with your application’s version, name, environment, a
 To track user-specific metadata in session replays, add the following:
 
 ```javascript
-window["mpSessionDebuggerMetadata"] = {
-  userId: "{userId}",
-  userName: "{userName}",
-};
+window['mpSessionDebuggerMetadata'] = {
+  userId: '{userId}',
+  userName: '{userName}'
+}
 ```
 
 Replace the placeholders with the actual user information (e.g., user ID and username).
@@ -87,7 +87,7 @@ debuggerInstance.init({
     new RegExp("https://another.backend.api.domain", "i")
   ],
   schemifyDocSpanPayload: true,
-  maskDebSpanPayload: true,
+  maskDebugSpanPayload: true,
   docTraceRatio: 0.15 // 15% of traces will be sent for auto-documentation
   maxCapturingHttpPayloadSize: 100000,
   disableCapturingHttpPayload: false
@@ -110,28 +110,28 @@ To integrate the SessionDebugger component into your Next.js application, follow
 In the newly created file, add the following code:
 
 ```javascript
-"use client"; // Mark as Client Component
-import { useEffect } from "react";
-import debuggerInstance from "@multiplayer-app/session-debugger";
+'use client' // Mark as Client Component
+import { useEffect } from 'react'
+import debuggerInstance from '@multiplayer-app/session-debugger'
 
 export default function SessionDebugger() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       debuggerInstance.init({
-        version: "{YOUR_APPLICATION_VERSION}",
-        application: "{YOUR_APPLICATION_NAME}",
-        environment: "{YOUR_APPLICATION_ENVIRONMENT}",
-        apiKey: "{YOUR_API_KEY}",
-      });
-        
-      window["mpSessionDebuggerMetadata"] = {
-        userId: "{userId}",
-        userName: "{userName}",
-      };
-    }
-  }, []);
+        version: '{YOUR_APPLICATION_VERSION}',
+        application: '{YOUR_APPLICATION_NAME}',
+        environment: '{YOUR_APPLICATION_ENVIRONMENT}',
+        apiKey: '{YOUR_API_KEY}'
+      })
 
-  return null; // No UI output needed
+      window['mpSessionDebuggerMetadata'] = {
+        userId: '{userId}',
+        userName: '{userName}'
+      }
+    }
+  }, [])
+
+  return null // No UI output needed
 }
 ```
 
@@ -140,7 +140,7 @@ Replace the placeholders with the actual information.
 Now, you can use the SessionDebugger component in your application by adding it to your desired page or layout file:
 
 ```javascript
-import SessionDebugger from './SessionDebugger'; // Adjust the path as necessary
+import SessionDebugger from './SessionDebugger' // Adjust the path as necessary
 
 export default function MyApp() {
   return (
@@ -148,9 +148,8 @@ export default function MyApp() {
       <SessionDebugger />
       {/* Other components */}
     </>
-  );
+  )
 }
-
 ```
 
 ## Note
@@ -158,32 +157,32 @@ export default function MyApp() {
 If frontend domain doesn't match to backend one, set backend domain to `propagateTraceHeaderCorsUrls` parameter:
 
 ```javascript
-import debuggerInstance from "@multiplayer-app/session-debugger";
+import debuggerInstance from '@multiplayer-app/session-debugger'
 
 debuggerInstance.init({
-  version: "{YOUR_APPLICATION_VERSION}",
-  application: "{YOUR_APPLICATION_NAME}",
-  environment: "{YOUR_APPLICATION_ENVIRONMENT}",
-  apiKey: "{YOUR_API_KEY}",
+  version: '{YOUR_APPLICATION_VERSION}',
+  application: '{YOUR_APPLICATION_NAME}',
+  environment: '{YOUR_APPLICATION_ENVIRONMENT}',
+  apiKey: '{YOUR_API_KEY}',
   propagateTraceHeaderCorsUrls: new RegExp(`https://your.backend.api.domain`, 'i')
-});
+})
 ```
 
 If frontend sends api requests to two or more different domains put them to `propagateTraceHeaderCorsUrls` as array:
 
 ```javascript
-import debuggerInstance from "@multiplayer-app/session-debugger";
+import debuggerInstance from '@multiplayer-app/session-debugger'
 
 debuggerInstance.init({
-  version: "{YOUR_APPLICATION_VERSION}",
-  application: "{YOUR_APPLICATION_NAME}",
-  environment: "{YOUR_APPLICATION_ENVIRONMENT}",
-  apiKey: "{YOUR_API_KEY}",
+  version: '{YOUR_APPLICATION_VERSION}',
+  application: '{YOUR_APPLICATION_NAME}',
+  environment: '{YOUR_APPLICATION_ENVIRONMENT}',
+  apiKey: '{YOUR_API_KEY}',
   propagateTraceHeaderCorsUrls: [
     new RegExp(`https://your.backend.api.domain`, 'i'),
     new RegExp(`https://another.backend.api.domain`, 'i')
   ]
-});
+})
 ```
 
 ## Documentation
