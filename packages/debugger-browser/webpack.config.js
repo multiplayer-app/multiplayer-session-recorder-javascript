@@ -4,6 +4,7 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 const TerserPlugin = require('terser-webpack-plugin')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin')
+const packageJson = require('./package.json')
 
 const isProduction = process.env.NODE_ENV === 'production'
 
@@ -59,6 +60,7 @@ const baseConfig = {
       : []),
     new webpack.DefinePlugin({
       'process.env.MULTIPLAYER_MAX_HTTP_REQUEST_RESPONSE_SIZE': JSON.stringify(''),
+      'PACKAGE_VERSION': JSON.stringify(packageJson.version),
     }),
   ],
   devtool: isProduction ? false : 'source-map',
@@ -71,7 +73,7 @@ const externalBundle = {
     filename: 'index.js',
     path: resolve(__dirname, 'dist'),
     library: {
-      name: 'MultiplayerSessionDebugger',
+      name: 'Debugger',
       type: 'umd',
     },
     globalObject: 'this',
@@ -106,7 +108,7 @@ const browserBundle = {
     path: resolve(__dirname, 'dist/browser'),
     library: {
       type: 'umd',
-      name: 'MultiplayerSessionDebugger',
+      name: 'Debugger',
     },
     globalObject: 'this',
   },

@@ -1,11 +1,11 @@
 import { IDebugSession } from './types'
 import messagingService from './services/messaging.service'
-import { MultiplayerSessionDebugger } from './session-debugger'
-import { DebugSessionType } from '@multiplayer-app/otlp-core'
+import { Debugger } from './debugger'
+import { DebugSessionType } from '@multiplayer-app/opentelemetry'
 
 
 
-export function setupListeners(debuggerInstance: MultiplayerSessionDebugger): void {
+export function setupListeners(debuggerInstance: Debugger): void {
   // Send ready message with session info
   messagingService.sendMessage('ready', {
     session: debuggerInstance.session,
@@ -36,7 +36,7 @@ export function setupListeners(debuggerInstance: MultiplayerSessionDebugger): vo
     if (payload.enabled) {
       debuggerInstance.start(DebugSessionType.CONTINUOUS)
     } else {
-      debuggerInstance.cancel()
+      debuggerInstance.stop()
     }
   })
 

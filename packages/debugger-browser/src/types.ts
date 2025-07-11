@@ -1,5 +1,5 @@
 
-import { DebugSessionType } from '@multiplayer-app/otlp-core'
+import { DebugSessionType } from '@multiplayer-app/opentelemetry'
 
 export interface SessionDebuggerOptions {
   /**
@@ -185,7 +185,7 @@ export enum SessionState {
   stopped = '0',
 }
 
-export interface IMultiplayerSessionDebugger {
+export interface IDebugger {
   /**
    * The current session ID
    */

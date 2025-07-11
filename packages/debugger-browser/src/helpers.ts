@@ -1,4 +1,4 @@
-import { DEBUG_SESSION_MAX_DURATION_SECONDS } from './constants'
+import { DEBUG_SESSION_MAX_DURATION_SECONDS, PACKAGE_VERSION } from './constants'
 
 export const getNavigatorInfo = () => {
   let browserInfo: string = 'Unknown'
@@ -56,6 +56,9 @@ export const getNavigatorInfo = () => {
   const pixelRatio = window.devicePixelRatio || 'Unknown'
   const screenSize = `${window.screen.width}x${window.screen.height}`
 
+  // Get package version from constants
+  const packageVersion = PACKAGE_VERSION
+
   return {
     osInfo,
     screenSize,
@@ -64,6 +67,7 @@ export const getNavigatorInfo = () => {
     browserInfo,
     cookiesEnabled,
     hardwareConcurrency,
+    packageVersion,
   }
 }
 

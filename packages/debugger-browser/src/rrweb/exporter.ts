@@ -1,4 +1,4 @@
-import { DebugSessionType } from '@multiplayer-app/otlp-core'
+import { DebugSessionType } from '@multiplayer-app/opentelemetry'
 import io, { Socket } from 'socket.io-client'
 import {
   DEBUG_SESSION_ADD_EVENT,

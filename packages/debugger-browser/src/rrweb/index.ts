@@ -1,6 +1,6 @@
 import { record } from 'rrweb'
 import { pack } from '@rrweb/packer'
-import { DebugSessionType } from '@multiplayer-app/otlp-core'
+import { DebugSessionType } from '@multiplayer-app/opentelemetry'
 import { getRecordConsolePlugin } from '@rrweb/rrweb-plugin-console-record'
 
 import { SessionDebuggerConfigs } from '../types'

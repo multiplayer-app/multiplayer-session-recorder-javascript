@@ -57,10 +57,10 @@ function _tryReadXHRBody({
   return `[XHR] Cannot read body of type ${toString.call(body)}`
 }
 
-(function(xhr) {
+(function (xhr) {
   const originalOpen = XMLHttpRequest.prototype.open
 
-  xhr.open = function(
+  xhr.open = function (
     method: string,
     url: string | URL,
     async = true,

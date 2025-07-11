@@ -41,11 +41,11 @@ import messagingService from './services/messaging.service'
 import { ApiService, StartSessionRequest, StopSessionRequest } from './services/api.service'
 
 import './index.scss'
-import { DebugSessionType } from '@multiplayer-app/otlp-core'
+import { DebugSessionType } from '@multiplayer-app/opentelemetry'
 import { ContinuousDebuggingSaveButtonState } from './sessionWidget/buttonStateConfigs'
-import { IMultiplayerSessionDebugger } from './types'
+import { IDebugger } from './types'
 
-export class MultiplayerSessionDebugger implements IMultiplayerSessionDebugger {
+export class Debugger implements IDebugger {
   private _isInitialized = false
   private _configs: SessionDebuggerConfigs
 
@@ -298,19 +298,18 @@ export class MultiplayerSessionDebugger implements IMultiplayerSessionDebugger {
     try {
       this._checkOperation('stop')
       this._stop()
-      const request: StopSessionRequest = {
-        userMetadata: comment ? { comment } : undefined,
-        stoppedAt: this._recorder.stoppedAt,
-      }
-
       if (this.continuesDebugging) {
         await this._apiService.cancelContinuousDebugSession(this._sessionId!)
         this.continuesDebugging = false
       } else {
+        const request: StopSessionRequest = {
+          userMetadata: comment ? { comment } : undefined,
+          stoppedAt: this._recorder.stoppedAt,
+        }
         const response = await this._apiService.stopSession(this._sessionId!, request)
+        recorderEventBus.emit(SESSION_RESPONSE, response)
       }
       this._clearSession()
-      recorderEventBus.emit(SESSION_RESPONSE, response)
     } catch (error: any) {
       this.error = error.message
     }
@@ -320,8 +319,8 @@ export class MultiplayerSessionDebugger implements IMultiplayerSessionDebugger {
    * Cancel the current session
    */
   public async cancel(): Promise<void> {
-    this._checkOperation('cancel')
     try {
+      this._checkOperation('cancel')
       this._stop()
       if (this.continuesDebugging) {
         await this._apiService.cancelContinuousDebugSession(this._sessionId!)
@@ -390,14 +389,16 @@ export class MultiplayerSessionDebugger implements IMultiplayerSessionDebugger {
     })
 
     this._sessionWidget.on('continuous-debugging', (enabled: boolean) => {
+      this.error = ''
       if (enabled) {
         this.start(DebugSessionType.CONTINUOUS)
       } else {
-        this.cancel()
+        this.stop()
       }
     })
 
     this._sessionWidget.on('save', () => {
+      this.error = ''
       this.save()
     })
   }

@@ -6,7 +6,7 @@ import { ApiService } from './services/api.service'
 import { IDebugSession } from './types'
 import { getFormattedDate } from './helper'
 
-export class MultiplayerSessionDebugger {
+export class Debugger {
   private _isInitialized = false
 
   private _debugSessionId: string | boolean = false
@@ -158,7 +158,7 @@ export class MultiplayerSessionDebugger {
       throw e
     } finally {
       (this._traceIdGenerator as MultiplayerIdGenerator).setSessionId('')
-      
+
       this._debugSessionId = false
       this._shortDebugSessionId = false
       this._debugSessionState = 'STOPPED'

@@ -2,14 +2,14 @@ import './patch'
 import { setupListeners } from './listeners'
 import { recorderEventBus } from './eventBus'
 import { CanvasReplayerPlugin } from './rrweb/canvas-plugin'
-import { MultiplayerSessionDebugger } from './session-debugger'
+import { Debugger } from './debugger'
 
-const DebuggerInstance = new MultiplayerSessionDebugger()
+const DebuggerInstance = new Debugger()
 
 // Attach the instance to the global object (window in browser)
 if (typeof window !== 'undefined') {
   window['__MP_SESSION_DEBUGGER_LOADED'] = true
-  window['MultiplayerSessionDebugger'] = DebuggerInstance
+  window['Debugger'] = DebuggerInstance
   setupListeners(DebuggerInstance)
 }
 

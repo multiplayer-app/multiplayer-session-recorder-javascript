@@ -19,7 +19,7 @@ import {
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
   DebugSessionType,
-} from '@multiplayer-app/otlp-core'
+} from '@multiplayer-app/opentelemetry'
 import { SessionDebuggerConfigs } from '../types'
 
 export class TracerBrowserSDK {
