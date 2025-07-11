@@ -1,3 +1,3 @@
-import { Debugger as _Debugger } from './session-debugger'
+import { Debugger } from './debugger'
 
-export const Debugger = new _Debugger()
+export const mpDebugger = new Debugger()

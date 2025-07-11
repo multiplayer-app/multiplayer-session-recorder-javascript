@@ -20,7 +20,7 @@ interface HttpResponseHookOptions {
   headersToMask?: string[],
   maxPayloadSize?: number,
   schemifyDocSpanPayload?: boolean,
-  maskDebSpanPayload?: boolean,
+  maskDebugSpanPayload?: boolean,
   uncompressPayload?: boolean,
 }
 
@@ -28,7 +28,7 @@ interface HttpRequestHookOptions {
   headersToMask?: string[],
   maxPayloadSize?: number,
   schemifyDocSpanPayload?: boolean,
-  maskDebSpanPayload?: boolean
+  maskDebugSpanPayload?: boolean
 }
 
 export const MultiplayerHttpInstrumentationHooksNode = {
@@ -36,7 +36,7 @@ export const MultiplayerHttpInstrumentationHooksNode = {
     (span: Span, response: IncomingMessage | ServerResponse) => {
       try {
         options = {
-          maskDebSpanPayload: true,
+          maskDebugSpanPayload: true,
           schemifyDocSpanPayload: true,
           ...options,
         }
@@ -106,7 +106,7 @@ export const MultiplayerHttpInstrumentationHooksNode = {
           if (!skipResponseBodyModification) {
             if (
               traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
-              && options.maskDebSpanPayload
+              && options.maskDebugSpanPayload
             ) {
               responseBody = mask(responseBody)
             } else if (options.schemifyDocSpanPayload) {
@@ -149,7 +149,7 @@ export const MultiplayerHttpInstrumentationHooksNode = {
     (span: Span, request: ClientRequest | IncomingMessage) => {
       try {
         options = {
-          maskDebSpanPayload: true,
+          maskDebugSpanPayload: true,
           schemifyDocSpanPayload: true,
           ...options,
         }
@@ -191,7 +191,7 @@ export const MultiplayerHttpInstrumentationHooksNode = {
 
             if (
               traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
-              && options.maskDebSpanPayload
+              && options.maskDebugSpanPayload
             ) {
               requestBody = mask(requestBody)
             } else if (options.schemifyDocSpanPayload) {
