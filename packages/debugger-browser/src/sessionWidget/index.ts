@@ -2,7 +2,7 @@ import 'rrweb-player/dist/style.css'
 import { Observable } from 'lib0/observable'
 import { insertTrustedHTML } from '../utils'
 import { formatTimeForSessionTimer } from '../helpers'
-import { SessionDebuggerConfigs, SessionState } from '../types'
+import { SessionWidgetConfig, SessionState } from '../types'
 import { DragManager } from './dragManager'
 import {
   POPOVER_WIDTH,
@@ -252,7 +252,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     })
   }
 
-  init(options: SessionDebuggerConfigs) {
+  init(options: SessionWidgetConfig) {
     this.showRecorderButton = options.showWidget
     const elements = [this.toast]
 
@@ -268,9 +268,9 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     }
 
     this.appendElements(elements)
-    if (options.showWidget && options.recordButtonPlacement) {
-      this.recorderButton.classList.add(options.recordButtonPlacement)
-      this._recorderPlacement = options.recordButtonPlacement
+    if (options.showWidget && options.widgetButtonPlacement) {
+      this.recorderButton.classList.add(options.widgetButtonPlacement)
+      this._recorderPlacement = options.widgetButtonPlacement
       this.addRecorderDragFunctionality()
     }
     this.addEventListeners()

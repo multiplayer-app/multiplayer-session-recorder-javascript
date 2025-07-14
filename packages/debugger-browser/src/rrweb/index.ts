@@ -1,9 +1,9 @@
-import { record } from 'rrweb'
+import { record, recordOptions } from 'rrweb'
 import { pack } from '@rrweb/packer'
 import { DebugSessionType } from '@multiplayer-app/opentelemetry'
 import { getRecordConsolePlugin } from '@rrweb/rrweb-plugin-console-record'
 
-import { SessionDebuggerConfigs } from '../types'
+import { RecorderConfig } from '../types'
 import { CONTINUOUS_DEBUGGING_TIMEOUT } from '../constants'
 
 import { RrwebEventExporter } from './exporter'
@@ -12,7 +12,7 @@ import { IndexedDBService } from './indexedDbService'
 
 export class RecorderBrowserSDK {
   private stopFn?: () => void
-  private config?: SessionDebuggerConfigs
+  private config?: RecorderConfig
   private exporter: RrwebEventExporter | undefined
   private indexedDBService: IndexedDBService
   private _restartTimeout: NodeJS.Timeout | null = null
@@ -42,7 +42,7 @@ export class RecorderBrowserSDK {
    * Initializes the recorder SDK with configuration settings.
    * @param config - Configuration settings for the session debugger.
    */
-  init(config: SessionDebuggerConfigs): void {
+  init(config: RecorderConfig): void {
     this.config = config
     this.exporter = new RrwebEventExporter(
       {
@@ -65,14 +65,45 @@ export class RecorderBrowserSDK {
     }
     const restartTimeout = debugSessionType === DebugSessionType.CONTINUOUS ? CONTINUOUS_DEBUGGING_TIMEOUT : 0
     this.startedAt = new Date().toISOString()
-    this.stopFn = record({
-      maskAllInputs: true,
+
+    // Build masking configuration
+    const maskingConfig = this.config.masking || {}
+    const options: recordOptions<any> = {
+      maskAllInputs: maskingConfig.maskAllInputs ?? true,
       sampling: { canvas: 5 },
       recordCanvas: this.config.canvasEnabled,
       dataURLOptions: { type: 'image/webp', quality: 0.1 },
       plugins: [
         getRecordConsolePlugin({ level: ['log', 'error'] }),
       ],
+    }
+
+    // Add mask input options if provided
+    if (maskingConfig.maskInputOptions) {
+      options.maskInputOptions = maskingConfig.maskInputOptions
+    }
+
+    // Add mask text class if provided
+    if (maskingConfig.maskTextClass) {
+      options.maskTextClass = maskingConfig.maskTextClass
+    }
+
+    // Add mask text selector if provided
+    if (maskingConfig.maskTextSelector) {
+      options.maskTextSelector = maskingConfig.maskTextSelector
+    }
+
+    // Add custom masking functions if provided
+    if (typeof maskingConfig.maskInputFn === 'function') {
+      options.maskInputFn = maskingConfig.maskInputFn
+    }
+
+    if (typeof maskingConfig.maskTextFn === 'function') {
+      options.maskTextFn = maskingConfig.maskTextFn
+    }
+
+    this.stopFn = record({
+      ...options,
       emit: async (event) => {
         if (this.exporter) {
           const packedEvent = pack(event)

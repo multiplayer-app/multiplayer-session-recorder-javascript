@@ -1,11 +1,5 @@
 import messagingService from './messaging.service'
-
-export interface ApiServiceConfig {
-  apiKey?: string
-  exporterApiBaseUrl: string
-  continuesDebugging?: boolean
-  usePostMessageFallback?: boolean
-}
+import { ApiServiceConfig } from '../types'
 
 export interface StartSessionRequest {
   name?: string
@@ -25,14 +19,10 @@ export interface StopSessionRequest {
 export class ApiService {
   private config: ApiServiceConfig
 
-  // private get sessionPath() {
-  //   return this.config.continuesDebugging
-  //     ? '/continuous-debug-sessions'
-  //     : '/debug-sessions'
-  // }
 
   constructor() {
     this.config = {
+      apiKey: '',
       exporterApiBaseUrl: '',
     }
   }

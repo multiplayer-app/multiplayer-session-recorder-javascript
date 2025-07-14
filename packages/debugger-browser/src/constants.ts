@@ -1,3 +1,5 @@
+import { SessionDebuggerConfigs } from "./types"
+
 export const OTEL_MP_DOC_TRACE_RATIO = 0.15
 
 export const OTEL_MP_SAMPLE_TRACE_RATIO = 0.15
@@ -36,3 +38,26 @@ export const DEBUG_SESSION_MAX_DURATION_SECONDS = 10 * 60 + 30 // TODO: move to 
 
 // Package version - injected by webpack during build
 export const PACKAGE_VERSION = (globalThis as any).PACKAGE_VERSION || '1.0.0'
+
+export const BASE_CONFIG: SessionDebuggerConfigs = {
+  version: '',
+  application: '',
+  environment: '',
+  ignoreUrls: [],
+  showWidget: true,
+  canvasEnabled: false,
+  schemifyDocSpanPayload: true,
+  usePostMessageFallback: false,
+  propagateTraceHeaderCorsUrls: [],
+  disableCapturingHttpPayload: false,
+  widgetButtonPlacement: 'bottom-right',
+  docTraceRatio: OTEL_MP_DOC_TRACE_RATIO,
+  exporterApiBaseUrl: MULTIPLAYER_BASE_API_URL,
+  sampleTraceRatio: OTEL_MP_SAMPLE_TRACE_RATIO,
+  maxCapturingHttpPayloadSize: DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
+  apiKey: "",
+  masking: {
+    maskAllInputs: true,
+    maskDebugSpanPayload: true,
+  },
+}

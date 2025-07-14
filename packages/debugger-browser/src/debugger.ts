@@ -16,19 +16,13 @@ import {
 } from './types'
 
 import {
-  SESSION_RESPONSE,
-  OTEL_MP_DOC_TRACE_RATIO,
-  DEBUG_SESSION_PROP_NAME,
-  MULTIPLAYER_BASE_API_URL,
-  OTEL_MP_SAMPLE_TRACE_RATIO,
-  DEBUG_SESSION_AUTO_CREATED,
+  SESSION_RESPONSE, DEBUG_SESSION_PROP_NAME, DEBUG_SESSION_AUTO_CREATED,
   DEBUG_SESSION_ID_PROP_NAME,
   DEBUG_SESSION_STARTED_EVENT,
   DEBUG_SESSION_STOPPED_EVENT,
   DEBUG_SESSION_STATE_PROP_NAME,
-  DEBUG_SESSION_SHORT_ID_PROP_NAME,
-  DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
-  DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME,
+  DEBUG_SESSION_SHORT_ID_PROP_NAME, DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME,
+  BASE_CONFIG
 } from './constants'
 
 import {
@@ -163,22 +157,7 @@ export class Debugger implements IDebugger {
     }
 
     this._configs = {
-      version: '',
-      application: '',
-      environment: '',
-      ignoreUrls: [],
-      showWidget: true,
-      canvasEnabled: false,
-      maskDebugSpanPayload: true,
-      schemifyDocSpanPayload: true,
-      usePostMessageFallback: false,
-      propagateTraceHeaderCorsUrls: [],
-      disableCapturingHttpPayload: false,
-      recordButtonPlacement: 'bottom-right',
-      docTraceRatio: OTEL_MP_DOC_TRACE_RATIO,
-      exporterApiBaseUrl: MULTIPLAYER_BASE_API_URL,
-      sampleTraceRatio: OTEL_MP_SAMPLE_TRACE_RATIO,
-      maxCapturingHttpPayloadSize: DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
+      ...BASE_CONFIG,
       apiKey: this.session?.tempApiKey || '',
     }
   }
@@ -188,7 +167,10 @@ export class Debugger implements IDebugger {
    * @param configs - custom configurations for session debugger
    */
   public init(configs: SessionDebuggerOptions): void {
-    this._configs = { ...this._configs, ...configs }
+    this._configs = {
+      ...this._configs, ...configs,
+      masking: { ...this._configs.masking, ...(configs.masking || {}) }
+    }
     this._isInitialized = true
     this._checkOperation('init')
 
@@ -203,7 +185,6 @@ export class Debugger implements IDebugger {
       apiKey,
       exporterApiBaseUrl,
       usePostMessageFallback,
-      // typo
       continuesDebugging: this.continuesDebugging,
     })
 
