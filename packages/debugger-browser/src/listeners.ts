@@ -34,7 +34,7 @@ export function setupListeners(debuggerInstance: Debugger): void {
 
   messagingService.on('toggle-continuous-debugging', (payload: { enabled: boolean, session?: IDebugSession }) => {
     if (payload.enabled) {
-      debuggerInstance.start(DebugSessionType.CONTINUOUS)
+      debuggerInstance.start(DebugSessionType.CONTINUOUS, payload.session)
     } else {
       debuggerInstance.stop()
     }
