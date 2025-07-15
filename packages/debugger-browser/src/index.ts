@@ -1,7 +1,6 @@
 import './patch'
 import { setupListeners } from './listeners'
 import { recorderEventBus } from './eventBus'
-import { CanvasReplayerPlugin } from './rrweb/canvas-plugin'
 import { Debugger } from './debugger'
 
 const DebuggerInstance = new Debugger()
@@ -15,4 +14,4 @@ if (typeof window !== 'undefined') {
 
 export default DebuggerInstance
 
-export { CanvasReplayerPlugin, recorderEventBus }
+export { recorderEventBus }

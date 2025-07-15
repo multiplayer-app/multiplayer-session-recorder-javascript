@@ -27,7 +27,7 @@ To initialize the Multiplayer Session Debugger in your application, follow the s
 #### Import the Debugger
 
 ```javascript
-import debuggerInstance from '@multiplayer-app/debugger-browser'
+import Debugger from '@multiplayer-app/debugger-browser'
 ```
 
 #### Initialization
@@ -35,7 +35,7 @@ import debuggerInstance from '@multiplayer-app/debugger-browser'
 Use the following code to initialize the debugger with your application details:
 
 ```javascript
-debuggerInstance.init({
+Debugger.init({
   version: '{YOUR_APPLICATION_VERSION}',
   application: '{YOUR_APPLICATION_NAME}',
   environment: '{YOUR_APPLICATION_ENVIRONMENT}',
@@ -50,10 +50,10 @@ Replace the placeholders with your application’s version, name, environment, a
 To track user-specific metadata in session replays, add the following:
 
 ```javascript
-window['mpSessionDebuggerMetadata'] = {
+Debugger.setSessionMetadata({
   userId: '{userId}',
   userName: '{userName}'
-}
+})
 ```
 
 Replace the placeholders with the actual user information (e.g., user ID and username).
@@ -68,9 +68,9 @@ This library relies on the following packages:
 ## Example Usage
 
 ```javascript
-import debuggerInstance from '@multiplayer-app/debugger-browser'
+import Debugger from '@multiplayer-app/debugger-browser'
 
-debuggerInstance.init({
+Debugger.init({
   version: '1.0.0',
   application: 'MyApp',
   environment: 'production',
@@ -124,10 +124,10 @@ debuggerInstance.init({
   }
 })
 
-window['mpSessionDebuggerMetadata'] = {
+Debugger.setSessionMetadata({
   userId: '12345',
   userName: 'John Doe'
-}
+})
 ```
 
 ## Masking Configuration
@@ -233,7 +233,7 @@ masking: {
 ### Example: Comprehensive Masking Setup
 
 ```javascript
-debuggerInstance.init({
+Debugger.init({
   // ... other options
   masking: {
     maskAllInputs: true,
@@ -297,12 +297,12 @@ In the newly created file, add the following code:
 ```javascript
 'use client' // Mark as Client Component
 import { useEffect } from 'react'
-import debuggerInstance from '@multiplayer-app/debugger-browser'
+import Debugger from '@multiplayer-app/debugger-browser'
 
 export default function SessionDebugger() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      debuggerInstance.init({
+      Debugger.init({
         version: '{YOUR_APPLICATION_VERSION}',
         application: '{YOUR_APPLICATION_NAME}',
         environment: '{YOUR_APPLICATION_ENVIRONMENT}',
@@ -317,10 +317,10 @@ export default function SessionDebugger() {
         }
       })
 
-      window['mpSessionDebuggerMetadata'] = {
+      Debugger.setSessionMetadata({
         userId: '{userId}',
         userName: '{userName}'
-      }
+      })
     }
   }, [])
 
@@ -350,9 +350,9 @@ export default function MyApp() {
 If frontend domain doesn't match to backend one, set backend domain to `propagateTraceHeaderCorsUrls` parameter:
 
 ```javascript
-import debuggerInstance from '@multiplayer-app/debugger-browser'
+import Debugger from '@multiplayer-app/debugger-browser'
 
-debuggerInstance.init({
+Debugger.init({
   version: '{YOUR_APPLICATION_VERSION}',
   application: '{YOUR_APPLICATION_NAME}',
   environment: '{YOUR_APPLICATION_ENVIRONMENT}',
@@ -364,9 +364,9 @@ debuggerInstance.init({
 If frontend sends api requests to two or more different domains put them to `propagateTraceHeaderCorsUrls` as array:
 
 ```javascript
-import debuggerInstance from '@multiplayer-app/debugger-browser'
+import Debugger from '@multiplayer-app/debugger-browser'
 
-debuggerInstance.init({
+Debugger.init({
   version: '{YOUR_APPLICATION_VERSION}',
   application: '{YOUR_APPLICATION_NAME}',
   environment: '{YOUR_APPLICATION_ENVIRONMENT}',
