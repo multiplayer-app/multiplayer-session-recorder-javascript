@@ -41,7 +41,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   private _initialPopoverVisible: boolean = false
   private _finalPopoverVisible: boolean = false
   private _buttonState: ButtonState = ButtonState.IDLE
-  private _continuesDebugging: boolean = false
+  private _continuousDebugging: boolean = false
   private uiManager: UIManager
   private readonly commentTextarea: HTMLTextAreaElement | null = null
   private buttonDraggabilityObserver!: MutationObserver
@@ -88,7 +88,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   public set isStarted(v: boolean) {
     this._isStarted = v
-    if (!this.showRecorderButton && v && !this._continuesDebugging) {
+    if (!this.showRecorderButton && v && !this._continuousDebugging) {
       this.overlay.classList.remove('hidden')
       this.makeOverlayDraggable()
 
@@ -101,7 +101,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
     this.recorderButton.classList.toggle('is-started', this._isStarted)
     if (this._isStarted) {
-      if (!this._continuesDebugging) {
+      if (!this._continuousDebugging) {
         this.initialPopoverVisible = false
         this.buttonState = ButtonState.RECORDING
       } else {
@@ -115,7 +115,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   public set isPaused(v: boolean) {
     this._isPaused = v
-    if (!this.showRecorderButton && v && !this._continuesDebugging) {
+    if (!this.showRecorderButton && v && !this._continuousDebugging) {
       this.overlay.classList.add('hidden')
       this.submitSessionDialog.classList.remove('hidden')
       this.stopTimer()
@@ -153,8 +153,8 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     this.observeButtonDraggableMode()
   }
 
-  public updateState(state: SessionState | null, continuesDebugging: boolean) {
-    this._continuesDebugging = continuesDebugging
+  public updateState(state: SessionState | null, continuousDebugging: boolean) {
+    this._continuousDebugging = continuousDebugging
     switch (state) {
       case SessionState.started:
         this.isPaused = false
@@ -431,7 +431,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       this.uiManager.setPopoverLoadingState(false)
     }
     this.initialPopoverVisible = false
-    this.buttonState = this._continuesDebugging
+    this.buttonState = this._continuousDebugging
       ? ButtonState.CONTINUOUS_DEBUGGING
       : ButtonState.IDLE
     document.removeEventListener('click', this.handleClickOutside)
@@ -494,7 +494,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
     if (this._isStarted) {
       this.buttonState = ButtonState.CANCEL
-      if (this._continuesDebugging) {
+      if (this._continuousDebugging) {
         this.initialPopoverVisible = !this.initialPopoverVisible
       } else {
         this.finalPopoverVisible = !this._finalPopoverVisible

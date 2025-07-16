@@ -5,7 +5,7 @@ import { IDebugSession } from '../types'
 export interface ApiServiceConfig {
   apiKey?: string
   exporterApiBaseUrl?: string
-  continuesDebugging?: boolean
+  continuousDebugging?: boolean
   usePostMessageFallback?: boolean
 }
 
@@ -27,7 +27,7 @@ export class ApiService {
   private config: ApiServiceConfig
 
   // private get sessionPath() {
-  //   return this.config.continuesDebugging
+  //   return this.config.continuousDebugging
   //     ? '/continuous-debug-sessions'
   //     : '/debug-sessions'
   // }

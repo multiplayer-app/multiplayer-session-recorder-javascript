@@ -261,7 +261,7 @@ export interface SessionWidgetConfig {
  */
 export interface ApiServiceConfig extends BaseConfig {
   /** Whether continuous debugging is enabled */
-  continuesDebugging?: boolean
+  continuousDebugging?: boolean
 }
 
 export interface SessionDebuggerConfigs {
@@ -304,7 +304,7 @@ export interface IDebugger {
   /**
    * Whether continuous debugging is enabled
    */
-  readonly continuesDebugging: boolean
+  readonly continuousDebugging: boolean
 
   /**
    * The type of debug session (plain or continuous)

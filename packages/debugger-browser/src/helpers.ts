@@ -116,9 +116,9 @@ export const getTimeDifferenceInSeconds = (startedAt: any) => {
   return Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
 }
 
-export const isSessionActive = (session, continuesDebugging: boolean) => {
+export const isSessionActive = (session, continuousDebugging: boolean) => {
   if (!session) return false
-  if (continuesDebugging) return true
+  if (continuousDebugging) return true
   const startedAt = new Date(session.startedAt)
   const now = new Date()
   const diff = now.getTime() - startedAt.getTime()

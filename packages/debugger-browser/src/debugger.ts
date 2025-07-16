@@ -68,20 +68,20 @@ export class Debugger implements IDebugger {
     setStoredItem(DEBUG_SESSION_SHORT_ID_PROP_NAME, shortSessionId)
   }
 
-  private _continuesDebugging: boolean = false
-  get continuesDebugging(): boolean {
-    return this._continuesDebugging
+  private _continuousDebugging: boolean = false
+  get continuousDebugging(): boolean {
+    return this._continuousDebugging
   }
-  set continuesDebugging(continuesDebugging: boolean) {
-    this._continuesDebugging = continuesDebugging
-    this._apiService.updateConfigs({ continuesDebugging })
-    this._sessionWidget.updateContinuousDebuggingState(continuesDebugging)
-    messagingService.sendMessage('continuous-debugging', continuesDebugging)
-    setStoredItem(DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME, continuesDebugging)
+  set continuousDebugging(continuousDebugging: boolean) {
+    this._continuousDebugging = continuousDebugging
+    this._apiService.updateConfigs({ continuousDebugging })
+    this._sessionWidget.updateContinuousDebuggingState(continuousDebugging)
+    messagingService.sendMessage('continuous-debugging', continuousDebugging)
+    setStoredItem(DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME, continuousDebugging)
   }
 
   get debugSessionType(): DebugSessionType {
-    return this.continuesDebugging ? DebugSessionType.CONTINUOUS : DebugSessionType.PLAIN
+    return this.continuousDebugging ? DebugSessionType.CONTINUOUS : DebugSessionType.PLAIN
   }
 
   private _sessionState: SessionState | null = null
@@ -90,7 +90,7 @@ export class Debugger implements IDebugger {
   }
   set sessionState(state: SessionState | null) {
     this._sessionState = state
-    this._sessionWidget.updateState(this._sessionState, this.continuesDebugging)
+    this._sessionWidget.updateState(this._sessionState, this.continuousDebugging)
     messagingService.sendMessage('state-change', this._sessionState)
     setStoredItem(DEBUG_SESSION_STATE_PROP_NAME, state)
   }
@@ -140,20 +140,20 @@ export class Debugger implements IDebugger {
     const sessionIdLocal = getStoredItem(DEBUG_SESSION_ID_PROP_NAME)
     const sessionStateLocal = getStoredItem(DEBUG_SESSION_STATE_PROP_NAME)
     const shortSessionIdLocal = getStoredItem(DEBUG_SESSION_SHORT_ID_PROP_NAME)
-    const continuesDebuggingLocal = getStoredItem(DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME, true)
+    const continuousDebuggingLocal = getStoredItem(DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME, true)
 
-    if (isSessionActive(sessionLocal, continuesDebuggingLocal)) {
+    if (isSessionActive(sessionLocal, continuousDebuggingLocal)) {
       this.session = sessionLocal
       this.sessionId = sessionIdLocal
       this.sessionState = sessionStateLocal
       this.shortSessionId = shortSessionIdLocal
-      this.continuesDebugging = continuesDebuggingLocal
+      this.continuousDebugging = continuousDebuggingLocal
     } else {
       this.session = null
       this.sessionId = null
       this.sessionState = null
       this.shortSessionId = null
-      this.continuesDebugging = false
+      this.continuousDebugging = false
     }
 
     this._configs = {
@@ -185,7 +185,7 @@ export class Debugger implements IDebugger {
       apiKey,
       exporterApiBaseUrl,
       usePostMessageFallback,
-      continuesDebugging: this.continuesDebugging,
+      continuousDebugging: this.continuousDebugging,
     })
 
     if (this._configs.apiKey) {
@@ -263,7 +263,7 @@ export class Debugger implements IDebugger {
    */
   public start(type: DebugSessionType, session?: IDebugSession): void {
     this._checkOperation('start')
-    this.continuesDebugging = type === DebugSessionType.CONTINUOUS
+    this.continuousDebugging = type === DebugSessionType.CONTINUOUS
     this._startRequestController = new AbortController()
     if (session) {
       this._setupSessionAndStart(session, true)
@@ -279,9 +279,9 @@ export class Debugger implements IDebugger {
     try {
       this._checkOperation('stop')
       this._stop()
-      if (this.continuesDebugging) {
+      if (this.continuousDebugging) {
         await this._apiService.stopContinuousDebugSession(this._sessionId!)
-        this.continuesDebugging = false
+        this.continuousDebugging = false
       } else {
         const request: StopSessionRequest = {
           feedbackMetadata: comment ? { comment } : undefined,
@@ -303,9 +303,9 @@ export class Debugger implements IDebugger {
     try {
       this._checkOperation('cancel')
       this._stop()
-      if (this.continuesDebugging) {
+      if (this.continuousDebugging) {
         await this._apiService.stopContinuousDebugSession(this._sessionId!)
-        this.continuesDebugging = false
+        this.continuousDebugging = false
       } else {
         await this._apiService.cancelSession(this._sessionId!)
       }
@@ -424,23 +424,23 @@ export class Debugger implements IDebugger {
           ? `${attributes.userName}'s session on ${getFormattedDate(Date.now(), { month: 'short', day: 'numeric' })}`
           : `Session on ${getFormattedDate(Date.now())}`,
       }
-      const request: StartSessionRequest = !this.continuesDebugging ?
+      const request: StartSessionRequest = !this.continuousDebugging ?
         payload : { debugSessionData: payload }
 
-      const session = this.continuesDebugging
+      const session = this.continuousDebugging
         ? await this._apiService.startContinuousDebugSession(request, signal)
         : await this._apiService.startSession(request, signal)
 
       if (session) {
-        session.debugSessionType = this.continuesDebugging
+        session.debugSessionType = this.continuousDebugging
           ? DebugSessionType.CONTINUOUS
           : DebugSessionType.PLAIN
         this._setupSessionAndStart(session, false)
       }
     } catch (error: any) {
       this.error = error.message
-      if (this.continuesDebugging) {
-        this.continuesDebugging = false
+      if (this.continuousDebugging) {
+        this.continuousDebugging = false
       }
     }
   }
@@ -449,7 +449,7 @@ export class Debugger implements IDebugger {
    * Start tracing and recording for the session
    */
   private _start(): void {
-    const debugSessionType = this.continuesDebugging
+    const debugSessionType = this.continuousDebugging
       ? DebugSessionType.CONTINUOUS
       : DebugSessionType.PLAIN
     this._tracer.start(this._shortSessionId, debugSessionType)
@@ -554,7 +554,7 @@ export class Debugger implements IDebugger {
         }
         break
       case 'save':
-        if (!this.continuesDebugging) {
+        if (!this.continuousDebugging) {
           throw new Error('Cannot save continuous debugging session. Continuous debugging is not enabled.')
         }
         if (this.sessionState !== SessionState.started) {
