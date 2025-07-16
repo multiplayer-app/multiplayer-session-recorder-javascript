@@ -273,7 +273,7 @@ export class Debugger implements IDebugger {
   }
   /**
    * Stop the current session with an optional comment
-   * @param comment - user-provided comment to include in session metadata
+   * @param comment - user-provided comment to include in session feedback metadata
    */
   public async stop(comment?: string): Promise<void> {
     try {
@@ -413,15 +413,15 @@ export class Debugger implements IDebugger {
    */
   private async _createSessionAndStart(): Promise<void> {
     const resourceAttributes = getNavigatorInfo()
-    const metadata = this.sessionAttributes
+    const attributes = this.sessionAttributes
     const signal = this._startRequestController?.signal
     try {
       const payload = {
-        metadata,
+        attributes,
         // TODO: add lib version here
         resourceAttributes,
-        name: metadata.userName
-          ? `${metadata.userName}'s session on ${getFormattedDate(Date.now(), { month: 'short', day: 'numeric' })}`
+        name: attributes.userName
+          ? `${attributes.userName}'s session on ${getFormattedDate(Date.now(), { month: 'short', day: 'numeric' })}`
           : `Session on ${getFormattedDate(Date.now())}`,
       }
       const request: StartSessionRequest = !this.continuesDebugging ?
