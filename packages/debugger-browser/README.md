@@ -72,11 +72,11 @@ import Debugger from '@multiplayer-app/debugger-browser'
 
 Debugger.init({
   version: '1.0.0',
-  application: 'MyApp',
+  application: 'my-app',
   environment: 'production',
   apiKey: 'your-api-key',
-  canvasEnabled: true,
   showWidget: true,
+  canvasEnabled: true,
   ignoreUrls: [
     /https:\/\/domain\.to\.ignore\/.*/, // can be regex or string
     /https:\/\/another\.domain\.to\.ignore\/.*/
@@ -86,9 +86,8 @@ Debugger.init({
     new RegExp('https://your.backend.api.domain', 'i'), // can be regex or string
     new RegExp('https://another.backend.api.domain', 'i')
   ],
-  schemifyDocSpanPayload: true,
-  maskDebugSpanPayload: true,
   docTraceRatio: 0.15, // 15% of traces will be sent for auto-documentation
+  schemifyDocSpanPayload: true,
   maxCapturingHttpPayloadSize: 100000,
   disableCapturingHttpPayload: false,
   // Configure masking for sensitive data in session recordings
@@ -120,6 +119,22 @@ Debugger.init({
         return local.charAt(0) + '***@' + domain
       }
       return '***MASKED***'
+    }
+    maskDebugSpanPayload: true, // Mask debug span payload in traces
+    maskDebugSpanPayloadFn: (payload) => {
+      // Custom trace payload masking
+      if (payload && typeof payload === 'object') {
+        const maskedPayload = { ...payload }
+        // Mask sensitive trace data
+        if (maskedPayload.requestHeaders) {
+          maskedPayload.requestHeaders = '***MASKED***'
+        }
+        if (maskedPayload.responseBody) {
+          maskedPayload.responseBody = '***MASKED***'
+        }
+        return maskedPayload
+      }
+      return payload
     }
   }
 })
@@ -249,7 +264,6 @@ Debugger.init({
     },
     maskTextClass: /sensitive|private|confidential/, // Mask text in elements with these classes
     maskTextSelector: '.user-email, .user-phone, .credit-card, [data-sensitive="true"]', // Mask text in elements matching this selector
-    maskDebugSpanPayload: true, // Mask debug span payload in traces
     maskInputFn: (text, element) => {
       // Custom credit card masking
       if (element.classList.contains('credit-card')) {
@@ -265,6 +279,7 @@ Debugger.init({
       }
       return '***MASKED***'
     },
+    maskDebugSpanPayload: true, // Mask debug span payload in traces
     maskDebugSpanPayloadFn: (payload) => {
       // Custom trace payload masking
       if (payload && typeof payload === 'object') {
