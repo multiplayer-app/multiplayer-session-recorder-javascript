@@ -45,12 +45,12 @@ Debugger.init({
 
 Replace the placeholders with your application’s version, name, environment, and API key (OpenTelemetry Frontend Token).
 
-#### Add User Metadata
+#### Add User attributes
 
-To track user-specific metadata in session replays, add the following:
+To track user-specific attributes in session replays, add the following:
 
 ```javascript
-Debugger.setSessionMetadata({
+Debugger.setSessionAttributes({
   userId: '{userId}',
   userName: '{userName}'
 })
@@ -139,7 +139,7 @@ Debugger.init({
   }
 })
 
-Debugger.setSessionMetadata({
+Debugger.setSessionAttributes({
   userId: '12345',
   userName: 'John Doe'
 })
@@ -332,7 +332,7 @@ export default function SessionDebugger() {
         }
       })
 
-      Debugger.setSessionMetadata({
+      Debugger.setSessionAttributes({
         userId: '{userId}',
         userName: '{userName}'
       })

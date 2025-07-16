@@ -4,13 +4,13 @@ import { ApiServiceConfig } from '../types'
 export interface StartSessionRequest {
   name?: string
   stoppedAt?: string | number
-  metadata?: Record<string, any>
-  clientMetadata?: Record<string, any>
+  attributes?: Record<string, any>
+  resourceAttributes?: Record<string, any>
   debugSessionData?: Record<string, any>
 }
 
 export interface StopSessionRequest {
-  userMetadata?: {
+  feedbackMetadata?: {
     comment?: string
   }
   stoppedAt: string | number

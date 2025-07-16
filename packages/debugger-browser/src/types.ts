@@ -152,19 +152,19 @@ export interface IDebugSession {
   durationInSeconds?: number
   createdAt: string | Date
   updatedAt: string | Date
-  metadata: {
+  attributes: {
     userName?: string,
     userId?: string,
     accountName?: string,
     accountId?: string,
   } & object
   tags: any[]
-  userMetadata: {
+  feedbackMetadata: {
     email?: string
     notifyOnUpdates?: boolean
     comment?: string
   },
-  clientMetadata: object
+  resourceAttributes: object
   views: IDebugSessionView[]
   starred: string[]
   url: string
@@ -322,9 +322,9 @@ export interface IDebugger {
   readonly session: IDebugSession | null
 
   /**
-   * Session metadata for additional context
+   * Session attributes for additional context
    */
-  readonly sessionMetadata: Record<string, any>
+  readonly sessionAttributes: Record<string, any>
 
   /**
    * Current error message
@@ -357,7 +357,7 @@ export interface IDebugger {
 
   /**
    * Stop the current session with an optional comment
-   * @param comment - user-provided comment to include in session metadata
+   * @param comment - user-provided comment to include in session feedback metadata
    */
   stop(comment?: string): Promise<void>
 
@@ -373,9 +373,9 @@ export interface IDebugger {
 
   /**
    * Set the session metadata
-   * @param metadata - the metadata to set
+   * @param attributes - the attributes to set
    */
-  setSessionMetadata(metadata: Record<string, any>): void
+  setSessionAttributes(attributes: Record<string, any>): void
 
   /**
    * Set a custom click handler for the recording button

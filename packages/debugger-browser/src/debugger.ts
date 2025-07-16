@@ -104,12 +104,12 @@ export class Debugger implements IDebugger {
     setStoredItem(DEBUG_SESSION_PROP_NAME, this._session)
   }
 
-  private _sessionMetadata: Record<string, any> | null = null
-  get sessionMetadata(): Record<string, any> {
-    return this._sessionMetadata || window['mpSessionDebuggerMetadata'] || {}
+  private _sessionAttributes: Record<string, any> | null = null
+  get sessionAttributes(): Record<string, any> {
+    return this._sessionAttributes || {}
   }
-  set sessionMetadata(metadata: Record<string, any> | null) {
-    this._sessionMetadata = metadata
+  set sessionAttributes(attributes: Record<string, any> | null) {
+    this._sessionAttributes = attributes
   }
   /**
    * Error message getter and setter to reflect on the session widget
@@ -218,11 +218,11 @@ export class Debugger implements IDebugger {
       const res = await this._apiService.saveContinuousDebugSession(
         this._sessionId!,
         {
-          metadata: this.sessionMetadata,
-          clientMetadata: getNavigatorInfo(),
+          attributes: this.sessionAttributes,
+          resourceAttributes: getNavigatorInfo(),
           stoppedAt: this._recorder.stoppedAt,
-          name: this.sessionMetadata.userName
-            ? `${this.sessionMetadata.userName}'s session on ${getFormattedDate(
+          name: this.sessionAttributes.userName
+            ? `${this.sessionAttributes.userName}'s session on ${getFormattedDate(
               Date.now(),
               { month: 'short', day: 'numeric' },
             )}`
@@ -284,7 +284,7 @@ export class Debugger implements IDebugger {
         this.continuesDebugging = false
       } else {
         const request: StopSessionRequest = {
-          userMetadata: comment ? { comment } : undefined,
+          feedbackMetadata: comment ? { comment } : undefined,
           stoppedAt: this._recorder.stoppedAt,
         }
         const response = await this._apiService.stopSession(this._sessionId!, request)
@@ -328,11 +328,11 @@ export class Debugger implements IDebugger {
   }
 
   /**
-   * Set the session metadata
-   * @param metadata - the metadata to set
+   * Set the session attributes
+   * @param attributes - the attributes to set
    */
-  public setSessionMetadata(metadata: Record<string, any>): void {
-    this._sessionMetadata = metadata
+  public setSessionAttributes(attributes: Record<string, any>): void {
+    this._sessionAttributes = attributes
   }
 
   /**
@@ -412,14 +412,14 @@ export class Debugger implements IDebugger {
    * Create a new session and start it
    */
   private async _createSessionAndStart(): Promise<void> {
-    const clientMetadata = getNavigatorInfo()
-    const metadata = this.sessionMetadata
+    const resourceAttributes = getNavigatorInfo()
+    const metadata = this.sessionAttributes
     const signal = this._startRequestController?.signal
     try {
       const payload = {
         metadata,
         // TODO: add lib version here
-        clientMetadata,
+        resourceAttributes,
         name: metadata.userName
           ? `${metadata.userName}'s session on ${getFormattedDate(Date.now(), { month: 'short', day: 'numeric' })}`
           : `Session on ${getFormattedDate(Date.now())}`,
