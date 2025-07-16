@@ -1,22 +1,16 @@
 import messagingService from './messaging.service'
-
-export interface ApiServiceConfig {
-  apiKey?: string
-  exporterApiBaseUrl: string
-  continuesDebugging?: boolean
-  usePostMessageFallback?: boolean
-}
+import { ApiServiceConfig } from '../types'
 
 export interface StartSessionRequest {
   name?: string
   stoppedAt?: string | number
-  metadata?: Record<string, any>
-  clientMetadata?: Record<string, any>
+  attributes?: Record<string, any>
+  resourceAttributes?: Record<string, any>
   debugSessionData?: Record<string, any>
 }
 
 export interface StopSessionRequest {
-  userMetadata?: {
+  feedbackMetadata?: {
     comment?: string
   }
   stoppedAt: string | number
@@ -25,14 +19,10 @@ export interface StopSessionRequest {
 export class ApiService {
   private config: ApiServiceConfig
 
-  // private get sessionPath() {
-  //   return this.config.continuesDebugging
-  //     ? '/continuous-debug-sessions'
-  //     : '/debug-sessions'
-  // }
 
   constructor() {
     this.config = {
+      apiKey: '',
       exporterApiBaseUrl: '',
     }
   }

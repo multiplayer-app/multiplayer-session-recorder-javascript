@@ -1,5 +1,39 @@
 
-import { DebugSessionType } from '@multiplayer-app/opentelemetry'
+import { DebugSessionType } from '@multiplayer-app/opentelemetry';
+import type {
+  MaskTextFn,
+  MaskInputFn,
+  MaskInputOptions,
+} from 'rrweb-snapshot';
+import type { maskTextClass } from '@rrweb/types';
+
+
+/**
+ * Interface for masking configuration
+ */
+export interface MaskingConfig {
+  // Recorder masking
+  /** If true, masks all input fields in the recording */
+  maskAllInputs?: boolean;
+  /** Class-based masking configuration - can be string or RegExp */
+  maskTextClass?: maskTextClass;
+  /** CSS selector for elements that should be masked */
+  maskTextSelector?: string;
+  /** Specific options for masking different types of inputs */
+  maskInputOptions?: MaskInputOptions;
+  /** Custom function for input masking */
+  maskInputFn?: MaskInputFn;
+  /** Custom function for text masking */
+  maskTextFn?: MaskTextFn;
+
+  // Span masking
+  /** If true, masks debug span payload in traces
+   *  @default true
+  */
+  maskDebugSpanPayload?: boolean;
+  /** Custom function for masking debug span payload in traces */
+  maskDebugSpanPayloadFn?: (payload: any) => any;
+}
 
 export interface SessionDebuggerOptions {
   /**
@@ -43,7 +77,7 @@ export interface SessionDebuggerOptions {
    *  - 'bottom-left'
    *  - 'bottom-right'
    */
-  recordButtonPlacement?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  widgetButtonPlacement?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
   /**
    * (Optional) If false, the session recording widget will be hidden from the UI.
@@ -72,40 +106,39 @@ export interface SessionDebuggerOptions {
   sampleTraceRatio?: number
 
   /**
-   * (Optional) URLs which should include trace headers when origin doesn't match
-   * @default []
+   * (Optional) URLs or regex patterns for CORS trace header propagation
    */
-  propagateTraceHeaderCorsUrls: string | RegExp | string[] | RegExp[]
+  propagateTraceHeaderCorsUrls?: string | RegExp | string[] | RegExp[]
 
   /**
-   * (Optional) Schemify http request/response payload for document traces.
+   * (Optional) If true, schematizes document span payload
    * @default true
    */
   schemifyDocSpanPayload?: boolean
 
   /**
-   * (Optional) Mask payload for debug traces.
-   * @default true
-   */
-  maskDebugSpanPayload?: boolean
-
-  /**
-   * (Optional) Disable capturing of http request/response payload.
+   * (Optional) If true, disables capturing HTTP payload
    * @default false
    */
   disableCapturingHttpPayload?: boolean
 
   /**
-   * (Optional) Max capturing http request/response payload size.
+   * (Optional) Maximum size for capturing HTTP payload
    * @default 100000
    */
   maxCapturingHttpPayloadSize?: number
 
   /**
-   * (Optional) Use postMessage fallback for exporters.
+   * (Optional) If true, uses post message fallback
    * @default false
    */
   usePostMessageFallback?: boolean
+
+  /**
+   * (Optional) Configuration for masking sensitive data in session recordings
+   * @default { maskAllInputs: true, maskTextInputs: true, maskInputOptions: { password: true } }
+   */
+  masking?: MaskingConfig
 }
 
 export interface IDebugSession {
@@ -119,19 +152,19 @@ export interface IDebugSession {
   durationInSeconds?: number
   createdAt: string | Date
   updatedAt: string | Date
-  metadata: {
+  attributes: {
     userName?: string,
     userId?: string,
     accountName?: string,
     accountId?: string,
   } & object
   tags: any[]
-  userMetadata: {
+  feedbackMetadata: {
     email?: string
     notifyOnUpdates?: boolean
     comment?: string
   },
-  clientMetadata: object
+  resourceAttributes: object
   views: IDebugSessionView[]
   starred: string[]
   url: string
@@ -159,6 +192,78 @@ export enum DebugSessionDataType {
 }
 
 
+/**
+ * Base configuration interface with common properties
+ */
+export interface BaseConfig {
+  /** API key for authentication */
+  apiKey: string
+  /** Base URL for the exporter API */
+  exporterApiBaseUrl: string
+  /** Whether to use post message fallback */
+  usePostMessageFallback?: boolean
+}
+
+/**
+ * Configuration interface for the Tracer class
+ */
+type TracerBrowserMasking = Pick<MaskingConfig, 'maskDebugSpanPayload' | 'maskDebugSpanPayloadFn'>;
+
+export interface TracerBrowserConfig extends BaseConfig {
+  /** Application name */
+  application: string
+  /** Application version */
+  version: string
+  /** Environment (e.g., 'production', 'staging') */
+  environment: string
+  /** URLs to ignore during tracing */
+  ignoreUrls?: Array<string | RegExp>
+  /** Trace ID ratio for document traces */
+  docTraceRatio: number
+  /** Trace ID ratio for sampling */
+  sampleTraceRatio: number
+  /** URLs for CORS trace header propagation */
+  propagateTraceHeaderCorsUrls?: string | RegExp | string[] | RegExp[]
+  /** Whether to schematize document span payload */
+  schemifyDocSpanPayload?: boolean
+  /** Whether to disable capturing HTTP payload */
+  disableCapturingHttpPayload?: boolean
+  /** Maximum size for capturing HTTP payload */
+  maxCapturingHttpPayloadSize: number,
+  /** Configuration for masking sensitive data in session recordings */
+  masking?: TracerBrowserMasking
+}
+
+/**
+ * Configuration interface for the Recorder class
+ */
+
+type RecorderMasking = Pick<MaskingConfig, 'maskAllInputs' | 'maskTextClass' | 'maskTextSelector' | 'maskInputOptions' | 'maskInputFn' | 'maskTextFn'>;
+export interface RecorderConfig extends BaseConfig {
+  /** Whether to enable canvas recording */
+  canvasEnabled: boolean
+  /** Configuration for masking sensitive data in session recordings */
+  masking?: RecorderMasking
+}
+
+/**
+ * Configuration interface for the SessionWidget class
+ */
+export interface SessionWidgetConfig {
+  /** Whether to show the widget */
+  showWidget: boolean
+  /** Placement of the widget button */
+  widgetButtonPlacement: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+}
+
+/**
+ * Configuration interface for the ApiService class
+ */
+export interface ApiServiceConfig extends BaseConfig {
+  /** Whether continuous debugging is enabled */
+  continuousDebugging?: boolean
+}
+
 export interface SessionDebuggerConfigs {
   apiKey: string
   version: string
@@ -166,17 +271,17 @@ export interface SessionDebuggerConfigs {
   environment: string
   exporterApiBaseUrl: string
   ignoreUrls: Array<string | RegExp>
-  recordButtonPlacement: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  widgetButtonPlacement: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   showWidget: boolean
   canvasEnabled: boolean
   docTraceRatio: number
   sampleTraceRatio: number
   propagateTraceHeaderCorsUrls: string | RegExp | string[] | RegExp[]
   schemifyDocSpanPayload?: boolean
-  maskDebugSpanPayload?: boolean
   disableCapturingHttpPayload?: boolean
   maxCapturingHttpPayloadSize: number
   usePostMessageFallback?: boolean
+  masking?: MaskingConfig
 }
 
 export enum SessionState {
@@ -199,7 +304,7 @@ export interface IDebugger {
   /**
    * Whether continuous debugging is enabled
    */
-  readonly continuesDebugging: boolean
+  readonly continuousDebugging: boolean
 
   /**
    * The type of debug session (plain or continuous)
@@ -217,9 +322,9 @@ export interface IDebugger {
   readonly session: IDebugSession | null
 
   /**
-   * Session metadata for additional context
+   * Session attributes for additional context
    */
-  readonly sessionMetadata: Record<string, any>
+  readonly sessionAttributes: Record<string, any>
 
   /**
    * Current error message
@@ -252,7 +357,7 @@ export interface IDebugger {
 
   /**
    * Stop the current session with an optional comment
-   * @param comment - user-provided comment to include in session metadata
+   * @param comment - user-provided comment to include in session feedback metadata
    */
   stop(comment?: string): Promise<void>
 
@@ -268,9 +373,9 @@ export interface IDebugger {
 
   /**
    * Set the session metadata
-   * @param metadata - the metadata to set
+   * @param attributes - the attributes to set
    */
-  setSessionMetadata(metadata: Record<string, any>): void
+  setSessionAttributes(attributes: Record<string, any>): void
 
   /**
    * Set a custom click handler for the recording button

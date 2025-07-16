@@ -20,11 +20,11 @@ import {
   ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
   DebugSessionType,
 } from '@multiplayer-app/opentelemetry'
-import { SessionDebuggerConfigs } from '../types'
+import { TracerBrowserConfig } from '../types'
 
 export class TracerBrowserSDK {
   private tracerProvider?: WebTracerProvider
-  private config?: SessionDebuggerConfigs
+  private config?: TracerBrowserConfig
   private allowedElements = new Set<string>(['A', 'BUTTON'])
   private sessionId = ''
   private idGenerator
@@ -39,7 +39,7 @@ export class TracerBrowserSDK {
     this.idGenerator.setSessionId(sessionId, sessionType)
   }
 
-  init(options: SessionDebuggerConfigs): void {
+  init(options: TracerBrowserConfig): void {
     this.config = options
     const { application, version, environment } = this.config
 
@@ -101,7 +101,7 @@ export class TracerBrowserSDK {
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore
                 let responseBody = xhr.networkRequest.responseBody
-
+                const masking = this.config?.masking || {}
                 if (
                   traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)
                   && this.config?.schemifyDocSpanPayload
@@ -110,10 +110,11 @@ export class TracerBrowserSDK {
                   responseBody = responseBody && MultiplayerHelpers.schemify(responseBody)
                 } else if (
                   traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
-                  && this.config?.maskDebugSpanPayload
+                  && masking?.maskDebugSpanPayload
                 ) {
-                  requestBody = requestBody && MultiplayerHelpers.mask(requestBody)
-                  responseBody = responseBody && MultiplayerHelpers.mask(responseBody)
+                  const maskFn = typeof masking?.maskDebugSpanPayloadFn === 'function' ? masking.maskDebugSpanPayloadFn : MultiplayerHelpers.mask
+                  requestBody = requestBody && maskFn(requestBody)
+                  responseBody = responseBody && maskFn(responseBody)
                 } else {
                   if (typeof requestBody !== 'string') {
                     requestBody = JSON.stringify(requestBody)

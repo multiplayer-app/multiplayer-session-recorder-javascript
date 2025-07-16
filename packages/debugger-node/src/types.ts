@@ -2,7 +2,7 @@ export interface IDebugSession {
   _id?: string
   shortId?: string
   name?: string
-  metadata?: {
+  attributes?: {
     userName?: string,
     userId?: string,
     accountName?: string,
@@ -12,10 +12,10 @@ export interface IDebugSession {
     key?: string
     value: string
   }[]
-  userMetadata?: {
+  feedbackMetadata?: {
     email?: string
     notifyOnUpdates?: boolean
     comment?: string
   },
-  clientMetadata?: object
+  resourceAttributes?: object
 }
