@@ -1,4 +1,4 @@
-import { DEBUG_SESSION_MAX_DURATION_SECONDS, PACKAGE_VERSION } from './constants'
+import { DEBUG_SESSION_MAX_DURATION_SECONDS, PACKAGE_VERSION_EXPORT } from './constants'
 import { IResourceAttributes } from './types'
 
 export const getNavigatorInfo = (): IResourceAttributes => {
@@ -58,7 +58,7 @@ export const getNavigatorInfo = (): IResourceAttributes => {
   const screenSize = `${window.screen.width}x${window.screen.height}`
 
   // Get package version from constants
-  const packageVersion = PACKAGE_VERSION
+  const packageVersion = PACKAGE_VERSION_EXPORT
 
   return {
     osInfo,

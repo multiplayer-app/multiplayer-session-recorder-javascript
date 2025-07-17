@@ -37,7 +37,8 @@ export const CONTINUOUS_DEBUGGING_TIMEOUT = 60000 // 1 minutes
 export const DEBUG_SESSION_MAX_DURATION_SECONDS = 10 * 60 + 30 // TODO: move to shared config otel core
 
 // Package version - injected by webpack during build
-export const PACKAGE_VERSION = (globalThis as any).PACKAGE_VERSION || '1.0.0'
+declare const PACKAGE_VERSION: string
+export const PACKAGE_VERSION_EXPORT = PACKAGE_VERSION || '1.0.0'
 
 export const BASE_CONFIG: DebuggerConfigs = {
   version: '',
