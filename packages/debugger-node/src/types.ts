@@ -2,20 +2,27 @@ export interface IDebugSession {
   _id?: string
   shortId?: string
   name?: string
-  attributes?: {
-    userName?: string,
+  resourceAttributes?: {
+    browserInfo?: string,
+    cookiesEnabled?: string,
+    deviceInfo?: string,
+    hardwareConcurrency?: string,
+    osInfo?: string,
+    pixelRatio?: string,
+    screenSize?: string,
+  } & object
+  sessionAttributes?: {
+    userEmail?: string
     userId?: string,
-    accountName?: string,
+    userName?: string,
     accountId?: string,
+    accountName?: string,
+
+    comment?: string
+    // notifyOnUpdates?: boolean // remove
   } & object
   tags?: {
     key?: string
     value: string
   }[]
-  feedbackMetadata?: {
-    email?: string
-    notifyOnUpdates?: boolean
-    comment?: string
-  },
-  resourceAttributes?: object
 }

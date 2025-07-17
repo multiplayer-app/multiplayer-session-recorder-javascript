@@ -14,31 +14,114 @@ import {
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY_ENCODING,
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
 } from './constants.node'
-import { mask, schemify, isGzip, maskHeaders } from './helpers'
+import {
+  mask,
+  schemify,
+  isGzip,
+} from './helpers'
+import {
+  sensitiveFields,
+  sensitiveHeaders
+} from './helpers/mask'
 
 interface HttpResponseHookOptions {
-  headersToMask?: string[],
-  maxPayloadSize?: number,
-  schemifyDocSpanPayload?: boolean,
-  maskDebugSpanPayload?: boolean,
-  uncompressPayload?: boolean,
+  maxPayloadSizeBytes?: number
+  schemifyDocSpanPayload?: boolean
+  uncompressPayload?: boolean
+
+  captureHeaders?: boolean
+  captureBody?: boolean
+
+  maskDebugSpanPayload?: boolean
+
+  maskFunction?: (arg: any) => any
+
+  maskBodyFieldsList?: string[]
+  maskHeadersList?: string[]
+
+  headersToInclude?: string[] // ['x-user-id']
+  headersToExclude?: string[] // ['*']
 }
 
 interface HttpRequestHookOptions {
-  headersToMask?: string[],
-  maxPayloadSize?: number,
-  schemifyDocSpanPayload?: boolean,
+  maxPayloadSizeBytes?: number
+  schemifyDocSpanPayload?: boolean
+
+  captureHeaders?: boolean
+  captureBody?: boolean
+
   maskDebugSpanPayload?: boolean
+
+  maskFunction?: (arg: any) => any
+
+  maskBodyFieldsList?: string[]
+  maskHeadersList?: string[]
+
+  headersToInclude?: string[] // ['x-user-id']
+  headersToExclude?: string[] // ['*']
+}
+
+const setDefaultOptions = (
+  options: HttpResponseHookOptions | HttpResponseHookOptions
+): Omit<HttpResponseHookOptions & HttpResponseHookOptions, 'maskFunction'>
+  & {
+    maskFunction: (arg: any) => any,
+    captureHeaders: boolean,
+    captureBody: boolean,
+    maskDebugSpanPayload: boolean,
+    schemifyDocSpanPayload: boolean,
+    uncompressPayload: boolean,
+    maxPayloadSizeBytes: number
+  } => {
+  options.captureHeaders = 'captureHeaders' in options
+    ? options.captureHeaders
+    : true
+  options.captureBody = 'captureBody' in options
+    ? options.captureBody
+    : true
+  options.maskDebugSpanPayload = 'maskDebugSpanPayload' in options
+    ? options.maskDebugSpanPayload
+    : true
+  options.schemifyDocSpanPayload = 'schemifyDocSpanPayload' in options
+    ? options.schemifyDocSpanPayload
+    : false
+  options.uncompressPayload = 'uncompressPayload' in options
+    ? options.uncompressPayload
+    : true
+  options.maskFunction = options.maskFunction || mask([
+    ...(
+      Array.isArray(options.maskBodyFieldsList)
+        ? options.maskBodyFieldsList
+        : sensitiveFields
+    ),
+    ...(
+      Array.isArray(options.maskHeadersList)
+        ? options.maskHeadersList
+        : sensitiveHeaders
+    ),
+  ])
+  options.maxPayloadSizeBytes = options.maxPayloadSizeBytes || MULTIPLAYER_MAX_HTTP_REQUEST_RESPONSE_SIZE
+
+  return options as Omit<HttpResponseHookOptions & HttpResponseHookOptions, 'maskFunction'>
+    & {
+      maskFunction: (arg: any) => any,
+      captureHeaders: boolean,
+      captureBody: boolean,
+      maskDebugSpanPayload: boolean,
+      schemifyDocSpanPayload: boolean,
+      uncompressPayload: boolean,
+      maxPayloadSizeBytes: number
+    }
 }
 
 export const MultiplayerHttpInstrumentationHooksNode = {
   responseHook: (options: HttpResponseHookOptions = {}) =>
     (span: Span, response: IncomingMessage | ServerResponse) => {
       try {
-        options = {
-          maskDebugSpanPayload: true,
-          schemifyDocSpanPayload: true,
-          ...options,
+        const _options = setDefaultOptions(options)
+
+        if (!_options.captureBody && !_options.captureHeaders) {
+          return
         }
 
         const _response = response as ServerResponse
@@ -49,91 +132,90 @@ export const MultiplayerHttpInstrumentationHooksNode = {
         }
 
         const [oldWrite, oldEnd] = [_response.write, _response.end]
+
         const chunks: Buffer[] = [];
 
-        (_response.write as unknown) = function (...restArgs: any[]) {
-          chunks.push(Buffer.from(restArgs[0]))
-          // eslint-disable-next-line
-          // @ts-ignore
-          oldWrite.apply(_response, restArgs)
+        if (_options.captureBody) {
+          (_response.write as unknown) = function (...restArgs: any[]) {
+            chunks.push(Buffer.from(restArgs[0]))
+            // eslint-disable-next-line
+            // @ts-ignore
+            oldWrite.apply(_response, restArgs)
+          }
         }
 
         // eslint-disable-next-line
         // @ts-ignore
         _response.end = async function (...restArgs) {
-          if (restArgs[0]) {
+          if (_options.captureBody && restArgs[0]) {
             chunks.push(Buffer.from(restArgs[0]))
           }
 
           const responseBuffer = Buffer.concat(chunks)
 
           if (
-            responseBuffer.byteLength === 0
-            || responseBuffer.byteLength > (options.maxPayloadSize || MULTIPLAYER_MAX_HTTP_REQUEST_RESPONSE_SIZE)
+            _options.captureBody
+            && responseBuffer.byteLength > 0
+            && responseBuffer.byteLength < _options.maxPayloadSizeBytes
           ) {
-            // eslint-disable-next-line
-            // @ts-ignore
-            return oldEnd.apply(_response, restArgs)
-          }
+            let responseBody: string
+            let skipResponseBodyModification = false
 
-          let responseBody: string
-          let skipResponseBodyModification = false
+            if (isGzip(responseBuffer)) {
+              if (_options.uncompressPayload) {
+                const dezippedBuffer = await new Promise((resolve) => zlib
+                  .gunzip(responseBuffer, function (err, dezipped) {
+                    if (err) {
+                      return resolve(Buffer.from(''))
+                    } else {
+                      return resolve(dezipped)
+                    }
+                  })) as Buffer
+                responseBody = dezippedBuffer.toString('utf-8')
+              } else {
+                span.setAttribute(
+                  ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY_ENCODING,
+                  'gzip',
+                )
 
-          if (isGzip(responseBuffer)) {
-            if (options.uncompressPayload) {
-              const dezippedBuffer = await new Promise((resolve) => zlib
-                .gunzip(responseBuffer, function (err, dezipped) {
-                  if (err) {
-                    return resolve(Buffer.from(''))
-                  } else {
-                    return resolve(dezipped)
-                  }
-                })) as Buffer
-              responseBody = dezippedBuffer.toString('utf-8')
+                skipResponseBodyModification = true
+                responseBody = responseBuffer.toString('hex')
+              }
             } else {
+              responseBody = responseBuffer.toString('utf-8')
+            }
+
+            if (!skipResponseBodyModification) {
+              if (
+                traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
+                && _options.maskDebugSpanPayload
+              ) {
+                responseBody = _options.maskFunction(responseBody)
+              } else if (_options.schemifyDocSpanPayload) {
+                responseBody = schemify(responseBody)
+              } else if (typeof responseBody !== 'string') {
+                responseBody = JSON.stringify(responseBody)
+              }
+            }
+
+            if (responseBody.length) {
               span.setAttribute(
-                ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY_ENCODING,
-                'gzip',
+                ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
+                responseBody,
               )
-
-              skipResponseBodyModification = true
-              responseBody = responseBuffer.toString('hex')
-            }
-          } else {
-            responseBody = responseBuffer.toString('utf-8')
-          }
-
-          if (!skipResponseBodyModification) {
-            if (
-              traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
-              && options.maskDebugSpanPayload
-            ) {
-              responseBody = mask(responseBody)
-            } else if (options.schemifyDocSpanPayload) {
-              responseBody = schemify(responseBody)
-            } else if (typeof responseBody !== 'string') {
-              responseBody = JSON.stringify(responseBody)
             }
           }
 
-          if (responseBody.length) {
-            span.setAttribute(
-              ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
-              responseBody,
-            )
-          }
+          if (_options.captureHeaders) {
+            const headers = _options.maskFunction(_response.getHeaders())
+            const stringifiedHeaders = JSON.stringify(headers)
 
-          const headers = maskHeaders(
-            _response.getHeaders(),
-            options.headersToMask,
-          )
-          const stringifiedHeaders = JSON.stringify(headers)
-
-          if (stringifiedHeaders?.length) {
-            span.setAttribute(
-              ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
-              stringifiedHeaders,
-            )
+            if (stringifiedHeaders?.length) {
+              span.setAttribute(
+                ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
+                stringifiedHeaders,
+              )
+            }
           }
 
           // eslint-disable-next-line
@@ -148,69 +230,70 @@ export const MultiplayerHttpInstrumentationHooksNode = {
   requestHook: (options: HttpRequestHookOptions = {}) =>
     (span: Span, request: ClientRequest | IncomingMessage) => {
       try {
-        options = {
-          maskDebugSpanPayload: true,
-          schemifyDocSpanPayload: true,
-          ...options,
+        const _options = setDefaultOptions(options)
+
+        if (!_options.captureBody && !_options.captureHeaders) {
+          return
         }
 
         const traceId = span.spanContext().traceId
         const _request = request as IncomingMessage
-        const contentType = _request?.headers?.['content-type']
 
-        if (!contentType || !contentType?.includes('application/json')) {
-          return
+
+        if (_options.captureHeaders) {
+          const headers = _options.maskFunction(_request.headers)
+          span.setAttribute(
+            ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
+            JSON.stringify(headers),
+          )
         }
 
-        const headers = maskHeaders(
-          _request.headers,
-          options.headersToMask,
-        )
-        span.setAttribute(
-          ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
-          JSON.stringify(headers),
-        )
+        const contentType = _request?.headers?.['content-type']
+        if (
+          _options.captureBody
+          && contentType?.includes('application/json')
+        ) {
+          let body = ''
+          _request.on('data', (chunk) => {
+            body += chunk
+          })
+          _request.on('end', () => {
+            try {
+              const requestBodySizeBytes = Buffer.byteLength(body, 'utf8')
 
-        let body = ''
-        _request.on('data', (chunk) => {
-          body += chunk
-        })
-        _request.on('end', () => {
-          try {
-            const requestBodySizeBytes = Buffer.byteLength(body, 'utf8')
+              if (
+                requestBodySizeBytes === 0
+                || requestBodySizeBytes > _options.maxPayloadSizeBytes
+              ) {
+                return
+              }
 
-            if (
-              requestBodySizeBytes === 0
-              || requestBodySizeBytes > (options.maxPayloadSize || MULTIPLAYER_MAX_HTTP_REQUEST_RESPONSE_SIZE)
-            ) {
-              return
+              let requestBody = body
+              if (!requestBody) return
+
+              if (
+                traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
+                && _options.maskDebugSpanPayload
+              ) {
+                requestBody = _options.maskFunction(requestBody)
+              } else if (_options.schemifyDocSpanPayload) {
+                requestBody = schemify(requestBody)
+              } else if (typeof requestBody !== 'string') {
+                requestBody = JSON.stringify(requestBody)
+              }
+
+              if (requestBody?.length) {
+                span.setAttribute(
+                  ATTR_MULTIPLAYER_HTTP_REQUEST_BODY,
+                  requestBody,
+                )
+              }
+            } catch (err) {
+              // eslint-disable-next-line
+              console.error('[MULTIPLAYER-HTTP-REQ-HOOK] An error occured in multiplayer otlp http requestHook', err)
             }
-
-            let requestBody = body
-            if (!requestBody) return
-
-            if (
-              traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
-              && options.maskDebugSpanPayload
-            ) {
-              requestBody = mask(requestBody)
-            } else if (options.schemifyDocSpanPayload) {
-              requestBody = schemify(requestBody)
-            } else if (typeof requestBody !== 'string') {
-              requestBody = JSON.stringify(requestBody)
-            }
-
-            if (requestBody?.length) {
-              span.setAttribute(
-                ATTR_MULTIPLAYER_HTTP_REQUEST_BODY,
-                requestBody,
-              )
-            }
-          } catch (err) {
-            // eslint-disable-next-line
-            console.error('[MULTIPLAYER-HTTP-REQ-HOOK] An error occured in multiplayer otlp http requestHook', err)
-          }
-        })
+          })
+        }
 
       } catch (error) {
         // eslint-disable-next-line

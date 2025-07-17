@@ -9,23 +9,7 @@ import {
   MULTIPLAYER_TRACE_DOC_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
 } from './constants.base'
-
-const SHARED_CHAR_CODES_ARRAY = Array(32)
-function getIdGenerator(bytes: number): () => string {
-  return function generateId() {
-    for (let i = 0; i < bytes * 2; i++) {
-      SHARED_CHAR_CODES_ARRAY[i] = Math.floor(Math.random() * 16) + 48
-      // valid hex characters in the range 48-57 and 97-102
-      if (SHARED_CHAR_CODES_ARRAY[i] >= 58) {
-        SHARED_CHAR_CODES_ARRAY[i] += 39
-      }
-    }
-    return String.fromCharCode.apply(
-      null,
-      SHARED_CHAR_CODES_ARRAY.slice(0, bytes * 2),
-    )
-  }
-}
+import { getIdGenerator } from './helpers'
 
 export class MultiplayerIdGenerator extends RandomIdGenerator {
   debugSessionShortId: string
@@ -34,7 +18,7 @@ export class MultiplayerIdGenerator extends RandomIdGenerator {
 
   generateLongId: () => string
 
-  constructor({ autoDocTracesRatio = 0 }: { autoDocTracesRatio: number }) {
+  constructor({ autoDocTracesRatio = 0 } = {}) {
     super()
 
     this.docSpanSampler = new MultiplayerTraceIdRatioBasedSampler(autoDocTracesRatio)

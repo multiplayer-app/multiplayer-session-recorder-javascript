@@ -46,3 +46,6 @@ export const ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY_ENCODING = 'multiplayer.http.re
 export const MASK_PLACEHOLDER = '***MASKED***'
 
 export const MULTIPLAYER_DEBUG_REQUEST = 'multiplayer-debug-request'
+
+export let MULTIPLAYER_SHORT_DEBUG_SESSION_ID = ''
+export let MULTIPLAYER_DEBUG_SESSION_TYPE = ''
