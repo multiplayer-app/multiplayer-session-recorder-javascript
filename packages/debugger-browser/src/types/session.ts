@@ -8,8 +8,10 @@ export interface IResourceAttributes {
   osInfo?: string,
   pixelRatio?: number,
   screenSize?: string,
+  packageVersion?: string,
   [key: string]: any
 }
+
 export interface ISessionAttributes {
   userEmail?: string
   userId?: string,
@@ -18,7 +20,6 @@ export interface ISessionAttributes {
   accountName?: string,
   [key: string]: any
 }
-
 
 export interface IDebugSessionView {
   _id: string
