@@ -102,14 +102,14 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
     enabled: true,
     responseHook: MultiplayerHttpInstrumentationHooks.responseHook({
       headersToMask: ['<my-auth-header>'],
-      maxPayloadSize: 5000,
+      maxPayloadSizeBytes: 5000,
       schemifyDocSpanPayload: true,
       maskDebugSpanPayload: true,
       uncompressPayload: true
     }),
     requestHook: MultiplayerHttpInstrumentationHooks.requestHook({
       headersToMask: ['<my-auth-header>'],
-      maxPayloadSize: 5000,
+      maxPayloadSizeBytes: 5000,
       schemifyDocSpanPayload: true,
       maskDebugSpanPayload: true
     }),

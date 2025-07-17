@@ -1,4 +1,3 @@
-// import axios from 'axios'
 import { MULTIPLAYER_BASE_API_URL } from '../config'
 import { IDebugSession } from '../types'
 
@@ -6,31 +5,27 @@ export interface ApiServiceConfig {
   apiKey?: string
   exporterApiBaseUrl?: string
   continuousDebugging?: boolean
-  usePostMessageFallback?: boolean
 }
 
 export interface StartSessionRequest {
   name?: string
-  stoppedAt?: string | number
-  attributes?: Record<string, any>
   resourceAttributes?: Record<string, any>
-  debugSessionData?: Record<string, any>
+  sessionAttributes?: Record<string, any>
+  tags?: {
+    key?: string
+    value: string
+  }[]
 }
 
 export interface StopSessionRequest {
-  feedbackMetadata?: {
+  sessionAttributes?: {
+    email?: string
     comment?: string
-  }
+  },
 }
 
 export class ApiService {
   private config: ApiServiceConfig
-
-  // private get sessionPath() {
-  //   return this.config.continuousDebugging
-  //     ? '/continuous-debug-sessions'
-  //     : '/debug-sessions'
-  // }
 
   constructor() {
     this.config = {

@@ -64,8 +64,19 @@ export const sensitiveFields: string[] = [
   'passportNumber',
   'driver_license',
   'driverLicense',
+
+  'set-cookie',
+  'cookie',
+  'authorization',
+  'proxyAuthorization',
 ]
 
+export const sensitiveHeaders: string[] = [
+  'set-cookie',
+  'cookie',
+  'authorization',
+  'proxyAuthorization',
+]
 
 const maskAll = (value: any, depth = 0) => {
   const type = typeof value
@@ -128,7 +139,7 @@ const maskSelected = (value: any, keysToMask: string[]): any => {
   return value
 }
 
-export default (value: any, keysToMask: string[] = []): string => {
+export default (keysToMask: string[] = []) => (value: any): string => {
   let payloadJson
   try {
     payloadJson = JSON.parse(value)
