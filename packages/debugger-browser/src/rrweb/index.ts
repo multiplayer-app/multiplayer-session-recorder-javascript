@@ -71,7 +71,7 @@ export class RecorderBrowserSDK {
     const options: recordOptions<any> = {
       maskAllInputs: maskingConfig.maskAllInputs ?? true,
       sampling: { canvas: 5 },
-      recordCanvas: this.config.canvasEnabled,
+      recordCanvas: this.config.recordCanvas,
       dataURLOptions: { type: 'image/webp', quality: 0.1 },
       plugins: [
         getRecordConsolePlugin({ level: ['log', 'error'] }),

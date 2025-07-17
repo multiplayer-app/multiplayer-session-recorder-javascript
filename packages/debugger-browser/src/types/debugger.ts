@@ -1,5 +1,6 @@
 
 import { DebugSessionType } from '@multiplayer-app/opentelemetry';
+import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
 import type {
   MaskTextFn,
   MaskInputFn,
@@ -7,9 +8,6 @@ import type {
 } from 'rrweb-snapshot';
 import type { maskTextClass } from '@rrweb/types';
 import type { IDebugSession } from './session';
-
-
-
 export interface DebuggerOptions {
   /**
    * The API key used to authenticate with the session debugger service.
@@ -64,9 +62,9 @@ export interface DebuggerOptions {
   /**
    * (Optional) If true, enables the recording and replaying of canvas elements.
    * Pass `true` to capture canvas interactions in the session recording.
-   * @default canvasEnabled = false
+   * @default recordCanvas = false
    */
-  canvasEnabled?: any
+  recordCanvas?: boolean
 
   /**
    * (Optional) Trace ID Ratio for document traces
@@ -83,7 +81,7 @@ export interface DebuggerOptions {
   /**
    * (Optional) URLs or regex patterns for CORS trace header propagation
    */
-  propagateTraceHeaderCorsUrls?: string | RegExp | string[] | RegExp[]
+  propagateTraceHeaderCorsUrls?: PropagateTraceHeaderCorsUrls
 
   /**
    * (Optional) If true, schematizes document span payload
@@ -174,7 +172,7 @@ export interface TracerBrowserConfig extends BaseConfig {
   /** Trace ID ratio for sampling */
   sampleTraceRatio: number
   /** URLs for CORS trace header propagation */
-  propagateTraceHeaderCorsUrls: string | RegExp | string[] | RegExp[]
+  propagateTraceHeaderCorsUrls: PropagateTraceHeaderCorsUrls
   /** Whether to schematize document span payload */
   schemifyDocSpanPayload: boolean
   /** Whether to disable capturing HTTP payload */
@@ -192,7 +190,7 @@ export interface TracerBrowserConfig extends BaseConfig {
 type RecorderMasking = Pick<MaskingConfig, 'maskAllInputs' | 'maskTextClass' | 'maskTextSelector' | 'maskInputOptions' | 'maskInputFn' | 'maskTextFn'>;
 export interface RecorderConfig extends BaseConfig {
   /** Whether to enable canvas recording */
-  canvasEnabled: boolean
+  recordCanvas: boolean
   /** Configuration for masking sensitive data in session recordings */
   masking?: RecorderMasking
 }

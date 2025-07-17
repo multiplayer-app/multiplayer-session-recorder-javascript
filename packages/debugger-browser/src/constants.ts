@@ -46,7 +46,7 @@ export const BASE_CONFIG: DebuggerConfigs = {
   environment: '',
   ignoreUrls: [],
   showWidget: true,
-  canvasEnabled: false,
+  recordCanvas: false,
   schemifyDocSpanPayload: true,
   usePostMessageFallback: false,
   propagateTraceHeaderCorsUrls: [],

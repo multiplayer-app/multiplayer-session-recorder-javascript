@@ -65,9 +65,27 @@ This library relies on the following packages:
 - **[rrweb](https://github.com/rrweb-io/rrweb)**: Provides the frontend session replay functionality, recording the user’s interactions with the app.
 - **[OpenTelemetry](https://opentelemetry.io/)**: Used to capture backend traces, metrics, and logs that integrate seamlessly with the session replays for comprehensive debugging.
 
+## Configuration Options
+
+The Session Debugger supports various configuration options with sensible defaults:
+
+### Default Values
+
+- `showWidget`: `true` - Show the recording widget by default
+- `recordCanvas`: `false` - Disable canvas recording by default
+- `docTraceRatio`: `0.15` - 15% of traces for auto-documentation
+- `sampleTraceRatio`: `0.15` - 15% sampling ratio
+- `schemifyDocSpanPayload`: `true` - Enable payload schematization
+- `disableCapturingHttpPayload`: `false` - Enable HTTP payload capture
+- `maxCapturingHttpPayloadSize`: `100000` - 100KB max payload size
+- `usePostMessageFallback`: `false` - Disable post message fallback
+- `widgetButtonPlacement`: `'bottom-right'` - Default widget position
+- `masking.maskAllInputs`: `true` - Mask all inputs by default
+- `masking.maskDebugSpanPayload`: `true` - Mask debug span payload by default
+
 ## Example Usage
 
-```javascript
+````javascript
 import Debugger from '@multiplayer-app/debugger-browser'
 
 Debugger.init({
@@ -76,7 +94,7 @@ Debugger.init({
   environment: 'production',
   apiKey: 'your-api-key',
   showWidget: true,
-  canvasEnabled: true,
+  recordCanvas: true,
   ignoreUrls: [
     /https:\/\/domain\.to\.ignore\/.*/, // can be regex or string
     /https:\/\/another\.domain\.to\.ignore\/.*/
@@ -87,9 +105,12 @@ Debugger.init({
     new RegExp('https://another.backend.api.domain', 'i')
   ],
   docTraceRatio: 0.15, // 15% of traces will be sent for auto-documentation
+  sampleTraceRatio: 0.15, // 15% sampling ratio
   schemifyDocSpanPayload: true,
   maxCapturingHttpPayloadSize: 100000,
   disableCapturingHttpPayload: false,
+  usePostMessageFallback: false, // Enable post message fallback if needed
+  exporterApiBaseUrl: 'https://api.multiplayer.app', // Custom API base URL (optional)
   // Configure masking for sensitive data in session recordings
   masking: {
     maskAllInputs: true, // Masks all input fields by default
@@ -119,7 +140,7 @@ Debugger.init({
         return local.charAt(0) + '***@' + domain
       }
       return '***MASKED***'
-    }
+    },
     maskDebugSpanPayload: true, // Mask debug span payload in traces
     maskDebugSpanPayloadFn: (payload) => {
       // Custom trace payload masking
@@ -142,6 +163,33 @@ Debugger.init({
 Debugger.setSessionAttributes({
   userId: '12345',
   userName: 'John Doe'
+})
+
+## API Methods
+
+The Session Debugger provides several methods for controlling session recording:
+
+### Session Control
+- `Debugger.start(type, session?)` - Start a new session with optional existing session
+- `Debugger.stop(comment?)` - Stop the current session with optional comment
+- `Debugger.pause()` - Pause the current session
+- `Debugger.cancel()` - Cancel the current session
+- `Debugger.save()` - Save the continuous debugging session
+
+### Configuration
+- `Debugger.setSessionAttributes(attributes)` - Set session metadata
+- `Debugger.recordingButtonClickHandler = handler` - Set custom click handler
+
+### Session Attributes
+You can set various session attributes for better tracking:
+
+```javascript
+Debugger.setSessionAttributes({
+  userId: '12345',
+  userName: 'John Doe',
+  userEmail: 'john@example.com',
+  accountId: 'acc_123',
+  accountName: 'Enterprise Account'
 })
 ```
 
@@ -322,6 +370,7 @@ export default function SessionDebugger() {
         application: '{YOUR_APPLICATION_NAME}',
         environment: '{YOUR_APPLICATION_ENVIRONMENT}',
         apiKey: '{YOUR_API_KEY}',
+        recordCanvas: true, // Enable canvas recording
         masking: {
           maskAllInputs: true,
           maskInputOptions: {
@@ -400,3 +449,4 @@ For more details on how the Multiplayer Session Debugger integrates with your ba
 ## License
 
 This library is distributed under the [MIT License](LICENSE).
+````
