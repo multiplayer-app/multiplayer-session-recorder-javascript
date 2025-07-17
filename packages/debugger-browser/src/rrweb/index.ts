@@ -3,7 +3,7 @@ import { pack } from '@rrweb/packer'
 import { DebugSessionType } from '@multiplayer-app/opentelemetry'
 import { getRecordConsolePlugin } from '@rrweb/rrweb-plugin-console-record'
 
-import { RecorderConfig } from '../types'
+import { IDebugSession, RecorderConfig } from '../types'
 import { CONTINUOUS_DEBUGGING_TIMEOUT } from '../constants'
 
 import { RrwebEventExporter } from './exporter'
@@ -154,11 +154,9 @@ export class RecorderBrowserSDK {
     this.clearRestartTimeout()
   }
 
-  subscribeToSession(session): void {
+  subscribeToSession(session: IDebugSession): void {
     this.exporter?.subscribeToSession(session)
   }
-
-
 
   /**
    * Clears stored events from IndexedDB and resets the replay container.

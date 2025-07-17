@@ -1,4 +1,3 @@
-import { DebugSessionType } from '@multiplayer-app/opentelemetry'
 import io, { Socket } from 'socket.io-client'
 import {
   DEBUG_SESSION_ADD_EVENT,
@@ -7,6 +6,7 @@ import {
   DEBUG_SESSION_SUBSCRIBE_EVENT,
   DEBUG_SESSION_UNSUBSCRIBE_EVENT,
 } from '../constants'
+import { IDebugSession } from '../types'
 import { recorderEventBus } from '../eventBus'
 import messagingService from '../services/messaging.service'
 
@@ -113,13 +113,13 @@ export class RrwebEventExporter {
     }
   }
 
-  public subscribeToSession(session: { _id: string, workspace: string, project: string, debugSessionType: DebugSessionType }): void {
-    this.sessionId = session._id
+  public subscribeToSession(session: IDebugSession): void {
+    this.sessionId = session.shortId || session._id
     const payload = {
-      debugSessionType: session.debugSessionType,
-      debugSessionId: session._id,
       projectId: session.project,
       workspaceId: session.workspace,
+      debugSessionId: this.sessionId,
+      debugSessionType: session.creationType,
     }
     if (this.usePostMessage) {
       this.sendViaPostMessage({ type: DEBUG_SESSION_SUBSCRIBE_EVENT, ...payload })

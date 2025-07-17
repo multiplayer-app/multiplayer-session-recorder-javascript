@@ -6,36 +6,11 @@ import type {
   MaskInputOptions,
 } from 'rrweb-snapshot';
 import type { maskTextClass } from '@rrweb/types';
+import type { IDebugSession } from './session';
 
 
-/**
- * Interface for masking configuration
- */
-export interface MaskingConfig {
-  // Recorder masking
-  /** If true, masks all input fields in the recording */
-  maskAllInputs?: boolean;
-  /** Class-based masking configuration - can be string or RegExp */
-  maskTextClass?: maskTextClass;
-  /** CSS selector for elements that should be masked */
-  maskTextSelector?: string;
-  /** Specific options for masking different types of inputs */
-  maskInputOptions?: MaskInputOptions;
-  /** Custom function for input masking */
-  maskInputFn?: MaskInputFn;
-  /** Custom function for text masking */
-  maskTextFn?: MaskTextFn;
 
-  // Span masking
-  /** If true, masks debug span payload in traces
-   *  @default true
-  */
-  maskDebugSpanPayload?: boolean;
-  /** Custom function for masking debug span payload in traces */
-  maskDebugSpanPayloadFn?: (payload: any) => any;
-}
-
-export interface SessionDebuggerOptions {
+export interface DebuggerOptions {
   /**
    * The API key used to authenticate with the session debugger service.
    */
@@ -141,56 +116,32 @@ export interface SessionDebuggerOptions {
   masking?: MaskingConfig
 }
 
-export interface IDebugSession {
-  _id: string
-  shortId: string
-  workspace: string
-  project: string
-  name: string
-  startedAt: string | Date
-  stoppedAt: string | Date
-  durationInSeconds?: number
-  createdAt: string | Date
-  updatedAt: string | Date
-  attributes: {
-    userName?: string,
-    userId?: string,
-    accountName?: string,
-    accountId?: string,
-  } & object
-  tags: any[]
-  feedbackMetadata: {
-    email?: string
-    notifyOnUpdates?: boolean
-    comment?: string
-  },
-  resourceAttributes: object
-  views: IDebugSessionView[]
-  starred: string[]
-  url: string
-  s3Files: {
-    _id?: string
-    bucket: string
-    key: string
-    dataType: DebugSessionDataType
-    url?: string
-  }[]
-  finishedS3Transfer?: boolean
-  tempApiKey?: string
-}
+/**
+ * Interface for masking configuration
+ */
+export interface MaskingConfig {
+  // Recorder masking
+  /** If true, masks all input fields in the recording */
+  maskAllInputs?: boolean;
+  /** Class-based masking configuration - can be string or RegExp */
+  maskTextClass?: maskTextClass;
+  /** CSS selector for elements that should be masked */
+  maskTextSelector?: string;
+  /** Specific options for masking different types of inputs */
+  maskInputOptions?: MaskInputOptions;
+  /** Custom function for input masking */
+  maskInputFn?: MaskInputFn;
+  /** Custom function for text masking */
+  maskTextFn?: MaskTextFn;
 
-export interface IDebugSessionView {
-  _id: string
-  name: string
-  components?: string[]
+  // Span masking
+  /** If true, masks debug span payload in traces
+   *  @default true
+  */
+  maskDebugSpanPayload?: boolean;
+  /** Custom function for masking debug span payload in traces */
+  maskDebugSpanPayloadFn?: (payload: any) => any;
 }
-
-export enum DebugSessionDataType {
-  OTLP_TRACES = 'OTLP_TRACES',
-  OTLP_LOGS = 'OTLP_LOGS',
-  RRWEB_EVENTS = 'RRWEB_EVENTS',
-}
-
 
 /**
  * Base configuration interface with common properties
@@ -217,17 +168,17 @@ export interface TracerBrowserConfig extends BaseConfig {
   /** Environment (e.g., 'production', 'staging') */
   environment: string
   /** URLs to ignore during tracing */
-  ignoreUrls?: Array<string | RegExp>
+  ignoreUrls: Array<string | RegExp>
   /** Trace ID ratio for document traces */
   docTraceRatio: number
   /** Trace ID ratio for sampling */
   sampleTraceRatio: number
   /** URLs for CORS trace header propagation */
-  propagateTraceHeaderCorsUrls?: string | RegExp | string[] | RegExp[]
+  propagateTraceHeaderCorsUrls: string | RegExp | string[] | RegExp[]
   /** Whether to schematize document span payload */
-  schemifyDocSpanPayload?: boolean
+  schemifyDocSpanPayload: boolean
   /** Whether to disable capturing HTTP payload */
-  disableCapturingHttpPayload?: boolean
+  disableCapturingHttpPayload: boolean
   /** Maximum size for capturing HTTP payload */
   maxCapturingHttpPayloadSize: number,
   /** Configuration for masking sensitive data in session recordings */
@@ -264,25 +215,7 @@ export interface ApiServiceConfig extends BaseConfig {
   continuousDebugging?: boolean
 }
 
-export interface SessionDebuggerConfigs {
-  apiKey: string
-  version: string
-  application: string
-  environment: string
-  exporterApiBaseUrl: string
-  ignoreUrls: Array<string | RegExp>
-  widgetButtonPlacement: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-  showWidget: boolean
-  canvasEnabled: boolean
-  docTraceRatio: number
-  sampleTraceRatio: number
-  propagateTraceHeaderCorsUrls: string | RegExp | string[] | RegExp[]
-  schemifyDocSpanPayload?: boolean
-  disableCapturingHttpPayload?: boolean
-  maxCapturingHttpPayloadSize: number
-  usePostMessageFallback?: boolean
-  masking?: MaskingConfig
-}
+export interface DebuggerConfigs extends Required<DebuggerOptions> { }
 
 export enum SessionState {
   started = '2',
@@ -295,11 +228,6 @@ export interface IDebugger {
    * The current session ID
    */
   readonly sessionId: string | null
-
-  /**
-   * The short session ID for display purposes
-   */
-  readonly shortSessionId: string | null
 
   /**
    * Whether continuous debugging is enabled
@@ -340,7 +268,7 @@ export interface IDebugger {
    * Initialize the session debugger with custom configurations
    * @param configs - custom configurations for session debugger
    */
-  init(configs: SessionDebuggerOptions): void
+  init(configs: DebuggerOptions): void
 
   /**
    * Save the continuous debugging session

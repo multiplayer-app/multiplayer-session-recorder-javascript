@@ -1,4 +1,4 @@
-import { SessionDebuggerConfigs } from "./types"
+import { DebuggerConfigs } from "./types"
 
 export const OTEL_MP_DOC_TRACE_RATIO = 0.15
 
@@ -39,7 +39,7 @@ export const DEBUG_SESSION_MAX_DURATION_SECONDS = 10 * 60 + 30 // TODO: move to 
 // Package version - injected by webpack during build
 export const PACKAGE_VERSION = (globalThis as any).PACKAGE_VERSION || '1.0.0'
 
-export const BASE_CONFIG: SessionDebuggerConfigs = {
+export const BASE_CONFIG: DebuggerConfigs = {
   version: '',
   application: '',
   environment: '',

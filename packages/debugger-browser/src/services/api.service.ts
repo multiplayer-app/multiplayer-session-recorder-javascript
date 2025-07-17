@@ -1,21 +1,19 @@
 import messagingService from './messaging.service'
-import { ApiServiceConfig } from '../types'
+import { ApiServiceConfig, IResourceAttributes, ISessionAttributes } from '../types'
+
 
 export interface StartSessionRequest {
   name?: string
   stoppedAt?: string | number
-  attributes?: Record<string, any>
-  resourceAttributes?: Record<string, any>
+  sessionAttributes?: ISessionAttributes
+  resourceAttributes?: IResourceAttributes
   debugSessionData?: Record<string, any>
 }
 
 export interface StopSessionRequest {
-  feedbackMetadata?: {
-    comment?: string
-  }
+  sessionAttributes?: ISessionAttributes
   stoppedAt: string | number
 }
-
 export class ApiService {
   private config: ApiServiceConfig
 

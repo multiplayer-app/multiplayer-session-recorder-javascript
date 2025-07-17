@@ -1,6 +1,6 @@
+import { Debugger } from './debugger'
 import { IDebugSession } from './types'
 import messagingService from './services/messaging.service'
-import { Debugger } from './debugger'
 import { DebugSessionType } from '@multiplayer-app/opentelemetry'
 
 

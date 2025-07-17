@@ -1,6 +1,7 @@
 import { DEBUG_SESSION_MAX_DURATION_SECONDS, PACKAGE_VERSION } from './constants'
+import { IResourceAttributes } from './types'
 
-export const getNavigatorInfo = () => {
+export const getNavigatorInfo = (): IResourceAttributes => {
   let browserInfo: string = 'Unknown'
   let deviceInfo: string = 'Unknown'
   let osInfo: string = 'Unknown'
@@ -51,9 +52,9 @@ export const getNavigatorInfo = () => {
     }
   }
 
-  const hardwareConcurrency = navigator.hardwareConcurrency || 'Unknown'
+  const hardwareConcurrency = navigator.hardwareConcurrency || 1
   const cookiesEnabled = navigator.cookieEnabled ? 'Yes' : 'No'
-  const pixelRatio = window.devicePixelRatio || 'Unknown'
+  const pixelRatio = window.devicePixelRatio || 1
   const screenSize = `${window.screen.width}x${window.screen.height}`
 
   // Get package version from constants

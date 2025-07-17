@@ -21,6 +21,7 @@ import {
   DebugSessionType,
 } from '@multiplayer-app/opentelemetry'
 import { TracerBrowserConfig } from '../types'
+import { OTEL_MP_DOC_TRACE_RATIO } from '../constants'
 
 export class TracerBrowserSDK {
   private tracerProvider?: WebTracerProvider
@@ -43,7 +44,9 @@ export class TracerBrowserSDK {
     this.config = options
     const { application, version, environment } = this.config
 
-    this.idGenerator = new MultiplayerIdGenerator({ autoDocTracesRatio: options.docTraceRatio })
+    this.idGenerator = new MultiplayerIdGenerator({
+      autoDocTracesRatio: options.docTraceRatio || OTEL_MP_DOC_TRACE_RATIO
+    })
 
     this.tracerProvider = new WebTracerProvider({
       resource: new Resource({

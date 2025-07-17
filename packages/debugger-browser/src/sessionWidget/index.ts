@@ -597,6 +597,11 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   public startTimer() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval)
+      this.timerInterval = null
+    }
+
     this.uiManager.setTimerValue(formatTimeForSessionTimer(this.seconds))
 
     this.timerInterval = setInterval(() => {

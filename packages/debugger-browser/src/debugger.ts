@@ -11,8 +11,8 @@ import {
 import {
   SessionState,
   IDebugSession,
-  SessionDebuggerConfigs,
-  SessionDebuggerOptions,
+  DebuggerOptions,
+  DebuggerConfigs,
 } from './types'
 
 import {
@@ -20,9 +20,9 @@ import {
   DEBUG_SESSION_ID_PROP_NAME,
   DEBUG_SESSION_STARTED_EVENT,
   DEBUG_SESSION_STOPPED_EVENT,
-  DEBUG_SESSION_STATE_PROP_NAME,
-  DEBUG_SESSION_SHORT_ID_PROP_NAME, DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME,
-  BASE_CONFIG
+  DEBUG_SESSION_STATE_PROP_NAME, DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME,
+  BASE_CONFIG,
+  DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE
 } from './constants'
 
 import {
@@ -41,7 +41,7 @@ import { IDebugger } from './types'
 
 export class Debugger implements IDebugger {
   private _isInitialized = false
-  private _configs: SessionDebuggerConfigs
+  private _configs: DebuggerConfigs
 
   private _apiService = new ApiService()
   private _tracer = new TracerBrowserSDK()
@@ -57,15 +57,6 @@ export class Debugger implements IDebugger {
   set sessionId(sessionId: string | null) {
     this._sessionId = sessionId
     setStoredItem(DEBUG_SESSION_ID_PROP_NAME, sessionId)
-  }
-
-  private _shortSessionId: string | null = null
-  get shortSessionId(): string | null {
-    return this._shortSessionId
-  }
-  set shortSessionId(shortSessionId: string | null) {
-    this._shortSessionId = shortSessionId
-    setStoredItem(DEBUG_SESSION_SHORT_ID_PROP_NAME, shortSessionId)
   }
 
   private _continuousDebugging: boolean = false
@@ -139,20 +130,18 @@ export class Debugger implements IDebugger {
     const sessionLocal = getStoredItem(DEBUG_SESSION_PROP_NAME, true)
     const sessionIdLocal = getStoredItem(DEBUG_SESSION_ID_PROP_NAME)
     const sessionStateLocal = getStoredItem(DEBUG_SESSION_STATE_PROP_NAME)
-    const shortSessionIdLocal = getStoredItem(DEBUG_SESSION_SHORT_ID_PROP_NAME)
     const continuousDebuggingLocal = getStoredItem(DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME, true)
 
     if (isSessionActive(sessionLocal, continuousDebuggingLocal)) {
       this.session = sessionLocal
       this.sessionId = sessionIdLocal
       this.sessionState = sessionStateLocal
-      this.shortSessionId = shortSessionIdLocal
+
       this.continuousDebugging = continuousDebuggingLocal
     } else {
       this.session = null
       this.sessionId = null
       this.sessionState = null
-      this.shortSessionId = null
       this.continuousDebugging = false
     }
 
@@ -166,25 +155,23 @@ export class Debugger implements IDebugger {
    * Initialize the session debugger
    * @param configs - custom configurations for session debugger
    */
-  public init(configs: SessionDebuggerOptions): void {
+  public init(configs: DebuggerOptions): void {
     this._configs = {
-      ...this._configs, ...configs,
+      ...this._configs,
+      ...configs,
       masking: { ...this._configs.masking, ...(configs.masking || {}) }
     }
     this._isInitialized = true
     this._checkOperation('init')
 
-    setMaxCapturingHttpPayloadSize(this._configs.maxCapturingHttpPayloadSize)
+    setMaxCapturingHttpPayloadSize(this._configs.maxCapturingHttpPayloadSize || DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE)
     setShouldRecordHttpData(!this._configs.disableCapturingHttpPayload)
 
-    const { apiKey, exporterApiBaseUrl, usePostMessageFallback } = this._configs
 
     this._tracer.init(this._configs)
     this._sessionWidget.init(this._configs)
     this._apiService.init({
-      apiKey,
-      exporterApiBaseUrl,
-      usePostMessageFallback,
+      ...this._configs,
       continuousDebugging: this.continuousDebugging,
     })
 
@@ -192,7 +179,7 @@ export class Debugger implements IDebugger {
       this._recorder.init(this._configs)
     }
 
-    if (this._sessionId && this.sessionState === SessionState.started) {
+    if (this.sessionId && this.sessionState === SessionState.started) {
       if (this.session) {
         this._recorder.subscribeToSession(this.session)
       }
@@ -216,9 +203,9 @@ export class Debugger implements IDebugger {
         ContinuousDebuggingSaveButtonState.SAVING,
       )
       const res = await this._apiService.saveContinuousDebugSession(
-        this._sessionId!,
+        this.sessionId!,
         {
-          attributes: this.sessionAttributes,
+          sessionAttributes: this.sessionAttributes,
           resourceAttributes: getNavigatorInfo(),
           stoppedAt: this._recorder.stoppedAt,
           name: this.sessionAttributes.userName
@@ -273,21 +260,21 @@ export class Debugger implements IDebugger {
   }
   /**
    * Stop the current session with an optional comment
-   * @param comment - user-provided comment to include in session feedback metadata
+   * @param comment - user-provided comment to include in session session attributes
    */
   public async stop(comment?: string): Promise<void> {
     try {
       this._checkOperation('stop')
       this._stop()
       if (this.continuousDebugging) {
-        await this._apiService.stopContinuousDebugSession(this._sessionId!)
+        await this._apiService.stopContinuousDebugSession(this.sessionId!)
         this.continuousDebugging = false
       } else {
         const request: StopSessionRequest = {
-          feedbackMetadata: comment ? { comment } : undefined,
+          sessionAttributes: { comment },
           stoppedAt: this._recorder.stoppedAt,
         }
-        const response = await this._apiService.stopSession(this._sessionId!, request)
+        const response = await this._apiService.stopSession(this.sessionId!, request)
         recorderEventBus.emit(SESSION_RESPONSE, response)
       }
       this._clearSession()
@@ -304,10 +291,10 @@ export class Debugger implements IDebugger {
       this._checkOperation('cancel')
       this._stop()
       if (this.continuousDebugging) {
-        await this._apiService.stopContinuousDebugSession(this._sessionId!)
+        await this._apiService.stopContinuousDebugSession(this.sessionId!)
         this.continuousDebugging = false
       } else {
-        await this._apiService.cancelSession(this._sessionId!)
+        await this._apiService.cancelSession(this.sessionId!)
       }
       this._clearSession()
     } catch (error: any) {
@@ -412,16 +399,13 @@ export class Debugger implements IDebugger {
    * Create a new session and start it
    */
   private async _createSessionAndStart(): Promise<void> {
-    const resourceAttributes = getNavigatorInfo()
-    const attributes = this.sessionAttributes
     const signal = this._startRequestController?.signal
     try {
       const payload = {
-        attributes,
-        // TODO: add lib version here
-        resourceAttributes,
-        name: attributes.userName
-          ? `${attributes.userName}'s session on ${getFormattedDate(Date.now(), { month: 'short', day: 'numeric' })}`
+        sessionAttributes: this.sessionAttributes,
+        resourceAttributes: getNavigatorInfo(),
+        name: this.sessionAttributes.userName
+          ? `${this.sessionAttributes.userName}'s session on ${getFormattedDate(Date.now(), { month: 'short', day: 'numeric' })}`
           : `Session on ${getFormattedDate(Date.now())}`,
       }
       const request: StartSessionRequest = !this.continuousDebugging ?
@@ -452,8 +436,8 @@ export class Debugger implements IDebugger {
     const debugSessionType = this.continuousDebugging
       ? DebugSessionType.CONTINUOUS
       : DebugSessionType.PLAIN
-    this._tracer.start(this._shortSessionId, debugSessionType)
-    this._recorder.start(this._sessionId, debugSessionType)
+    this._tracer.start(this.sessionId, debugSessionType)
+    this._recorder.start(this.sessionId, debugSessionType)
     this.sessionState = SessionState.started
     if (this.session) {
       recorderEventBus.emit(DEBUG_SESSION_STARTED_EVENT, this.session)
@@ -496,20 +480,17 @@ export class Debugger implements IDebugger {
   /**
    * Set the session ID in localStorage
    * @param sessionId - the session ID to set or clear
-   * @param shortSessionId - the short session ID to set or clear
    */
   private _setSession(
     session: IDebugSession,
   ): void {
     this.session = { ...session, startedAt: session.startedAt || new Date().toISOString() }
-    this.sessionId = session?._id
-    this.shortSessionId = session?.shortId || session?._id
+    this.sessionId = session?.shortId || session?._id
   }
 
   private _clearSession(): void {
     this.session = null
     this.sessionId = null
-    this.shortSessionId = null
     this.sessionState = SessionState.stopped
   }
 
