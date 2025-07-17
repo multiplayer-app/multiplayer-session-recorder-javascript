@@ -520,7 +520,7 @@ export class Debugger implements IDebugger {
         }
         break
       case 'stop':
-        if (this.sessionState !== SessionState.paused) {
+        if (this.sessionState !== SessionState.paused && this.sessionState !== SessionState.started) {
           throw new Error('Cannot stop. Session is not currently started.')
         }
         break
