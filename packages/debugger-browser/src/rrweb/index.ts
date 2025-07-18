@@ -7,15 +7,13 @@ import { IDebugSession, RecorderConfig } from '../types'
 import { CONTINUOUS_DEBUGGING_TIMEOUT } from '../constants'
 
 import { RrwebEventExporter } from './exporter'
-import { IndexedDBService } from './indexedDbService'
 
 
 export class RecorderBrowserSDK {
   private stopFn?: () => void
   private config?: RecorderConfig
   private exporter: RrwebEventExporter | undefined
-  private indexedDBService: IndexedDBService
-  private _restartTimeout: NodeJS.Timeout | null = null
+  private restartTimeout: NodeJS.Timeout | null = null
 
   private _startedAt: string = ''
   public get startedAt(): string {
@@ -35,7 +33,6 @@ export class RecorderBrowserSDK {
   }
 
   constructor() {
-    this.indexedDBService = new IndexedDBService()
   }
 
   /**
@@ -115,13 +112,12 @@ export class RecorderBrowserSDK {
             debugSessionId: sessionId,
             timestamp: event.timestamp,
           })
-          await this.indexedDBService.saveEvent(packedEvent)
 
         }
       },
     })
     if (restartTimeout > 0) {
-      this._restartTimeout = setTimeout(() => {
+      this.restartTimeout = setTimeout(() => {
         this.restart(sessionId, debugSessionType)
       }, restartTimeout)
     }
@@ -131,7 +127,6 @@ export class RecorderBrowserSDK {
    * Restarts the recording of events.
    */
   async restart(sessionId: string | null, debugSessionType: DebugSessionType): Promise<void> {
-    await this.indexedDBService.clearEvents()
     this.stopFn?.()
     this.start(sessionId, debugSessionType)
   }
@@ -139,9 +134,9 @@ export class RecorderBrowserSDK {
    * Clears the restart timeout.
    */
   clearRestartTimeout(): void {
-    if (this._restartTimeout) {
-      clearTimeout(this._restartTimeout)
-      this._restartTimeout = null
+    if (this.restartTimeout) {
+      clearTimeout(this.restartTimeout)
+      this.restartTimeout = null
     }
   }
 
@@ -156,12 +151,5 @@ export class RecorderBrowserSDK {
 
   subscribeToSession(session: IDebugSession): void {
     this.exporter?.subscribeToSession(session)
-  }
-
-  /**
-   * Clears stored events from IndexedDB and resets the replay container.
-   */
-  async clearStoredEvents(): Promise<void> {
-    await this.indexedDBService.clearEvents()
   }
 }

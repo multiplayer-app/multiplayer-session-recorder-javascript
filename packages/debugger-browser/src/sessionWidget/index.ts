@@ -2,7 +2,7 @@ import 'rrweb-player/dist/style.css'
 import { Observable } from 'lib0/observable'
 import { insertTrustedHTML } from '../utils'
 import { formatTimeForSessionTimer } from '../helpers'
-import { SessionWidgetConfig, SessionState } from '../types'
+import { SessionWidgetConfig, SessionState, ToastConfig } from '../types'
 import { DragManager } from './dragManager'
 import {
   POPOVER_WIDTH,
@@ -83,7 +83,15 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   public set error(v: string) {
     this._error = v
-    this.updateTooltip()
+    if (this._error) {
+      this.showToast({
+        type: 'error',
+        message: this._error,
+        button: {
+          text: 'Close', onClick: () => this.hideToast()
+        }
+      })
+    }
   }
 
   public set isStarted(v: boolean) {
@@ -203,13 +211,19 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   /**
-   * Shows a toast message with optional session URL
-   * @param message - The message to display
-   * @param sessionUrl - Optional URL to open when clicking the button
+   * Shows a toast message with optional action button
+   * @param config - The toast configuration including message, type, and optional button
    * @param duration - Duration in milliseconds to show the toast (default: 10000ms)
    */
-  public showToast(message: string, sessionUrl?: string, duration: number = 10000): void {
-    this.uiManager.showToast(message, sessionUrl, duration)
+  public showToast(config: ToastConfig, duration: number = 10000): void {
+    this.uiManager.showToast(config, duration)
+  }
+
+  /**
+   * Hides the currently displayed toast message
+   */
+  public hideToast(): void {
+    this.uiManager.hideToast()
   }
 
   private handleClickOutside = (event: MouseEvent) => {
@@ -284,11 +298,6 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     document.body.appendChild(rootWrapper)
   }
 
-  private updateTooltip() {
-    if (this._error) {
-      this.recorderButton.dataset['tooltip'] = this._error
-    }
-  }
 
   private addRecorderDragFunctionality() {
     this.dragManager = new DragManager(

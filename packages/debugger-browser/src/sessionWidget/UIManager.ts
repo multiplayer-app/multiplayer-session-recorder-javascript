@@ -5,6 +5,7 @@ import { initialPopoverTemplate } from './templates/initialPopover'
 import { recordingOverlayTemplate } from './templates/recordingOverlay'
 import { submitSessionDialogTemplate } from './templates/submitSessionDialog'
 import { toastTemplate } from './templates/toast'
+import { ToastConfig } from 'src/types'
 
 export class UIManager {
   private recorderButton: HTMLButtonElement
@@ -13,7 +14,7 @@ export class UIManager {
   private recordingOverlay: HTMLElement
   private submitSessionDialog: HTMLElement
   private toast: HTMLElement
-
+  private toastTimeout: NodeJS.Timeout | null = null
   /**
    * Constructor initializes the UIManager with necessary DOM elements
    * @param recorderButton - The main button to start recording
@@ -130,12 +131,17 @@ export class UIManager {
    * @param sessionUrl - Optional URL to open when clicking the button
    * @param duration - Duration in milliseconds to show the toast (default: 10000ms)
    */
-  public showToast(message: string, sessionUrl?: string, duration: number = 10000): void {
-    insertTrustedHTML(this.toast, toastTemplate(message, sessionUrl))
+  public showToast(config: ToastConfig, duration: number = 10000): void {
+    insertTrustedHTML(this.toast, toastTemplate(config))
     this.toast.classList.remove('hidden')
-
-    // Auto-hide after specified duration
-    setTimeout(() => {
+    if (config.button?.onClick) {
+      const button = this.toast.querySelector('.mp-toast-button')
+      button?.addEventListener('click', config.button.onClick)
+    }
+    if (this.toastTimeout) {
+      clearTimeout(this.toastTimeout)
+    }
+    this.toastTimeout = setTimeout(() => {
       this.hideToast()
     }, duration)
   }
@@ -145,5 +151,8 @@ export class UIManager {
    */
   public hideToast(): void {
     this.toast.classList.add('hidden')
+    if (this.toastTimeout) {
+      clearTimeout(this.toastTimeout)
+    }
   }
 }

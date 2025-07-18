@@ -45,7 +45,7 @@ export class TracerBrowserSDK {
     const { application, version, environment } = this.config
 
     this.idGenerator = new MultiplayerIdGenerator({
-      autoDocTracesRatio: options.docTraceRatio || OTEL_MP_DOC_TRACE_RATIO
+      autoDocTracesRatio: options.docTraceRatio || OTEL_MP_DOC_TRACE_RATIO,
     })
 
     this.tracerProvider = new WebTracerProvider({

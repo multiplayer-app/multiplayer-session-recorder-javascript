@@ -1,2 +1,3 @@
 export * from './session'
-export * from './debugger'
+export * from './sessionRecorder'
+export * from './widget'

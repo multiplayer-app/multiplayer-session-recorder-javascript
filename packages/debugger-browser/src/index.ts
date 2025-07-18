@@ -1,17 +1,17 @@
 import './patch'
 import { setupListeners } from './listeners'
 import { recorderEventBus } from './eventBus'
-import { Debugger } from './debugger'
+import { SessionRecorder } from './sessionRecorder'
 
-const DebuggerInstance = new Debugger()
+const SessionRecorderInstance = new SessionRecorder()
 
 // Attach the instance to the global object (window in browser)
 if (typeof window !== 'undefined') {
-  window['__DEBUGGER_LOADED'] = true
-  window['MultiplayerDebugger'] = DebuggerInstance
-  setupListeners(DebuggerInstance)
+  window['__SESSION_RECORDER_LOADED'] = true
+  window['SessionRecorder'] = SessionRecorderInstance
+  setupListeners(SessionRecorderInstance)
 }
 
-export default DebuggerInstance
+export default SessionRecorderInstance
 
 export { recorderEventBus }

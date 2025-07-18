@@ -11,18 +11,21 @@ import {
 import {
   SessionState,
   IDebugSession,
-  DebuggerOptions,
-  DebuggerConfigs,
+  SessionRecorderOptions,
+  SessionRecorderConfigs,
 } from './types'
 
 import {
-  SESSION_RESPONSE, DEBUG_SESSION_PROP_NAME, DEBUG_SESSION_AUTO_CREATED,
+  BASE_CONFIG,
+  SESSION_RESPONSE,
+  DEBUG_SESSION_PROP_NAME,
+  DEBUG_SESSION_AUTO_CREATED,
   DEBUG_SESSION_ID_PROP_NAME,
   DEBUG_SESSION_STARTED_EVENT,
   DEBUG_SESSION_STOPPED_EVENT,
-  DEBUG_SESSION_STATE_PROP_NAME, DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME,
-  BASE_CONFIG,
-  DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE
+  DEBUG_SESSION_STATE_PROP_NAME,
+  DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
+  DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME,
 } from './constants'
 
 import {
@@ -37,11 +40,11 @@ import { ApiService, StartSessionRequest, StopSessionRequest } from './services/
 import './index.scss'
 import { DebugSessionType } from '@multiplayer-app/opentelemetry'
 import { ContinuousDebuggingSaveButtonState } from './sessionWidget/buttonStateConfigs'
-import { IDebugger } from './types'
+import { ISessionRecorder } from './types'
 
-export class Debugger implements IDebugger {
+export class SessionRecorder implements ISessionRecorder {
   private _isInitialized = false
-  private _configs: DebuggerConfigs
+  private _configs: SessionRecorderConfigs
 
   private _apiService = new ApiService()
   private _tracer = new TracerBrowserSDK()
@@ -155,11 +158,11 @@ export class Debugger implements IDebugger {
    * Initialize the session debugger
    * @param configs - custom configurations for session debugger
    */
-  public init(configs: DebuggerOptions): void {
+  public init(configs: SessionRecorderOptions): void {
     this._configs = {
       ...this._configs,
       ...configs,
-      masking: { ...this._configs.masking, ...(configs.masking || {}) }
+      masking: { ...this._configs.masking, ...(configs.masking || {}) },
     }
     this._isInitialized = true
     this._checkOperation('init')
@@ -223,8 +226,13 @@ export class Debugger implements IDebugger {
 
       const sessionUrl = res?.url
       this._sessionWidget.showToast(
-        'Your session was saved',
-        sessionUrl,
+        {
+          type: 'success',
+          message: 'Your session was saved',
+          button: {
+            text: 'Open session', url: sessionUrl,
+          },
+        },
         5000,
       )
 
@@ -387,10 +395,17 @@ export class Debugger implements IDebugger {
    */
   private _registerSessionAutoCreation() {
     recorderEventBus.on(DEBUG_SESSION_AUTO_CREATED, (payload) => {
+      if (!payload?.data) return
       this._sessionWidget.showToast(
-        'Your session was auto-saved due to an error',
-        payload?.data?.url,
-        10000,
+        {
+          type: 'success',
+          message: 'Your session was auto-saved due to an error',
+          button: {
+            text: 'Open session',
+            url: payload?.data?.url,
+          },
+        },
+        5000,
       )
     })
   }
@@ -451,7 +466,6 @@ export class Debugger implements IDebugger {
   private _stop(): void {
     this._tracer.stop()
     this._recorder.stop()
-    this._recorder.clearStoredEvents()
     this.sessionState = SessionState.stopped
   }
 

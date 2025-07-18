@@ -1,46 +1,46 @@
-import { Debugger } from './debugger'
+import { SessionRecorder } from './sessionRecorder'
 import { IDebugSession } from './types'
 import messagingService from './services/messaging.service'
-import { DebugSessionType } from '@multiplayer-app/opentelemetry'
+import { DebugSessionType } from '@multiplayer-app/otlp-core'
 
 
 
-export function setupListeners(debuggerInstance: Debugger): void {
+export function setupListeners(sessionRecorder: SessionRecorder): void {
   // Send ready message with session info
   messagingService.sendMessage('ready', {
-    session: debuggerInstance.session,
-    sessionState: debuggerInstance.sessionState,
+    session: sessionRecorder.session,
+    sessionState: sessionRecorder.sessionState,
   })
 
   messagingService.on('init', (payload) => {
-    debuggerInstance.init(payload)
+    sessionRecorder.init(payload)
   })
 
   messagingService.on('start', (payload) => {
-    debuggerInstance.start(DebugSessionType.PLAIN, payload)
+    sessionRecorder.start(DebugSessionType.PLAIN, payload)
   })
 
   messagingService.on('end', (payload) => {
-    debuggerInstance.stop(payload)
+    sessionRecorder.stop(payload)
   })
 
   messagingService.on('pause', () => {
-    debuggerInstance.pause()
+    sessionRecorder.pause()
   })
 
   messagingService.on('cancel', () => {
-    debuggerInstance.cancel()
+    sessionRecorder.cancel()
   })
 
   messagingService.on('toggle-continuous-debugging', (payload: { enabled: boolean, session?: IDebugSession }) => {
     if (payload.enabled) {
-      debuggerInstance.start(DebugSessionType.CONTINUOUS, payload.session)
+      sessionRecorder.start(DebugSessionType.CONTINUOUS, payload.session)
     } else {
-      debuggerInstance.stop()
+      sessionRecorder.stop()
     }
   })
 
   messagingService.on('save-continuous-debug-session', () => {
-    debuggerInstance.save()
+    sessionRecorder.save()
   })
 }

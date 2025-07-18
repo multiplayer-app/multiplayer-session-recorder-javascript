@@ -5,10 +5,11 @@ import type {
   MaskTextFn,
   MaskInputFn,
   MaskInputOptions,
-} from 'rrweb-snapshot';
-import type { maskTextClass } from '@rrweb/types';
-import type { IDebugSession } from './session';
-export interface DebuggerOptions {
+} from 'rrweb-snapshot'
+import type { maskTextClass } from '@rrweb/types'
+import type { IDebugSession } from './session'
+
+export interface SessionRecorderOptions {
   /**
    * The API key used to authenticate with the session debugger service.
    */
@@ -213,7 +214,7 @@ export interface ApiServiceConfig extends BaseConfig {
   continuousDebugging?: boolean
 }
 
-export interface DebuggerConfigs extends Required<DebuggerOptions> { }
+export interface SessionRecorderConfigs extends Required<SessionRecorderOptions> { }
 
 export enum SessionState {
   started = '2',
@@ -221,7 +222,7 @@ export enum SessionState {
   stopped = '0',
 }
 
-export interface IDebugger {
+export interface ISessionRecorder {
   /**
    * The current session ID
    */
@@ -266,7 +267,7 @@ export interface IDebugger {
    * Initialize the session debugger with custom configurations
    * @param configs - custom configurations for session debugger
    */
-  init(configs: DebuggerOptions): void
+  init(configs: SessionRecorderOptions): void
 
   /**
    * Save the continuous debugging session

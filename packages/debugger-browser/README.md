@@ -1,6 +1,6 @@
-# Multiplayer Session Debugger
+# Multiplayer Session Recorder
 
-The Multiplayer **Session Debugger** is a powerful tool that offers deep session replays with insights spanning frontend screens, platform traces, metrics, and logs. It helps your team pinpoint and resolve bugs faster by providing a complete picture of your backend system architecture. No more wasted hours combing through APM data; the Multiplayer Session Debugger does it all in one place.
+The Multiplayer **Session Recorder** is a powerful tool that offers deep session replays with insights spanning frontend screens, platform traces, metrics, and logs. It helps your team pinpoint and resolve bugs faster by providing a complete picture of your backend system architecture. No more wasted hours combing through APM data; the Multiplayer Session Recorder does it all in one place.
 
 ## Key Features
 
@@ -12,7 +12,7 @@ The Multiplayer **Session Debugger** is a powerful tool that offers deep session
 
 ### Installation
 
-You can install the Multiplayer Session Debugger using npm or yarn:
+You can install the Multiplayer Session Recorder using npm or yarn:
 
 ```bash
 npm install @multiplayer-app/debugger-browser
@@ -22,20 +22,20 @@ yarn add @multiplayer-app/debugger-browser
 
 ### Basic Setup
 
-To initialize the Multiplayer Session Debugger in your application, follow the steps below.
+To initialize the Multiplayer Session Recorder in your application, follow the steps below.
 
-#### Import the Debugger
+#### Import the Session Recorder
 
 ```javascript
-import Debugger from '@multiplayer-app/debugger-browser'
+import SessionRecorder from '@multiplayer-app/debugger-browser'
 ```
 
 #### Initialization
 
-Use the following code to initialize the debugger with your application details:
+Use the following code to initialize the session recorder with your application details:
 
 ```javascript
-Debugger.init({
+SessionRecorder.init({
   version: '{YOUR_APPLICATION_VERSION}',
   application: '{YOUR_APPLICATION_NAME}',
   environment: '{YOUR_APPLICATION_ENVIRONMENT}',
@@ -50,7 +50,7 @@ Replace the placeholders with your application’s version, name, environment, a
 To track user-specific attributes in session replays, add the following:
 
 ```javascript
-Debugger.setSessionAttributes({
+SessionRecorder.setSessionAttributes({
   userId: '{userId}',
   userName: '{userName}'
 })
@@ -67,7 +67,7 @@ This library relies on the following packages:
 
 ## Configuration Options
 
-The Session Debugger supports various configuration options with sensible defaults:
+The Session Recorder supports various configuration options with sensible defaults:
 
 ### Default Values
 
@@ -85,10 +85,10 @@ The Session Debugger supports various configuration options with sensible defaul
 
 ## Example Usage
 
-````javascript
-import Debugger from '@multiplayer-app/debugger-browser'
+```javascript
+import SessionRecorder from '@multiplayer-app/debugger-browser'
 
-Debugger.init({
+SessionRecorder.init({
   version: '1.0.0',
   application: 'my-app',
   environment: 'production',
@@ -160,31 +160,35 @@ Debugger.init({
   }
 })
 
-Debugger.setSessionAttributes({
+SessionRecorder.setSessionAttributes({
   userId: '12345',
   userName: 'John Doe'
 })
+```
 
 ## API Methods
 
-The Session Debugger provides several methods for controlling session recording:
+The Session Recorder provides several methods for controlling session recording:
 
 ### Session Control
-- `Debugger.start(type, session?)` - Start a new session with optional existing session
-- `Debugger.stop(comment?)` - Stop the current session with optional comment
-- `Debugger.pause()` - Pause the current session
-- `Debugger.cancel()` - Cancel the current session
-- `Debugger.save()` - Save the continuous debugging session
+
+- `SessionRecorder.start(type, session?)` - Start a new session with optional existing session
+- `SessionRecorder.stop(comment?)` - Stop the current session with optional comment
+- `SessionRecorder.pause()` - Pause the current session
+- `SessionRecorder.cancel()` - Cancel the current session
+- `SessionRecorder.save()` - Save the continuous debugging session
 
 ### Configuration
-- `Debugger.setSessionAttributes(attributes)` - Set session metadata
-- `Debugger.recordingButtonClickHandler = handler` - Set custom click handler
+
+- `SessionRecorder.setSessionAttributes(attributes)` - Set session metadata
+- `SessionRecorder.recordingButtonClickHandler = handler` - Set custom click handler
 
 ### Session Attributes
+
 You can set various session attributes for better tracking:
 
 ```javascript
-Debugger.setSessionAttributes({
+SessionRecorder.setSessionAttributes({
   userId: '12345',
   userName: 'John Doe',
   userEmail: 'john@example.com',
@@ -195,7 +199,7 @@ Debugger.setSessionAttributes({
 
 ## Masking Configuration
 
-The Session Debugger includes comprehensive masking options to protect sensitive data during session recordings. You can configure masking behavior through the `masking` option:
+The Session Recorder includes comprehensive masking options to protect sensitive data during session recordings. You can configure masking behavior through the `masking` option:
 
 ### Basic Masking Options
 
@@ -347,11 +351,11 @@ Debugger.init({
 })
 ```
 
-## Session Debugger for Next.js
+## Session Recorder for Next.js
 
-To integrate the SessionDebugger component into your Next.js application, follow these steps:
+To integrate the MySessionRecorder component into your Next.js application, follow these steps:
 
-- Create a new file (e.g., SessionDebugger.js or SessionDebugger.tsx) in your root directory or a components directory.
+- Create a new file (e.g., MySessionRecorder.js or MySessionRecorder.tsx) in your root directory or a components directory.
 
 - Import the component
 
@@ -360,12 +364,12 @@ In the newly created file, add the following code:
 ```javascript
 'use client' // Mark as Client Component
 import { useEffect } from 'react'
-import Debugger from '@multiplayer-app/debugger-browser'
+import SessionRecorder from '@multiplayer-app/debugger-browser'
 
-export default function SessionDebugger() {
+export default function MySessionRecorder() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      Debugger.init({
+      SessionRecorder.init({
         version: '{YOUR_APPLICATION_VERSION}',
         application: '{YOUR_APPLICATION_NAME}',
         environment: '{YOUR_APPLICATION_ENVIRONMENT}',
@@ -381,7 +385,7 @@ export default function SessionDebugger() {
         }
       })
 
-      Debugger.setSessionAttributes({
+      SessionRecorder.setSessionAttributes({
         userId: '{userId}',
         userName: '{userName}'
       })
@@ -394,15 +398,15 @@ export default function SessionDebugger() {
 
 Replace the placeholders with the actual information.
 
-Now, you can use the SessionDebugger component in your application by adding it to your desired page or layout file:
+Now, you can use the MySessionRecorder component in your application by adding it to your desired page or layout file:
 
 ```javascript
-import SessionDebugger from './SessionDebugger' // Adjust the path as necessary
+import MySessionRecorder from './MySessionRecorder' // Adjust the path as necessary
 
 export default function MyApp() {
   return (
     <>
-      <SessionDebugger />
+      <MySessionRecorder />
       {/* Other components */}
     </>
   )
@@ -414,9 +418,9 @@ export default function MyApp() {
 If frontend domain doesn't match to backend one, set backend domain to `propagateTraceHeaderCorsUrls` parameter:
 
 ```javascript
-import Debugger from '@multiplayer-app/debugger-browser'
+import SessionRecorder from '@multiplayer-app/debugger-browser'
 
-Debugger.init({
+SessionRecorder.init({
   version: '{YOUR_APPLICATION_VERSION}',
   application: '{YOUR_APPLICATION_NAME}',
   environment: '{YOUR_APPLICATION_ENVIRONMENT}',
@@ -428,9 +432,9 @@ Debugger.init({
 If frontend sends api requests to two or more different domains put them to `propagateTraceHeaderCorsUrls` as array:
 
 ```javascript
-import Debugger from '@multiplayer-app/debugger-browser'
+import SessionRecorder from '@multiplayer-app/debugger-browser'
 
-Debugger.init({
+SessionRecorder.init({
   version: '{YOUR_APPLICATION_VERSION}',
   application: '{YOUR_APPLICATION_NAME}',
   environment: '{YOUR_APPLICATION_ENVIRONMENT}',
@@ -444,9 +448,8 @@ Debugger.init({
 
 ## Documentation
 
-For more details on how the Multiplayer Session Debugger integrates with your backend architecture and system auto-documentation, check out our [official documentation](https://www.multiplayer.app/docs/features/system-auto-documentation/).
+For more details on how the Multiplayer Session Recorder integrates with your backend architecture and system auto-documentation, check out our [official documentation](https://www.multiplayer.app/docs/features/system-auto-documentation/).
 
 ## License
 
 This library is distributed under the [MIT License](LICENSE).
-````
