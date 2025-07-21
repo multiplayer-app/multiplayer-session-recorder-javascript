@@ -1,7 +1,7 @@
 import { SessionRecorder } from './sessionRecorder'
 import { IDebugSession } from './types'
 import messagingService from './services/messaging.service'
-import { DebugSessionType } from '@multiplayer-app/otlp-core'
+import { DebugSessionType } from '@multiplayer-app/session-recorder-opentelemetry'
 
 
 

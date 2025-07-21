@@ -1,6 +1,5 @@
-import { eventWithTime, EventType } from 'rrweb'
-import { DEBUG_SESSION_MAX_DURATION_SECONDS, PACKAGE_VERSION_EXPORT } from './constants'
-import { IResourceAttributes } from './types'
+import { IResourceAttributes } from '../types'
+import { PACKAGE_VERSION_EXPORT } from '../config/constants'
 
 export const getNavigatorInfo = (): IResourceAttributes => {
   let browserInfo: string = 'Unknown'
@@ -71,62 +70,4 @@ export const getNavigatorInfo = (): IResourceAttributes => {
     hardwareConcurrency,
     packageVersion,
   }
-}
-
-export const getFormattedDate = (date, options?) => {
-  return new Date(date).toLocaleDateString(
-    'en-US',
-    options || {
-      month: 'short',
-      year: 'numeric',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-    },
-  )
-}
-
-export const getStoredItem = (key: string, parse?: boolean): any => {
-  const item = localStorage?.getItem(key)
-  return parse ? (item ? JSON.parse(item) : null) : item
-}
-
-export const setStoredItem = (key: string, value: any) => {
-  if (value === null || value === undefined) {
-    localStorage?.removeItem(key)
-  } else {
-    localStorage?.setItem(key, typeof value === 'string' ? value : JSON.stringify(value))
-  }
-}
-
-export const removeStoredItem = (key: string) => {
-  localStorage?.removeItem(key)
-}
-
-export const formatTimeForSessionTimer = (totalSeconds) => {
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-}
-
-export const getTimeDifferenceInSeconds = (startedAt: any) => {
-  if (!startedAt) {
-    return 0
-  }
-
-  return Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
-}
-
-export const isSessionActive = (session, continuousDebugging: boolean) => {
-  if (!session) return false
-  if (continuousDebugging) return true
-  const startedAt = new Date(session.startedAt)
-  const now = new Date()
-  const diff = now.getTime() - startedAt.getTime()
-  return diff < DEBUG_SESSION_MAX_DURATION_SECONDS * 1000
-}
-
-export const isConsoleEvent = (event: eventWithTime) => {
-  return event.type === EventType.Plugin && event.data?.plugin === "rrweb/console@1"
 }

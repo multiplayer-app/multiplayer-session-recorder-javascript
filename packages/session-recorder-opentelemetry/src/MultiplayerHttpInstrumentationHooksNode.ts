@@ -235,7 +235,7 @@ export const MultiplayerHttpInstrumentationHooksNode = {
             } else {
               if (_options.headersToInclude) {
                 for (const headerName of _options.headersToInclude) {
-                  _headers[headerName] = headers
+                  _headers[headerName] = headers[headerName]
                 }
               }
 

@@ -1,0 +1,48 @@
+import { mask, sensitiveFields, sensitiveHeaders } from '@multiplayer-app/session-recorder-opentelemetry/dist/src/helpers'
+import { MaskingConfig, SessionRecorderConfigs, WidgetButtonPlacement } from '../types'
+import {
+  OTEL_MP_DOC_TRACE_RATIO,
+  OTEL_MP_SAMPLE_TRACE_RATIO,
+  DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
+  MULTIPLAYER_BASE_API_URL
+} from './constants'
+
+export const DEFAULT_MASKING_CONFIG: MaskingConfig = {
+  maskAllInputs: true,
+  maskDebugSpanPayload: true,
+  maskBodyFunction: mask(sensitiveFields),
+  maskHeadersFunction: mask(sensitiveHeaders),
+  maskBodyFieldsList: sensitiveFields,
+  maskHeadersList: sensitiveHeaders,
+  headersToInclude: [],
+  headersToExclude: [],
+}
+
+export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
+  apiKey: '',
+
+  version: '',
+  application: '',
+  environment: '',
+
+  showWidget: true,
+  widgetButtonPlacement: WidgetButtonPlacement.bottomRight,
+
+  usePostMessageFallback: false,
+  exporterApiBaseUrl: MULTIPLAYER_BASE_API_URL,
+
+  recordCanvas: false,
+  schemifyDocSpanPayload: true,
+
+  ignoreUrls: [],
+  propagateTraceHeaderCorsUrls: [],
+
+  docTraceRatio: OTEL_MP_DOC_TRACE_RATIO,
+  sampleTraceRatio: OTEL_MP_SAMPLE_TRACE_RATIO,
+  maxCapturingHttpPayloadSize: DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
+
+  captureBody: true,
+  captureHeaders: true,
+  disableCapturingHttpPayload: false,
+  masking: DEFAULT_MASKING_CONFIG
+}

@@ -7,7 +7,7 @@ import {
   getFormattedDate,
   getTimeDifferenceInSeconds,
   isSessionActive,
-} from './helpers'
+} from './utils'
 import {
   SessionState,
   IDebugSession,
@@ -26,7 +26,8 @@ import {
   DEBUG_SESSION_STATE_PROP_NAME,
   DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
   DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME,
-} from './constants'
+  getSessionRecorderConfig,
+} from './config'
 
 import {
   setShouldRecordHttpData,
@@ -159,11 +160,8 @@ export class SessionRecorder implements ISessionRecorder {
    * @param configs - custom configurations for session debugger
    */
   public init(configs: SessionRecorderOptions): void {
-    this._configs = {
-      ...this._configs,
-      ...configs,
-      masking: { ...this._configs.masking, ...(configs.masking || {}) },
-    }
+    this._configs = getSessionRecorderConfig({ ...this._configs, ...configs })
+
     this._isInitialized = true
     this._checkOperation('init')
 

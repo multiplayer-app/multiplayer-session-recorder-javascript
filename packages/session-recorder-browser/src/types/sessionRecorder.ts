@@ -10,6 +10,13 @@ import type { maskTextClass } from '@rrweb/types';
 import type { IDebugSession } from './session';
 import { LogData } from '@rrweb/rrweb-plugin-console-record';
 
+export enum WidgetButtonPlacement {
+  topLeft = 'top-left',
+  topRight = 'top-right',
+  bottomLeft = 'bottom-left',
+  bottomRight = 'bottom-right',
+}
+
 export interface SessionRecorderOptions {
   /**
    * The API key used to authenticate with the session debugger service.
@@ -52,7 +59,7 @@ export interface SessionRecorderOptions {
    *  - 'bottom-left'
    *  - 'bottom-right'
    */
-  widgetButtonPlacement?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  widgetButtonPlacement?: WidgetButtonPlacement
 
   /**
    * (Optional) If false, the session recording widget will be hidden from the UI.
@@ -184,7 +191,7 @@ export interface BaseConfig {
 /**
  * Configuration interface for the Tracer class
  */
-export type TracerBrowserMasking = Pick<MaskingConfig, 'maskDebugSpanPayload' | 'maskBodyFunction' | 'maskHeadersFunction' | 'maskBodyFieldsList' | 'maskHeadersList' | 'headersToInclude' | 'headersToExclude' | 'captureBody' | 'captureHeaders'>;
+export type TracerBrowserMasking = Pick<MaskingConfig, 'maskDebugSpanPayload' | 'maskBodyFunction' | 'maskHeadersFunction' | 'maskBodyFieldsList' | 'maskHeadersList' | 'headersToInclude' | 'headersToExclude'>;
 
 export interface TracerBrowserConfig extends BaseConfig {
   /** Application name */
@@ -205,8 +212,16 @@ export interface TracerBrowserConfig extends BaseConfig {
   schemifyDocSpanPayload: boolean
   /** Maximum size for capturing HTTP payload */
   maxCapturingHttpPayloadSize: number,
+  /** If true, captures body in traces
+   *  @default true
+  */
+  captureBody: boolean
+  /** If true, captures headers in traces
+   *  @default true
+  */
+  captureHeaders: boolean
   /** Configuration for masking sensitive data in session recordings */
-  masking?: TracerBrowserMasking
+  masking: TracerBrowserMasking
 }
 
 /**

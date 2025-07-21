@@ -1,4 +1,3 @@
-import { SessionRecorderConfigs } from './types'
 
 export const OTEL_MP_DOC_TRACE_RATIO = 0.15
 
@@ -39,26 +38,3 @@ export const DEBUG_SESSION_MAX_DURATION_SECONDS = 10 * 60 + 30 // TODO: move to 
 // Package version - injected by webpack during build
 declare const PACKAGE_VERSION: string
 export const PACKAGE_VERSION_EXPORT = PACKAGE_VERSION || '1.0.0'
-
-export const BASE_CONFIG: SessionRecorderConfigs = {
-  version: '',
-  application: '',
-  environment: '',
-  ignoreUrls: [],
-  showWidget: true,
-  recordCanvas: false,
-  schemifyDocSpanPayload: true,
-  usePostMessageFallback: false,
-  propagateTraceHeaderCorsUrls: [],
-  disableCapturingHttpPayload: false,
-  widgetButtonPlacement: 'bottom-right',
-  docTraceRatio: OTEL_MP_DOC_TRACE_RATIO,
-  exporterApiBaseUrl: MULTIPLAYER_BASE_API_URL,
-  sampleTraceRatio: OTEL_MP_SAMPLE_TRACE_RATIO,
-  maxCapturingHttpPayloadSize: DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
-  apiKey: '',
-  masking: {
-    maskAllInputs: true,
-    maskDebugSpanPayload: true,
-  },
-}

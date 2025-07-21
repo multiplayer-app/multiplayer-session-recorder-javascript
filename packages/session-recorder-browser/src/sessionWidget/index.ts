@@ -1,7 +1,7 @@
 import 'rrweb-player/dist/style.css'
 import { Observable } from 'lib0/observable'
 import { insertTrustedHTML } from '../utils'
-import { formatTimeForSessionTimer } from '../helpers'
+import { formatTimeForSessionTimer } from '../utils'
 import { SessionWidgetConfig, SessionState, ToastConfig } from '../types'
 import { DragManager } from './dragManager'
 import {
