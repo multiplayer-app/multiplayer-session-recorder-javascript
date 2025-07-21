@@ -1,7 +1,7 @@
 {
-  "name": "@multiplayer-app/opentelemetry",
+  "name": "@multiplayer-app/session-recorder-opentelemetry",
   "version": "1.0.0",
-  "description": "Multiplayer opentelemetry",
+  "description": "Multiplayer Fullstack Session Recorder - opentelemetry",
   "author": {
     "name": "Multiplayer Software, Inc.",
     "url": "https://www.multiplayer.app"

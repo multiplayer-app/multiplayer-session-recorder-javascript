@@ -38,7 +38,7 @@ import messagingService from './services/messaging.service'
 import { ApiService, StartSessionRequest, StopSessionRequest } from './services/api.service'
 
 import './index.scss'
-import { DebugSessionType } from '@multiplayer-app/opentelemetry'
+import { DebugSessionType } from '@multiplayer-app/session-recorder-opentelemetry'
 import { ContinuousDebuggingSaveButtonState } from './sessionWidget/buttonStateConfigs'
 import { ISessionRecorder } from './types'
 

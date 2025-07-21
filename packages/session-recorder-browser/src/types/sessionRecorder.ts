@@ -1,13 +1,14 @@
 
-import { DebugSessionType } from '@multiplayer-app/opentelemetry';
+import { DebugSessionType } from '@multiplayer-app/session-recorder-opentelemetry';
 import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
 import type {
   MaskTextFn,
   MaskInputFn,
   MaskInputOptions,
-} from 'rrweb-snapshot'
-import type { maskTextClass } from '@rrweb/types'
-import type { IDebugSession } from './session'
+} from 'rrweb-snapshot';
+import type { maskTextClass } from '@rrweb/types';
+import type { IDebugSession } from './session';
+import { LogData } from '@rrweb/rrweb-plugin-console-record';
 
 export interface SessionRecorderOptions {
   /**
@@ -108,6 +109,16 @@ export interface SessionRecorderOptions {
    */
   usePostMessageFallback?: boolean
 
+
+  /** If true, captures body in traces
+   *  @default true
+  */
+  captureBody?: boolean
+  /** If true, captures headers in traces
+   *  @default true
+  */
+  captureHeaders?: boolean
+
   /**
    * (Optional) Configuration for masking sensitive data in session recordings
    * @default { maskAllInputs: true, maskTextInputs: true, maskInputOptions: { password: true } }
@@ -129,17 +140,33 @@ export interface MaskingConfig {
   /** Specific options for masking different types of inputs */
   maskInputOptions?: MaskInputOptions;
   /** Custom function for input masking */
-  maskInputFn?: MaskInputFn;
+  maskInputFunction?: MaskInputFn;
   /** Custom function for text masking */
-  maskTextFn?: MaskTextFn;
+  maskTextFunction?: MaskTextFn;
+  /** Custom function for console event masking */
+  maskConsoleEventFunction?: (payload: LogData) => LogData;
+
 
   // Span masking
   /** If true, masks debug span payload in traces
    *  @default true
   */
   maskDebugSpanPayload?: boolean;
-  /** Custom function for masking debug span payload in traces */
-  maskDebugSpanPayloadFn?: (payload: any) => any;
+  /** Custom function for masking body in traces */
+  maskBodyFunction?: (payload: any, span: any) => any;
+  /** Custom function for masking headers in traces */
+  maskHeadersFunction?: (headers: any, span: any) => any;
+
+
+  /** List of body fields to mask in traces */
+  maskBodyFieldsList?: string[]
+  /** List of headers to mask in traces */
+  maskHeadersList?: string[]
+
+  /** List of headers to include in traces (if specified, only these headers will be captured) */
+  headersToInclude?: string[]
+  /** List of headers to exclude from traces */
+  headersToExclude?: string[]
 }
 
 /**
@@ -157,7 +184,7 @@ export interface BaseConfig {
 /**
  * Configuration interface for the Tracer class
  */
-type TracerBrowserMasking = Pick<MaskingConfig, 'maskDebugSpanPayload' | 'maskDebugSpanPayloadFn'>;
+export type TracerBrowserMasking = Pick<MaskingConfig, 'maskDebugSpanPayload' | 'maskBodyFunction' | 'maskHeadersFunction' | 'maskBodyFieldsList' | 'maskHeadersList' | 'headersToInclude' | 'headersToExclude' | 'captureBody' | 'captureHeaders'>;
 
 export interface TracerBrowserConfig extends BaseConfig {
   /** Application name */
@@ -176,8 +203,6 @@ export interface TracerBrowserConfig extends BaseConfig {
   propagateTraceHeaderCorsUrls: PropagateTraceHeaderCorsUrls
   /** Whether to schematize document span payload */
   schemifyDocSpanPayload: boolean
-  /** Whether to disable capturing HTTP payload */
-  disableCapturingHttpPayload: boolean
   /** Maximum size for capturing HTTP payload */
   maxCapturingHttpPayloadSize: number,
   /** Configuration for masking sensitive data in session recordings */
@@ -187,8 +212,8 @@ export interface TracerBrowserConfig extends BaseConfig {
 /**
  * Configuration interface for the Recorder class
  */
+export type RecorderMasking = Pick<MaskingConfig, 'maskAllInputs' | 'maskTextClass' | 'maskTextSelector' | 'maskInputOptions' | 'maskInputFunction' | 'maskTextFunction' | 'maskConsoleEventFunction'>;
 
-type RecorderMasking = Pick<MaskingConfig, 'maskAllInputs' | 'maskTextClass' | 'maskTextSelector' | 'maskInputOptions' | 'maskInputFn' | 'maskTextFn'>;
 export interface RecorderConfig extends BaseConfig {
   /** Whether to enable canvas recording */
   recordCanvas: boolean

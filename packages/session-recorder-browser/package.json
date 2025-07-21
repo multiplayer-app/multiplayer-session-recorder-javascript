@@ -1,7 +1,7 @@
 {
-  "name": "@multiplayer-app/debugger-browser",
+  "name": "@multiplayer-app/session-recorder-browser",
   "version": "1.0.0",
-  "description": "Multiplayer Debugger",
+  "description": "Multiplayer Fullstack Session Recorder for Browser",
   "author": {
     "name": "Multiplayer Software, Inc.",
     "url": "https://www.multiplayer.app"
@@ -50,7 +50,7 @@
     "webpack-cli": "5.1.4"
   },
   "dependencies": {
-    "@multiplayer-app/opentelemetry": "1.0.0",
+    "@multiplayer-app/session-recorder-opentelemetry": "1.0.0",
     "@opentelemetry/auto-instrumentations-web": "0.44.0",
     "@opentelemetry/context-zone": "1.29.0",
     "@opentelemetry/core": "1.29.0",

@@ -3,7 +3,7 @@ import {
   MultiplayerIdGenerator,
   MultiplayerHelpers,
   MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH
-} from '@multiplayer-app/opentelemetry'
+} from '@multiplayer-app/session-recorder-opentelemetry'
 import { ApiService } from './services/api.service'
 import { IDebugSession } from './types'
 import { getFormattedDate } from './helper'

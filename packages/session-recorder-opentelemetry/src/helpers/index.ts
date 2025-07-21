@@ -1,4 +1,4 @@
-export { default as mask, sensitiveFields } from './mask'
+export { default as mask, sensitiveFields, sensitiveHeaders } from './mask'
 export { default as schemify } from './schemify'
 export * from './is-gzip'
 export * from './id-generator'

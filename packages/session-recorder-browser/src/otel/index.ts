@@ -19,9 +19,12 @@ import {
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
   DebugSessionType,
-} from '@multiplayer-app/opentelemetry'
+} from '@multiplayer-app/session-recorder-opentelemetry'
 import { TracerBrowserConfig } from '../types'
 import { OTEL_MP_DOC_TRACE_RATIO } from '../constants'
+import { setDefaultMaskingOptions } from './helpers'
+
+const { mask, schemify, sensitiveFields, sensitiveHeaders } = MultiplayerHelpers
 
 export class TracerBrowserSDK {
   private tracerProvider?: WebTracerProvider
@@ -83,8 +86,10 @@ export class TracerBrowserSDK {
             ],
             propagateTraceHeaderCorsUrls: options.propagateTraceHeaderCorsUrls,
             applyCustomAttributesOnSpan: (span, xhr) => {
+              const maskingOptions = setDefaultMaskingOptions(this.config?.masking)
+
               try {
-                if (options.disableCapturingHttpPayload) {
+                if (!maskingOptions.captureBody && !maskingOptions.captureHeaders) {
                   return
                 }
 
@@ -97,28 +102,29 @@ export class TracerBrowserSDK {
                 ) {
                   return
                 }
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
-                let requestBody = xhr.networkRequest.requestBody
 
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
-                let responseBody = xhr.networkRequest.responseBody
-                const masking = this.config?.masking || {}
-                if (
-                  traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)
-                  && this.config?.schemifyDocSpanPayload
-                ) {
-                  requestBody = requestBody && MultiplayerHelpers.schemify(requestBody)
-                  responseBody = responseBody && MultiplayerHelpers.schemify(responseBody)
-                } else if (
-                  traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
-                  && masking?.maskDebugSpanPayload
-                ) {
-                  const maskFn = typeof masking?.maskDebugSpanPayloadFn === 'function' ? masking.maskDebugSpanPayloadFn : MultiplayerHelpers.mask
-                  requestBody = requestBody && maskFn(requestBody)
-                  responseBody = responseBody && maskFn(responseBody)
-                } else {
+                if (maskingOptions.captureBody) {
+                  // @ts-ignore
+                  let requestBody = xhr.networkRequest.requestBody
+                  // @ts-ignore
+                  let responseBody = xhr.networkRequest.responseBody
+
+
+
+                  if (traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)) {
+                    if (this.config?.schemifyDocSpanPayload) {
+                      requestBody = requestBody && schemify(requestBody)
+                      responseBody = responseBody && schemify(responseBody)
+                    }
+                  }
+
+                  if (traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)) {
+                    if (maskingOptions.maskDebugSpanPayload) {
+                      requestBody = requestBody && maskingOptions.maskBodyFunction(requestBody, span)
+                      responseBody = responseBody && maskingOptions.maskBodyFunction(responseBody, span)
+                    }
+                  }
+
                   if (typeof requestBody !== 'string') {
                     requestBody = JSON.stringify(requestBody)
                   }
@@ -126,42 +132,44 @@ export class TracerBrowserSDK {
                   if (typeof responseBody !== 'string') {
                     responseBody = JSON.stringify(responseBody)
                   }
+
+
+                  if (requestBody?.length) {
+                    span.setAttribute(ATTR_MULTIPLAYER_HTTP_REQUEST_BODY, requestBody)
+                  }
+
+                  if (responseBody?.length) {
+                    span.setAttribute(ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY, responseBody)
+                  }
                 }
 
-                if (requestBody?.length) {
-                  span.setAttribute(
-                    ATTR_MULTIPLAYER_HTTP_REQUEST_BODY,
-                    requestBody,
-                  )
-                }
+                if (maskingOptions.captureHeaders) {
+                  // @ts-ignore
+                  let requestHeaders = xhr.networkRequest.requestHeaders
+                  // @ts-ignore
+                  let responseHeaders = xhr.networkRequest.responseHeaders
 
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
-                if (xhr?.networkRequest?.requestHeaders) {
-                  span.setAttribute(
-                    ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-ignore
-                    xhr.networkRequest.requestHeaders,
-                  )
-                }
+                  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                  // @ts-ignore
+                  if (xhr?.networkRequest?.requestHeaders) {
+                    span.setAttribute(
+                      ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
+                      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                      // @ts-ignore
+                      xhr.networkRequest.requestHeaders,
+                    )
+                  }
 
-                if (responseBody?.length) {
-                  span.setAttribute(
-                    ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
-                    responseBody,
-                  )
-                }
-
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
-                if (xhr?.networkRequest?.responseHeaders) {
-                  span.setAttribute(
-                    ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-ignore
-                    xhr.networkRequest.responseHeaders,
-                  )
+                  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                  // @ts-ignore
+                  if (xhr?.networkRequest?.responseHeaders) {
+                    span.setAttribute(
+                      ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
+                      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                      // @ts-ignore
+                      xhr.networkRequest.responseHeaders,
+                    )
+                  }
                 }
               } catch (error) {
                 // eslint-disable-next-line

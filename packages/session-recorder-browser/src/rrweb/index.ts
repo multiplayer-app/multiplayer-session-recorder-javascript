@@ -1,12 +1,15 @@
-import { record, recordOptions } from 'rrweb'
-import { pack } from '@rrweb/packer'
-import { DebugSessionType } from '@multiplayer-app/opentelemetry'
-import { getRecordConsolePlugin } from '@rrweb/rrweb-plugin-console-record'
+import { pack } from '@rrweb/packer';
+import { pluginEvent } from "@rrweb/types";
+import { eventWithTime, record, recordOptions } from 'rrweb';
+import { DebugSessionType } from '@multiplayer-app/session-recorder-opentelemetry';
+import { getRecordConsolePlugin, LogData } from '@rrweb/rrweb-plugin-console-record';
 
-import { IDebugSession, RecorderConfig } from '../types'
-import { CONTINUOUS_DEBUGGING_TIMEOUT } from '../constants'
 
-import { RrwebEventExporter } from './exporter'
+import { isConsoleEvent } from '../helpers';
+import { IDebugSession, RecorderConfig } from '../types';
+import { CONTINUOUS_DEBUGGING_TIMEOUT } from '../constants';
+
+import { RrwebEventExporter } from './exporter';
 
 
 export class RecorderBrowserSDK {
@@ -91,18 +94,25 @@ export class RecorderBrowserSDK {
     }
 
     // Add custom masking functions if provided
-    if (typeof maskingConfig.maskInputFn === 'function') {
-      options.maskInputFn = maskingConfig.maskInputFn
+    if (typeof maskingConfig.maskInputFunction === 'function') {
+      options.maskInputFn = maskingConfig.maskInputFunction
     }
 
-    if (typeof maskingConfig.maskTextFn === 'function') {
-      options.maskTextFn = maskingConfig.maskTextFn
+    if (typeof maskingConfig.maskTextFunction === 'function') {
+      options.maskTextFn = maskingConfig.maskTextFunction
     }
 
     this.stopFn = record({
       ...options,
-      emit: async (event) => {
+      emit: async (event: eventWithTime) => {
         if (this.exporter) {
+
+          if (typeof maskingConfig.maskConsoleEventFunction === 'function' && isConsoleEvent(event)) {
+            const { data } = event as pluginEvent<LogData>
+            const maskedPayload = maskingConfig.maskConsoleEventFunction(data.payload)
+            event.data = { ...data, payload: maskedPayload, }
+          }
+
           const packedEvent = pack(event)
           this.stoppedAt = new Date(event.timestamp).toISOString()
           this.exporter.send({

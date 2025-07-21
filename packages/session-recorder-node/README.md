@@ -62,7 +62,7 @@ This library relies on the following packages:
 
 ```javascript
 import { debugger } from '@multiplayer-app/debugger-node'
-import { DebugSessionType } from '@multiplayer-app/opentelemetry'
+import { DebugSessionType } from '@multiplayer-app/session-recorder-opentelemetry'
 // Multiplayer trace id generator which is used during opentelemetry initialisation
 import { idGenerator } from './opentelemetry'
 

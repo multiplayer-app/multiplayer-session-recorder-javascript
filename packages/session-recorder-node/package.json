@@ -1,7 +1,7 @@
 {
-  "name": "@multiplayer-app/debugger-node",
+  "name": "@multiplayer-app/session-recorder-node",
   "version": "1.0.0",
-  "description": "Multiplayer Debugger",
+  "description": "Multiplayer Fullstack Session Recorder for Node.js",
   "author": {
     "name": "Multiplayer Software, Inc.",
     "url": "https://www.multiplayer.app"
@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "axios": "1.10.0",
-    "@multiplayer-app/opentelemetry": "1.0.0"
+    "@multiplayer-app/session-recorder-opentelemetry": "1.0.0"
   },
   "devDependencies": {
     "@types/node": "24.0.12"
