@@ -34,8 +34,8 @@ interface HttpResponseHookOptions {
 
   maskDebugSpanPayload?: boolean
 
-  bodyMaskFunction?: (arg: any, span: Span) => any
-  headersMaskFunction?: (arg: any, span: Span) => any
+  maskBodyFunction?: (arg: any, span: Span) => any
+  maskHeadersFunction?: (arg: any, span: Span) => any
 
   maskBodyFieldsList?: string[]
   maskHeadersList?: string[]
@@ -53,8 +53,8 @@ interface HttpRequestHookOptions {
 
   maskDebugSpanPayload?: boolean
 
-  bodyMaskFunction?: (arg: any, span: Span) => any
-  headersMaskFunction?: (arg: any, span: Span) => any
+  maskBodyFunction?: (arg: any, span: Span) => any
+  maskHeadersFunction?: (arg: any, span: Span) => any
 
   maskBodyFieldsList?: string[]
   maskHeadersList?: string[]
@@ -65,10 +65,10 @@ interface HttpRequestHookOptions {
 
 const setDefaultOptions = (
   options: HttpResponseHookOptions | HttpResponseHookOptions
-): Omit<HttpResponseHookOptions & HttpResponseHookOptions, 'bodyMaskFunction' | 'headersMaskFunction'>
+): Omit<HttpResponseHookOptions & HttpResponseHookOptions, 'maskBodyFunction' | 'maskHeadersFunction'>
   & {
-    bodyMaskFunction: (arg: any, span: Span) => any
-    headersMaskFunction: (arg: any, span: Span) => any
+    maskBodyFunction: (arg: any, span: Span) => any
+    maskHeadersFunction: (arg: any, span: Span) => any
     captureHeaders: boolean,
     captureBody: boolean,
     maskDebugSpanPayload: boolean,
@@ -91,7 +91,7 @@ const setDefaultOptions = (
   options.uncompressPayload = 'uncompressPayload' in options
     ? options.uncompressPayload
     : true
-  options.bodyMaskFunction = options.bodyMaskFunction || mask([
+  options.maskBodyFunction = options.maskBodyFunction || mask([
     ...(
       Array.isArray(options.maskBodyFieldsList)
         ? options.maskBodyFieldsList
@@ -103,7 +103,7 @@ const setDefaultOptions = (
         : sensitiveHeaders
     ),
   ])
-  options.headersMaskFunction = options.headersMaskFunction || mask([
+  options.maskHeadersFunction = options.maskHeadersFunction || mask([
     ...(
       Array.isArray(options.maskBodyFieldsList)
         ? options.maskBodyFieldsList
@@ -117,10 +117,10 @@ const setDefaultOptions = (
   ])
   options.maxPayloadSizeBytes = options.maxPayloadSizeBytes || MULTIPLAYER_MAX_HTTP_REQUEST_RESPONSE_SIZE
 
-  return options as Omit<HttpResponseHookOptions & HttpResponseHookOptions, 'bodyMaskFunction' | 'headersMaskFunction'>
+  return options as Omit<HttpResponseHookOptions & HttpResponseHookOptions, 'maskBodyFunction' | 'maskHeadersFunction'>
     & {
-      bodyMaskFunction: (arg: any, span: Span) => any
-      headersMaskFunction: (arg: any, span: Span) => any
+      maskBodyFunction: (arg: any, span: Span) => any
+      maskHeadersFunction: (arg: any, span: Span) => any
       captureHeaders: boolean,
       captureBody: boolean,
       maskDebugSpanPayload: boolean,
@@ -206,7 +206,7 @@ export const MultiplayerHttpInstrumentationHooksNode = {
                 traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
                 && _options.maskDebugSpanPayload
               ) {
-                responseBody = _options.bodyMaskFunction(responseBody, span)
+                responseBody = _options.maskBodyFunction(responseBody, span)
               } else if (_options.schemifyDocSpanPayload) {
                 responseBody = schemify(responseBody)
               } else if (typeof responseBody !== 'string') {
@@ -223,7 +223,7 @@ export const MultiplayerHttpInstrumentationHooksNode = {
           }
 
           if (_options.captureHeaders) {
-            const headers = _options.headersMaskFunction(_response.getHeaders(), span)
+            const headers = _options.maskHeadersFunction(_response.getHeaders(), span)
 
             let _headers: any = {}
 
@@ -299,7 +299,7 @@ export const MultiplayerHttpInstrumentationHooksNode = {
             }
           }
 
-          const headers = _options.headersMaskFunction(_headers, span)
+          const headers = _options.maskHeadersFunction(_headers, span)
 
           span.setAttribute(
             ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
@@ -334,7 +334,7 @@ export const MultiplayerHttpInstrumentationHooksNode = {
                 traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
                 && _options.maskDebugSpanPayload
               ) {
-                requestBody = _options.bodyMaskFunction(requestBody, span)
+                requestBody = _options.maskBodyFunction(requestBody, span)
               } else if (_options.schemifyDocSpanPayload) {
                 requestBody = schemify(requestBody)
               } else if (typeof requestBody !== 'string') {
