@@ -11,8 +11,8 @@ import {
  * @returns {void}
  */
 export const setAttribute = (key: string, value: AttributeValue) => {
-  const span = trace.getSpan(context.active());
-  if (!span) return;
+  const span = trace.getSpan(context.active())
+  if (!span) return
 
-  span.setAttribute(key, value);
+  span.setAttribute(key, value)
 }
