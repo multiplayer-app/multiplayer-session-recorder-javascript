@@ -1,23 +1,23 @@
 import {
   DebugSessionType,
   MultiplayerIdGenerator,
-  MultiplayerHelpers
+  MultiplayerHelpers,
+  MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH
 } from '@multiplayer-app/opentelemetry'
 import { ApiService } from './services/api.service'
 import { IDebugSession } from './types'
 import { getFormattedDate } from './helper'
 
-export class Debugger {
+export class SessionRecorder {
   private _isInitialized = false
 
-  private _debugSessionId: string | boolean = false
   private _shortDebugSessionId: string | boolean = false
 
   private _traceIdGenerator: MultiplayerIdGenerator | undefined
   private _debugSessionType: DebugSessionType = DebugSessionType.PLAIN
   private _debugSessionState: 'STARTED' | 'STOPPED' | 'PAUSED' = 'STOPPED'
   private _apiService = new ApiService()
-  private _debugSessionShortIdGenerator = MultiplayerHelpers.
+  private _debugSessionShortIdGenerator = MultiplayerHelpers.getIdGenerator(MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH)
 
   private _resourceAttributes: object = {}
 
@@ -27,7 +27,7 @@ export class Debugger {
   constructor() { }
 
   /**
-   * Initialize the session debugger
+   * @description Initialize the session debugger
    * @param apiKey - multiplayer otlp key
    * @param traceIdGenerator - multiplayer compatible trace id generator
    */
@@ -35,20 +35,20 @@ export class Debugger {
     apiKey: string,
     traceIdGenerator: MultiplayerIdGenerator,
     resourceAttributes?: object,
-    generateDebugSessionShortIdLocally?: boolean | function
+    generateDebugSessionShortIdLocally?: boolean | (() => string)
   }): void {
     this._resourceAttributes = config.resourceAttributes || {}
     this._isInitialized = true
 
-    if (config._debugSessionShortIdGenerator) {
-      this._debugSessionShortIdGenerator = config._debugSessionShortIdGenerator || 
+    if (typeof config.generateDebugSessionShortIdLocally === 'function') {
+      this._debugSessionShortIdGenerator = config.generateDebugSessionShortIdLocally
     }
 
-    if (!config.apiKey?.length) {
+    if (!config?.apiKey?.length) {
       throw new Error('Api key not provided')
     }
 
-    if (!config.traceIdGenerator.setSessionId) {
+    if (!config?.traceIdGenerator?.setSessionId) {
       throw new Error('Incompatible trace id generator')
     }
 
@@ -57,13 +57,14 @@ export class Debugger {
   }
 
   /**
-   * Start a new session
-   * @param debugSessionType - the type of session to start
-   * @param debugSessionData - debug session metadata
+   * @description Start a new session
+   * @param {DebugSessionType} debugSessionType - the type of session to start
+   * @param {IDebugSession} [debugSessionPayload] - debug session metadata
+   * @returns {Promise<void>}
    */
   public async start(
     debugSessionType: DebugSessionType,
-    debugSessionPayload: Omit<IDebugSession, '_id' | 'shortId'>
+    debugSessionPayload?: Omit<IDebugSession, '_id'>
   ): Promise<void> {
     if (!this._isInitialized) {
       throw new Error(
@@ -71,8 +72,14 @@ export class Debugger {
       )
     }
 
-    // validate short id here if it's passed
-    // this._shortDebugSessionId = ...
+    if (
+      debugSessionPayload?.shortId
+      && debugSessionPayload?.shortId?.length !== MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH
+    ) {
+      throw new Error('Invalid short debug-session id')
+    }
+
+    debugSessionPayload = debugSessionPayload || {}
 
     if (this._debugSessionState !== 'STOPPED') {
       throw new Error('Debug session should be ended before starting new one.')
@@ -98,7 +105,6 @@ export class Debugger {
     }
 
     this._shortDebugSessionId = debugSession.shortId as string
-    this._debugSessionId = debugSession._id as string
 
     (this._traceIdGenerator as MultiplayerIdGenerator).setSessionId(
       this._shortDebugSessionId,
@@ -109,50 +115,12 @@ export class Debugger {
   }
 
   /**
-   * Save the continuous debugging session
+   * @description Save the continuous debugging session
+   * @param {IDebugSession} [debugSessionData]
+   * @returns {Promise<void>}
    */
   public async save(
-    debugSessionData: IDebugSession = {}
-  ): Promise<any> {
-    try {
-      if (!this._isInitialized) {
-        throw new Error(
-          'Configuration not initialized. Call init() before performing any actions.',
-        )
-      }
-
-      if (
-        this._debugSessionState === 'STOPPED'
-        || typeof this._debugSessionId !== 'string'
-      ) {
-        throw new Error('Debug session should be active or paused')
-      }
-
-      if (this._debugSessionType !== DebugSessionType.CONTINUOUS) {
-        throw new Error('Invalid debug session type')
-      }
-
-      await this._apiService.saveContinuousDebugSession(
-        this._debugSessionId,
-        {
-          ...(debugSessionData || {}),
-          name: debugSessionData.name
-            ? debugSessionData.name
-            : `Session on ${getFormattedDate(Date.now())}`
-        },
-      )
-    } catch (e) {
-      throw e
-    }
-  }
-
-
-  /**
-   * Stop the current session with an optional comment
-   * @param comment - user-provided comment to include in session metadata
-   */
-  public async stop(
-    debugSessionData: IDebugSession = {}
+    debugSessionData?: IDebugSession
   ): Promise<void> {
     try {
       if (!this._isInitialized) {
@@ -163,33 +131,72 @@ export class Debugger {
 
       if (
         this._debugSessionState === 'STOPPED'
-        || typeof this._debugSessionId !== 'string'
+        || typeof this._shortDebugSessionId !== 'string'
+      ) {
+        throw new Error('Debug session should be active or paused')
+      }
+
+      if (this._debugSessionType !== DebugSessionType.CONTINUOUS) {
+        throw new Error('Invalid debug session type')
+      }
+
+      await this._apiService.saveContinuousDebugSession(
+        this._shortDebugSessionId,
+        {
+          ...(debugSessionData || {}),
+          name: debugSessionData?.name
+            ? debugSessionData.name
+            : `Session on ${getFormattedDate(Date.now())}`
+        },
+      )
+    } catch (e) {
+      throw e
+    }
+  }
+
+  /**
+   * @description Stop the current session with an optional comment
+   * @param {IDebugSession} [debugSessionData] - user-provided comment to include in session metadata
+   * @returns {Promise<void>}
+   */
+  public async stop(
+    debugSessionData?: IDebugSession
+  ): Promise<void> {
+    try {
+      if (!this._isInitialized) {
+        throw new Error(
+          'Configuration not initialized. Call init() before performing any actions.',
+        )
+      }
+
+      if (
+        this._debugSessionState === 'STOPPED'
+        || typeof this._shortDebugSessionId !== 'string'
       ) {
         throw new Error('Debug session should be active or paused')
       }
 
       if (this._debugSessionType !== DebugSessionType.PLAIN) {
-        throw new Error('Invalid debug session type')
+        throw new Error('Invalid debug-session type')
       }
 
       await this._apiService.stopSession(
         this._shortDebugSessionId, // use short debug session id
-        debugSessionData,
+        debugSessionData || {},
       )
-
     } catch (e) {
       throw e
     } finally {
       (this._traceIdGenerator as MultiplayerIdGenerator).setSessionId('')
 
-      this._debugSessionId = false
       this._shortDebugSessionId = false
       this._debugSessionState = 'STOPPED'
     }
   }
 
   /**
-   * Cancel the current session
+   * @description Cancel the current session
+   * @returns {Promise<void>}
    */
   public async cancel(): Promise<void> {
     try {
@@ -201,30 +208,31 @@ export class Debugger {
 
       if (
         this._debugSessionState === 'STOPPED'
-        || typeof this._debugSessionId !== 'string'
+        || typeof this._shortDebugSessionId !== 'string'
       ) {
         throw new Error('Debug session should be active or paused')
       }
 
-
       if (this._debugSessionType === DebugSessionType.CONTINUOUS) {
-        await this._apiService.stopContinuousDebugSession(this._debugSessionId)
+        await this._apiService.stopContinuousDebugSession(this._shortDebugSessionId)
       } else if (this._debugSessionType === DebugSessionType.PLAIN) {
-        await this._apiService.cancelSession(this._debugSessionId)
+        await this._apiService.cancelSession(this._shortDebugSessionId)
       }
     } catch (e) {
       throw e
     } finally {
       (this._traceIdGenerator as MultiplayerIdGenerator).setSessionId('')
 
-      this._debugSessionId = false
       this._shortDebugSessionId = false
       this._debugSessionState = 'STOPPED'
-
     }
   }
 
-
+  /**
+   * @description Check if debug-session should be started/stopped automatically
+   * @param {IDebugSession} [debugSessionPayload]
+   * @returns {Promise<void>}
+   */
   public async autoStartRemoteContinuousDebugSession(
     debugSessionPayload?: Omit<IDebugSession, '_id' | 'shortId'>
   ): Promise<void> {
@@ -241,18 +249,18 @@ export class Debugger {
       ...this._resourceAttributes,
     }
 
-    await this._apiService.checkRemoteDebugSession(debugSessionPayload)
-
-    // validate short id here if it's passed
-    // this._shortDebugSessionId = ...
+    const { shouldStart } = await this._apiService.checkRemoteDebugSession(debugSessionPayload)
 
     if (this._debugSessionState !== 'STOPPED') {
       throw new Error('Debug session should be ended before starting new one.')
     }
 
-    this._debugSessionType = D
+    if (!shouldStart) {
+      return
+    }
 
-    let debugSession: IDebugSession
+    this._debugSessionType = DebugSessionType.CONTINUOUS
+    this._shortDebugSessionId = this._debugSessionShortIdGenerator()
 
     debugSessionPayload.name = debugSessionPayload.name
       ? debugSessionPayload.name
@@ -263,21 +271,14 @@ export class Debugger {
       ...debugSessionPayload.resourceAttributes
     }
 
-    if (debugSessionType === DebugSessionType.CONTINUOUS) {
-      debugSession = await this._apiService.startContinuousDebugSession(debugSessionPayload)
-    } else {
-      debugSession = await this._apiService.startDebugSession(debugSessionPayload)
-    }
-
+    const debugSession = await this._apiService.startContinuousDebugSession(debugSessionPayload)
     this._shortDebugSessionId = debugSession.shortId as string
-    this._debugSessionId = debugSession._id as string
 
     (this._traceIdGenerator as MultiplayerIdGenerator).setSessionId(
       this._shortDebugSessionId,
-      debugSessionType
+      this._debugSessionType
     )
 
     this._debugSessionState = 'STARTED'
   }
-  
 }

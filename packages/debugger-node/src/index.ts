@@ -1,3 +1,3 @@
-import { Debugger } from './debugger'
+import { SessionRecorder } from './sessionRecorder'
 
-export const mpDebugger = new Debugger()
+export const sessionRecorder = new SessionRecorder()

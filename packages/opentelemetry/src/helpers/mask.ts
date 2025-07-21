@@ -1,3 +1,4 @@
+import type { Span } from '@opentelemetry/api'
 import { MASK_PLACEHOLDER } from '../constants.base'
 
 const MAX_DEPTH = 8
@@ -139,7 +140,7 @@ const maskSelected = (value: any, keysToMask: string[]): any => {
   return value
 }
 
-export default (keysToMask: string[] = []) => (value: any): string => {
+export default (keysToMask: string[] = []) => (value: any, span: Span): any => {
   let payloadJson
   try {
     payloadJson = JSON.parse(value)

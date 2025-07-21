@@ -1,5 +1,10 @@
 import { context, trace, SpanStatusCode } from '@opentelemetry/api'
 
+/**
+ * @description Add error to current span
+ * @param {Error} error 
+ * @returns {void}
+ */
 export const captureException = (error: Error) => {
   if (!error) return;
 

@@ -34,13 +34,14 @@ interface HttpResponseHookOptions {
 
   maskDebugSpanPayload?: boolean
 
-  maskFunction?: (arg: any) => any
+  bodyMaskFunction?: (arg: any, span: Span) => any
+  headersMaskFunction?: (arg: any, span: Span) => any
 
   maskBodyFieldsList?: string[]
   maskHeadersList?: string[]
 
-  headersToInclude?: string[] // ['x-user-id']
-  headersToExclude?: string[] // ['*']
+  headersToInclude?: string[]
+  headersToExclude?: string[]
 }
 
 interface HttpRequestHookOptions {
@@ -52,20 +53,22 @@ interface HttpRequestHookOptions {
 
   maskDebugSpanPayload?: boolean
 
-  maskFunction?: (arg: any) => any
+  bodyMaskFunction?: (arg: any, span: Span) => any
+  headersMaskFunction?: (arg: any, span: Span) => any
 
   maskBodyFieldsList?: string[]
   maskHeadersList?: string[]
 
-  headersToInclude?: string[] // ['x-user-id']
-  headersToExclude?: string[] // ['*']
+  headersToInclude?: string[]
+  headersToExclude?: string[]
 }
 
 const setDefaultOptions = (
   options: HttpResponseHookOptions | HttpResponseHookOptions
-): Omit<HttpResponseHookOptions & HttpResponseHookOptions, 'maskFunction'>
+): Omit<HttpResponseHookOptions & HttpResponseHookOptions, 'bodyMaskFunction' | 'headersMaskFunction'>
   & {
-    maskFunction: (arg: any) => any,
+    bodyMaskFunction: (arg: any, span: Span) => any
+    headersMaskFunction: (arg: any, span: Span) => any
     captureHeaders: boolean,
     captureBody: boolean,
     maskDebugSpanPayload: boolean,
@@ -88,7 +91,19 @@ const setDefaultOptions = (
   options.uncompressPayload = 'uncompressPayload' in options
     ? options.uncompressPayload
     : true
-  options.maskFunction = options.maskFunction || mask([
+  options.bodyMaskFunction = options.bodyMaskFunction || mask([
+    ...(
+      Array.isArray(options.maskBodyFieldsList)
+        ? options.maskBodyFieldsList
+        : sensitiveFields
+    ),
+    ...(
+      Array.isArray(options.maskHeadersList)
+        ? options.maskHeadersList
+        : sensitiveHeaders
+    ),
+  ])
+  options.headersMaskFunction = options.headersMaskFunction || mask([
     ...(
       Array.isArray(options.maskBodyFieldsList)
         ? options.maskBodyFieldsList
@@ -102,9 +117,10 @@ const setDefaultOptions = (
   ])
   options.maxPayloadSizeBytes = options.maxPayloadSizeBytes || MULTIPLAYER_MAX_HTTP_REQUEST_RESPONSE_SIZE
 
-  return options as Omit<HttpResponseHookOptions & HttpResponseHookOptions, 'maskFunction'>
+  return options as Omit<HttpResponseHookOptions & HttpResponseHookOptions, 'bodyMaskFunction' | 'headersMaskFunction'>
     & {
-      maskFunction: (arg: any) => any,
+      bodyMaskFunction: (arg: any, span: Span) => any
+      headersMaskFunction: (arg: any, span: Span) => any
       captureHeaders: boolean,
       captureBody: boolean,
       maskDebugSpanPayload: boolean,
@@ -190,7 +206,7 @@ export const MultiplayerHttpInstrumentationHooksNode = {
                 traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
                 && _options.maskDebugSpanPayload
               ) {
-                responseBody = _options.maskFunction(responseBody)
+                responseBody = _options.bodyMaskFunction(responseBody, span)
               } else if (_options.schemifyDocSpanPayload) {
                 responseBody = schemify(responseBody)
               } else if (typeof responseBody !== 'string') {
@@ -207,8 +223,30 @@ export const MultiplayerHttpInstrumentationHooksNode = {
           }
 
           if (_options.captureHeaders) {
-            const headers = _options.maskFunction(_response.getHeaders())
-            const stringifiedHeaders = JSON.stringify(headers)
+            const headers = _options.headersMaskFunction(_response.getHeaders(), span)
+
+            let _headers: any = {}
+
+            if (
+              !_options.headersToInclude?.length
+              && !_options.headersToExclude?.length
+            ) {
+              _headers = JSON.parse(JSON.stringify(headers))
+            } else {
+              if (_options.headersToInclude) {
+                for (const headerName of _options.headersToInclude) {
+                  _headers[headerName] = headers
+                }
+              }
+
+              if (_options.headersToExclude?.length) {
+                for (const headerName of _options.headersToExclude) {
+                  delete _headers[headerName]
+                }
+              }
+            }
+
+            const stringifiedHeaders = JSON.stringify(_headers)
 
             if (stringifiedHeaders?.length) {
               span.setAttribute(
@@ -239,9 +277,30 @@ export const MultiplayerHttpInstrumentationHooksNode = {
         const traceId = span.spanContext().traceId
         const _request = request as IncomingMessage
 
-
         if (_options.captureHeaders) {
-          const headers = _options.maskFunction(_request.headers)
+          let _headers: any = {}
+
+          if (
+            !_options.headersToInclude?.length
+            && !_options.headersToExclude?.length
+          ) {
+            _headers = JSON.parse(JSON.stringify(_request.headers))
+          } else {
+            if (_options.headersToInclude) {
+              for (const headerName of _options.headersToInclude) {
+                _headers[headerName] = _request.headers
+              }
+            }
+
+            if (_options.headersToExclude?.length) {
+              for (const headerName of _options.headersToExclude) {
+                delete _headers[headerName]
+              }
+            }
+          }
+
+          const headers = _options.headersMaskFunction(_headers, span)
+
           span.setAttribute(
             ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
             JSON.stringify(headers),
@@ -275,7 +334,7 @@ export const MultiplayerHttpInstrumentationHooksNode = {
                 traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
                 && _options.maskDebugSpanPayload
               ) {
-                requestBody = _options.maskFunction(requestBody)
+                requestBody = _options.bodyMaskFunction(requestBody, span)
               } else if (_options.schemifyDocSpanPayload) {
                 requestBody = schemify(requestBody)
               } else if (typeof requestBody !== 'string') {
