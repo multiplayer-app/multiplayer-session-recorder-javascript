@@ -11,6 +11,8 @@ This package provides implementations of the OpenTelemetry API for trace and met
     - [Session Recorder Http Trace exporter web](#session-recorder-http-trace-exporter-web)
     - [Session Recorder id generator](#session-recorder-id-generator)
     - [Trace id ratio based sampler](#trace-id-ratio-based-sampler)
+    - [Helper for capturing exceptions](#helper-for-capturing-exceptions)
+    - [Helper for setting attributes to span](#helper-for-setting-attributes-to-span)
   - [License](#license)
 
 ### Constants
@@ -186,6 +188,32 @@ const provider = new WebTracerProvider({
   ],
   sampler: new SessionRecorderTraceIdRatioBasedSampler(0.05)
 })
+```
+
+### Helper for capturing exceptions
+
+```javascript
+import {} from 
+```
+
+### Helper for setting attributes to span
+
+```javascript
+import { SessionRecorderHelpers } from '@multiplayer-app/session-recorder-opentelemetry'
+
+SessionRecorderHelpers.setAttribute('{{SOME_KEY}}', '{{SOME_VALUE}}')
+
+// following helpers do masking of sensitive field
+SessionRecorderHelpers.setHttpRequestBody('{{ANY_REQUEST_PAYLOAD_HERE}}')
+SessionRecorderHelpers.setHttpRequestHeaders({ Cookie: '...', Authorization: '...'})
+SessionRecorderHelpers.setHttpResponseBody({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+SessionRecorderHelpers.setHttpResponseHeaders({ 'Set-Cookie': '...' })
+SessionRecorderHelpers.setMessageBody({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+SessionRecorderHelpers.setRpcRequestMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+SessionRecorderHelpers.setRpcResponseMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+SessionRecorderHelpers.setGrpcRequestMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+SessionRecorderHelpers.setGrpcResponseMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+
 ```
 
 ## License

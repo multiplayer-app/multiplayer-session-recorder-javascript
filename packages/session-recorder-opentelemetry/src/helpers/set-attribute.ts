@@ -35,7 +35,7 @@ export const setAttribute = (key: string, value: AttributeValue) => {
  * @param {{ mask: boolean }} options
  * @returns {void}
  */
-export const setRequestBody = (
+export const setHttpRequestBody = (
   body: any,
   options: { mask: boolean } = { mask: true }
 ) => {
@@ -55,7 +55,7 @@ export const setRequestBody = (
  * @param {{ mask: boolean }} options
  * @returns {void}
  */
-export const setRequestHeaders = (
+export const setHttpRequestHeaders = (
   body: any,
   options: { mask: boolean } = { mask: true }
 ) => {
@@ -75,7 +75,7 @@ export const setRequestHeaders = (
  * @param {{ mask: boolean }} options
  * @returns {void}
  */
-export const setResponseBody = (
+export const setHttpResponseBody = (
   body: any,
   options: { mask: boolean } = { mask: true }
 ) => {
@@ -95,7 +95,7 @@ export const setResponseBody = (
  * @param {{ mask: boolean }} options
  * @returns {void}
  */
-export const setResponseHeaders = (
+export const setHttpResponseHeaders = (
   body: any,
   options: { mask: boolean } = { mask: true }
 ) => {
