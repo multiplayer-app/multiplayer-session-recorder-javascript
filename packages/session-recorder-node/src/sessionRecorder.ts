@@ -1,7 +1,7 @@
 import {
   SessionType,
   SessionRecorderIdGenerator,
-  SessionRecorderHelpers,
+  SessionRecorderSdk,
   MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH
 } from '@multiplayer-app/session-recorder-opentelemetry'
 import { ApiService } from './services/api.service'
@@ -17,7 +17,7 @@ export class SessionRecorder {
   private _sessionType: SessionType = SessionType.PLAIN
   private _sessionState: 'STARTED' | 'STOPPED' | 'PAUSED' = 'STOPPED'
   private _apiService = new ApiService()
-  private _sessionShortIdGenerator = SessionRecorderHelpers.getIdGenerator(MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH)
+  private _sessionShortIdGenerator = SessionRecorderSdk.getIdGenerator(MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH)
 
   private _resourceAttributes: object = {}
 

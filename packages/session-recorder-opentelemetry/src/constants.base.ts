@@ -40,14 +40,18 @@ export const ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY_ENCODING = 'multiplayer.http.re
 
 export const ATTR_MULTIPLAYER_RPC_REQUEST_MESSAGE = 'multiplayer.rpc.request.message'
 
+export const ATTR_MULTIPLAYER_RPC_REQUEST_MESSAGE_ENCODING = 'multiplayer.rpc.request.message.encoding'
+
 export const ATTR_MULTIPLAYER_RPC_RESPONSE_MESSAGE = 'multiplayer.rpc.response.message'
 
 export const ATTR_MULTIPLAYER_GRPC_REQUEST_MESSAGE = 'multiplayer.rpc.grpc.request.message'
+
+export const ATTR_MULTIPLAYER_GRPC_REQUEST_MESSAGE_ENCODING = 'multiplayer.rpc.request.message.encoding'
 
 export const ATTR_MULTIPLAYER_GRPC_RESPONSE_MESSAGE = 'multiplayer.rpc.grpc.response.message'
 
 export const ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY = 'multiplayer.messaging.message.body'
 
-export const MASK_PLACEHOLDER = '***MASKED***'
+export const ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY_ENCODING = 'multiplayer.messaging.message.body.encoding'
 
-export const MULTIPLAYER_DEBUG_REQUEST = 'multiplayer-debug-request'
+export const MASK_PLACEHOLDER = '***MASKED***'

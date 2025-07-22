@@ -11,7 +11,7 @@ import {
   MULTIPLAYER_TRACE_DOC_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
 } from './constants.base'
-import { getIdGenerator } from './helpers'
+import { getIdGenerator } from './sdk'
 
 export class SessionRecorderIdGenerator extends RandomIdGenerator {
   sessionShortId: string

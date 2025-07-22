@@ -1,9 +1,9 @@
 import { MaskingConfig } from '../types'
 import { DEFAULT_MASKING_CONFIG } from './defaults'
 import { isValidArray, isValidBoolean, isValidFunction } from './validators'
-import { SessionRecorderHelpers } from '@multiplayer-app/session-recorder-opentelemetry'
+import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-opentelemetry'
 
-const { mask, sensitiveFields, sensitiveHeaders } = SessionRecorderHelpers
+const { mask, sensitiveFields, sensitiveHeaders } = SessionRecorderSdk
 
 export const getMaskingConfig = (masking?: MaskingConfig): MaskingConfig => {
   const baseMasking = DEFAULT_MASKING_CONFIG

@@ -3,5 +3,5 @@ export { SessionRecorderHttpInstrumentationHooksNode } from './SessionRecorderHt
 export { SessionRecorderIdGenerator } from './SessionRecorderIdGenerator'
 export { SessionRecorderJsonTraceSerializer } from './SessionRecorderJsonTraceSerializer'
 export { SessionRecorderTraceIdRatioBasedSampler } from './SessionRecorderTraceIdRatioBasedSampler'
-export * as SessionRecorderHelpers from './helpers'
+export * as SessionRecorderSdk from './sdk'
 export * from './type'

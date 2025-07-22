@@ -7,12 +7,12 @@ This package provides implementations of the OpenTelemetry API for trace and met
 - [Session Recorder OpenTelemetry Core](#session-recorder-opentelemetry-core)
   - [Built-in Implementations](#built-in-implementations)
     - [Constants](#constants)
-    - [Session Recorder Http Instrumentation Hooks Node](#session-recorder-http-instrumentation-hooks-node)
+    - [Setup opentelemetry for capturing http request/response body](#session-recorder-http-instrumentation-hooks-node)
     - [Session Recorder Http Trace exporter web](#session-recorder-http-trace-exporter-web)
     - [Session Recorder id generator](#session-recorder-id-generator)
     - [Trace id ratio based sampler](#trace-id-ratio-based-sampler)
-    - [Helper for capturing exceptions](#helper-for-capturing-exceptions)
-    - [Helper for setting attributes to span](#helper-for-setting-attributes-to-span)
+    - [Helper for capturing exception in session recording](#helper-for-capturing-exceptions)
+    - [Helpers for adding content to session recording](#helper-for-setting-attributes-to-span)
   - [License](#license)
 
 ### Constants
@@ -39,19 +39,19 @@ import {
 } from '@multiplayer-app/session-recorder-opentelemetry'
 ```
 
-### Session Recorder Http Instrumentation Hooks Node
+### Setup opentelemetry for capturing http request/response body
 
 Session Recorder hooks for nodejs http instrumentation for injecting http request/response headers and payload to span.
 
 ```javascript
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
 import { type Instrumentation } from '@opentelemetry/instrumentation'
-import { MultiplayerHttpInstrumentationHooks } from '@multiplayer-app/session-recorder-opentelemetry'
+import { SessionRecorderHttpInstrumentationHooks } from '@multiplayer-app/session-recorder-opentelemetry'
 
 export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
   '@opentelemetry/instrumentation-http': {
     enabled: true,
-    responseHook: MultiplayerHttpInstrumentationHooks.responseHook({
+    responseHook: SessionRecorderHttpInstrumentationHooks.responseHook({
       maxPayloadSizeBytes: 1000,
       uncompressPayload: true,
       captureHeaders: true,
@@ -70,7 +70,7 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
       headersToInclude: ['Set-Cookie', 'Authorization'],
       headersToExclude: ['Cookie'],
     }),
-    requestHook: MultiplayerHttpInstrumentationHooks.requestHook({
+    requestHook: SessionRecorderHttpInstrumentationHooks.requestHook({
       maxPayloadSizeBytes: 1000,
       captureHeaders: true,
       captureBody: true,
@@ -96,14 +96,14 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
 
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
-import { MultiplayerHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-opentelemetry'
+import { SessionRecorderHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-opentelemetry'
 
 const collectorOptions = {
   url: '<opentelemetry-collector-url>', // url is optional and can be omitted - default is https://api.multiplayer.app/v1/traces
   apiKey: '<multiplayer-otlp-key>' // api key from multiplayer integration
 }
 
-const exporter = new MultiplayerHttpTraceExporterBrowser(collectorOptions)
+const exporter = new SessionRecorderHttpTraceExporterBrowser(collectorOptions)
 const provider = new WebTracerProvider({
   spanProcessors: [
     new BatchSpanProcessor(exporter, {
@@ -124,9 +124,6 @@ provider.register()
 
 ### Session Recorder id generator
 
-Multiplayer introduces 2 kind of traces: debug and doc, they have `d0cd0c` and `debdeb` prefixes in `traceId` accordingly.
-Multiplayer Id generator will set `debdeb` prefix to `traceId` if debug session id was set using method `setSessionId`.
-Put documentation traces ratio to constructor, by default it's `0`.
 
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
@@ -161,7 +158,7 @@ idGenerator.setSessionId('<multiplayer-debug-session-short-id>')
 
 ### Trace id ratio based sampler
 
-Session Recorder sampler will always sample debug and document traces with appropriate prefixes, other traces will be sampled using ration provided to constructor.
+Session Recorder sampler will always sample debug traces with appropriate prefixes, other traces will be sampled using ration provided to constructor.
 
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
@@ -190,29 +187,41 @@ const provider = new WebTracerProvider({
 })
 ```
 
-### Helper for capturing exceptions
+### Helper for capturing exception in session recording
 
 ```javascript
-import {} from 
+import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-opentelemetry'
+
+const error = new Error('Some text here')
+
+SessionRecorderSdk.captureException(error)
 ```
 
-### Helper for setting attributes to span
+### Helpers for adding content to session recording
 
 ```javascript
-import { SessionRecorderHelpers } from '@multiplayer-app/session-recorder-opentelemetry'
+import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-opentelemetry'
 
-SessionRecorderHelpers.setAttribute('{{SOME_KEY}}', '{{SOME_VALUE}}')
+SessionRecorderSdk.setAttribute('{{SOME_KEY}}', '{{SOME_VALUE}}')
 
 // following helpers do masking of sensitive field
-SessionRecorderHelpers.setHttpRequestBody('{{ANY_REQUEST_PAYLOAD_HERE}}')
-SessionRecorderHelpers.setHttpRequestHeaders({ Cookie: '...', Authorization: '...'})
-SessionRecorderHelpers.setHttpResponseBody({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
-SessionRecorderHelpers.setHttpResponseHeaders({ 'Set-Cookie': '...' })
-SessionRecorderHelpers.setMessageBody({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
-SessionRecorderHelpers.setRpcRequestMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
-SessionRecorderHelpers.setRpcResponseMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
-SessionRecorderHelpers.setGrpcRequestMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
-SessionRecorderHelpers.setGrpcResponseMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+SessionRecorderSdk.setHttpRequestBody('{{ANY_REQUEST_PAYLOAD_HERE}}')
+
+SessionRecorderSdk.setHttpRequestHeaders({ Cookie: '...', Authorization: '...'})
+
+SessionRecorderSdk.setHttpResponseBody({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+
+SessionRecorderSdk.setHttpResponseHeaders({ 'Set-Cookie': '...' })
+
+SessionRecorderSdk.setMessageBody({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+
+SessionRecorderSdk.setRpcRequestMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+
+SessionRecorderSdk.setRpcResponseMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+
+SessionRecorderSdk.setGrpcRequestMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+
+SessionRecorderSdk.setGrpcResponseMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
 
 ```
 

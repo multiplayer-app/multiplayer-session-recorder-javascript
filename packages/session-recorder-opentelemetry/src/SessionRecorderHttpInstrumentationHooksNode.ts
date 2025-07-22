@@ -18,11 +18,11 @@ import {
   mask,
   schemify,
   isGzip,
-} from './helpers'
+} from './sdk'
 import {
   sensitiveFields,
   sensitiveHeaders
-} from './helpers/mask'
+} from './sdk/mask'
 
 interface HttpResponseHookOptions {
   maxPayloadSizeBytes?: number
