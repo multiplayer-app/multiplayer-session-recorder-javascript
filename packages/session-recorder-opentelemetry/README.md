@@ -158,7 +158,7 @@ idGenerator.setSessionId('<multiplayer-debug-session-short-id>')
 
 ### Trace id ratio based sampler
 
-Session Recorder sampler will always sample debug traces with appropriate prefixes, other traces will be sampled using ration provided to constructor.
+Session Recorder sampler will always sample traces with appropriate prefixes, other traces will be sampled using ration provided to constructor.
 
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
@@ -204,7 +204,7 @@ import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-openteleme
 
 SessionRecorderSdk.setAttribute('{{SOME_KEY}}', '{{SOME_VALUE}}')
 
-// following helpers do masking of sensitive field
+// following helpers do masking of sensitive fields
 SessionRecorderSdk.setHttpRequestBody('{{ANY_REQUEST_PAYLOAD_HERE}}')
 
 SessionRecorderSdk.setHttpRequestHeaders({ Cookie: '...', Authorization: '...'})

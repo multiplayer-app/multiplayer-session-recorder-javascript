@@ -1,4 +1,4 @@
-# Multiplayer Session Recorder
+# Session Recorder
 
 The Multiplayer **Session Recorder** is a powerful tool that offers deep session replays with insights spanning frontend screens, platform traces, metrics, and logs. It helps your team pinpoint and resolve bugs faster by providing a complete picture of your backend system architecture. No more wasted hours combing through APM data; the Multiplayer Session Recorder does it all in one place.
 
@@ -12,23 +12,23 @@ The Multiplayer **Session Recorder** is a powerful tool that offers deep session
 
 ### Installation
 
-You can install the Multiplayer Session Recorder using npm or yarn:
+You can install the Session Recorder using npm or yarn:
 
 ```bash
-npm install @multiplayer-app/session-recorder-node
+npm install @multiplayer-app/session-recorder-node @multiplayer-app/session-recorder-opentelemetry
 # or
-yarn add @multiplayer-app/session-recorder-node
+yarn add @multiplayer-app/session-recorder-node @multiplayer-app/session-recorder-opentelemetry
 ```
 
 ### Basic Setup
 
-To initialize the Multiplayer Session Recorder in your application, follow the steps below.
+To initialize the Session Recorder in your application, follow the steps below.
 
 #### Import the Session Recorder
 
 ```javascript
 import SessionRecorder from '@multiplayer-app/session-recorder-node'
-// Multiplayer trace id generator which is used during opentelemetry initialisation
+// Multiplayer trace id generator which is used during opentelemetry initialization
 import { idGenerator } from './opentelemetry'
 ```
 
@@ -63,7 +63,7 @@ This library relies on the following packages:
 ```javascript
 import SessionRecorder from '@multiplayer-app/session-recorder-node'
 import { SessionType } from '@multiplayer-app/session-recorder-opentelemetry'
-// Multiplayer trace id generator which is used during opentelemetry initialisation
+// Session recorder trace id generator which is used during opentelemetry initialization
 import { idGenerator } from './opentelemetry'
 
 SessionRecorder.init(
@@ -78,9 +78,7 @@ SessionRecorder.init(
   }
 )
 
-//
 // ...
-//
 
   await SessionRecorder.start(
     SessionType.PLAIN,
