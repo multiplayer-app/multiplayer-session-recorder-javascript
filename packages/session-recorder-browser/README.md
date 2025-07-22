@@ -15,9 +15,9 @@ The Multiplayer **Session Recorder** is a powerful tool that offers deep session
 You can install the Multiplayer Session Recorder using npm or yarn:
 
 ```bash
-npm install @multiplayer-app/debugger-browser
+npm install @multiplayer-app/session-recorder-browser
 # or
-yarn add @multiplayer-app/debugger-browser
+yarn add @multiplayer-app/session-recorder-browser
 ```
 
 ### Basic Setup
@@ -27,7 +27,7 @@ To initialize the Multiplayer Session Recorder in your application, follow the s
 #### Import the Session Recorder
 
 ```javascript
-import SessionRecorder from '@multiplayer-app/debugger-browser'
+import SessionRecorder from '@multiplayer-app/session-recorder-browser'
 ```
 
 #### Initialization
@@ -82,6 +82,8 @@ The Session Recorder supports various configuration options with sensible defaul
 - `widgetButtonPlacement`: `'bottom-right'` - Default widget position
 - `masking.maskAllInputs`: `true` - Mask all inputs by default
 - `masking.maskDebugSpanPayload`: `true` - Mask debug span payload by default
+- `captureBody`: `true` - Capture body in traces by default
+- `captureHeaders`: `true` - Capture headers in traces by default
 
 ## Example Usage
 
@@ -111,6 +113,8 @@ SessionRecorder.init({
   disableCapturingHttpPayload: false,
   usePostMessageFallback: false, // Enable post message fallback if needed
   exporterApiBaseUrl: 'https://api.multiplayer.app', // Custom API base URL (optional)
+  captureBody: true, // Capture body in traces
+  captureHeaders: true, // Capture headers in traces
   // Configure masking for sensitive data in session recordings
   masking: {
     maskAllInputs: true, // Masks all input fields by default
@@ -128,18 +132,28 @@ SessionRecorder.init({
     // CSS selector for text masking
     maskTextSelector: '.sensitive-data', // Mask text in elements matching this selector
     // Custom masking functions
-    maskInputFn: (text, element) => {
+    maskInput: (text, element) => {
       if (element.classList.contains('credit-card')) {
         return '****-****-****-' + text.slice(-4)
       }
       return '***MASKED***'
     },
-    maskTextFn: (text, element) => {
+    maskText: (text, element) => {
       if (element.dataset.type === 'email') {
         const [local, domain] = text.split('@')
         return local.charAt(0) + '***@' + domain
       }
       return '***MASKED***'
+    },
+    maskConsoleEvent: (payload) => {
+      // Custom console event masking
+      if (payload && payload.payload && payload.payload.args) {
+        // Mask sensitive console arguments
+        payload.payload.args = payload.payload.args.map((arg) =>
+          typeof arg === 'string' && arg.includes('password') ? '***MASKED***' : arg
+        )
+      }
+      return payload
     },
     maskDebugSpanPayload: true, // Mask debug span payload in traces
     maskBody: (payload, span) => {
@@ -171,7 +185,15 @@ SessionRecorder.init({
         return maskedHeaders
       }
       return headers
-    }
+    },
+    // List of body fields to mask in traces
+    maskBodyFieldsList: ['password', 'token', 'secret'],
+    // List of headers to mask in traces
+    maskHeadersList: ['authorization', 'cookie', 'x-api-key'],
+    // List of headers to include in traces (if specified, only these headers will be captured)
+    headersToInclude: ['content-type', 'user-agent'],
+    // List of headers to exclude from traces
+    headersToExclude: ['authorization', 'cookie']
   }
 })
 
@@ -188,6 +210,8 @@ The Session Recorder provides several methods for controlling session recording:
 ### Session Control
 
 - `SessionRecorder.start(type, session?)` - Start a new session with optional existing session
+  - `type`: `DebugSessionType.PLAIN` or `DebugSessionType.CONTINUOUS`
+  - `session`: Optional existing session object
 - `SessionRecorder.stop(comment?)` - Stop the current session with optional comment
 - `SessionRecorder.pause()` - Pause the current session
 - `SessionRecorder.cancel()` - Cancel the current session
@@ -197,6 +221,28 @@ The Session Recorder provides several methods for controlling session recording:
 
 - `SessionRecorder.setSessionAttributes(attributes)` - Set session metadata
 - `SessionRecorder.recordingButtonClickHandler = handler` - Set custom click handler
+
+### Properties
+
+- `SessionRecorder.sessionId` - Get current session ID (readonly)
+- `SessionRecorder.continuousDebugging` - Get/set continuous debugging state
+- `SessionRecorder.debugSessionType` - Get current debug session type (readonly)
+- `SessionRecorder.sessionState` - Get current session state (readonly)
+- `SessionRecorder.session` - Get current session object (readonly)
+- `SessionRecorder.sessionAttributes` - Get current session attributes (readonly)
+- `SessionRecorder.error` - Get/set error message
+- `SessionRecorder.sessionWidgetButtonElement` - Get the widget button element (readonly)
+
+### Session Types
+
+- `DebugSessionType.PLAIN` - Standard session recording
+- `DebugSessionType.CONTINUOUS` - Continuous debugging session
+
+### Session States
+
+- `SessionState.started` - Session is currently recording
+- `SessionState.paused` - Session is paused
+- `SessionState.stopped` - Session is stopped
 
 ### Session Attributes
 
@@ -275,7 +321,7 @@ For advanced masking scenarios, you can provide custom functions:
 ```javascript
 masking: {
   // Custom function for input masking
-  maskInputFn: (text, element) => {
+  maskInput: (text, element) => {
     // Custom logic to mask input text
     if (element.classList.contains('credit-card')) {
       return '****-****-****-' + text.slice(-4);
@@ -284,7 +330,7 @@ masking: {
   },
 
   // Custom function for text masking
-  maskTextFn: (text, element) => {
+  maskText: (text, element) => {
     // Custom logic to mask text content
     if (element.dataset.type === 'email') {
       const [local, domain] = text.split('@');
@@ -331,7 +377,7 @@ masking: {
 ### Example: Comprehensive Masking Setup
 
 ```javascript
-Debugger.init({
+SessionRecorder.init({
   // ... other options
   masking: {
     maskAllInputs: true,
@@ -347,20 +393,29 @@ Debugger.init({
     },
     maskTextClass: /sensitive|private|confidential/, // Mask text in elements with these classes
     maskTextSelector: '.user-email, .user-phone, .credit-card, [data-sensitive="true"]', // Mask text in elements matching this selector
-    maskInputFn: (text, element) => {
+    maskInput: (text, element) => {
       // Custom credit card masking
       if (element.classList.contains('credit-card')) {
         return '****-****-****-' + text.slice(-4)
       }
       return '***MASKED***'
     },
-    maskTextFn: (text, element) => {
+    maskText: (text, element) => {
       // Custom email masking
       if (element.dataset.type === 'email') {
         const [local, domain] = text.split('@')
         return local.charAt(0) + '***@' + domain
       }
       return '***MASKED***'
+    },
+    maskConsoleEvent: (payload) => {
+      // Custom console event masking
+      if (payload && payload.payload && payload.payload.args) {
+        payload.payload.args = payload.payload.args.map((arg) =>
+          typeof arg === 'string' && arg.includes('password') ? '***MASKED***' : arg
+        )
+      }
+      return payload
     },
     maskDebugSpanPayload: true, // Mask debug span payload in traces
     maskBody: (payload, span) => {
@@ -390,11 +445,17 @@ Debugger.init({
           maskedHeaders.cookie = '***MASKED***'
         }
         return maskedHeaders
-      }
-      return headers
+      },
+      // List of body fields to mask in traces
+      maskBodyFieldsList: ['password', 'token', 'secret'],
+      // List of headers to mask in traces
+      maskHeadersList: ['authorization', 'cookie', 'x-api-key'],
+      // List of headers to include in traces (if specified, only these headers will be captured)
+      headersToInclude: ['content-type', 'user-agent'],
+      // List of headers to exclude from traces
+      headersToExclude: ['authorization', 'cookie']
     }
-  }
-})
+  })
 ```
 
 ## Session Recorder for Next.js
@@ -410,7 +471,7 @@ In the newly created file, add the following code:
 ```javascript
 'use client' // Mark as Client Component
 import { useEffect } from 'react'
-import SessionRecorder from '@multiplayer-app/debugger-browser'
+import SessionRecorder from '@multiplayer-app/session-recorder-browser'
 
 export default function MySessionRecorder() {
   useEffect(() => {
@@ -464,7 +525,7 @@ export default function MyApp() {
 If frontend domain doesn't match to backend one, set backend domain to `propagateTraceHeaderCorsUrls` parameter:
 
 ```javascript
-import SessionRecorder from '@multiplayer-app/debugger-browser'
+import SessionRecorder from '@multiplayer-app/session-recorder-browser'
 
 SessionRecorder.init({
   version: '{YOUR_APPLICATION_VERSION}',
@@ -478,7 +539,7 @@ SessionRecorder.init({
 If frontend sends api requests to two or more different domains put them to `propagateTraceHeaderCorsUrls` as array:
 
 ```javascript
-import SessionRecorder from '@multiplayer-app/debugger-browser'
+import SessionRecorder from '@multiplayer-app/session-recorder-browser'
 
 SessionRecorder.init({
   version: '{YOUR_APPLICATION_VERSION}',

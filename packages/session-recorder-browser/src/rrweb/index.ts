@@ -96,12 +96,12 @@ export class RecorderBrowserSDK {
     }
 
     // Add custom masking functions if provided
-    if (typeof maskingConfig.maskInputFunction === 'function') {
-      options.maskInputFn = maskingConfig.maskInputFunction
+    if (typeof maskingConfig.maskInput === 'function') {
+      options.maskInputFn = maskingConfig.maskInput
     }
 
-    if (typeof maskingConfig.maskTextFunction === 'function') {
-      options.maskTextFn = maskingConfig.maskTextFunction
+    if (typeof maskingConfig.maskText === 'function') {
+      options.maskTextFn = maskingConfig.maskText
     }
 
     this.stopFn = record({
@@ -109,9 +109,9 @@ export class RecorderBrowserSDK {
       emit: async (event: eventWithTime) => {
         if (this.exporter) {
 
-          if (typeof maskingConfig.maskConsoleEventFunction === 'function' && isConsoleEvent(event)) {
+          if (typeof maskingConfig.maskConsoleEvent === 'function' && isConsoleEvent(event)) {
             const { data } = event as pluginEvent<LogData>
-            const maskedPayload = maskingConfig.maskConsoleEventFunction(data.payload)
+            const maskedPayload = maskingConfig.maskConsoleEvent(data.payload)
             event.data = { ...data, payload: maskedPayload, }
           }
 

@@ -6,25 +6,15 @@ import * as SemanticAttributes from '@opentelemetry/semantic-conventions'
 import { registerInstrumentations } from '@opentelemetry/instrumentation'
 import { getWebAutoInstrumentations } from '@opentelemetry/auto-instrumentations-web'
 import {
-  MultiplayerHelpers,
+  DebugSessionType,
   MultiplayerIdGenerator,
   MultiplayerHttpTraceExporterBrowser,
   MultiplayerTraceIdRatioBasedSampler,
-  MULTIPLAYER_TRACE_DOC_PREFIX,
-  MULTIPLAYER_TRACE_DEBUG_PREFIX,
-  MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
   ATTR_MULTIPLAYER_DEBUG_SESSION,
-  ATTR_MULTIPLAYER_HTTP_REQUEST_BODY,
-  ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
-  ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
-  ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
-  DebugSessionType,
 } from '@multiplayer-app/session-recorder-opentelemetry'
 import { TracerBrowserConfig } from '../types'
 import { OTEL_MP_DOC_TRACE_RATIO } from '../config'
-
-
-const { schemify } = MultiplayerHelpers
+import { processHttpPayload, headersToObject, extractResponseBody } from './helpers'
 
 export class TracerBrowserSDK {
   private tracerProvider?: WebTracerProvider
@@ -88,115 +78,29 @@ export class TracerBrowserSDK {
             applyCustomAttributesOnSpan: (span, xhr) => {
               if (!this.config) return
 
-              const { captureBody, captureHeaders, masking, schemifyDocSpanPayload } = this.config
+              const { captureBody, captureHeaders } = this.config
 
               try {
                 if (!captureBody && !captureHeaders) {
                   return
                 }
 
-                const traceId = span.spanContext().traceId
+                // @ts-ignore
+                const requestBody = xhr.networkRequest.requestBody
+                // @ts-ignore
+                const responseBody = xhr.networkRequest.responseBody
+                // @ts-ignore
+                const requestHeaders = xhr.networkRequest.requestHeaders || {}
+                // @ts-ignore
+                const responseHeaders = xhr.networkRequest.responseHeaders || {}
 
-                if (
-                  !traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)
-                  && !traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
-                  && !traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
-                ) {
-                  return
+                const payload = {
+                  requestBody,
+                  responseBody,
+                  requestHeaders,
+                  responseHeaders,
                 }
-
-                if (captureBody) {
-                  // @ts-ignore
-                  let requestBody = xhr.networkRequest.requestBody
-                  // @ts-ignore
-                  let responseBody = xhr.networkRequest.responseBody
-
-                  if (traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)) {
-                    if (schemifyDocSpanPayload) {
-                      requestBody = requestBody && schemify(requestBody)
-                      responseBody = responseBody && schemify(responseBody)
-                    }
-                  }
-
-                  if (
-                    traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
-                    traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
-                  ) {
-                    if (masking.maskDebugSpanPayload) {
-                      requestBody = requestBody && masking.maskBody?.(requestBody, span)
-                      responseBody = responseBody && masking.maskBody?.(responseBody, span)
-                    }
-                  }
-
-                  if (typeof requestBody !== 'string') {
-                    requestBody = JSON.stringify(requestBody)
-                  }
-
-                  if (typeof responseBody !== 'string') {
-                    responseBody = JSON.stringify(responseBody)
-                  }
-
-
-                  if (requestBody?.length) {
-                    span.setAttribute(ATTR_MULTIPLAYER_HTTP_REQUEST_BODY, requestBody)
-                  }
-
-                  if (responseBody?.length) {
-                    span.setAttribute(ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY, responseBody)
-                  }
-                }
-
-                if (captureHeaders) {
-                  // @ts-ignore
-                  let requestHeaders = xhr.networkRequest.requestHeaders || {}
-                  // @ts-ignore
-                  let responseHeaders = xhr.networkRequest.responseHeaders || {}
-
-                  if (
-                    !masking.headersToInclude?.length
-                    && !masking.headersToExclude?.length
-                  ) {
-                    requestHeaders = JSON.parse(JSON.stringify(requestHeaders))
-                    responseHeaders = JSON.parse(JSON.stringify(responseHeaders))
-                  } else {
-                    if (masking.headersToInclude) {
-                      const _requestHeaders = {}
-                      const _responseHeaders = {}
-                      for (const headerName of masking.headersToInclude) {
-                        _requestHeaders[headerName] = requestHeaders[headerName]
-                        _responseHeaders[headerName] = responseHeaders[headerName]
-                      }
-                      requestHeaders = _requestHeaders
-                      responseHeaders = _responseHeaders
-                    }
-
-                    if (masking.headersToExclude?.length) {
-                      for (const headerName of masking.headersToExclude) {
-                        delete requestHeaders[headerName]
-                        delete responseHeaders[headerName]
-                      }
-                    }
-                  }
-
-                  requestHeaders = masking.maskHeaders?.(requestHeaders, span)
-                  responseHeaders = masking.maskHeaders?.(responseHeaders, span)
-
-                  if (typeof requestHeaders !== 'string') {
-                    requestHeaders = JSON.stringify(requestHeaders)
-                  }
-
-                  if (typeof responseHeaders !== 'string') {
-                    responseHeaders = JSON.stringify(responseHeaders)
-                  }
-
-                  if (requestHeaders?.length) {
-                    span.setAttribute(ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS, requestHeaders)
-                  }
-
-                  if (responseHeaders?.length) {
-                    span.setAttribute(ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS, responseHeaders)
-                  }
-                }
+                processHttpPayload(payload, this.config, span)
               } catch (error) {
                 // eslint-disable-next-line
                 console.error('[DEBUGGER_LIB] Failed to capture xml-http payload', error)
@@ -214,167 +118,29 @@ export class TracerBrowserSDK {
             applyCustomAttributesOnSpan: async (span, request, response) => {
               if (!this.config) return
 
-              const { captureBody, captureHeaders, masking, schemifyDocSpanPayload } = this.config
+              const { captureBody, captureHeaders } = this.config
 
               try {
                 if (!captureBody && !captureHeaders) {
                   return
                 }
 
-                const traceId = span.spanContext().traceId
+                const requestBody = request.body
+                const requestHeaders = headersToObject(request.headers)
+                const responseHeaders = headersToObject(response instanceof Response ? response.headers : undefined)
 
-                if (
-                  !traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)
-                  && !traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
-                  && !traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
-                ) {
-                  return
+                let responseBody: string | null = null
+                if (response instanceof Response && response.body) {
+                  responseBody = await extractResponseBody(response)
                 }
 
-                if (captureBody) {
-                  let requestBody = request.body
-                  let responseBody: string | null = null
-
-                  if (traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)) {
-                    if (schemifyDocSpanPayload) {
-                      requestBody = requestBody && schemify(requestBody)
-                    }
-                  }
-
-                  if (
-                    traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
-                    traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
-                  ) {
-                    if (masking.maskDebugSpanPayload) {
-                      requestBody = requestBody && masking.maskBody?.(requestBody, span)
-                    }
-                  }
-
-
-                  if (typeof requestBody !== 'string') {
-                    requestBody = JSON.stringify(requestBody)
-                  }
-
-                  if (requestBody?.length) {
-                    span.setAttribute(ATTR_MULTIPLAYER_HTTP_REQUEST_BODY, requestBody)
-                  }
-
-                  if (response instanceof Response && response.body) {
-                    if (response.body instanceof ReadableStream) {
-                      const responseClone = response.clone()
-                      responseBody = await responseClone.text()
-                    } else {
-                      responseBody = JSON.stringify(response.body)
-                    }
-
-                    if (traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)) {
-                      if (schemifyDocSpanPayload && responseBody) {
-                        responseBody = schemify(responseBody)
-                      }
-                    }
-
-                    if (
-                      traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
-                      traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
-                    ) {
-                      if (masking.maskDebugSpanPayload) {
-                        responseBody = responseBody && masking.maskBody?.(responseBody, span)
-                      }
-                    }
-
-                    if (typeof responseBody !== 'string') {
-                      responseBody = JSON.stringify(responseBody)
-                    }
-
-                    if (responseBody?.length) {
-                      span.setAttribute(ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY, responseBody)
-                    }
-                  }
+                const payload = {
+                  requestBody,
+                  responseBody,
+                  requestHeaders,
+                  responseHeaders,
                 }
-
-                if (captureHeaders) {
-                  let requestHeaders: Record<string, string> = {}
-                  let responseHeaders: Record<string, string> = {}
-
-                  // Convert request headers to plain object
-                  if (request.headers) {
-                    if (request.headers instanceof Headers) {
-                      request.headers.forEach((value, key) => {
-                        requestHeaders[key] = value
-                      })
-                    } else if (typeof request.headers === 'object' && !Array.isArray(request.headers)) {
-                      for (const [key, value] of Object.entries(request.headers)) {
-                        if (typeof key === 'string' && typeof value === 'string') {
-                          requestHeaders[key] = value
-                        }
-                      }
-                    }
-                  }
-
-                  // Convert response headers to plain object
-                  if (response instanceof Response && response.headers) {
-                    if (response.headers instanceof Headers) {
-                      response.headers.forEach((value, key) => {
-                        responseHeaders[key] = value
-                      })
-                    } else if (typeof response.headers === 'object' && !Array.isArray(response.headers)) {
-                      for (const [key, value] of Object.entries(response.headers)) {
-                        if (typeof key === 'string' && typeof value === 'string') {
-                          responseHeaders[key] = value
-                        }
-                      }
-                    }
-                  }
-
-                  if (
-                    !masking.headersToInclude?.length
-                    && !masking.headersToExclude?.length
-                  ) {
-                    requestHeaders = JSON.parse(JSON.stringify(requestHeaders))
-                    responseHeaders = JSON.parse(JSON.stringify(responseHeaders))
-                  } else {
-                    if (masking.headersToInclude) {
-                      const _requestHeaders: Record<string, string> = {}
-                      const _responseHeaders: Record<string, string> = {}
-                      for (const headerName of masking.headersToInclude) {
-                        if (requestHeaders[headerName]) {
-                          _requestHeaders[headerName] = requestHeaders[headerName]
-                        }
-                        if (responseHeaders[headerName]) {
-                          _responseHeaders[headerName] = responseHeaders[headerName]
-                        }
-                      }
-                      requestHeaders = _requestHeaders
-                      responseHeaders = _responseHeaders
-                    }
-
-                    if (masking.headersToExclude?.length) {
-                      for (const headerName of masking.headersToExclude) {
-                        delete requestHeaders[headerName]
-                        delete responseHeaders[headerName]
-                      }
-                    }
-                  }
-
-                  const maskedRequestHeaders = masking.maskHeaders?.(requestHeaders, span) || requestHeaders
-                  const maskedResponseHeaders = masking.maskHeaders?.(responseHeaders, span) || responseHeaders
-
-                  const requestHeadersStr = typeof maskedRequestHeaders === 'string'
-                    ? maskedRequestHeaders
-                    : JSON.stringify(maskedRequestHeaders)
-
-                  const responseHeadersStr = typeof maskedResponseHeaders === 'string'
-                    ? maskedResponseHeaders
-                    : JSON.stringify(maskedResponseHeaders)
-
-                  if (requestHeadersStr?.length) {
-                    span.setAttribute(ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS, requestHeadersStr)
-                  }
-
-                  if (responseHeadersStr?.length) {
-                    span.setAttribute(ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS, responseHeadersStr)
-                  }
-                }
+                processHttpPayload(payload, this.config, span)
               } catch (error) {
                 // eslint-disable-next-line
                 console.error('[DEBUGGER_LIB] Failed to capture fetch payload', error)

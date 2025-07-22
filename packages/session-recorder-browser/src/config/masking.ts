@@ -20,9 +20,9 @@ export const getMaskingConfig = (masking?: MaskingConfig): MaskingConfig => {
     maskTextClass: masking.maskTextClass,
     maskTextSelector: masking.maskTextSelector,
     maskInputOptions: masking.maskInputOptions && typeof masking.maskInputOptions === 'object' ? masking.maskInputOptions : undefined,
-    maskInputFunction: isValidFunction(masking.maskInputFunction, undefined),
-    maskTextFunction: isValidFunction(masking.maskTextFunction, undefined),
-    maskConsoleEventFunction: isValidFunction(masking.maskConsoleEventFunction, undefined),
+    maskInput: isValidFunction(masking.maskInput, undefined),
+    maskText: isValidFunction(masking.maskText, undefined),
+    maskConsoleEvent: isValidFunction(masking.maskConsoleEvent, undefined),
 
     maskHeadersList,
     maskBodyFieldsList,

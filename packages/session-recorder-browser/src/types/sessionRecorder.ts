@@ -147,11 +147,11 @@ export interface MaskingConfig {
   /** Specific options for masking different types of inputs */
   maskInputOptions?: MaskInputOptions;
   /** Custom function for input masking */
-  maskInputFunction?: MaskInputFn;
+  maskInput?: MaskInputFn;
   /** Custom function for text masking */
-  maskTextFunction?: MaskTextFn;
+  maskText?: MaskTextFn;
   /** Custom function for console event masking */
-  maskConsoleEventFunction?: (payload: LogData) => LogData;
+  maskConsoleEvent?: (payload: LogData) => LogData;
 
 
   // Span masking
@@ -227,7 +227,7 @@ export interface TracerBrowserConfig extends BaseConfig {
 /**
  * Configuration interface for the Recorder class
  */
-export type RecorderMasking = Pick<MaskingConfig, 'maskAllInputs' | 'maskTextClass' | 'maskTextSelector' | 'maskInputOptions' | 'maskInputFunction' | 'maskTextFunction' | 'maskConsoleEventFunction'>;
+export type RecorderMasking = Pick<MaskingConfig, 'maskAllInputs' | 'maskTextClass' | 'maskTextSelector' | 'maskInputOptions' | 'maskInput' | 'maskText' | 'maskConsoleEvent'>;
 
 export interface RecorderConfig extends BaseConfig {
   /** Whether to enable canvas recording */
