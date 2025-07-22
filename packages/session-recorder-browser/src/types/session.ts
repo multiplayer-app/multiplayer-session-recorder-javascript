@@ -1,4 +1,4 @@
-import { DebugSessionType } from '@multiplayer-app/session-recorder-opentelemetry';
+import { SessionType } from '@multiplayer-app/session-recorder-opentelemetry';
 
 export interface IResourceAttributes {
   browserInfo?: string,
@@ -33,7 +33,7 @@ export interface IDebugSession {
   workspace: string
   project: string
   continuousDebugSession?: string
-  creationType: DebugSessionType
+  creationType: SessionType
   name: string
   startedAt: string | Date
   stoppedAt: string | Date

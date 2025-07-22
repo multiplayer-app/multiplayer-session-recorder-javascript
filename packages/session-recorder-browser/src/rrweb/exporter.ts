@@ -120,7 +120,7 @@ export class RrwebEventExporter {
       projectId: session.project,
       workspaceId: session.workspace,
       debugSessionId: this.sessionId,
-      debugSessionType: session.creationType,
+      sessionType: session.creationType,
     }
     if (this.usePostMessage) {
       this.sendViaPostMessage({ type: DEBUG_SESSION_SUBSCRIBE_EVENT, ...payload })

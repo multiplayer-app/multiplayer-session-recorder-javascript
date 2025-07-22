@@ -39,7 +39,7 @@ import messagingService from './services/messaging.service'
 import { ApiService, StartSessionRequest, StopSessionRequest } from './services/api.service'
 
 import './index.scss'
-import { DebugSessionType } from '@multiplayer-app/session-recorder-opentelemetry'
+import { SessionType } from '@multiplayer-app/session-recorder-opentelemetry'
 import { ContinuousDebuggingSaveButtonState } from './sessionWidget/buttonStateConfigs'
 import { ISessionRecorder } from './types'
 
@@ -75,8 +75,8 @@ export class SessionRecorder implements ISessionRecorder {
     setStoredItem(DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME, continuousDebugging)
   }
 
-  get debugSessionType(): DebugSessionType {
-    return this.continuousDebugging ? DebugSessionType.CONTINUOUS : DebugSessionType.PLAIN
+  get sessionType(): SessionType {
+    return this.continuousDebugging ? SessionType.CONTINUOUS : SessionType.PLAIN
   }
 
   private _sessionState: SessionState | null = null
@@ -254,9 +254,9 @@ export class SessionRecorder implements ISessionRecorder {
    * @param type - the type of session to start
    * @param session - the session to start
    */
-  public start(type: DebugSessionType, session?: IDebugSession): void {
+  public start(type: SessionType, session?: IDebugSession): void {
     this._checkOperation('start')
-    this.continuousDebugging = type === DebugSessionType.CONTINUOUS
+    this.continuousDebugging = type === SessionType.CONTINUOUS
     this._startRequestController = new AbortController()
     if (session) {
       this._setupSessionAndStart(session, true)
@@ -346,7 +346,7 @@ export class SessionRecorder implements ISessionRecorder {
     this._sessionWidget.on('toggle', (state: boolean, comment?: string) => {
       this.error = ''
       if (state) {
-        this.start(DebugSessionType.PLAIN)
+        this.start(SessionType.PLAIN)
       } else {
         this.stop(comment?.trim())
       }
@@ -365,7 +365,7 @@ export class SessionRecorder implements ISessionRecorder {
     this._sessionWidget.on('continuous-debugging', (enabled: boolean) => {
       this.error = ''
       if (enabled) {
-        this.start(DebugSessionType.CONTINUOUS)
+        this.start(SessionType.CONTINUOUS)
       } else {
         this.stop()
       }
@@ -429,9 +429,9 @@ export class SessionRecorder implements ISessionRecorder {
         : await this._apiService.startSession(request, signal)
 
       if (session) {
-        session.debugSessionType = this.continuousDebugging
-          ? DebugSessionType.CONTINUOUS
-          : DebugSessionType.PLAIN
+        session.sessionType = this.continuousDebugging
+          ? SessionType.CONTINUOUS
+          : SessionType.PLAIN
         this._setupSessionAndStart(session, false)
       }
     } catch (error: any) {
@@ -446,11 +446,11 @@ export class SessionRecorder implements ISessionRecorder {
    * Start tracing and recording for the session
    */
   private _start(): void {
-    const debugSessionType = this.continuousDebugging
-      ? DebugSessionType.CONTINUOUS
-      : DebugSessionType.PLAIN
-    this._tracer.start(this.sessionId, debugSessionType)
-    this._recorder.start(this.sessionId, debugSessionType)
+    const sessionType = this.continuousDebugging
+      ? SessionType.CONTINUOUS
+      : SessionType.PLAIN
+    this._tracer.start(this.sessionId, sessionType)
+    this._recorder.start(this.sessionId, sessionType)
     this.sessionState = SessionState.started
     if (this.session) {
       recorderEventBus.emit(DEBUG_SESSION_STARTED_EVENT, this.session)

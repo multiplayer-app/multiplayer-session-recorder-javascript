@@ -57,10 +57,10 @@ export class SessionRecorderIdGenerator extends RandomIdGenerator {
 
   setSessionId(
     debugSessionShortId: string,
-    debugSessionType: SessionType = SessionType.PLAIN,
+    sessionType: SessionType = SessionType.PLAIN,
   ) {
     this.sessionShortId = debugSessionShortId
-    this.sessionType = debugSessionType
+    this.sessionType = sessionType
   }
 
   _isDocTrace(traceId: string) {

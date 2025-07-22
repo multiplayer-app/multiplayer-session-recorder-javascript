@@ -210,7 +210,7 @@ The Session Recorder provides several methods for controlling session recording:
 ### Session Control
 
 - `SessionRecorder.start(type, session?)` - Start a new session with optional existing session
-  - `type`: `DebugSessionType.PLAIN` or `DebugSessionType.CONTINUOUS`
+  - `type`: `SessionType.PLAIN` or `SessionType.CONTINUOUS`
   - `session`: Optional existing session object
 - `SessionRecorder.stop(comment?)` - Stop the current session with optional comment
 - `SessionRecorder.pause()` - Pause the current session
@@ -226,7 +226,7 @@ The Session Recorder provides several methods for controlling session recording:
 
 - `SessionRecorder.sessionId` - Get current session ID (readonly)
 - `SessionRecorder.continuousDebugging` - Get/set continuous debugging state
-- `SessionRecorder.debugSessionType` - Get current debug session type (readonly)
+- `SessionRecorder.sessionType` - Get current debug session type (readonly)
 - `SessionRecorder.sessionState` - Get current session state (readonly)
 - `SessionRecorder.session` - Get current session object (readonly)
 - `SessionRecorder.sessionAttributes` - Get current session attributes (readonly)
@@ -235,8 +235,8 @@ The Session Recorder provides several methods for controlling session recording:
 
 ### Session Types
 
-- `DebugSessionType.PLAIN` - Standard session recording
-- `DebugSessionType.CONTINUOUS` - Continuous debugging session
+- `SessionType.PLAIN` - Standard session recording
+- `SessionType.CONTINUOUS` - Continuous debugging session
 
 ### Session States
 

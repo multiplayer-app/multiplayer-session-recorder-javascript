@@ -6,11 +6,11 @@ import * as SemanticAttributes from '@opentelemetry/semantic-conventions'
 import { registerInstrumentations } from '@opentelemetry/instrumentation'
 import { getWebAutoInstrumentations } from '@opentelemetry/auto-instrumentations-web'
 import {
-  DebugSessionType,
+  SessionType,
+  ATTR_MULTIPLAYER_SESSION_ID,
   SessionRecorderIdGenerator,
   MultiplayerHttpTraceExporterBrowser,
-  MultiplayerTraceIdRatioBasedSampler,
-  ATTR_MULTIPLAYER_DEBUG_SESSION,
+  SessionRecorderTraceIdRatioBasedSampler,
 } from '@multiplayer-app/session-recorder-opentelemetry'
 import { TracerBrowserConfig } from '../types'
 import { OTEL_MP_DOC_TRACE_RATIO } from '../config'
@@ -27,7 +27,7 @@ export class TracerBrowserSDK {
 
   private setSessionId(
     sessionId: string,
-    sessionType: DebugSessionType = DebugSessionType.PLAIN,
+    sessionType: SessionType = SessionType.PLAIN,
   ) {
     this.sessionId = sessionId
     this.idGenerator.setSessionId(sessionId, sessionType)
@@ -48,7 +48,7 @@ export class TracerBrowserSDK {
         [SemanticAttributes.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment,
       }),
       idGenerator: this.idGenerator,
-      sampler: new MultiplayerTraceIdRatioBasedSampler(this.config.sampleTraceRatio),
+      sampler: new SessionRecorderTraceIdRatioBasedSampler(this.config.sampleTraceRatio),
       spanProcessors: [
         this._getSpanSessionIdProcessor(),
       ],
@@ -169,7 +169,7 @@ export class TracerBrowserSDK {
 
   start(
     sessionId,
-    sessionType: DebugSessionType,
+    sessionType: SessionType,
   ): void {
     if (!this.tracerProvider) {
       throw new Error(
@@ -214,7 +214,7 @@ export class TracerBrowserSDK {
       shutdown: () => Promise.resolve(),
       onStart: (span) => {
         if (this.sessionId?.length) {
-          span.setAttribute(ATTR_MULTIPLAYER_DEBUG_SESSION, this.sessionId)
+          span.setAttribute(ATTR_MULTIPLAYER_SESSION_ID, this.sessionId)
         }
       },
     }

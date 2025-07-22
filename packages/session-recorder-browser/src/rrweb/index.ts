@@ -1,7 +1,7 @@
 import { pack } from '@rrweb/packer';
 import { pluginEvent } from "@rrweb/types";
 import { eventWithTime, record, recordOptions } from 'rrweb';
-import { DebugSessionType } from '@multiplayer-app/session-recorder-opentelemetry';
+import { SessionType } from '@multiplayer-app/session-recorder-opentelemetry';
 import { getRecordConsolePlugin, LogData } from '@rrweb/rrweb-plugin-console-record';
 
 
@@ -59,13 +59,13 @@ export class RecorderBrowserSDK {
    * Starts recording events for a given session ID.
    * @param sessionId - The ID of the session to record events for.
    */
-  start(sessionId: string | null, debugSessionType: DebugSessionType): void {
+  start(sessionId: string | null, sessionType: SessionType): void {
     if (!this.config) {
       throw new Error(
         'Configuration not initialized. Call init() before start().',
       )
     }
-    const restartTimeout = debugSessionType === DebugSessionType.CONTINUOUS ? CONTINUOUS_DEBUGGING_TIMEOUT : 0
+    const restartTimeout = sessionType === SessionType.CONTINUOUS ? CONTINUOUS_DEBUGGING_TIMEOUT : 0
     this.startedAt = new Date().toISOString()
 
     // Build masking configuration
@@ -118,7 +118,7 @@ export class RecorderBrowserSDK {
           const packedEvent = pack(event)
           this.stoppedAt = new Date(event.timestamp).toISOString()
           this.exporter.send({
-            debugSessionType,
+            sessionType,
             event: packedEvent,
             eventType: event.type,
             debugSessionId: sessionId,
@@ -130,7 +130,7 @@ export class RecorderBrowserSDK {
     })
     if (restartTimeout > 0) {
       this.restartTimeout = setTimeout(() => {
-        this.restart(sessionId, debugSessionType)
+        this.restart(sessionId, sessionType)
       }, restartTimeout)
     }
   }
@@ -138,9 +138,9 @@ export class RecorderBrowserSDK {
   /**
    * Restarts the recording of events.
    */
-  async restart(sessionId: string | null, debugSessionType: DebugSessionType): Promise<void> {
+  async restart(sessionId: string | null, sessionType: SessionType): Promise<void> {
     this.stopFn?.()
-    this.start(sessionId, debugSessionType)
+    this.start(sessionId, sessionType)
   }
   /**
    * Clears the restart timeout.

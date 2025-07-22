@@ -1,5 +1,5 @@
 
-import { DebugSessionType } from '@multiplayer-app/session-recorder-opentelemetry';
+import { SessionType } from '@multiplayer-app/session-recorder-opentelemetry';
 import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
 import type {
   MaskTextFn,
@@ -277,7 +277,7 @@ export interface ISessionRecorder {
   /**
    * The type of debug session (plain or continuous)
    */
-  readonly debugSessionType: DebugSessionType
+  readonly sessionType: SessionType
 
   /**
    * The current state of the session
@@ -321,7 +321,7 @@ export interface ISessionRecorder {
    * @param type - the type of session to start
    * @param session - optional existing session to start
    */
-  start(type: DebugSessionType, session?: IDebugSession): void
+  start(type: SessionType, session?: IDebugSession): void
 
   /**
    * Stop the current session with an optional comment
