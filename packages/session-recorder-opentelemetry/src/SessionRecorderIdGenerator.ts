@@ -56,10 +56,10 @@ export class SessionRecorderIdGenerator extends RandomIdGenerator {
   }
 
   setSessionId(
-    debugSessionShortId: string,
+    sessionShortId: string,
     sessionType: SessionType = SessionType.PLAIN,
   ) {
-    this.sessionShortId = debugSessionShortId
+    this.sessionShortId = sessionShortId
     this.sessionType = sessionType
   }
 
