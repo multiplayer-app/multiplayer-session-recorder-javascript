@@ -73,7 +73,7 @@ const externalBundle = {
     filename: 'index.js',
     path: resolve(__dirname, 'dist'),
     library: {
-      name: 'Debugger',
+      name: 'SessionRecorder',
       type: 'umd',
     },
     globalObject: 'this',
@@ -108,7 +108,7 @@ const browserBundle = {
     path: resolve(__dirname, 'dist/browser'),
     library: {
       type: 'umd',
-      name: 'Debugger',
+      name: 'SessionRecorder',
     },
     globalObject: 'this',
   },
