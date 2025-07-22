@@ -1,15 +1,15 @@
-# Multiplayer OpenTelemetry Core
+# Session Recorder OpenTelemetry Core
 
 This package provides implementations of the OpenTelemetry API for trace and metrics. It's intended for use both on the server and in the browser.
 
 ## Built-in Implementations
 
-- [Multiplayer OpenTelemetry Core](#multiplayer-opentelemetry-core)
+- [Session Recorder OpenTelemetry Core](#session-recorder-opentelemetry-core)
   - [Built-in Implementations](#built-in-implementations)
     - [Constants](#constants)
-    - [Multiplayer Http Instrumentation Hooks Node](#multiplayer-http-instrumentation-hooks-node)
-    - [Multiplayer Http Trace exporter web](#multiplayer-http-trace-exporter-web)
-    - [Multiplayer id generator](#multiplayer-id-generator)
+    - [Session Recorder Http Instrumentation Hooks Node](#session-recorder-http-instrumentation-hooks-node)
+    - [Session Recorder Http Trace exporter web](#session-recorder-http-trace-exporter-web)
+    - [Session Recorder id generator](#session-recorder-id-generator)
     - [Trace id ratio based sampler](#trace-id-ratio-based-sampler)
   - [License](#license)
 
@@ -27,18 +27,24 @@ import {
   ATTR_MULTIPLAYER_HTTP_REQUEST_BODY,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
   ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
-  ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS
-} from '@multiplayer-app/otlp-core'
+  ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
+  ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY_ENCODING,
+  ATTR_MULTIPLAYER_RPC_REQUEST_MESSAGE,
+  ATTR_MULTIPLAYER_RPC_RESPONSE_MESSAGE,
+  ATTR_MULTIPLAYER_GRPC_REQUEST_MESSAGE,
+  ATTR_MULTIPLAYER_GRPC_RESPONSE_MESSAGE,
+  ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY,
+} from '@multiplayer-app/session-recorder-opentelemetry'
 ```
 
-### Multiplayer Http Instrumentation Hooks Node
+### Session Recorder Http Instrumentation Hooks Node
 
-Multiplayer hooks for nodejs http instrumentation for injecting http request/response headers and payload to span.
+Session Recorder hooks for nodejs http instrumentation for injecting http request/response headers and payload to span.
 
 ```javascript
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
 import { type Instrumentation } from '@opentelemetry/instrumentation'
-import { MultiplayerHttpInstrumentationHooks } from '@multiplayer-app/otlp-core'
+import { MultiplayerHttpInstrumentationHooks } from '@multiplayer-app/session-recorder-opentelemetry'
 
 export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
   '@opentelemetry/instrumentation-http': {
@@ -84,11 +90,11 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
 )
 ```
 
-### Multiplayer Http Trace exporter web
+### Session Recorder Http Trace exporter web
 
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
-import { MultiplayerHttpTraceExporterBrowser } from '@multiplayer-app/otlp-core'
+import { MultiplayerHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-opentelemetry'
 
 const collectorOptions = {
   url: '<opentelemetry-collector-url>', // url is optional and can be omitted - default is https://api.multiplayer.app/v1/traces
@@ -114,7 +120,7 @@ const provider = new WebTracerProvider({
 provider.register()
 ```
 
-### Multiplayer id generator
+### Session Recorder id generator
 
 Multiplayer introduces 2 kind of traces: debug and doc, they have `d0cd0c` and `debdeb` prefixes in `traceId` accordingly.
 Multiplayer Id generator will set `debdeb` prefix to `traceId` if debug session id was set using method `setSessionId`.
@@ -122,7 +128,7 @@ Put documentation traces ratio to constructor, by default it's `0`.
 
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
-import { SessionRecorderIdGenerator, MultiplayerExporterBrowser } from '@multiplayer-app/otlp-core'
+import { SessionRecorderIdGenerator, SessionRecorderHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-opentelemetry'
 
 const idGenerator = new SessionRecorderIdGenerator({ autoDocTracesRatio: 0.05 })
 
@@ -131,7 +137,7 @@ const collectorOptions = {
   apiKey: '<multiplayer-otlp-key>' // api key from multiplayer integration
 }
 
-const exporter = new MultiplayerExporterBrowser(collectorOptions)
+const exporter = new SessionRecorderHttpTraceExporterBrowser(collectorOptions)
 const provider = new WebTracerProvider({
   spanProcessors: [
     new BatchSpanProcessor(exporter, {
@@ -153,18 +159,18 @@ idGenerator.setSessionId('<multiplayer-debug-session-short-id>')
 
 ### Trace id ratio based sampler
 
-Multiplayer sampler will always sample debug and document traces with appropriate prefixes, other traces will be sampled using ration provided to constructor.
+Session Recorder sampler will always sample debug and document traces with appropriate prefixes, other traces will be sampled using ration provided to constructor.
 
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
-import { MultiplayerTraceIdRatioBasedSampler, MultiplayerExporterBrowser } from '@multiplayer-app/otlp-core'
+import { SessionRecorderTraceIdRatioBasedSampler, SessionRecorderHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-opentelemetry'
 
 const collectorOptions = {
   url: '<opentelemetry-collector-url>', // url is optional and can be omitted - default is https://api.multiplayer.app/v1/traces
   apiKey: '<multiplayer-otlp-key>' // api key from multiplayer integration
 }
 
-const exporter = new MultiplayerExporterBrowser(collectorOptions)
+const exporter = new SessionRecorderHttpTraceExporterBrowser(collectorOptions)
 const provider = new WebTracerProvider({
   spanProcessors: [
     new BatchSpanProcessor(exporter, {
@@ -178,7 +184,7 @@ const provider = new WebTracerProvider({
       exportTimeoutMillis: 30000
     })
   ],
-  sampler: new MultiplayerTraceIdRatioBasedSampler(0.05)
+  sampler: new SessionRecorderTraceIdRatioBasedSampler(0.05)
 })
 ```
 

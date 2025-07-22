@@ -51,6 +51,3 @@ export const ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY = 'multiplayer.messaging.me
 export const MASK_PLACEHOLDER = '***MASKED***'
 
 export const MULTIPLAYER_DEBUG_REQUEST = 'multiplayer-debug-request'
-
-export let MULTIPLAYER_SHORT_DEBUG_SESSION_ID = ''
-export let MULTIPLAYER_DEBUG_SESSION_TYPE = ''

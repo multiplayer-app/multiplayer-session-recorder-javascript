@@ -15,9 +15,9 @@ The Multiplayer **Session Recorder** is a powerful tool that offers deep session
 You can install the Multiplayer Session Recorder using npm or yarn:
 
 ```bash
-npm install @multiplayer-app/debugger-node
+npm install @multiplayer-app/session-recorder-node
 # or
-yarn add @multiplayer-app/debugger-node
+yarn add @multiplayer-app/session-recorder-node
 ```
 
 ### Basic Setup
@@ -27,7 +27,7 @@ To initialize the Multiplayer Session Recorder in your application, follow the s
 #### Import the Session Recorder
 
 ```javascript
-import SessionRecorder from '@multiplayer-app/debugger-node'
+import SessionRecorder from '@multiplayer-app/session-recorder-node'
 // Multiplayer trace id generator which is used during opentelemetry initialisation
 import { idGenerator } from './opentelemetry'
 ```
@@ -61,7 +61,7 @@ This library relies on the following packages:
 ## Example Usage
 
 ```javascript
-import { debugger } from '@multiplayer-app/debugger-node'
+import SessionRecorder from '@multiplayer-app/session-recorder-node'
 import { SessionType } from '@multiplayer-app/session-recorder-opentelemetry'
 // Multiplayer trace id generator which is used during opentelemetry initialisation
 import { idGenerator } from './opentelemetry'
@@ -82,7 +82,7 @@ SessionRecorder.init(
 // ...
 //
 
-  await debugger.start(
+  await SessionRecorder.start(
     SessionType.PLAIN,
     {
       name: 'This is test session',
@@ -95,6 +95,6 @@ SessionRecorder.init(
 
   // do something here
 
-  await debugger.stop()
+  await SessionRecorder.stop()
 
 ```
