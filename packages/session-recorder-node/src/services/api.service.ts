@@ -1,5 +1,5 @@
 import { MULTIPLAYER_BASE_API_URL } from '../config'
-import { IDebugSession } from '../types'
+import { ISession } from '../types'
 
 export interface ApiServiceConfig {
   apiKey?: string
@@ -54,10 +54,10 @@ export class ApiService {
    * @param requestBody - Session start request data
    * @param signal - Optional AbortSignal for request cancellation
    */
-  async startDebugSession(
+  async startSession(
     requestBody: StartSessionRequest,
     signal?: AbortSignal,
-  ): Promise<IDebugSession> {
+  ): Promise<ISession> {
     return this.makeRequest(
       '/debug-sessions/start',
       'POST',
@@ -83,7 +83,7 @@ export class ApiService {
   }
 
   /**
-   * Cancel an active debug session
+   * Cancel an active session
    * @param sessionId - ID of the session to cancel
    */
   async cancelSession(sessionId: string): Promise<any> {
@@ -94,11 +94,11 @@ export class ApiService {
   }
 
   /**
-   * Start a new debug session
+   * Start a new session
    * @param requestBody - Session start request data
    * @param signal - Optional AbortSignal for request cancellation
    */
-  async startContinuousDebugSession(
+  async startContinuousSession(
     requestBody: StartSessionRequest,
     signal?: AbortSignal,
   ): Promise<any> {
@@ -111,12 +111,12 @@ export class ApiService {
   }
 
   /**
-   * Save a continuous debug session
+   * Save a continuous session
    * @param sessionId - ID of the session to save
    * @param requestBody - Session save request data
    * @param signal - Optional AbortSignal for request cancellation
    */
-  async saveContinuousDebugSession(
+  async saveContinuousSession(
     sessionId: string,
     requestBody: StartSessionRequest,
     signal?: AbortSignal,
@@ -133,7 +133,7 @@ export class ApiService {
    * Cancel an active debug session
    * @param sessionId - ID of the session to cancel
    */
-  async stopContinuousDebugSession(sessionId: string): Promise<any> {
+  async stopContinuousSession(sessionId: string): Promise<any> {
     return this.makeRequest(
       `/continuous-debug-sessions/${sessionId}/cancel`,
       'DELETE',
@@ -143,7 +143,7 @@ export class ApiService {
   /**
    * Check debug session should be started remotely
    */
-  async checkRemoteDebugSession(
+  async checkRemoteSession(
     requestBody: StartSessionRequest,
     signal?: AbortSignal,
   ): Promise<{ shouldStart: boolean }> {
@@ -156,7 +156,7 @@ export class ApiService {
   }
 
   /**
-   * Make a request to the session debugger API
+   * Make a request to the session API
    * @param path - API endpoint path (relative to the base URL)
    * @param method - HTTP method (GET, POST, PATCH, etc.)
    * @param body - request payload

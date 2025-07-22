@@ -1,4 +1,4 @@
-export enum DebugSessionType {
+export enum SessionType {
   CONTINUOUS = 'CONTINUOUS',
   PLAIN = 'MANUAL'
 }

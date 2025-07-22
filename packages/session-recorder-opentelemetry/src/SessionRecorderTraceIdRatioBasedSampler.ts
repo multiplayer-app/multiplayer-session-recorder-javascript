@@ -6,7 +6,7 @@ import {
 } from '@opentelemetry/sdk-trace-base'
 import { MULTIPLAYER_TRACE_DEBUG_PREFIX } from './constants.base'
 
-export class MultiplayerTraceIdRatioBasedSampler implements Sampler {
+export class SessionRecorderTraceIdRatioBasedSampler implements Sampler {
   private _upperBound: number
 
   constructor(private readonly _ratio: number = 0) {

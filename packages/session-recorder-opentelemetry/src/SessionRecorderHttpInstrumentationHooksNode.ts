@@ -130,7 +130,7 @@ const setDefaultOptions = (
     }
 }
 
-export const MultiplayerHttpInstrumentationHooksNode = {
+export const SessionRecorderHttpInstrumentationHooksNode = {
   responseHook: (options: HttpResponseHookOptions = {}) =>
     (span: Span, response: IncomingMessage | ServerResponse) => {
       try {

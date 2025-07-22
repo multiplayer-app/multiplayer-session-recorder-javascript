@@ -7,7 +7,7 @@ import { registerInstrumentations } from '@opentelemetry/instrumentation'
 import { getWebAutoInstrumentations } from '@opentelemetry/auto-instrumentations-web'
 import {
   DebugSessionType,
-  MultiplayerIdGenerator,
+  SessionRecorderIdGenerator,
   MultiplayerHttpTraceExporterBrowser,
   MultiplayerTraceIdRatioBasedSampler,
   ATTR_MULTIPLAYER_DEBUG_SESSION,
@@ -37,7 +37,7 @@ export class TracerBrowserSDK {
     this.config = options
     const { application, version, environment } = this.config
 
-    this.idGenerator = new MultiplayerIdGenerator({
+    this.idGenerator = new SessionRecorderIdGenerator({
       autoDocTracesRatio: options.docTraceRatio || OTEL_MP_DOC_TRACE_RATIO,
     })
 

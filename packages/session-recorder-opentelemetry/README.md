@@ -122,9 +122,9 @@ Put documentation traces ratio to constructor, by default it's `0`.
 
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
-import { MultiplayerIdGenerator, MultiplayerExporterBrowser } from '@multiplayer-app/otlp-core'
+import { SessionRecorderIdGenerator, MultiplayerExporterBrowser } from '@multiplayer-app/otlp-core'
 
-const idGenerator = new MultiplayerIdGenerator({ autoDocTracesRatio: 0.05 })
+const idGenerator = new SessionRecorderIdGenerator({ autoDocTracesRatio: 0.05 })
 
 const collectorOptions = {
   url: '<opentelemetry-collector-url>', // url is optional and can be omitted - default is https://api.multiplayer.app/v1/traces

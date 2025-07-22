@@ -12,11 +12,11 @@ export const MULTIPLAYER_OTEL_DEFAULT_LOGS_EXPORTER_URL = 'https://api.multiplay
 
 export const MULTIPLAYER_ATTRIBUTE_PREFIX = 'multiplayer.'
 
-export const ATTR_MULTIPLAYER_WORKSPACE_ID = 'multiplayer.workspace._id'
+export const ATTR_MULTIPLAYER_WORKSPACE_ID = 'multiplayer.workspace.id'
 
-export const ATTR_MULTIPLAYER_PROJECT_ID = 'multiplayer.project._id'
+export const ATTR_MULTIPLAYER_PROJECT_ID = 'multiplayer.project.id'
 
-export const ATTR_MULTIPLAYER_PLATFORM_ID = 'multiplayer.platform._id'
+export const ATTR_MULTIPLAYER_PLATFORM_ID = 'multiplayer.platform.id'
 
 export const ATTR_MULTIPLAYER_CONTINUOUS_DEBUG_AUTO_SAVE = 'multiplayer.debugger.save'
 
@@ -24,14 +24,9 @@ export const ATTR_MULTIPLAYER_PLATFORM_NAME = 'multiplayer.platform.name'
 
 export const ATTR_MULTIPLAYER_CLIENT_ID = 'multiplayer.client.id'
 
-export const ATTR_MULTIPLAYER_INTEGRATION_ID = 'multiplayer.integration._id'
+export const ATTR_MULTIPLAYER_INTEGRATION_ID = 'multiplayer.integration.id'
 
-export const ATTR_MULTIPLAYER_DEBUG_SESSION_ID = 'multiplayer.debug_session._id'
-
-/**
- * @deprecated
- */
-export const ATTR_MULTIPLAYER_DEBUG_SESSION = 'multiplayer.debug_session._id'
+export const ATTR_MULTIPLAYER_SESSION_ID = 'multiplayer.session.id'
 
 export const ATTR_MULTIPLAYER_HTTP_REQUEST_BODY = 'multiplayer.http.request.body'
 
@@ -42,6 +37,16 @@ export const ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS = 'multiplayer.http.request.h
 export const ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS = 'multiplayer.http.response.headers'
 
 export const ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY_ENCODING = 'multiplayer.http.response.body.encoding'
+
+export const ATTR_MULTIPLAYER_RPC_REQUEST_MESSAGE = 'multiplayer.rpc.request.message'
+
+export const ATTR_MULTIPLAYER_RPC_RESPONSE_MESSAGE = 'multiplayer.rpc.response.message'
+
+export const ATTR_MULTIPLAYER_GRPC_REQUEST_MESSAGE = 'multiplayer.rpc.grpc.request.message'
+
+export const ATTR_MULTIPLAYER_GRPC_RESPONSE_MESSAGE = 'multiplayer.rpc.grpc.response.message'
+
+export const ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY = 'multiplayer.messaging.message.body'
 
 export const MASK_PLACEHOLDER = '***MASKED***'
 

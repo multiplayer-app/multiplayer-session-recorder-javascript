@@ -4,10 +4,10 @@ import {
   OTLPExporterBase,
 } from '@opentelemetry/otlp-exporter-base'
 import { createLegacyOtlpBrowserExportDelegate } from '@opentelemetry/otlp-exporter-base/browser-http'
-import { MultiplayerJsonTraceSerializer } from './MultiplayerJsonTraceSerializer'
+import { SessionRecorderJsonTraceSerializer } from './SessionRecorderJsonTraceSerializer'
 import { MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_URL } from './constants.base'
 
-interface MultiplayerExporterBrowserConfig
+interface SessionRecorderExporterBrowserConfig
   extends OTLPExporterConfigBase {
   apiKey?: string
   usePostMessageFallback?: boolean
@@ -18,16 +18,16 @@ interface MultiplayerExporterBrowserConfig
 /**
  * Trace Exporters for Web with postMessage fallback
  */
-export class MultiplayerHttpTraceExporterBrowser
+export class SessionRecorderHttpTraceExporterBrowser
   extends OTLPExporterBase<ReadableSpan[]>
   implements SpanExporter {
 
   private usePostMessage: boolean = false
   private readonly postMessageType: string
   private readonly postMessageTargetOrigin: string
-  private readonly config: MultiplayerExporterBrowserConfig
+  private readonly config: SessionRecorderExporterBrowserConfig
 
-  constructor(config: MultiplayerExporterBrowserConfig = {}) {
+  constructor(config: SessionRecorderExporterBrowserConfig = {}) {
     const _config = {
       ...config,
       url: config.url || MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_URL,
@@ -42,7 +42,7 @@ export class MultiplayerHttpTraceExporterBrowser
     super(
       createLegacyOtlpBrowserExportDelegate(
         _config,
-        MultiplayerJsonTraceSerializer,
+        SessionRecorderJsonTraceSerializer,
         'v1/traces',
         { 'Content-Type': 'application/json' },
       ),

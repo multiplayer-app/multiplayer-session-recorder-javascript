@@ -1,4 +1,4 @@
-export interface IDebugSession {
+export interface ISession {
   _id?: string
   shortId?: string
   name?: string

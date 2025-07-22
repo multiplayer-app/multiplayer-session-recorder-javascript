@@ -1,47 +1,47 @@
 import {
-  DebugSessionType,
-  MultiplayerIdGenerator,
-  MultiplayerHelpers,
+  SessionType,
+  SessionRecorderIdGenerator,
+  SessionRecorderHelpers,
   MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH
 } from '@multiplayer-app/session-recorder-opentelemetry'
 import { ApiService } from './services/api.service'
-import { IDebugSession } from './types'
+import { ISession } from './types'
 import { getFormattedDate } from './helper'
 
 export class SessionRecorder {
   private _isInitialized = false
 
-  private _shortDebugSessionId: string | boolean = false
+  private _shortSessionId: string | boolean = false
 
-  private _traceIdGenerator: MultiplayerIdGenerator | undefined
-  private _debugSessionType: DebugSessionType = DebugSessionType.PLAIN
-  private _debugSessionState: 'STARTED' | 'STOPPED' | 'PAUSED' = 'STOPPED'
+  private _traceIdGenerator: SessionRecorderIdGenerator | undefined
+  private _sessionType: SessionType = SessionType.PLAIN
+  private _sessionState: 'STARTED' | 'STOPPED' | 'PAUSED' = 'STOPPED'
   private _apiService = new ApiService()
-  private _debugSessionShortIdGenerator = MultiplayerHelpers.getIdGenerator(MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH)
+  private _sessionShortIdGenerator = SessionRecorderHelpers.getIdGenerator(MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH)
 
   private _resourceAttributes: object = {}
 
   /**
-   * Initialize debugger with default or custom configurations
+   * Initialize session recorder with default or custom configurations
    */
   constructor() { }
 
   /**
-   * @description Initialize the session debugger
+   * @description Initialize the session recorder
    * @param apiKey - multiplayer otlp key
    * @param traceIdGenerator - multiplayer compatible trace id generator
    */
   public init(config: {
     apiKey: string,
-    traceIdGenerator: MultiplayerIdGenerator,
+    traceIdGenerator: SessionRecorderIdGenerator,
     resourceAttributes?: object,
-    generateDebugSessionShortIdLocally?: boolean | (() => string)
+    generateSessionShortIdLocally?: boolean | (() => string)
   }): void {
     this._resourceAttributes = config.resourceAttributes || {}
     this._isInitialized = true
 
-    if (typeof config.generateDebugSessionShortIdLocally === 'function') {
-      this._debugSessionShortIdGenerator = config.generateDebugSessionShortIdLocally
+    if (typeof config.generateSessionShortIdLocally === 'function') {
+      this._sessionShortIdGenerator = config.generateSessionShortIdLocally
     }
 
     if (!config?.apiKey?.length) {
@@ -58,13 +58,13 @@ export class SessionRecorder {
 
   /**
    * @description Start a new session
-   * @param {DebugSessionType} debugSessionType - the type of session to start
-   * @param {IDebugSession} [debugSessionPayload] - debug session metadata
+   * @param {SessionType} SessionType - the type of session to start
+   * @param {ISession} [sessionPayload] - session metadata
    * @returns {Promise<void>}
    */
   public async start(
-    debugSessionType: DebugSessionType,
-    debugSessionPayload?: Omit<IDebugSession, '_id'>
+    sessionType: SessionType,
+    sessionPayload?: Omit<ISession, '_id'>
   ): Promise<void> {
     if (!this._isInitialized) {
       throw new Error(
@@ -73,54 +73,54 @@ export class SessionRecorder {
     }
 
     if (
-      debugSessionPayload?.shortId
-      && debugSessionPayload?.shortId?.length !== MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH
+      sessionPayload?.shortId
+      && sessionPayload?.shortId?.length !== MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH
     ) {
-      throw new Error('Invalid short debug-session id')
+      throw new Error('Invalid short session id')
     }
 
-    debugSessionPayload = debugSessionPayload || {}
+    sessionPayload = sessionPayload || {}
 
-    if (this._debugSessionState !== 'STOPPED') {
-      throw new Error('Debug session should be ended before starting new one.')
+    if (this._sessionState !== 'STOPPED') {
+      throw new Error('Session should be ended before starting new one.')
     }
 
-    this._debugSessionType = debugSessionType
+    this._sessionType = sessionType
 
-    let debugSession: IDebugSession
+    let session: ISession
 
-    debugSessionPayload.name = debugSessionPayload.name
-      ? debugSessionPayload.name
+    sessionPayload.name = sessionPayload.name
+      ? sessionPayload.name
       : `Session on ${getFormattedDate(Date.now())}`
 
-    debugSessionPayload.resourceAttributes = {
+    sessionPayload.resourceAttributes = {
       ...this._resourceAttributes,
-      ...debugSessionPayload.resourceAttributes
+      ...sessionPayload.resourceAttributes
     }
 
-    if (debugSessionType === DebugSessionType.CONTINUOUS) {
-      debugSession = await this._apiService.startContinuousDebugSession(debugSessionPayload)
+    if (this._sessionType === SessionType.CONTINUOUS) {
+      session = await this._apiService.startContinuousSession(sessionPayload)
     } else {
-      debugSession = await this._apiService.startDebugSession(debugSessionPayload)
+      session = await this._apiService.startSession(sessionPayload)
     }
 
-    this._shortDebugSessionId = debugSession.shortId as string
+    this._shortSessionId = session.shortId as string
 
-    (this._traceIdGenerator as MultiplayerIdGenerator).setSessionId(
-      this._shortDebugSessionId,
-      debugSessionType
+    (this._traceIdGenerator as SessionRecorderIdGenerator).setSessionId(
+      this._shortSessionId,
+      this._sessionType
     )
 
-    this._debugSessionState = 'STARTED'
+    this._sessionState = 'STARTED'
   }
 
   /**
-   * @description Save the continuous debugging session
-   * @param {IDebugSession} [debugSessionData]
+   * @description Save the continuous session
+   * @param {ISession} [sessionData]
    * @returns {Promise<void>}
    */
   public async save(
-    debugSessionData?: IDebugSession
+    sessionData?: ISession
   ): Promise<void> {
     try {
       if (!this._isInitialized) {
@@ -130,22 +130,22 @@ export class SessionRecorder {
       }
 
       if (
-        this._debugSessionState === 'STOPPED'
-        || typeof this._shortDebugSessionId !== 'string'
+        this._sessionState === 'STOPPED'
+        || typeof this._shortSessionId !== 'string'
       ) {
-        throw new Error('Debug session should be active or paused')
+        throw new Error('Session should be active or paused')
       }
 
-      if (this._debugSessionType !== DebugSessionType.CONTINUOUS) {
-        throw new Error('Invalid debug session type')
+      if (this._sessionType !== SessionType.CONTINUOUS) {
+        throw new Error('Invalid session type')
       }
 
-      await this._apiService.saveContinuousDebugSession(
-        this._shortDebugSessionId,
+      await this._apiService.saveContinuousSession(
+        this._shortSessionId,
         {
-          ...(debugSessionData || {}),
-          name: debugSessionData?.name
-            ? debugSessionData.name
+          ...(sessionData || {}),
+          name: sessionData?.name
+            ? sessionData.name
             : `Session on ${getFormattedDate(Date.now())}`
         },
       )
@@ -156,11 +156,11 @@ export class SessionRecorder {
 
   /**
    * @description Stop the current session with an optional comment
-   * @param {IDebugSession} [debugSessionData] - user-provided comment to include in session metadata
+   * @param {ISession} [sessionData] - user-provided comment to include in session metadata
    * @returns {Promise<void>}
    */
   public async stop(
-    debugSessionData?: IDebugSession
+    sessionData?: ISession
   ): Promise<void> {
     try {
       if (!this._isInitialized) {
@@ -170,27 +170,27 @@ export class SessionRecorder {
       }
 
       if (
-        this._debugSessionState === 'STOPPED'
-        || typeof this._shortDebugSessionId !== 'string'
+        this._sessionState === 'STOPPED'
+        || typeof this._shortSessionId !== 'string'
       ) {
-        throw new Error('Debug session should be active or paused')
+        throw new Error('Session should be active or paused')
       }
 
-      if (this._debugSessionType !== DebugSessionType.PLAIN) {
-        throw new Error('Invalid debug-session type')
+      if (this._sessionType !== SessionType.PLAIN) {
+        throw new Error('Invalid session type')
       }
 
       await this._apiService.stopSession(
-        this._shortDebugSessionId, // use short debug session id
-        debugSessionData || {},
+        this._shortSessionId,
+        sessionData || {},
       )
     } catch (e) {
       throw e
     } finally {
-      (this._traceIdGenerator as MultiplayerIdGenerator).setSessionId('')
+      (this._traceIdGenerator as SessionRecorderIdGenerator).setSessionId('')
 
-      this._shortDebugSessionId = false
-      this._debugSessionState = 'STOPPED'
+      this._shortSessionId = false
+      this._sessionState = 'STOPPED'
     }
   }
 
@@ -207,34 +207,34 @@ export class SessionRecorder {
       }
 
       if (
-        this._debugSessionState === 'STOPPED'
-        || typeof this._shortDebugSessionId !== 'string'
+        this._sessionState === 'STOPPED'
+        || typeof this._shortSessionId !== 'string'
       ) {
-        throw new Error('Debug session should be active or paused')
+        throw new Error('Session should be active or paused')
       }
 
-      if (this._debugSessionType === DebugSessionType.CONTINUOUS) {
-        await this._apiService.stopContinuousDebugSession(this._shortDebugSessionId)
-      } else if (this._debugSessionType === DebugSessionType.PLAIN) {
-        await this._apiService.cancelSession(this._shortDebugSessionId)
+      if (this._sessionType === SessionType.CONTINUOUS) {
+        await this._apiService.stopContinuousSession(this._shortSessionId)
+      } else if (this._sessionType === SessionType.PLAIN) {
+        await this._apiService.cancelSession(this._shortSessionId)
       }
     } catch (e) {
       throw e
     } finally {
-      (this._traceIdGenerator as MultiplayerIdGenerator).setSessionId('')
+      (this._traceIdGenerator as SessionRecorderIdGenerator).setSessionId('')
 
-      this._shortDebugSessionId = false
-      this._debugSessionState = 'STOPPED'
+      this._shortSessionId = false
+      this._sessionState = 'STOPPED'
     }
   }
 
   /**
-   * @description Check if debug-session should be started/stopped automatically
-   * @param {IDebugSession} [debugSessionPayload]
+   * @description Check if session should be started/stopped automatically
+   * @param {ISession} [sessionPayload]
    * @returns {Promise<void>}
    */
-  public async autoStartRemoteContinuousDebugSession(
-    debugSessionPayload?: Omit<IDebugSession, '_id' | 'shortId'>
+  public async autoStartRemoteContinuousSession(
+    sessionPayload?: Omit<ISession, '_id' | 'shortId'>
   ): Promise<void> {
     if (!this._isInitialized) {
       throw new Error(
@@ -242,43 +242,43 @@ export class SessionRecorder {
       )
     }
 
-    debugSessionPayload = debugSessionPayload || {}
+    sessionPayload = sessionPayload || {}
 
-    debugSessionPayload.resourceAttributes = {
-      ...(debugSessionPayload.resourceAttributes || {}),
+    sessionPayload.resourceAttributes = {
+      ...(sessionPayload.resourceAttributes || {}),
       ...this._resourceAttributes,
     }
 
-    const { shouldStart } = await this._apiService.checkRemoteDebugSession(debugSessionPayload)
+    const { shouldStart } = await this._apiService.checkRemoteSession(sessionPayload)
 
-    if (this._debugSessionState !== 'STOPPED') {
-      throw new Error('Debug session should be ended before starting new one.')
+    if (this._sessionState !== 'STOPPED') {
+      throw new Error('Session should be ended before starting new one.')
     }
 
     if (!shouldStart) {
       return
     }
 
-    this._debugSessionType = DebugSessionType.CONTINUOUS
-    this._shortDebugSessionId = this._debugSessionShortIdGenerator()
+    this._sessionType = SessionType.CONTINUOUS
+    this._shortSessionId = this._sessionShortIdGenerator()
 
-    debugSessionPayload.name = debugSessionPayload.name
-      ? debugSessionPayload.name
+    sessionPayload.name = sessionPayload.name
+      ? sessionPayload.name
       : `Session on ${getFormattedDate(Date.now())}`
 
-    debugSessionPayload.resourceAttributes = {
+    sessionPayload.resourceAttributes = {
       ...this._resourceAttributes,
-      ...debugSessionPayload.resourceAttributes
+      ...sessionPayload.resourceAttributes
     }
 
-    const debugSession = await this._apiService.startContinuousDebugSession(debugSessionPayload)
-    this._shortDebugSessionId = debugSession.shortId as string
+    const session = await this._apiService.startContinuousSession(sessionPayload)
+    this._shortSessionId = session.shortId as string
 
-    (this._traceIdGenerator as MultiplayerIdGenerator).setSessionId(
-      this._shortDebugSessionId,
-      this._debugSessionType
+    (this._traceIdGenerator as SessionRecorderIdGenerator).setSessionId(
+      this._shortSessionId,
+      this._sessionType
     )
 
-    this._debugSessionState = 'STARTED'
+    this._sessionState = 'STARTED'
   }
 }

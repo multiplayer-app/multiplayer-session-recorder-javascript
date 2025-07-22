@@ -1,7 +1,7 @@
-import { MultiplayerHelpers } from '@multiplayer-app/session-recorder-opentelemetry'
+import { SessionRecorderHelpers } from '@multiplayer-app/session-recorder-opentelemetry'
 import { MaskingConfig, SessionRecorderConfigs, WidgetButtonPlacement } from '../types'
 import { MULTIPLAYER_BASE_API_URL, OTEL_MP_DOC_TRACE_RATIO, OTEL_MP_SAMPLE_TRACE_RATIO, DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE } from './constants'
-const { mask, sensitiveFields, sensitiveHeaders } = MultiplayerHelpers
+const { mask, sensitiveFields, sensitiveHeaders } = SessionRecorderHelpers
 
 export const DEFAULT_MASKING_CONFIG: MaskingConfig = {
   maskAllInputs: true,

@@ -10,7 +10,7 @@ import {
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
 } from './constants.base'
 
-export const MultiplayerJsonTraceSerializer: ISerializer<
+export const SessionRecorderJsonTraceSerializer: ISerializer<
 ReadableSpan[],
 IExportTraceServiceResponse
 > = {
