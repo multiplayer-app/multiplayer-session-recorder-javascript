@@ -6,7 +6,7 @@ import {
   isString,
 } from '../utils/type-utils'
 import { formDataToQuery } from '../utils/request-utils'
-import { DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE } from '../constants'
+import { DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE } from '../config'
 
 let recordRequestHeaders = true
 let recordResponseHeaders = true
@@ -57,10 +57,10 @@ function _tryReadXHRBody({
   return `[XHR] Cannot read body of type ${toString.call(body)}`
 }
 
-(function(xhr) {
+(function (xhr) {
   const originalOpen = XMLHttpRequest.prototype.open
 
-  xhr.open = function(
+  xhr.open = function (
     method: string,
     url: string | URL,
     async = true,

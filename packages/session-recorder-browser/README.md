@@ -142,7 +142,7 @@ SessionRecorder.init({
       return '***MASKED***'
     },
     maskDebugSpanPayload: true, // Mask debug span payload in traces
-    maskDebugSpanPayloadFn: (payload) => {
+    maskBody: (payload, span) => {
       // Custom trace payload masking
       if (payload && typeof payload === 'object') {
         const maskedPayload = { ...payload }
@@ -156,6 +156,21 @@ SessionRecorder.init({
         return maskedPayload
       }
       return payload
+    },
+    maskHeaders: (headers, span) => {
+      // Custom headers masking
+      if (headers && typeof headers === 'object') {
+        const maskedHeaders = { ...headers }
+        // Mask sensitive headers
+        if (maskedHeaders.authorization) {
+          maskedHeaders.authorization = '***MASKED***'
+        }
+        if (maskedHeaders.cookie) {
+          maskedHeaders.cookie = '***MASKED***'
+        }
+        return maskedHeaders
+      }
+      return headers
     }
   }
 })
@@ -278,8 +293,8 @@ masking: {
     return '***MASKED***';
   },
 
-  // Custom function for masking debug span payload in traces
-  maskDebugSpanPayloadFn: (payload) => {
+  // Custom function for masking body in traces
+  maskBody: (payload, span) => {
     // Custom logic to mask sensitive data in trace payloads
     if (payload && typeof payload === 'object') {
       const maskedPayload = { ...payload };
@@ -293,6 +308,22 @@ masking: {
       return maskedPayload;
     }
     return payload;
+  },
+  // Custom function for masking headers in traces
+  maskHeaders: (headers, span) => {
+    // Custom logic to mask sensitive headers
+    if (headers && typeof headers === 'object') {
+      const maskedHeaders = { ...headers };
+      // Mask sensitive headers
+      if (maskedHeaders.authorization) {
+        maskedHeaders.authorization = '***MASKED***';
+      }
+      if (maskedHeaders.cookie) {
+        maskedHeaders.cookie = '***MASKED***';
+      }
+      return maskedHeaders;
+    }
+    return headers;
   },
 }
 ```
@@ -332,7 +363,7 @@ Debugger.init({
       return '***MASKED***'
     },
     maskDebugSpanPayload: true, // Mask debug span payload in traces
-    maskDebugSpanPayloadFn: (payload) => {
+    maskBody: (payload, span) => {
       // Custom trace payload masking
       if (payload && typeof payload === 'object') {
         const maskedPayload = { ...payload }
@@ -346,6 +377,21 @@ Debugger.init({
         return maskedPayload
       }
       return payload
+    },
+    maskHeaders: (headers, span) => {
+      // Custom headers masking
+      if (headers && typeof headers === 'object') {
+        const maskedHeaders = { ...headers }
+        // Mask sensitive headers
+        if (maskedHeaders.authorization) {
+          maskedHeaders.authorization = '***MASKED***'
+        }
+        if (maskedHeaders.cookie) {
+          maskedHeaders.cookie = '***MASKED***'
+        }
+        return maskedHeaders
+      }
+      return headers
     }
   }
 })

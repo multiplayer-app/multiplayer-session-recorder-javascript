@@ -160,9 +160,9 @@ export interface MaskingConfig {
   */
   maskDebugSpanPayload?: boolean;
   /** Custom function for masking body in traces */
-  maskBodyFunction?: (payload: any, span: any) => any;
+  maskBody?: (payload: any, span: any) => any;
   /** Custom function for masking headers in traces */
-  maskHeadersFunction?: (headers: any, span: any) => any;
+  maskHeaders?: (headers: any, span: any) => any;
 
 
   /** List of body fields to mask in traces */
@@ -191,7 +191,7 @@ export interface BaseConfig {
 /**
  * Configuration interface for the Tracer class
  */
-export type TracerBrowserMasking = Pick<MaskingConfig, 'maskDebugSpanPayload' | 'maskBodyFunction' | 'maskHeadersFunction' | 'maskBodyFieldsList' | 'maskHeadersList' | 'headersToInclude' | 'headersToExclude'>;
+export type TracerBrowserMasking = Pick<MaskingConfig, 'maskDebugSpanPayload' | 'maskBody' | 'maskHeaders' | 'maskBodyFieldsList' | 'maskHeadersList' | 'headersToInclude' | 'headersToExclude'>;
 
 export interface TracerBrowserConfig extends BaseConfig {
   /** Application name */

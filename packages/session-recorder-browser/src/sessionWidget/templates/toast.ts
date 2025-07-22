@@ -1,5 +1,5 @@
-import { ToastType, ToastConfig } from 'src/types'
 import { CheckSuccessIcon, ErrorIcon } from './icons'
+import { ToastType, ToastConfig } from '../../types'
 
 
 

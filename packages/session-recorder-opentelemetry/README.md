@@ -49,17 +49,16 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
       captureHeaders: true,
       captureBody: true,
       maskDebugSpanPayload: true,
-      maskBodyFunction: (data, span) => {
+      maskBody: (data, span) => {
         // mask logic here
         return data
       },
-      maskHeadersFunction: (data, span) => {
+      maskHeaders: (data, span) => {
         // mask logic here
         return data
       },
       maskBodyFieldsList: ['password', 'card'],
-      maskHeadersList: ['x-trace-id
-'],
+      maskHeadersList: ['x-trace-id'],
       headersToInclude: ['Set-Cookie', 'Authorization'],
       headersToExclude: ['Cookie'],
     }),
@@ -68,11 +67,11 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
       captureHeaders: true,
       captureBody: true,
       maskDebugSpanPayload: true,
-      maskBodyFunction: (data, span) => {
+      maskBody: (data, span) => {
         // mask logic here
         return data
       },
-      maskHeadersFunction: (data, span) => {
+      maskHeaders: (data, span) => {
         // mask logic here
         return data
       },

@@ -123,8 +123,8 @@ export class TracerBrowserSDK {
                     traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
                   ) {
                     if (masking.maskDebugSpanPayload) {
-                      requestBody = requestBody && masking.maskBodyFunction?.(requestBody, span)
-                      responseBody = responseBody && masking.maskBodyFunction?.(responseBody, span)
+                      requestBody = requestBody && masking.maskBody?.(requestBody, span)
+                      responseBody = responseBody && masking.maskBody?.(responseBody, span)
                     }
                   }
 
@@ -178,8 +178,8 @@ export class TracerBrowserSDK {
                     }
                   }
 
-                  requestHeaders = masking.maskHeadersFunction?.(requestHeaders, span)
-                  responseHeaders = masking.maskHeadersFunction?.(responseHeaders, span)
+                  requestHeaders = masking.maskHeaders?.(requestHeaders, span)
+                  responseHeaders = masking.maskHeaders?.(responseHeaders, span)
 
                   if (typeof requestHeaders !== 'string') {
                     requestHeaders = JSON.stringify(requestHeaders)
@@ -246,7 +246,7 @@ export class TracerBrowserSDK {
                     traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
                   ) {
                     if (masking.maskDebugSpanPayload) {
-                      requestBody = requestBody && masking.maskBodyFunction?.(requestBody, span)
+                      requestBody = requestBody && masking.maskBody?.(requestBody, span)
                     }
                   }
 
@@ -278,7 +278,7 @@ export class TracerBrowserSDK {
                       traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
                     ) {
                       if (masking.maskDebugSpanPayload) {
-                        responseBody = responseBody && masking.maskBodyFunction?.(responseBody, span)
+                        responseBody = responseBody && masking.maskBody?.(responseBody, span)
                       }
                     }
 
@@ -356,8 +356,8 @@ export class TracerBrowserSDK {
                     }
                   }
 
-                  const maskedRequestHeaders = masking.maskHeadersFunction?.(requestHeaders, span) || requestHeaders
-                  const maskedResponseHeaders = masking.maskHeadersFunction?.(responseHeaders, span) || responseHeaders
+                  const maskedRequestHeaders = masking.maskHeaders?.(requestHeaders, span) || requestHeaders
+                  const maskedResponseHeaders = masking.maskHeaders?.(responseHeaders, span) || responseHeaders
 
                   const requestHeadersStr = typeof maskedRequestHeaders === 'string'
                     ? maskedRequestHeaders

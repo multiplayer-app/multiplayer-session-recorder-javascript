@@ -1,14 +1,15 @@
 import io, { Socket } from 'socket.io-client'
+
+import { IDebugSession } from '../types'
+import { recorderEventBus } from '../eventBus'
+import messagingService from '../services/messaging.service'
 import {
   DEBUG_SESSION_ADD_EVENT,
   DEBUG_SESSION_AUTO_CREATED,
   DEBUG_SESSION_STOPPED_EVENT,
   DEBUG_SESSION_SUBSCRIBE_EVENT,
   DEBUG_SESSION_UNSUBSCRIBE_EVENT,
-} from '../constants'
-import { IDebugSession } from '../types'
-import { recorderEventBus } from '../eventBus'
-import messagingService from '../services/messaging.service'
+} from '../config'
 
 const MAX_RECONNECTION_ATTEMPTS = 2
 

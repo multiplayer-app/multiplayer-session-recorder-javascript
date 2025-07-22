@@ -29,7 +29,7 @@ export const getMaskingConfig = (masking?: MaskingConfig): MaskingConfig => {
     headersToInclude: isValidArray(masking.headersToInclude, baseMasking.headersToInclude ?? []),
     headersToExclude: isValidArray(masking.headersToExclude, baseMasking.headersToExclude ?? []),
     maskDebugSpanPayload: isValidBoolean(masking.maskDebugSpanPayload, baseMasking.maskDebugSpanPayload ?? true),
-    maskBodyFunction: isValidFunction(masking.maskBodyFunction, mask(maskBodyFieldsList)),
-    maskHeadersFunction: isValidFunction(masking.maskHeadersFunction, mask(maskHeadersList)),
+    maskBody: isValidFunction(masking.maskBody, mask(maskBodyFieldsList)),
+    maskHeaders: isValidFunction(masking.maskHeaders, mask(maskHeadersList)),
   }
 }

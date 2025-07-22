@@ -5,9 +5,11 @@ import { DebugSessionType } from '@multiplayer-app/session-recorder-opentelemetr
 import { getRecordConsolePlugin, LogData } from '@rrweb/rrweb-plugin-console-record';
 
 
-import { isConsoleEvent } from '../helpers';
+
+import { isConsoleEvent } from '../utils';
+import { CONTINUOUS_DEBUGGING_TIMEOUT } from '../config';
 import { IDebugSession, RecorderConfig } from '../types';
-import { CONTINUOUS_DEBUGGING_TIMEOUT } from '../constants';
+
 
 import { RrwebEventExporter } from './exporter';
 

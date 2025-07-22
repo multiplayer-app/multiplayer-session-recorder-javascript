@@ -5,7 +5,7 @@ import { initialPopoverTemplate } from './templates/initialPopover'
 import { recordingOverlayTemplate } from './templates/recordingOverlay'
 import { submitSessionDialogTemplate } from './templates/submitSessionDialog'
 import { toastTemplate } from './templates/toast'
-import { ToastConfig } from 'src/types'
+import { ToastConfig } from '../types'
 
 export class UIManager {
   private recorderButton: HTMLButtonElement
