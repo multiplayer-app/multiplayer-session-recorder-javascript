@@ -68,7 +68,7 @@ export function processBody(
     traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
     traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
   ) {
-    if (masking.maskDebugSpanPayload) {
+    if (masking.isMaskingEnabled) {
       requestBody = requestBody && masking.maskBody?.(requestBody, span)
       responseBody = responseBody && masking.maskBody?.(responseBody, span)
     }

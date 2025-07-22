@@ -48,7 +48,7 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
       uncompressPayload: true,
       captureHeaders: true,
       captureBody: true,
-      maskDebugSpanPayload: true,
+      isMaskingEnabled: true,
       maskBody: (data, span) => {
         // mask logic here
         return data
@@ -66,7 +66,7 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
       maxPayloadSizeBytes: 1000,
       captureHeaders: true,
       captureBody: true,
-      maskDebugSpanPayload: true,
+      isMaskingEnabled: true,
       maskBody: (data, span) => {
         // mask logic here
         return data

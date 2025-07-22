@@ -5,7 +5,7 @@ const { mask, sensitiveFields, sensitiveHeaders } = MultiplayerHelpers
 
 export const DEFAULT_MASKING_CONFIG: MaskingConfig = {
   maskAllInputs: true,
-  maskDebugSpanPayload: true,
+  isMaskingEnabled: true,
   maskBody: mask(sensitiveFields),
   maskHeaders: mask(sensitiveHeaders),
   maskBodyFieldsList: sensitiveFields,

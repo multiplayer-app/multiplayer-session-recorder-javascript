@@ -7,8 +7,9 @@ import type {
   MaskInputOptions,
 } from 'rrweb-snapshot';
 import type { maskTextClass } from '@rrweb/types';
-import type { IDebugSession } from './session';
 import { LogData } from '@rrweb/rrweb-plugin-console-record';
+import { Span } from '@opentelemetry/api';
+import type { IDebugSession } from './session';
 
 export enum WidgetButtonPlacement {
   topLeft = 'top-left',
@@ -155,12 +156,12 @@ export interface MaskingConfig {
 
 
   // Span masking
-  /** If true, masks debug span payload in traces
+  /** If true, enables masking for debug span payload in traces
    *  @default true
   */
-  maskDebugSpanPayload?: boolean;
+  isMaskingEnabled?: boolean;
   /** Custom function for masking body in traces */
-  maskBody?: (payload: any, span: any) => any;
+  maskBody?: (payload: any, span: Span) => any;
   /** Custom function for masking headers in traces */
   maskHeaders?: (headers: any, span: any) => any;
 
@@ -191,7 +192,7 @@ export interface BaseConfig {
 /**
  * Configuration interface for the Tracer class
  */
-export type TracerBrowserMasking = Pick<MaskingConfig, 'maskDebugSpanPayload' | 'maskBody' | 'maskHeaders' | 'maskBodyFieldsList' | 'maskHeadersList' | 'headersToInclude' | 'headersToExclude'>;
+export type TracerBrowserMasking = Pick<MaskingConfig, 'isMaskingEnabled' | 'maskBody' | 'maskHeaders' | 'maskBodyFieldsList' | 'maskHeadersList' | 'headersToInclude' | 'headersToExclude'>;
 
 export interface TracerBrowserConfig extends BaseConfig {
   /** Application name */
