@@ -8,6 +8,7 @@
   },
   "license": "MIT",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "engines": {
     "node": ">=18",
     "npm": ">=8"
@@ -26,7 +27,7 @@
     "lint": "eslint src/**/*.ts --config ../../.eslintrc",
     "preversion": "npm run lint",
     "postversion:skip": "git push && git push --tags",
-    "build": "webpack",
+    "build": "webpack && tsc --emitDeclarationOnly",
     "browserify:lib": "browserify dist/browser/index.js -o dist/browser/debugger-lib.js",
     "browserify:exporters": "browserify dist/exporters/index.js -o dist/exporters/exporters.js",
     "moveDist": "cp dist/browser/debugger-lib.js ../../../multiplayer-debugger-extension/lib/debugger-lib.js && cp dist/exporters/exporters.js ../../../multiplayer-debugger-extension/lib/exporters.js",

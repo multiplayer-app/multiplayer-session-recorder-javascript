@@ -100,12 +100,6 @@ export interface SessionRecorderOptions {
   schemifyDocSpanPayload?: boolean
 
   /**
-   * (Optional) If true, disables capturing HTTP payload
-   * @default false
-   */
-  disableCapturingHttpPayload?: boolean
-
-  /**
    * (Optional) Maximum size for capturing HTTP payload
    * @default 100000
    */

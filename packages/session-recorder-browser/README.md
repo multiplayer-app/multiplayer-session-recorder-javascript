@@ -76,7 +76,6 @@ The Session Recorder supports various configuration options with sensible defaul
 - `docTraceRatio`: `0.15` - 15% of traces for auto-documentation
 - `sampleTraceRatio`: `0.15` - 15% sampling ratio
 - `schemifyDocSpanPayload`: `true` - Enable payload schematization
-- `disableCapturingHttpPayload`: `false` - Enable HTTP payload capture
 - `maxCapturingHttpPayloadSize`: `100000` - 100KB max payload size
 - `usePostMessageFallback`: `false` - Disable post message fallback
 - `widgetButtonPlacement`: `'bottom-right'` - Default widget position
@@ -110,7 +109,6 @@ SessionRecorder.init({
   sampleTraceRatio: 0.15, // 15% sampling ratio
   schemifyDocSpanPayload: true,
   maxCapturingHttpPayloadSize: 100000,
-  disableCapturingHttpPayload: false,
   usePostMessageFallback: false, // Enable post message fallback if needed
   exporterApiBaseUrl: 'https://api.multiplayer.app', // Custom API base URL (optional)
   captureBody: true, // Capture body in traces

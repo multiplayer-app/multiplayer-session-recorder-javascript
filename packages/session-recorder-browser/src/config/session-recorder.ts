@@ -31,7 +31,6 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     sampleTraceRatio: isValidNumber(c.sampleTraceRatio, BASE_CONFIG.sampleTraceRatio),
     propagateTraceHeaderCorsUrls: c.propagateTraceHeaderCorsUrls || BASE_CONFIG.propagateTraceHeaderCorsUrls,
     schemifyDocSpanPayload: isValidBoolean(c.schemifyDocSpanPayload, BASE_CONFIG.schemifyDocSpanPayload),
-    disableCapturingHttpPayload: isValidBoolean(c.disableCapturingHttpPayload, BASE_CONFIG.disableCapturingHttpPayload),
     maxCapturingHttpPayloadSize: isValidNumber(c.maxCapturingHttpPayloadSize, BASE_CONFIG.maxCapturingHttpPayloadSize),
 
     captureBody: isValidBoolean(c.captureBody, BASE_CONFIG.captureBody),

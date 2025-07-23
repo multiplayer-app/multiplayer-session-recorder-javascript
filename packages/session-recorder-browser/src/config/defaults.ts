@@ -39,6 +39,5 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
 
   captureBody: true,
   captureHeaders: true,
-  disableCapturingHttpPayload: false,
   masking: DEFAULT_MASKING_CONFIG
 }

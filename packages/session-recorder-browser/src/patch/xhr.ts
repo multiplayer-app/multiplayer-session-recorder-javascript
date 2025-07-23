@@ -17,10 +17,10 @@ export const setMaxCapturingHttpPayloadSize = (_maxCapturingHttpPayloadSize: num
   maxCapturingHttpPayloadSize = _maxCapturingHttpPayloadSize
 }
 
-export const setShouldRecordHttpData = (shouldRecordHttpData) => {
-  recordRequestHeaders = shouldRecordHttpData
-  recordResponseHeaders = shouldRecordHttpData
-  shouldRecordBody = shouldRecordHttpData
+export const setShouldRecordHttpData = (shouldRecordBody: boolean, shouldRecordHeaders: boolean) => {
+  recordRequestHeaders = shouldRecordHeaders
+  recordResponseHeaders = shouldRecordHeaders
+  shouldRecordBody = shouldRecordBody
 }
 
 function _tryReadXHRBody({

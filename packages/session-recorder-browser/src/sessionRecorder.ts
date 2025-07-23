@@ -166,7 +166,7 @@ export class SessionRecorder implements ISessionRecorder {
     this._checkOperation('init')
 
     setMaxCapturingHttpPayloadSize(this._configs.maxCapturingHttpPayloadSize || DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE)
-    setShouldRecordHttpData(!this._configs.disableCapturingHttpPayload)
+    setShouldRecordHttpData(!this._configs.captureBody, this._configs.captureHeaders)
 
 
     this._tracer.init(this._configs)
