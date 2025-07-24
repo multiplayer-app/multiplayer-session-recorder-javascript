@@ -133,7 +133,7 @@ export class UIManager {
    */
   public showToast(config: ToastConfig, duration: number = 10000): void {
     insertTrustedHTML(this.toast, toastTemplate(config))
-    this.toast.classList.remove('hidden')
+    this.toast.className = `mp-toast mp-toast-${config.type}`
     if (config.button?.onClick) {
       const button = this.toast.querySelector('.mp-toast-button')
       button?.addEventListener('click', config.button.onClick)

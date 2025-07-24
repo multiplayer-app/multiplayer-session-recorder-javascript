@@ -9,11 +9,11 @@ import {
   SessionType,
   ATTR_MULTIPLAYER_SESSION_ID,
   SessionRecorderIdGenerator,
-  MultiplayerHttpTraceExporterBrowser,
+  SessionRecorderHttpTraceExporterBrowser,
   SessionRecorderTraceIdRatioBasedSampler,
 } from '@multiplayer-app/session-recorder-opentelemetry'
 import { TracerBrowserConfig } from '../types'
-import { OTEL_MP_DOC_TRACE_RATIO } from '../config'
+import { OTEL_IGNORE_URLS, OTEL_MP_DOC_TRACE_RATIO } from '../config'
 import { processHttpPayload, headersToObject, extractResponseBody } from './helpers'
 
 export class TracerBrowserSDK {
@@ -70,8 +70,7 @@ export class TracerBrowserSDK {
           '@opentelemetry/instrumentation-xml-http-request': {
             clearTimingResources: true,
             ignoreUrls: [
-              /\/v1\/traces/,
-              /\/v0\/radar\/debug-sessions/,
+              ...OTEL_IGNORE_URLS,
               ...(this.config.ignoreUrls || []),
             ],
             propagateTraceHeaderCorsUrls: options.propagateTraceHeaderCorsUrls,
@@ -110,8 +109,7 @@ export class TracerBrowserSDK {
           '@opentelemetry/instrumentation-fetch': {
             clearTimingResources: true,
             ignoreUrls: [
-              /\/v1\/traces/,
-              /\/v0\/radar\/debug-sessions/,
+              ...OTEL_IGNORE_URLS,
               ...(this.config.ignoreUrls || []),
             ],
             propagateTraceHeaderCorsUrls: options.propagateTraceHeaderCorsUrls,
@@ -199,7 +197,7 @@ export class TracerBrowserSDK {
     }
 
     this.tracerProvider.addSpanProcessor(new BatchSpanProcessor(
-      new MultiplayerHttpTraceExporterBrowser({
+      new SessionRecorderHttpTraceExporterBrowser({
         apiKey,
         url: `${this.config?.exporterApiBaseUrl}/v1/traces`,
         usePostMessageFallback: this.config?.usePostMessageFallback,

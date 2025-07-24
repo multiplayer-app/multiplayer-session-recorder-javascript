@@ -47,7 +47,6 @@ import { ISessionRecorder } from './types'
 export class SessionRecorder implements ISessionRecorder {
   private _isInitialized = false
   private _configs: SessionRecorderConfigs
-
   private _apiService = new ApiService()
   private _tracer = new TracerBrowserSDK()
   private _recorder = new RecorderBrowserSDK()

@@ -40,3 +40,25 @@ export const DEBUG_SESSION_MAX_DURATION_SECONDS = 10 * 60 + 30 // TODO: move to 
 // Package version - injected by webpack during build
 declare const PACKAGE_VERSION: string
 export const PACKAGE_VERSION_EXPORT = PACKAGE_VERSION || '1.0.0'
+
+
+// Regex patterns for OpenTelemetry ignore URLs
+export const OTEL_IGNORE_URLS = [
+  // Traces endpoint
+  /.*\/v1\/traces/,
+  // Debug sessions endpoints
+  /.*\/v0\/radar\/debug-sessions\/start$/,
+  /.*\/v0\/radar\/debug-sessions\/[^\/]+\/stop$/,
+  /.*\/v0\/radar\/debug-sessions\/[^\/]+\/cancel$/,
+
+  // Continuous debug sessions endpoints
+  /.*\/v0\/radar\/continuous-debug-sessions\/start$/,
+  /.*\/v0\/radar\/continuous-debug-sessions\/[^\/]+\/save$/,
+  /.*\/v0\/radar\/continuous-debug-sessions\/[^\/]+\/cancel$/,
+
+  // Remote debug session endpoint
+  /.*\/v0\/radar\/remote-debug-session\/check$/,
+
+  // Or use a more general pattern to catch all radar API endpoints
+  // /.*\/v0\/radar\/.*/
+];

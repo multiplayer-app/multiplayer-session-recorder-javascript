@@ -13,14 +13,11 @@ export const toastTemplate = (config: ToastConfig): string => {
 
   const sessionButton = getButtonTemplate(button)
 
-  return `
-    <div class="mp-toast mp-toast-${type}" data-toast-type="${type}">
-      <div class="mp-toast-content">
-        <div class="mp-toast-icon">${icon}</div>
-        <div class="mp-toast-message">${message}</div>
-        ${sessionButton}
-      </div>
-    </div>
+  return `<div class="mp-toast-content">
+    <div class="mp-toast-icon">${icon}</div>
+    <div class="mp-toast-message">${message}</div>
+      ${sessionButton}
+  </div>
   `
 }
 
