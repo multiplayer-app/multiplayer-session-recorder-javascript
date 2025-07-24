@@ -223,8 +223,7 @@ The Session Recorder provides several methods for controlling session recording:
 ### Properties
 
 - `SessionRecorder.sessionId` - Get current session ID (readonly)
-- `SessionRecorder.continuousDebugging` - Get/set continuous debugging state
-- `SessionRecorder.sessionType` - Get current debug session type (readonly)
+- `SessionRecorder.sessionType` - Get current session type (readonly)
 - `SessionRecorder.sessionState` - Get current session state (readonly)
 - `SessionRecorder.session` - Get current session object (readonly)
 - `SessionRecorder.sessionAttributes` - Get current session attributes (readonly)
