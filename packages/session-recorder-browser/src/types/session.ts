@@ -21,13 +21,13 @@ export interface ISessionAttributes {
   [key: string]: any
 }
 
-export interface IDebugSessionView {
+export interface ISessionView {
   _id: string
   name: string
   components?: string[]
 }
 
-export interface IDebugSession {
+export interface ISession {
   _id: string
   shortId: string
   workspace: string
@@ -44,7 +44,7 @@ export interface IDebugSession {
 
   resourceAttributes?: IResourceAttributes
   sessionAttributes?: ISessionAttributes
-  views: IDebugSessionView[]
+  views: ISessionView[]
   starred: boolean
   starredItems: string[]
   s3Files: {

@@ -10,23 +10,24 @@ import {
 } from './utils'
 import {
   SessionState,
-  IDebugSession,
+  ISession,
   SessionRecorderOptions,
-  SessionRecorderConfigs,
+  SessionRecorderConfigs
 } from './types'
 
 import {
   BASE_CONFIG,
   SESSION_RESPONSE,
-  DEBUG_SESSION_PROP_NAME,
-  DEBUG_SESSION_AUTO_CREATED,
-  DEBUG_SESSION_ID_PROP_NAME,
-  DEBUG_SESSION_STARTED_EVENT,
-  DEBUG_SESSION_STOPPED_EVENT,
-  DEBUG_SESSION_STATE_PROP_NAME,
+  SESSION_PROP_NAME,
+  SESSION_ID_PROP_NAME,
+  SESSION_TYPE_PROP_NAME,
+  SESSION_STATE_PROP_NAME,
+  SESSION_CONTINUOUS_DEBUGGING_PROP_NAME,
   DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
-  DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME,
   getSessionRecorderConfig,
+  SESSION_AUTO_CREATED,
+  SESSION_STOPPED_EVENT,
+  SESSION_STARTED_EVENT,
 } from './config'
 
 import {
@@ -60,23 +61,25 @@ export class SessionRecorder implements ISessionRecorder {
   }
   set sessionId(sessionId: string | null) {
     this._sessionId = sessionId
-    setStoredItem(DEBUG_SESSION_ID_PROP_NAME, sessionId)
+    setStoredItem(SESSION_ID_PROP_NAME, sessionId)
   }
 
-  private _continuousDebugging: boolean = false
-  get continuousDebugging(): boolean {
-    return this._continuousDebugging
+  private _sessionType: SessionType = SessionType.PLAIN
+  get sessionType(): SessionType {
+    return this._sessionType
   }
-  set continuousDebugging(continuousDebugging: boolean) {
-    this._continuousDebugging = continuousDebugging
-    this._apiService.updateConfigs({ continuousDebugging })
+  set sessionType(sessionType: SessionType) {
+    this._sessionType = sessionType
+    this._apiService.updateConfigs({ sessionType })
+    const continuousDebugging = sessionType === SessionType.CONTINUOUS
     this._sessionWidget.updateContinuousDebuggingState(continuousDebugging)
     messagingService.sendMessage('continuous-debugging', continuousDebugging)
-    setStoredItem(DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME, continuousDebugging)
+    setStoredItem(SESSION_TYPE_PROP_NAME, sessionType)
   }
 
-  get sessionType(): SessionType {
-    return this.continuousDebugging ? SessionType.CONTINUOUS : SessionType.PLAIN
+
+  get continuousDebugging(): boolean {
+    return this.sessionType === SessionType.CONTINUOUS
   }
 
   private _sessionState: SessionState | null = null
@@ -87,16 +90,16 @@ export class SessionRecorder implements ISessionRecorder {
     this._sessionState = state
     this._sessionWidget.updateState(this._sessionState, this.continuousDebugging)
     messagingService.sendMessage('state-change', this._sessionState)
-    setStoredItem(DEBUG_SESSION_STATE_PROP_NAME, state)
+    setStoredItem(SESSION_STATE_PROP_NAME, state)
   }
 
-  private _session: IDebugSession | null = null
-  get session(): IDebugSession | null {
+  private _session: ISession | null = null
+  get session(): ISession | null {
     return this._session
   }
-  set session(session: IDebugSession | null) {
+  set session(session: ISession | null) {
     this._session = session
-    setStoredItem(DEBUG_SESSION_PROP_NAME, this._session)
+    setStoredItem(SESSION_PROP_NAME, this._session)
   }
 
   private _sessionAttributes: Record<string, any> | null = null
@@ -131,22 +134,23 @@ export class SessionRecorder implements ISessionRecorder {
    * Initialize debugger with default or custom configurations
    */
   constructor() {
-    const sessionLocal = getStoredItem(DEBUG_SESSION_PROP_NAME, true)
-    const sessionIdLocal = getStoredItem(DEBUG_SESSION_ID_PROP_NAME)
-    const sessionStateLocal = getStoredItem(DEBUG_SESSION_STATE_PROP_NAME)
-    const continuousDebuggingLocal = getStoredItem(DEBUG_SESSION_CONTINUE_DEBUGGING_PROP_NAME, true)
+    const sessionLocal = getStoredItem(SESSION_PROP_NAME, true)
+    const sessionIdLocal = getStoredItem(SESSION_ID_PROP_NAME)
+    const sessionStateLocal = getStoredItem(SESSION_STATE_PROP_NAME)
+    const sessionTypeLocal = getStoredItem(SESSION_TYPE_PROP_NAME)
+    const continuousDebuggingLocal = getStoredItem(SESSION_CONTINUOUS_DEBUGGING_PROP_NAME, true)
 
     if (isSessionActive(sessionLocal, continuousDebuggingLocal)) {
       this.session = sessionLocal
       this.sessionId = sessionIdLocal
+      this.sessionType = sessionTypeLocal
       this.sessionState = sessionStateLocal
 
-      this.continuousDebugging = continuousDebuggingLocal
     } else {
       this.session = null
       this.sessionId = null
       this.sessionState = null
-      this.continuousDebugging = false
+      this.sessionType = SessionType.PLAIN
     }
 
     this._configs = {
@@ -171,10 +175,7 @@ export class SessionRecorder implements ISessionRecorder {
 
     this._tracer.init(this._configs)
     this._sessionWidget.init(this._configs)
-    this._apiService.init({
-      ...this._configs,
-      continuousDebugging: this.continuousDebugging,
-    })
+    this._apiService.init({ ...this._configs, sessionType: this.sessionType })
 
     if (this._configs.apiKey) {
       this._recorder.init(this._configs)
@@ -254,9 +255,9 @@ export class SessionRecorder implements ISessionRecorder {
    * @param type - the type of session to start
    * @param session - the session to start
    */
-  public start(type: SessionType, session?: IDebugSession): void {
+  public start(type: SessionType, session?: ISession): void {
     this._checkOperation('start')
-    this.continuousDebugging = type === SessionType.CONTINUOUS
+    this.sessionType = type
     this._startRequestController = new AbortController()
     if (session) {
       this._setupSessionAndStart(session, true)
@@ -274,7 +275,7 @@ export class SessionRecorder implements ISessionRecorder {
       this._stop()
       if (this.continuousDebugging) {
         await this._apiService.stopContinuousDebugSession(this.sessionId!)
-        this.continuousDebugging = false
+        this.sessionType = SessionType.PLAIN
       } else {
         const request: StopSessionRequest = {
           sessionAttributes: { comment },
@@ -298,7 +299,7 @@ export class SessionRecorder implements ISessionRecorder {
       this._stop()
       if (this.continuousDebugging) {
         await this._apiService.stopContinuousDebugSession(this.sessionId!)
-        this.continuousDebugging = false
+        this.sessionType = SessionType.PLAIN
       } else {
         await this._apiService.cancelSession(this.sessionId!)
       }
@@ -309,21 +310,9 @@ export class SessionRecorder implements ISessionRecorder {
   }
 
   /**
-   * Pause the current session
-   */
-  public async pause(): Promise<void> {
-    try {
-      this._checkOperation('pause')
-      this._pause()
-    } catch (error: any) {
-      this.error = error.message
-    }
-  }
-
-  /**
    * Set the session attributes
    * @param attributes - the attributes to set
-   */
+  */
   public setSessionAttributes(attributes: Record<string, any>): void {
     this._sessionAttributes = attributes
   }
@@ -334,9 +323,49 @@ export class SessionRecorder implements ISessionRecorder {
    *                  The function receives the click event as its parameter and
    *                  should return `false` to prevent the default button action,
    *                  or `true` (or nothing) to allow it.
-   */
+  */
   public set recordingButtonClickHandler(handler: () => boolean | void) {
     this._sessionWidget.buttonClickExternalHandler = handler
+  }
+
+
+  /**
+   * @description Check if session should be started/stopped automatically
+   * @param {ISession} [sessionPayload]
+   * @returns {Promise<void>}
+   */
+  public async autoStartRemoteContinuousSession(
+    sessionPayload?: Omit<ISession, '_id' | 'shortId'>
+  ): Promise<void> {
+    this._checkOperation('autoStartRemoteContinuousSession')
+    const payload = {
+      sessionAttributes: this.sessionAttributes,
+      resourceAttributes: getNavigatorInfo(),
+      name: this.sessionAttributes.userName
+        ? `${this.sessionAttributes.userName}'s session on ${getFormattedDate(
+          Date.now(),
+          { month: 'short', day: 'numeric' },
+        )}`
+        : `Session on ${getFormattedDate(Date.now())}`,
+    }
+
+    const { shouldStart } = await this._apiService.checkRemoteSession(payload)
+
+    if (!shouldStart) {
+      return
+    }
+    this.start(SessionType.CONTINUOUS)
+  }
+  /**
+   * Pause the current session
+   */
+  public async pause(): Promise<void> {
+    try {
+      this._checkOperation('pause')
+      this._pause()
+    } catch (error: any) {
+      this.error = error.message
+    }
   }
 
   /**
@@ -381,7 +410,7 @@ export class SessionRecorder implements ISessionRecorder {
    * Register session limit reaching listeners for controlling session end
    */
   private _registerSessionLimitReach() {
-    recorderEventBus.on(DEBUG_SESSION_STOPPED_EVENT, () => {
+    recorderEventBus.on(SESSION_STOPPED_EVENT, () => {
       this._stop()
       this._clearSession()
       this._sessionWidget.handleUIReseting()
@@ -392,7 +421,7 @@ export class SessionRecorder implements ISessionRecorder {
    * Register session auto creation listeners during continuous debugging
    */
   private _registerSessionAutoCreation() {
-    recorderEventBus.on(DEBUG_SESSION_AUTO_CREATED, (payload) => {
+    recorderEventBus.on(SESSION_AUTO_CREATED, (payload) => {
       if (!payload?.data) return
       this._sessionWidget.showToast(
         {
@@ -437,7 +466,7 @@ export class SessionRecorder implements ISessionRecorder {
     } catch (error: any) {
       this.error = error.message
       if (this.continuousDebugging) {
-        this.continuousDebugging = false
+        this.sessionType = SessionType.PLAIN
       }
     }
   }
@@ -446,14 +475,11 @@ export class SessionRecorder implements ISessionRecorder {
    * Start tracing and recording for the session
    */
   private _start(): void {
-    const sessionType = this.continuousDebugging
-      ? SessionType.CONTINUOUS
-      : SessionType.PLAIN
-    this._tracer.start(this.sessionId, sessionType)
-    this._recorder.start(this.sessionId, sessionType)
+    this._tracer.start(this.sessionId, this.sessionType)
+    this._recorder.start(this.sessionId, this.sessionType)
     this.sessionState = SessionState.started
     if (this.session) {
-      recorderEventBus.emit(DEBUG_SESSION_STARTED_EVENT, this.session)
+      recorderEventBus.emit(SESSION_STARTED_EVENT, this.session)
       this._sessionWidget.seconds = getTimeDifferenceInSeconds(this.session?.startedAt)
     }
   }
@@ -476,7 +502,7 @@ export class SessionRecorder implements ISessionRecorder {
     this.sessionState = SessionState.paused
   }
 
-  private _setupSessionAndStart(session: IDebugSession, configureExporters: boolean = true): void {
+  private _setupSessionAndStart(session: ISession, configureExporters: boolean = true): void {
     if (configureExporters && session.tempApiKey) {
       this._configs.apiKey = session.tempApiKey
       this._recorder.init(this._configs)
@@ -494,7 +520,7 @@ export class SessionRecorder implements ISessionRecorder {
    * @param sessionId - the session ID to set or clear
    */
   private _setSession(
-    session: IDebugSession,
+    session: ISession,
   ): void {
     this.session = { ...session, startedAt: session.startedAt || new Date().toISOString() }
     this.sessionId = session?.shortId || session?._id
@@ -517,7 +543,8 @@ export class SessionRecorder implements ISessionRecorder {
       | 'stop'
       | 'cancel'
       | 'pause'
-      | 'save',
+      | 'save'
+      | 'autoStartRemoteContinuousSession',
     payload?: any,
   ): void {
     if (!this._isInitialized) {
@@ -552,6 +579,11 @@ export class SessionRecorder implements ISessionRecorder {
         }
         if (this.sessionState !== SessionState.started) {
           throw new Error('Cannot save continuous debugging session. Session is not started.')
+        }
+        break
+      case 'autoStartRemoteContinuousSession':
+        if (this.sessionState !== SessionState.stopped) {
+          throw new Error('Cannot start remote continuous session. Session is not stopped.')
         }
         break
     }

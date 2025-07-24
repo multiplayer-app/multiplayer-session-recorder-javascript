@@ -1,14 +1,14 @@
 import io, { Socket } from 'socket.io-client'
 
-import { IDebugSession } from '../types'
+import { ISession } from '../types'
 import { recorderEventBus } from '../eventBus'
 import messagingService from '../services/messaging.service'
 import {
-  DEBUG_SESSION_ADD_EVENT,
-  DEBUG_SESSION_AUTO_CREATED,
-  DEBUG_SESSION_STOPPED_EVENT,
-  DEBUG_SESSION_SUBSCRIBE_EVENT,
-  DEBUG_SESSION_UNSUBSCRIBE_EVENT,
+  SESSION_ADD_EVENT,
+  SESSION_AUTO_CREATED,
+  SESSION_STOPPED_EVENT,
+  SESSION_SUBSCRIBE_EVENT,
+  SESSION_UNSUBSCRIBE_EVENT,
 } from '../config'
 
 const MAX_RECONNECTION_ATTEMPTS = 2
@@ -58,13 +58,13 @@ export class RrwebEventExporter {
       this.checkReconnectionAttempts()
     })
 
-    this.socket.on(DEBUG_SESSION_STOPPED_EVENT, (data: any) => {
-      recorderEventBus.emit(DEBUG_SESSION_STOPPED_EVENT, data)
+    this.socket.on(SESSION_STOPPED_EVENT, (data: any) => {
+      recorderEventBus.emit(SESSION_STOPPED_EVENT, data)
       this.unsubscribeFromSession()
     })
 
-    this.socket.on(DEBUG_SESSION_AUTO_CREATED, (data: any) => {
-      recorderEventBus.emit(DEBUG_SESSION_AUTO_CREATED, data)
+    this.socket.on(SESSION_AUTO_CREATED, (data: any) => {
+      recorderEventBus.emit(SESSION_AUTO_CREATED, data)
     })
   }
 
@@ -97,9 +97,9 @@ export class RrwebEventExporter {
       debugSessionId: this.sessionId,
     }
     if (this.usePostMessage) {
-      messagingService.sendMessage('socket-emit', { event: DEBUG_SESSION_UNSUBSCRIBE_EVENT, data: payload })
+      messagingService.sendMessage('socket-emit', { event: SESSION_UNSUBSCRIBE_EVENT, data: payload })
     } else if (this.socket?.connected) {
-      this.socket.emit(DEBUG_SESSION_UNSUBSCRIBE_EVENT, payload)
+      this.socket.emit(SESSION_UNSUBSCRIBE_EVENT, payload)
     }
   }
 
@@ -107,14 +107,14 @@ export class RrwebEventExporter {
     if (this.usePostMessage) {
       this.sendViaPostMessage(event)
     } else if (this.socket?.connected) {
-      this.socket.emit(DEBUG_SESSION_ADD_EVENT, event)
+      this.socket.emit(SESSION_ADD_EVENT, event)
     } else {
-      this.queue.push({ data: event, name: DEBUG_SESSION_ADD_EVENT })
+      this.queue.push({ data: event, name: SESSION_ADD_EVENT })
       this.init()
     }
   }
 
-  public subscribeToSession(session: IDebugSession): void {
+  public subscribeToSession(session: ISession): void {
     this.sessionId = session.shortId || session._id
     const payload = {
       projectId: session.project,
@@ -123,11 +123,11 @@ export class RrwebEventExporter {
       sessionType: session.creationType,
     }
     if (this.usePostMessage) {
-      this.sendViaPostMessage({ type: DEBUG_SESSION_SUBSCRIBE_EVENT, ...payload })
+      this.sendViaPostMessage({ type: SESSION_SUBSCRIBE_EVENT, ...payload })
     } else if (this.socket?.connected) {
-      this.socket.emit(DEBUG_SESSION_SUBSCRIBE_EVENT, payload)
+      this.socket.emit(SESSION_SUBSCRIBE_EVENT, payload)
     } else {
-      this.queue.push({ data: payload, name: DEBUG_SESSION_SUBSCRIBE_EVENT })
+      this.queue.push({ data: payload, name: SESSION_SUBSCRIBE_EVENT })
       this.init()
     }
   }

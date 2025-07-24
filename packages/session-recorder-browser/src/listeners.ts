@@ -1,5 +1,5 @@
 import { SessionRecorder } from './sessionRecorder'
-import { IDebugSession } from './types'
+import { ISession } from './types'
 import messagingService from './services/messaging.service'
 import { SessionType } from '@multiplayer-app/session-recorder-opentelemetry'
 
@@ -32,7 +32,7 @@ export function setupListeners(sessionRecorder: SessionRecorder): void {
     sessionRecorder.cancel()
   })
 
-  messagingService.on('toggle-continuous-debugging', (payload: { enabled: boolean, session?: IDebugSession }) => {
+  messagingService.on('toggle-continuous-debugging', (payload: { enabled: boolean, session?: ISession }) => {
     if (payload.enabled) {
       sessionRecorder.start(SessionType.CONTINUOUS, payload.session)
     } else {

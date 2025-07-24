@@ -8,7 +8,7 @@ import { getRecordConsolePlugin, LogData } from '@rrweb/rrweb-plugin-console-rec
 
 import { isConsoleEvent } from '../utils';
 import { CONTINUOUS_DEBUGGING_TIMEOUT } from '../config';
-import { IDebugSession, RecorderConfig } from '../types';
+import { ISession, RecorderConfig } from '../types';
 
 
 import { RrwebEventExporter } from './exporter';
@@ -161,7 +161,7 @@ export class RecorderBrowserSDK {
     this.clearRestartTimeout()
   }
 
-  subscribeToSession(session: IDebugSession): void {
+  subscribeToSession(session: ISession): void {
     this.exporter?.subscribeToSession(session)
   }
 }

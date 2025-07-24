@@ -1,3 +1,4 @@
+import { SessionType } from '@multiplayer-app/session-recorder-opentelemetry'
 import messagingService from './messaging.service'
 import { ApiServiceConfig, IResourceAttributes, ISessionAttributes } from '../types'
 
@@ -22,6 +23,7 @@ export class ApiService {
     this.config = {
       apiKey: '',
       exporterApiBaseUrl: '',
+      sessionType: SessionType.PLAIN,
     }
   }
 
@@ -133,6 +135,21 @@ export class ApiService {
     return this.makeRequest(
       `/continuous-debug-sessions/${sessionId}/cancel`,
       'DELETE',
+    )
+  }
+
+  /**
+   * Check debug session should be started remotely
+   */
+  async checkRemoteSession(
+    requestBody: StartSessionRequest,
+    signal?: AbortSignal,
+  ): Promise<{ shouldStart: boolean }> {
+    return this.makeRequest(
+      `/remote-debug-session/check`,
+      'POST',
+      requestBody,
+      signal,
     )
   }
 

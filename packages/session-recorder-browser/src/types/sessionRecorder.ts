@@ -9,7 +9,7 @@ import type {
 import type { maskTextClass } from '@rrweb/types';
 import { LogData } from '@rrweb/rrweb-plugin-console-record';
 import { Span } from '@opentelemetry/api';
-import type { IDebugSession } from './session';
+import type { ISession } from './session';
 
 export enum WidgetButtonPlacement {
   topLeft = 'top-left',
@@ -123,7 +123,7 @@ export interface SessionRecorderOptions {
 
   /**
    * (Optional) Configuration for masking sensitive data in session recordings
-   * @default { maskAllInputs: true, maskTextInputs: true, maskInputOptions: { password: true } }
+   * @default { maskAllInputs: true, isMaskingEnabled: true }
    */
   masking?: MaskingConfig
 }
@@ -133,7 +133,9 @@ export interface SessionRecorderOptions {
  */
 export interface MaskingConfig {
   // Recorder masking
-  /** If true, masks all input fields in the recording */
+  /** If true, masks all input fields in the recording
+   * @default true
+  */
   maskAllInputs?: boolean;
   /** Class-based masking configuration - can be string or RegExp */
   maskTextClass?: maskTextClass;
@@ -245,8 +247,8 @@ export interface SessionWidgetConfig {
  * Configuration interface for the ApiService class
  */
 export interface ApiServiceConfig extends BaseConfig {
-  /** Whether continuous debugging is enabled */
-  continuousDebugging?: boolean
+  /** The type of session (plain or continuous) */
+  sessionType: SessionType
 }
 
 export interface SessionRecorderConfigs extends Required<SessionRecorderOptions> { }
@@ -269,7 +271,12 @@ export interface ISessionRecorder {
   readonly continuousDebugging: boolean
 
   /**
-   * The type of debug session (plain or continuous)
+   * The current debug session object
+   */
+  readonly session: ISession | null
+
+  /**
+   * The type of session (plain or continuous)
    */
   readonly sessionType: SessionType
 
@@ -278,10 +285,6 @@ export interface ISessionRecorder {
    */
   readonly sessionState: SessionState | null
 
-  /**
-   * The current debug session object
-   */
-  readonly session: IDebugSession | null
 
   /**
    * Session attributes for additional context
@@ -315,7 +318,7 @@ export interface ISessionRecorder {
    * @param type - the type of session to start
    * @param session - optional existing session to start
    */
-  start(type: SessionType, session?: IDebugSession): void
+  start(type: SessionType, session?: ISession): void
 
   /**
    * Stop the current session with an optional comment
