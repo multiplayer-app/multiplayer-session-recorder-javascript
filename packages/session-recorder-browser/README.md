@@ -207,8 +207,8 @@ The Session Recorder provides several methods for controlling session recording:
 
 ### Session Control
 
-- `SessionRecorder.start(type, session?)` - Start a new session with optional existing session
-  - `type`: `SessionType.PLAIN` or `SessionType.CONTINUOUS`
+- `SessionRecorder.start(type?, session?)` - Start a new session with optional existing session
+  - `type`: Optional `SessionType.PLAIN` or `SessionType.CONTINUOUS`, default: `SessionType.PLAIN`
   - `session`: Optional existing session object
 - `SessionRecorder.stop(comment?)` - Stop the current session with optional comment
 - `SessionRecorder.pause()` - Pause the current session

@@ -254,7 +254,7 @@ export class SessionRecorder implements ISessionRecorder {
    * @param type - the type of session to start
    * @param session - the session to start
    */
-  public start(type: SessionType, session?: ISession): void {
+  public start(type: SessionType = SessionType.PLAIN, session?: ISession): void {
     this._checkOperation('start')
     this.sessionType = type
     this._startRequestController = new AbortController()

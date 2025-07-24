@@ -318,7 +318,7 @@ export interface ISessionRecorder {
    * @param type - the type of session to start
    * @param session - optional existing session to start
    */
-  start(type: SessionType, session?: ISession): void
+  start(type?: SessionType, session?: ISession): void
 
   /**
    * Stop the current session with an optional comment
