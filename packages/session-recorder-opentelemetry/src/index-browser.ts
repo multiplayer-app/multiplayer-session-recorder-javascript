@@ -1,5 +1,5 @@
 export * from './constants.browser'
-export { SessionRecorderHttpTraceExporterBrowser as MultiplayerHttpTraceExporterBrowser } from './SessionRecorderHttpTraceExporterBrowser'
+export { SessionRecorderHttpTraceExporterBrowser } from './SessionRecorderHttpTraceExporterBrowser'
 export { SessionRecorderIdGenerator } from './SessionRecorderIdGenerator'
 export { SessionRecorderJsonTraceSerializer } from './SessionRecorderJsonTraceSerializer'
 export { SessionRecorderTraceIdRatioBasedSampler } from './SessionRecorderTraceIdRatioBasedSampler'

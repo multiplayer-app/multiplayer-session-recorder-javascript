@@ -1,6 +1,6 @@
 export * from './constants.node'
-export { SessionRecorderHttpTraceExporterBrowser as MultiplayerHttpTraceExporterBrowser } from './SessionRecorderHttpTraceExporterBrowser'
-export { SessionRecorderHttpInstrumentationHooksNode as MultiplayerHttpInstrumentationHooks } from './SessionRecorderHttpInstrumentationHooksNode'
+export { SessionRecorderHttpTraceExporterBrowser } from './SessionRecorderHttpTraceExporterBrowser'
+export { SessionRecorderHttpInstrumentationHooksNode } from './SessionRecorderHttpInstrumentationHooksNode'
 export { SessionRecorderIdGenerator } from './SessionRecorderIdGenerator'
 export { SessionRecorderJsonTraceSerializer } from './SessionRecorderJsonTraceSerializer'
 export { SessionRecorderTraceIdRatioBasedSampler } from './SessionRecorderTraceIdRatioBasedSampler'
