@@ -118,11 +118,11 @@ export class RecorderBrowserSDK {
           const packedEvent = pack(event)
           this.stoppedAt = new Date(event.timestamp).toISOString()
           this.exporter.send({
-            sessionType,
             event: packedEvent,
             eventType: event.type,
-            debugSessionId: sessionId,
             timestamp: event.timestamp,
+            debugSessionId: sessionId,
+            debugSessionType: sessionType,
           })
 
         }
