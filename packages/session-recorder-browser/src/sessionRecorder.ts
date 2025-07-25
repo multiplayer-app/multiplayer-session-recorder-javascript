@@ -333,27 +333,32 @@ export class SessionRecorder implements ISessionRecorder {
    * @param {ISession} [sessionPayload]
    * @returns {Promise<void>}
    */
-  public async autoStartRemoteContinuousSession(
+  public async checkRemoteContinuousSession(
     sessionPayload?: Omit<ISession, '_id' | 'shortId'>
   ): Promise<void> {
     this._checkOperation('autoStartRemoteContinuousSession')
     const payload = {
-      sessionAttributes: this.sessionAttributes,
-      resourceAttributes: getNavigatorInfo(),
-      name: this.sessionAttributes.userName
-        ? `${this.sessionAttributes.userName}'s session on ${getFormattedDate(
-          Date.now(),
-          { month: 'short', day: 'numeric' },
-        )}`
-        : `Session on ${getFormattedDate(Date.now())}`,
+      sessionAttributes: {
+        ...this.sessionAttributes,
+        ...(sessionPayload?.sessionAttributes || {}),
+      },
+      resourceAttributes: {
+        ...getNavigatorInfo(),
+        ...(sessionPayload?.resourceAttributes || {}),
+      },
     }
 
-    const { shouldStart } = await this._apiService.checkRemoteSession(payload)
+    const { state } = await this._apiService.checkRemoteSession(payload)
 
-    if (!shouldStart) {
-      return
+    if (state == 'START') {
+      if (this.sessionState !== SessionState.started) {
+        await this.start(SessionType.CONTINUOUS)
+      }
+    } else if (state == 'STOP') {
+      if (this.sessionState !== SessionState.stopped) {
+        await this.stop()
+      }
     }
-    this.start(SessionType.CONTINUOUS)
   }
   /**
    * Pause the current session
