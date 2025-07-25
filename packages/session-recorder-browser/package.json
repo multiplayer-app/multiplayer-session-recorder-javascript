@@ -27,13 +27,14 @@
     "lint": "eslint src/**/*.ts --config ../../.eslintrc",
     "preversion": "npm run lint",
     "postversion:skip": "git push && git push --tags",
-    "build": "webpack && tsc --emitDeclarationOnly",
+    "build": "rm -rf ./src/common && cp -R ../../common/src/ ./src/common/ && tsc --emitDeclarationOnly && rm -rf ./src/common && rm -rf ./src/common",
     "browserify:lib": "browserify dist/browser/index.js -o dist/browser/debugger-lib.js",
     "browserify:exporters": "browserify dist/exporters/index.js -o dist/exporters/exporters.js",
     "moveDist": "cp dist/browser/debugger-lib.js ../../../multiplayer-debugger-extension/lib/debugger-lib.js && cp dist/exporters/exporters.js ../../../multiplayer-debugger-extension/lib/exporters.js",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
+    "@multiplayer-app/common": "file:../../common",
     "browserify": "17.0.1",
     "clean-webpack-plugin": "4.0.0",
     "css-loader": "6.0.0",
@@ -51,7 +52,7 @@
     "webpack-cli": "5.1.4"
   },
   "dependencies": {
-    "@multiplayer-app/session-recorder-opentelemetry": "1.0.0",
+    "@multiplayer-app/common": "file:../../common",
     "@opentelemetry/auto-instrumentations-web": "0.44.0",
     "@opentelemetry/context-zone": "1.29.0",
     "@opentelemetry/core": "1.29.0",
@@ -69,7 +70,8 @@
     "lib0": "0.2.82",
     "rrweb": "2.0.0-alpha.15",
     "rrweb-player": "2.0.0-alpha.15",
-    "socket.io-client": "4.7.5"
+    "socket.io-client": "4.7.5",
+    "to-json-schema": "^0.2.5"
   },
   "peerDependencies": {
     "@opentelemetry/api": "1.9.0"

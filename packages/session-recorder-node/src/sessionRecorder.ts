@@ -2,11 +2,13 @@ import {
   SessionType,
   SessionRecorderIdGenerator,
   SessionRecorderSdk,
-  MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH
-} from '@multiplayer-app/session-recorder-opentelemetry'
+  MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH,
+  ATTR_MULTIPLAYER_SESSION_RECORDER_VERSION
+} from '@multiplayer-app/common'
 import { ApiService } from './services/api.service'
 import { ISession } from './types'
 import { getFormattedDate } from './helper'
+import { SESSION_RECORDER_VERSION } from './config'
 
 export class SessionRecorder {
   private _isInitialized = false
@@ -37,7 +39,9 @@ export class SessionRecorder {
     resourceAttributes?: object,
     generateSessionShortIdLocally?: boolean | (() => string)
   }): void {
-    this._resourceAttributes = config.resourceAttributes || {}
+    this._resourceAttributes = config.resourceAttributes || {
+      [ATTR_MULTIPLAYER_SESSION_RECORDER_VERSION]: SESSION_RECORDER_VERSION
+    }
     this._isInitialized = true
 
     if (typeof config.generateSessionShortIdLocally === 'function') {
@@ -112,6 +116,15 @@ export class SessionRecorder {
     )
 
     this._sessionState = 'STARTED'
+  }
+
+  /**
+   * @description Save the continuous session
+   * @param {String} [reason]
+   * @returns {Promise<void>}
+   */
+  static async save(reason?: string) {
+    SessionRecorderSdk.saveContinuousSession(reason)
   }
 
   /**
@@ -229,11 +242,11 @@ export class SessionRecorder {
   }
 
   /**
-   * @description Check if session should be started/stopped automatically
+   * @description Check if continuous session should be started/stopped automatically
    * @param {ISession} [sessionPayload]
    * @returns {Promise<void>}
    */
-  public async autoStartRemoteContinuousSession(
+  public async checkRemoteContinuousSession(
     sessionPayload?: Omit<ISession, '_id' | 'shortId'>
   ): Promise<void> {
     if (!this._isInitialized) {
@@ -249,36 +262,12 @@ export class SessionRecorder {
       ...this._resourceAttributes,
     }
 
-    const { shouldStart } = await this._apiService.checkRemoteSession(sessionPayload)
+    const { state } = await this._apiService.checkRemoteSession(sessionPayload)
 
-    if (this._sessionState !== 'STOPPED') {
-      throw new Error('Session should be ended before starting new one.')
+    if (state == 'START' && this._sessionState !== 'STARTED') {
+      await this.start(SessionType.CONTINUOUS, sessionPayload)
+    } else if (state == 'STOP' && this._sessionState !== 'STOPPED') {
+      await this.stop()
     }
-
-    if (!shouldStart) {
-      return
-    }
-
-    this._sessionType = SessionType.CONTINUOUS
-    this._shortSessionId = this._sessionShortIdGenerator()
-
-    sessionPayload.name = sessionPayload.name
-      ? sessionPayload.name
-      : `Session on ${getFormattedDate(Date.now())}`
-
-    sessionPayload.resourceAttributes = {
-      ...this._resourceAttributes,
-      ...sessionPayload.resourceAttributes
-    }
-
-    const session = await this._apiService.startContinuousSession(sessionPayload)
-    this._shortSessionId = session.shortId as string
-
-    (this._traceIdGenerator as SessionRecorderIdGenerator).setSessionId(
-      this._shortSessionId,
-      this._sessionType
-    )
-
-    this._sessionState = 'STARTED'
   }
 }

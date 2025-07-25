@@ -1,5 +1,5 @@
 
-import { SessionType } from '@multiplayer-app/session-recorder-opentelemetry';
+import { SessionType } from '@multiplayer-app/common';
 import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
 import type {
   MaskTextFn,

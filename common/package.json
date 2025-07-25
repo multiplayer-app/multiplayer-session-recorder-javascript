@@ -1,11 +1,12 @@
 {
-  "name": "@multiplayer-app/session-recorder-opentelemetry",
+  "name": "@multiplayer-app/common",
   "version": "1.0.0",
   "description": "Multiplayer Fullstack Session Recorder - opentelemetry",
   "author": {
     "name": "Multiplayer Software, Inc.",
     "url": "https://www.multiplayer.app"
   },
+  "private": true,  
   "license": "MIT",
   "main": "dist/src/index.js",
   "module": "dist/esm/index.js",
@@ -44,6 +45,7 @@
     "to-json-schema": "^0.2.5"
   },
   "devDependencies": {
-    "@types/to-json-schema": "0.2.4"
+    "@types/to-json-schema": "0.2.4",
+    "typescript": "5.8.3"
   }
 }

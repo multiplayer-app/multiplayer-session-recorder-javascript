@@ -24,11 +24,13 @@
     "target": "ES2018",
     "downlevelIteration": true,
     "strict": true,
-    "paths": {},
     "composite": true,
     "outDir": "./dist/",
     "rootDir": "./src",
-    "preserveSymlinks": true
+    "preserveSymlinks": true,
+    "paths": {
+      "@multiplayer-app/common": ["common"]
+    }
   },
   "exclude": [
     "dist"

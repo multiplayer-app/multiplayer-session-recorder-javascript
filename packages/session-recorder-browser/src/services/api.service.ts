@@ -1,4 +1,4 @@
-import { SessionType } from '@multiplayer-app/session-recorder-opentelemetry'
+import { SessionType } from '@multiplayer-app/common'
 import messagingService from './messaging.service'
 import { ApiServiceConfig, IResourceAttributes, ISessionAttributes } from '../types'
 

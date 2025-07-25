@@ -18,7 +18,9 @@ export const ATTR_MULTIPLAYER_PROJECT_ID = 'multiplayer.project.id'
 
 export const ATTR_MULTIPLAYER_PLATFORM_ID = 'multiplayer.platform.id'
 
-export const ATTR_MULTIPLAYER_CONTINUOUS_DEBUG_AUTO_SAVE = 'multiplayer.debugger.save'
+export const ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE = 'multiplayer.session.auto-save'
+
+export const ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE_REASON = 'multiplayer.session.auto-save.reason'
 
 export const ATTR_MULTIPLAYER_PLATFORM_NAME = 'multiplayer.platform.name'
 
@@ -53,5 +55,7 @@ export const ATTR_MULTIPLAYER_GRPC_RESPONSE_MESSAGE = 'multiplayer.rpc.grpc.resp
 export const ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY = 'multiplayer.messaging.message.body'
 
 export const ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY_ENCODING = 'multiplayer.messaging.message.body.encoding'
+
+export const ATTR_MULTIPLAYER_SESSION_RECORDER_VERSION = 'multiplayer.session-recorder.version'
 
 export const MASK_PLACEHOLDER = '***MASKED***'

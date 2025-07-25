@@ -7,8 +7,8 @@ import {
   ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
-} from '@multiplayer-app/session-recorder-opentelemetry'
-import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-opentelemetry'
+} from '@multiplayer-app/common'
+import { SessionRecorderSdk } from '@multiplayer-app/common'
 import { TracerBrowserConfig } from '../types'
 
 const { schemify } = SessionRecorderSdk

@@ -26,7 +26,10 @@
     "composite": true,
     "outDir": "./dist/",
     "rootDir": "./src/",
-    "preserveSymlinks": true
+    "preserveSymlinks": true,
+    "paths": {
+      "@multiplayer-app/common": ["./src/common"]
+    }
   },
   "exclude": ["dist", "webpack.config.js"],
   "references": []

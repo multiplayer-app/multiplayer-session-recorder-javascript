@@ -1,4 +1,4 @@
-import { SessionType } from '@multiplayer-app/session-recorder-opentelemetry';
+import { SessionType } from '@multiplayer-app/common';
 
 export interface IResourceAttributes {
   browserInfo?: string,

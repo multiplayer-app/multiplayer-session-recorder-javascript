@@ -146,7 +146,7 @@ export class ApiService {
   async checkRemoteSession(
     requestBody: StartSessionRequest,
     signal?: AbortSignal,
-  ): Promise<{ shouldStart: boolean }> {
+  ): Promise<{ state: 'START' | 'STOP' }> {
     return this.makeRequest(
       `/remote-debug-session/check`,
       'POST',
