@@ -27,9 +27,7 @@
     "outDir": "./dist/",
     "rootDir": "./src/",
     "preserveSymlinks": true,
-    "paths": {
-      "@multiplayer-app/session-recorder-common": ["./src/common"]
-    }
+    "paths": {}
   },
   "exclude": ["dist", "webpack.config.js"],
   "references": []

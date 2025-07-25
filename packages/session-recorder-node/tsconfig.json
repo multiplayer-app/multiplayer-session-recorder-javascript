@@ -28,9 +28,7 @@
     "outDir": "./dist/",
     "rootDir": "./src",
     "preserveSymlinks": true,
-    "paths": {
-      "@multiplayer-app/session-recorder-common": ["common"]
-    }
+    "paths": {}
   },
   "exclude": ["dist"],
   "references": []
