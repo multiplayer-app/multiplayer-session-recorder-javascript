@@ -11,7 +11,7 @@ import {
   SessionRecorderIdGenerator,
   SessionRecorderHttpTraceExporterBrowser,
   SessionRecorderTraceIdRatioBasedSampler,
-} from '@multiplayer-app/common'
+} from '@multiplayer-app/session-recorder-common'
 import { TracerBrowserConfig } from '../types'
 import { OTEL_IGNORE_URLS, OTEL_MP_DOC_TRACE_RATIO } from '../config'
 import { processHttpPayload, headersToObject, extractResponseBody } from './helpers'

@@ -1,7 +1,7 @@
 import { pack } from '@rrweb/packer';
 import { pluginEvent } from "@rrweb/types";
 import { eventWithTime, record, recordOptions } from 'rrweb';
-import { SessionType } from '@multiplayer-app/common';
+import { SessionType } from '@multiplayer-app/session-recorder-common';
 import { getRecordConsolePlugin, LogData } from '@rrweb/rrweb-plugin-console-record';
 
 

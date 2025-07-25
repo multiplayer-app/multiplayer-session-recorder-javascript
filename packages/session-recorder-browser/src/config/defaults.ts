@@ -1,4 +1,4 @@
-import { SessionRecorderSdk } from '@multiplayer-app/common'
+import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common'
 import { MaskingConfig, SessionRecorderConfigs, WidgetButtonPlacement } from '../types'
 import { MULTIPLAYER_BASE_API_URL, OTEL_MP_DOC_TRACE_RATIO, OTEL_MP_SAMPLE_TRACE_RATIO, DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE } from './constants'
 const { mask, sensitiveFields, sensitiveHeaders } = SessionRecorderSdk

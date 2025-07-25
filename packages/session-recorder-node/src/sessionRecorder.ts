@@ -1,10 +1,10 @@
 import {
   SessionType,
-  SessionRecorderIdGenerator,
   SessionRecorderSdk,
+  SessionRecorderIdGenerator,
+  ATTR_MULTIPLAYER_SESSION_RECORDER_VERSION,
   MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH,
-  ATTR_MULTIPLAYER_SESSION_RECORDER_VERSION
-} from '@multiplayer-app/common'
+} from '@multiplayer-app/session-recorder-common'
 import { ApiService } from './services/api.service'
 import { ISession } from './types'
 import { getFormattedDate } from './helper'

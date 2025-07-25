@@ -40,7 +40,7 @@ import messagingService from './services/messaging.service'
 import { ApiService, StartSessionRequest, StopSessionRequest } from './services/api.service'
 
 import './index.scss'
-import { SessionType } from '@multiplayer-app/common'
+import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { ContinuousDebuggingSaveButtonState } from './sessionWidget/buttonStateConfigs'
 import { ISessionRecorder } from './types'
 

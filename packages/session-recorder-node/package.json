@@ -25,10 +25,11 @@
     "lint": "eslint src/**/*.ts --config ../../.eslintrc",
     "preversion": "npm run lint",
     "postversion:skip": "git push && git push --tags",
-    "build": "rm -rf ./src/common && cp -R ../../common/src/ ./src/common/ && tsc --build tsconfig.json && rm -rf ./src/common",
+    "build": "tsc --build tsconfig.json",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "@multiplayer-app/session-recorder-common": "1.0.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/core": "^1.29.0",
     "@opentelemetry/otlp-exporter-base": "^0.56.0",
@@ -39,7 +40,6 @@
   },
   "devDependencies": {
     "@types/node": "24.0.12",
-    "@multiplayer-app/common": "file:../../common",
     "typescript": "5.8.3"
   }
 }

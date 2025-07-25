@@ -1,7 +1,7 @@
 import { SessionRecorder } from './sessionRecorder'
 import { ISession } from './types'
 import messagingService from './services/messaging.service'
-import { SessionType } from '@multiplayer-app/common'
+import { SessionType } from '@multiplayer-app/session-recorder-common'
 
 
 

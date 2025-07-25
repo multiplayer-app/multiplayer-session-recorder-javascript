@@ -27,14 +27,11 @@
     "lint": "eslint src/**/*.ts --config ../../.eslintrc",
     "preversion": "npm run lint",
     "postversion:skip": "git push && git push --tags",
-    "build": "rm -rf ./src/common && cp -R ../../common/src/ ./src/common/ && tsc --emitDeclarationOnly && rm -rf ./src/common && rm -rf ./src/common",
-    "browserify:lib": "browserify dist/browser/index.js -o dist/browser/debugger-lib.js",
-    "browserify:exporters": "browserify dist/exporters/index.js -o dist/exporters/exporters.js",
-    "moveDist": "cp dist/browser/debugger-lib.js ../../../multiplayer-debugger-extension/lib/debugger-lib.js && cp dist/exporters/exporters.js ../../../multiplayer-debugger-extension/lib/exporters.js",
+    "build": "webpack && tsc --emitDeclarationOnly",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@multiplayer-app/common": "file:../../common",
+    "@multiplayer-app/session-recorder-common": "1.0.0",
     "browserify": "17.0.1",
     "clean-webpack-plugin": "4.0.0",
     "css-loader": "6.0.0",
@@ -52,7 +49,6 @@
     "webpack-cli": "5.1.4"
   },
   "dependencies": {
-    "@multiplayer-app/common": "file:../../common",
     "@opentelemetry/auto-instrumentations-web": "0.44.0",
     "@opentelemetry/context-zone": "1.29.0",
     "@opentelemetry/core": "1.29.0",
