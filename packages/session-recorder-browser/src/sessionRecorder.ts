@@ -69,7 +69,6 @@ export class SessionRecorder implements ISessionRecorder {
   }
   set sessionType(sessionType: SessionType) {
     this._sessionType = sessionType
-    this._apiService.updateConfigs({ sessionType })
     const continuousDebugging = sessionType === SessionType.CONTINUOUS
     this._sessionWidget.updateContinuousDebuggingState(continuousDebugging)
     messagingService.sendMessage('continuous-debugging', continuousDebugging)
@@ -144,7 +143,6 @@ export class SessionRecorder implements ISessionRecorder {
       this.sessionId = sessionIdLocal
       this.sessionType = sessionTypeLocal
       this.sessionState = sessionStateLocal
-
     } else {
       this.session = null
       this.sessionId = null
@@ -173,14 +171,14 @@ export class SessionRecorder implements ISessionRecorder {
 
 
     this._tracer.init(this._configs)
+    this._apiService.init(this._configs)
     this._sessionWidget.init(this._configs)
-    this._apiService.init({ ...this._configs, sessionType: this.sessionType })
 
     if (this._configs.apiKey) {
       this._recorder.init(this._configs)
     }
 
-    if (this.sessionId && this.sessionState === SessionState.started) {
+    if (this.sessionId && (this.sessionState === SessionState.started || this.sessionState === SessionState.paused)) {
       if (this.session) {
         this._recorder.subscribeToSession(this.session)
       }
@@ -288,7 +286,30 @@ export class SessionRecorder implements ISessionRecorder {
       this.error = error.message
     }
   }
+  /**
+   * Pause the current session
+   */
+  public async pause(): Promise<void> {
+    try {
+      this._checkOperation('pause')
+      this._pause()
+    } catch (error: any) {
+      this.error = error.message
+    }
+  }
 
+  /**
+   * Resume the current session
+   */
+  public async resume(): Promise<void> {
+    try {
+      this._checkOperation('resume')
+      this._resume()
+    } catch (error: any) {
+      this.error = error.message
+    }
+  }
+  //
   /**
    * Cancel the current session
    */
@@ -360,17 +381,7 @@ export class SessionRecorder implements ISessionRecorder {
       }
     }
   }
-  /**
-   * Pause the current session
-   */
-  public async pause(): Promise<void> {
-    try {
-      this._checkOperation('pause')
-      this._pause()
-    } catch (error: any) {
-      this.error = error.message
-    }
-  }
+
 
   /**
    * Register session widget event listeners for controlling session actions
@@ -388,6 +399,11 @@ export class SessionRecorder implements ISessionRecorder {
     this._sessionWidget.on('pause', () => {
       this.error = ''
       this.pause()
+    })
+
+    this._sessionWidget.on('resume', () => {
+      this.error = ''
+      this.resume()
     })
 
     this._sessionWidget.on('cancel', () => {
@@ -506,6 +522,15 @@ export class SessionRecorder implements ISessionRecorder {
     this.sessionState = SessionState.paused
   }
 
+  /**
+   * Resume the session tracing and recording
+   */
+  private _resume(): void {
+    this._tracer.start(this.sessionId, this.sessionType)
+    this._recorder.start(this.sessionId, this.sessionType)
+    this.sessionState = SessionState.started
+  }
+
   private _setupSessionAndStart(session: ISession, configureExporters: boolean = true): void {
     if (configureExporters && session.tempApiKey) {
       this._configs.apiKey = session.tempApiKey
@@ -538,7 +563,7 @@ export class SessionRecorder implements ISessionRecorder {
 
   /**
    * Check the operation validity based on the session state and action
-   * @param action - action being checked ('init', 'start', 'stop', 'cancel', 'pause')
+   * @param action - action being checked ('init', 'start', 'stop', 'cancel', 'pause', 'resume')
    */
   private _checkOperation(
     action:
@@ -547,6 +572,7 @@ export class SessionRecorder implements ISessionRecorder {
       | 'stop'
       | 'cancel'
       | 'pause'
+      | 'resume'
       | 'save'
       | 'autoStartRemoteContinuousSession',
     payload?: any,
@@ -575,6 +601,11 @@ export class SessionRecorder implements ISessionRecorder {
       case 'pause':
         if (this.sessionState !== SessionState.started) {
           throw new Error('Cannot pause. Session is not running.')
+        }
+        break
+      case 'resume':
+        if (this.sessionState !== SessionState.paused) {
+          throw new Error('Cannot resume. Session is not paused.')
         }
         break
       case 'save':

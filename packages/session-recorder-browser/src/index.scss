@@ -272,6 +272,7 @@ $z-index-modal: 10004;
       right: 0;
       @include flex-between;
       padding: $spacing-lg;
+      gap: $spacing-sm;
       background: linear-gradient(
           180deg,
           rgba(255, 255, 255, 0) 50%,
@@ -280,8 +281,9 @@ $z-index-modal: 10004;
         linear-gradient(90deg, #d8f3fd 0%, #e3ecfd 100%);
 
       a {
-        text-decoration: none;
         color: inherit;
+        margin-right: auto;
+        text-decoration: none;
       }
     }
 
@@ -310,7 +312,7 @@ $z-index-modal: 10004;
 
     &-footer {
       @include flex-between;
-      gap: $spacing-md;
+      gap: $spacing-sm;
     }
 
     &-button {
@@ -567,14 +569,15 @@ $z-index-modal: 10004;
 
 /* Close button */
 .mp-session-debugger-modal-close {
-  position: absolute;
-  top: 0;
-  right: 0;
   background: none;
   border: none;
-  padding: $spacing-lg;
+  padding: $spacing-sm;
   cursor: pointer;
   color: grey;
+  line-height: 1;
+  svg {
+   vertical-align: top;
+  }
 }
 
 /* Modal body */
@@ -594,13 +597,6 @@ $z-index-modal: 10004;
   }
 }
 
-.mp-session-debugger-modal-header {
-  position: relative;
-  header {
-    font-size: 20px;
-    font-weight: 600;
-  }
-}
 
 .mp-session-debugger-player-frame {
   display: flex;

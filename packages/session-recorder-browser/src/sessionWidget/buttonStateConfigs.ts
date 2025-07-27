@@ -27,7 +27,7 @@ export enum ContinuousDebuggingSaveButtonState {
 export const buttonStates = {
   [ButtonState.IDLE]: {
     icon: RecordIcon,
-    tooltip: 'Click to record a bug',
+    tooltip: 'Click to record',
     classes: [],
     excludeClasses: ['animate-rotate', 'mp-button-blue'],
   },
@@ -57,7 +57,7 @@ export const buttonStates = {
   },
   [ButtonState.CONTINUOUS_DEBUGGING]: {
     icon: CapturingIcon,
-    tooltip: 'You’re continuously debugging.',
+    tooltip: 'You’re continuously recording.',
     classes: [],
     excludeClasses: ['mp-button-blue', 'animate-rotate'],
   },

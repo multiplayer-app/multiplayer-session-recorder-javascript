@@ -11,7 +11,7 @@ export const initialPopoverTemplate = `
   <div class="mp-session-debugger-popover-body">
     <div class="mp-session-debugger-continuous-debugging">
       <div class="mp-session-debugger-continuous-debugging-label">
-        Continuous Debugging
+        Continuous recording
       </div>
       <label class="mp-session-debugger-continuous-debugging-switch">
         <input type="checkbox" id="mp-session-debugger-continuous-debugging-checkbox">
@@ -20,10 +20,12 @@ export const initialPopoverTemplate = `
     </div>
     <h2>Encountered an issue?</h2>
     <p>Help us improve by sharing what went wrong. We'll record your steps, so we can see exactly what happened.</p>
-    <button class="mp-session-debugger-popover-button mp-start-recording">Start bug-hunting!</button>
+    <div class="mp-session-debugger-popover-footer">
+      <button class="mp-session-debugger-popover-button mp-start-recording">Start Recording!</button>
+    </div>
     <div class="mp-session-debugger-continuous-debugging-overlay">
       <div class="mp-session-debugger-continuous-debugging-overlay-content">
-        <h3>${CapturingIcon} You’re continuously debugging.</h3>
+        <h3>${CapturingIcon} You’re continuously recording.</h3>
         <p>
          Press the save button to save your last snapshot. You can continue debugging after saving.
         </p>

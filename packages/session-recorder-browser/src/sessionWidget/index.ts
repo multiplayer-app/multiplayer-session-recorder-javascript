@@ -21,6 +21,7 @@ import {
 type SessionWidgetEvents =
   | 'toggle'
   | 'pause'
+  | 'resume'
   | 'cancel'
   | 'continuous-debugging'
   | 'save';
@@ -35,6 +36,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   private readonly toast: HTMLElement
   private _isStarted: boolean = false
   private _isPaused: boolean = false
+  private _isInitialized: boolean = false
 
   private _recorderPlacement: string = ''
   private _error: string = ''
@@ -96,6 +98,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   public set isStarted(v: boolean) {
     this._isStarted = v
+
     if (!this.showRecorderButton && v && !this._continuousDebugging) {
       this.overlay.classList.remove('hidden')
       this.makeOverlayDraggable()
@@ -123,7 +126,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   public set isPaused(v: boolean) {
     this._isPaused = v
-    if (!this.showRecorderButton && v && !this._continuousDebugging) {
+    if (this._isInitialized && !this.showRecorderButton && v && !this._continuousDebugging) {
       this.overlay.classList.add('hidden')
       this.submitSessionDialog.classList.remove('hidden')
       this.stopTimer()
@@ -228,16 +231,21 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   private handleClickOutside = (event: MouseEvent) => {
     const target = event.target as HTMLElement
-
+    const isPopoverVisible = this._initialPopoverVisible || this._finalPopoverVisible
+    const popover = this._initialPopoverVisible ? this.initialPopover : this.finalPopover
     if (
-      this._initialPopoverVisible &&
+      isPopoverVisible &&
       target &&
-      !this.initialPopover?.contains(target) &&
+      !popover?.contains(target) &&
       !this.recorderButton?.contains(target) &&
       target !== this.recorderButton &&
-      target !== this.initialPopover
+      target !== popover
     ) {
-      this.handleCloseInitialPopover()
+      if (this._initialPopoverVisible) {
+        this.handleCloseInitialPopover()
+      } else {
+        this.handleCloseFinalPopover()
+      }
     }
   }
 
@@ -267,6 +275,8 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   init(options: SessionWidgetConfig) {
+    if (this._isInitialized) return
+    this._isInitialized = true
     this.showRecorderButton = options.showWidget
     const elements = [this.toast]
 
@@ -398,6 +408,11 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
           selector: '.mp-session-debugger-dismiss-button',
           handler: this.handleDismissRecording.bind(this),
         },
+        {
+          target: this.finalPopover,
+          selector: '.mp-session-debugger-modal-close',
+          handler: this.handleCloseFinalPopover.bind(this),
+        },
       )
     } else {
       events.push(
@@ -444,6 +459,10 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       ? ButtonState.CONTINUOUS_DEBUGGING
       : ButtonState.IDLE
     document.removeEventListener('click', this.handleClickOutside)
+  }
+
+  private handleCloseFinalPopover() {
+    this.onResume()
   }
 
   public onRequestError() {
@@ -495,9 +514,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     }
 
     if (this._isPaused) {
-      this.onCancel()
-      this.finalPopoverVisible = false
-      this.buttonState = ButtonState.IDLE
+      this.onResume()
       return
     }
 
@@ -515,7 +532,8 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
         : ButtonState.CANCEL
       this.initialPopoverVisible = !this._initialPopoverVisible
     }
-    if (this._initialPopoverVisible) {
+
+    if (this._initialPopoverVisible || this._finalPopoverVisible) {
       document.addEventListener('click', this.handleClickOutside)
     } else {
       document.removeEventListener('click', this.handleClickOutside)
@@ -580,6 +598,16 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   private onPause() {
     this.emit('pause', [])
+  }
+
+  private onResume() {
+    this.finalPopoverVisible = false
+    if (!this._continuousDebugging) {
+      this.buttonState = ButtonState.RECORDING
+      this.emit('resume', [])
+    } else {
+      this.buttonState = ButtonState.CONTINUOUS_DEBUGGING
+    }
   }
 
   private onCancel() {

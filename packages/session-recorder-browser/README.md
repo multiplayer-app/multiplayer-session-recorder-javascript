@@ -212,6 +212,7 @@ The Session Recorder provides several methods for controlling session recording:
   - `session`: Optional existing session object
 - `SessionRecorder.stop(comment?)` - Stop the current session with optional comment
 - `SessionRecorder.pause()` - Pause the current session
+- `SessionRecorder.resume()` - Resume the current session
 - `SessionRecorder.cancel()` - Cancel the current session
 - `SessionRecorder.save()` - Save the continuous debugging session
 

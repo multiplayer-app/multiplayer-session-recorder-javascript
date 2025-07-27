@@ -28,6 +28,10 @@ export function setupListeners(sessionRecorder: SessionRecorder): void {
     sessionRecorder.pause()
   })
 
+  messagingService.on('resume', () => {
+    sessionRecorder.resume()
+  })
+
   messagingService.on('cancel', () => {
     sessionRecorder.cancel()
   })

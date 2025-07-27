@@ -246,10 +246,7 @@ export interface SessionWidgetConfig {
 /**
  * Configuration interface for the ApiService class
  */
-export interface ApiServiceConfig extends BaseConfig {
-  /** The type of session (plain or continuous) */
-  sessionType: SessionType
-}
+export interface ApiServiceConfig extends BaseConfig { }
 
 export interface SessionRecorderConfigs extends Required<SessionRecorderOptions> { }
 
@@ -335,6 +332,11 @@ export interface ISessionRecorder {
    * Pause the current session
    */
   pause(): Promise<void>
+
+  /**
+   * Resume the current session
+   */
+  resume(): Promise<void>
 
   /**
    * Set the session metadata
