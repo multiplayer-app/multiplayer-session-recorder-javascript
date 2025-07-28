@@ -25,10 +25,11 @@
     "strict": true,
     "composite": true,
     "outDir": "./dist/",
-    "rootDir": "./src/",
+    "rootDir": "./",
     "preserveSymlinks": true,
     "paths": {}
   },
-  "exclude": ["dist", "webpack.config.js"],
+  "include": ["src/**/*"],
+  "exclude": ["dist", "webpack.config.js", "node_modules"],
   "references": []
 }
