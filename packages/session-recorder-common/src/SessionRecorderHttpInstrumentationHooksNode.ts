@@ -231,15 +231,18 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
               !_options.headersToInclude?.length
               && !_options.headersToExclude?.length
             ) {
-              _headers = JSON.parse(JSON.stringify(headers))
+              // Add null check to prevent JSON.parse error when headers is undefined
+              if (headers !== undefined && headers !== null) {
+                _headers = JSON.parse(JSON.stringify(headers))
+              }
             } else {
-              if (_options.headersToInclude) {
+              if (_options.headersToInclude && headers) {
                 for (const headerName of _options.headersToInclude) {
                   _headers[headerName] = headers[headerName]
                 }
               }
 
-              if (_options.headersToExclude?.length) {
+              if (_options.headersToExclude?.length && headers) {
                 for (const headerName of _options.headersToExclude) {
                   delete _headers[headerName]
                 }
@@ -284,15 +287,18 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
             !_options.headersToInclude?.length
             && !_options.headersToExclude?.length
           ) {
-            _headers = JSON.parse(JSON.stringify(_request.headers))
+            // Add null check to prevent JSON.parse error when headers is undefined
+            if (_request.headers !== undefined && _request.headers !== null) {
+              _headers = JSON.parse(JSON.stringify(_request.headers))
+            }
           } else {
-            if (_options.headersToInclude) {
+            if (_options.headersToInclude && _request.headers) {
               for (const headerName of _options.headersToInclude) {
-                _headers[headerName] = _request.headers
+                _headers[headerName] = _request.headers[headerName]
               }
             }
 
-            if (_options.headersToExclude?.length) {
+            if (_options.headersToExclude?.length && _request.headers) {
               for (const headerName of _options.headersToExclude) {
                 delete _headers[headerName]
               }

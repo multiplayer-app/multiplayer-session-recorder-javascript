@@ -110,8 +110,13 @@ export function processHeaders(
     !masking.headersToInclude?.length &&
     !masking.headersToExclude?.length
   ) {
-    requestHeaders = JSON.parse(JSON.stringify(requestHeaders))
-    responseHeaders = JSON.parse(JSON.stringify(responseHeaders))
+    // Add null checks to prevent JSON.parse error when headers is undefined
+    if (requestHeaders !== undefined && requestHeaders !== null) {
+      requestHeaders = JSON.parse(JSON.stringify(requestHeaders))
+    }
+    if (responseHeaders !== undefined && responseHeaders !== null) {
+      responseHeaders = JSON.parse(JSON.stringify(responseHeaders))
+    }
   } else {
     if (masking.headersToInclude) {
       const _requestHeaders: Record<string, string> = {}
