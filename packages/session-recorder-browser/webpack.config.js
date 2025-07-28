@@ -22,9 +22,7 @@ const baseConfig = {
         test: /\.ts$/,
         use: {
           loader: 'ts-loader',
-          options: {
-            transpileOnly: true,
-          },
+          options: {},
         },
         exclude: /node_modules/,
       },

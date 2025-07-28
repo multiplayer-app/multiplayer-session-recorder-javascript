@@ -8,7 +8,7 @@
   },
   "license": "MIT",
   "main": "dist/index.js",
-  "types": "dist/src/index.d.ts",
+  "types": "dist/index.d.ts",
   "engines": {
     "node": ">=18",
     "npm": ">=8"
@@ -27,7 +27,7 @@
     "lint": "eslint src/**/*.ts --config ../../.eslintrc",
     "preversion": "npm run lint",
     "postversion:skip": "git push && git push --tags",
-    "build": "webpack && tsc --emitDeclarationOnly",
+    "build": "webpack",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
