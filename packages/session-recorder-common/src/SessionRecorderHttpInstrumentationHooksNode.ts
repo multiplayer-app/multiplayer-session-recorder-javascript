@@ -238,12 +238,9 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
           }
 
           if (_options.captureHeaders) {
-            const headers = (options.isMaskHeadersEnabled
+            const _headers = JSON.parse(JSON.stringify((options.isMaskHeadersEnabled
               ? _options.maskHeaders(_response.getHeaders(), span)
-              : _response.getHeaders()) || {}
-
-            // Deep copy headers to prevent mutation of original object
-            const _headers = JSON.parse(JSON.stringify(headers))
+              : _response.getHeaders()) || {}))
 
             if (_options.headersToInclude) {
               const filteredHeaders: any = {}
@@ -291,11 +288,9 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
         const _request = request as IncomingMessage
 
         if (_options.captureHeaders) {
-          const headers = (_options.isMaskHeadersEnabled
+          const _headers = JSON.parse(JSON.stringify((_options.isMaskHeadersEnabled
             ? _options.maskHeaders(_request.headers, span)
-            : _request.headers) || {}
-          // Deep copy headers to prevent mutation of original object
-          const _headers = JSON.parse(JSON.stringify(headers))
+            : _request.headers) || {}))
 
           if (_options.headersToInclude) {
             const filteredHeaders: any = {}
