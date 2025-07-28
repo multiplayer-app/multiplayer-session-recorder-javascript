@@ -238,15 +238,15 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
               ? _options.maskHeaders(_response.getHeaders(), span)
               : _response.getHeaders()) || {}
 
-            let _headers: any = {}
-
+            // Deep copy headers to prevent mutation of original object
+            const _headers = JSON.parse(JSON.stringify(headers))
 
             if (_options.headersToInclude) {
+              const filteredHeaders: any = {}
               for (const headerName of _options.headersToInclude) {
-                _headers[headerName] = headers[headerName]
+                filteredHeaders[headerName] = _headers[headerName]
               }
-            } else {
-              _headers = JSON.parse(JSON.stringify(headers))
+              Object.assign(_headers, filteredHeaders)
             }
 
             if (_options.headersToExclude?.length) {
@@ -290,14 +290,15 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
           const headers = (_options.isMaskHeadersEnabled
             ? _options.maskHeaders(_request.headers, span)
             : _request.headers) || {}
-          let _headers: any = {}
+          // Deep copy headers to prevent mutation of original object
+          const _headers = JSON.parse(JSON.stringify(headers))
 
           if (_options.headersToInclude) {
+            const filteredHeaders: any = {}
             for (const headerName of _options.headersToInclude) {
-              _headers[headerName] = headers[headerName]
+              filteredHeaders[headerName] = _headers[headerName]
             }
-          } else {
-            _headers = JSON.parse(JSON.stringify(headers))
+            Object.assign(_headers, filteredHeaders)
           }
 
           if (_options.headersToExclude?.length) {

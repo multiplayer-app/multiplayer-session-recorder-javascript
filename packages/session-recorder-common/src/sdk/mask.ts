@@ -126,7 +126,7 @@ const maskSelected = (value: any, keysToMask: string[]): any => {
       if (_keysToMask.has(key)) {
         value[key] = MASK_PLACEHOLDER
       } else {
-        value[key] = maskSelected(value[key],keysToMask)
+        value[key] = maskSelected(value[key], keysToMask)
       }
     }
 
@@ -140,7 +140,7 @@ const maskSelected = (value: any, keysToMask: string[]): any => {
   return value
 }
 
-export default (keysToMask: string[] = []) => (value: any, span: Span): any => {
+export default (keysToMask: string[] = []) => (value: any, span?: Span): any => {
   let payloadJson
   try {
     payloadJson = JSON.parse(value)
