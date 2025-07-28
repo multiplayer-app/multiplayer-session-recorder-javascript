@@ -1,13 +1,13 @@
 {
   "name": "@multiplayer-app/session-recorder-node",
-  "version": "1.0.0",
+  "version": "0.0.4",
   "description": "Multiplayer Fullstack Session Recorder for Node.js",
   "author": {
     "name": "Multiplayer Software, Inc.",
     "url": "https://www.multiplayer.app"
   },
   "license": "MIT",
-  "main": "dist/src/index.js",
+  "main": "dist/index.js",
   "engines": {
     "node": ">=18",
     "npm": ">=8"
@@ -29,7 +29,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@multiplayer-app/session-recorder-common": "1.0.0",
+    "@multiplayer-app/session-recorder-common": "0.0.3",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/core": "^1.29.0",
     "@opentelemetry/otlp-exporter-base": "^0.56.0",

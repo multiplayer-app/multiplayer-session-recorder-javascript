@@ -13,6 +13,7 @@ import {
   MULTIPLAYER_MAX_HTTP_REQUEST_RESPONSE_SIZE,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY_ENCODING,
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
+  MULTIPLAYER_TRACE_DOC_PREFIX
 } from './constants.node'
 import {
   mask,
@@ -32,7 +33,8 @@ interface HttpResponseHookOptions {
   captureHeaders?: boolean
   captureBody?: boolean
 
-  isMaskingEnabled?: boolean
+  isMaskBodyEnabled?: boolean
+  isMaskHeadersEnabled?: boolean
 
   maskBody?: (arg: any, span: Span) => any
   maskHeaders?: (arg: any, span: Span) => any
@@ -51,7 +53,8 @@ interface HttpRequestHookOptions {
   captureHeaders?: boolean
   captureBody?: boolean
 
-  isMaskingEnabled?: boolean
+  isMaskBodyEnabled?: boolean
+  isMaskHeadersEnabled?: boolean
 
   maskBody?: (arg: any, span: Span) => any
   maskHeaders?: (arg: any, span: Span) => any
@@ -71,7 +74,8 @@ const setDefaultOptions = (
     maskHeaders: (arg: any, span: Span) => any
     captureHeaders: boolean,
     captureBody: boolean,
-    isMaskingEnabled: boolean,
+    isMaskBodyEnabled: boolean
+    isMaskHeadersEnabled: boolean
     schemifyDocSpanPayload: boolean,
     uncompressPayload: boolean,
     maxPayloadSizeBytes: number
@@ -82,8 +86,11 @@ const setDefaultOptions = (
   options.captureBody = 'captureBody' in options
     ? options.captureBody
     : true
-  options.isMaskingEnabled = 'isMaskingEnabled' in options
-    ? options.isMaskingEnabled
+  options.isMaskBodyEnabled = 'isMaskBodyEnabled' in options
+    ? options.isMaskBodyEnabled
+    : true
+  options.isMaskHeadersEnabled = 'isMaskHeadersEnabled' in options
+    ? options.isMaskHeadersEnabled
     : true
   options.schemifyDocSpanPayload = 'schemifyDocSpanPayload' in options
     ? options.schemifyDocSpanPayload
@@ -123,7 +130,8 @@ const setDefaultOptions = (
       maskHeaders: (arg: any, span: Span) => any
       captureHeaders: boolean,
       captureBody: boolean,
-      isMaskingEnabled: boolean,
+      isMaskBodyEnabled: boolean,
+      isMaskHeadersEnabled: boolean,
       schemifyDocSpanPayload: boolean,
       uncompressPayload: boolean,
       maxPayloadSizeBytes: number
@@ -204,10 +212,13 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
             if (!skipResponseBodyModification) {
               if (
                 traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
-                && _options.isMaskingEnabled
+                && _options.isMaskBodyEnabled
               ) {
                 responseBody = _options.maskBody(responseBody, span)
-              } else if (_options.schemifyDocSpanPayload) {
+              } else if (
+                traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)
+                && _options.schemifyDocSpanPayload
+              ) {
                 responseBody = schemify(responseBody)
               } else if (typeof responseBody !== 'string') {
                 responseBody = JSON.stringify(responseBody)
@@ -223,29 +234,24 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
           }
 
           if (_options.captureHeaders) {
-            const headers = _options.maskHeaders(_response.getHeaders(), span)
+            const headers = (options.isMaskHeadersEnabled
+              ? _options.maskHeaders(_response.getHeaders(), span)
+              : _response.getHeaders()) || {}
 
             let _headers: any = {}
 
-            if (
-              !_options.headersToInclude?.length
-              && !_options.headersToExclude?.length
-            ) {
-              // Add null check to prevent JSON.parse error when headers is undefined
-              if (headers !== undefined && headers !== null) {
-                _headers = JSON.parse(JSON.stringify(headers))
+
+            if (_options.headersToInclude) {
+              for (const headerName of _options.headersToInclude) {
+                _headers[headerName] = headers[headerName]
               }
             } else {
-              if (_options.headersToInclude && headers) {
-                for (const headerName of _options.headersToInclude) {
-                  _headers[headerName] = headers[headerName]
-                }
-              }
+              _headers = JSON.parse(JSON.stringify(headers))
+            }
 
-              if (_options.headersToExclude?.length && headers) {
-                for (const headerName of _options.headersToExclude) {
-                  delete _headers[headerName]
-                }
+            if (_options.headersToExclude?.length) {
+              for (const headerName of _options.headersToExclude) {
+                delete _headers[headerName]
               }
             }
 
@@ -281,35 +287,28 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
         const _request = request as IncomingMessage
 
         if (_options.captureHeaders) {
+          const headers = (_options.isMaskHeadersEnabled
+            ? _options.maskHeaders(_request.headers, span)
+            : _request.headers) || {}
           let _headers: any = {}
 
-          if (
-            !_options.headersToInclude?.length
-            && !_options.headersToExclude?.length
-          ) {
-            // Add null check to prevent JSON.parse error when headers is undefined
-            if (_request.headers !== undefined && _request.headers !== null) {
-              _headers = JSON.parse(JSON.stringify(_request.headers))
+          if (_options.headersToInclude) {
+            for (const headerName of _options.headersToInclude) {
+              _headers[headerName] = headers[headerName]
             }
           } else {
-            if (_options.headersToInclude && _request.headers) {
-              for (const headerName of _options.headersToInclude) {
-                _headers[headerName] = _request.headers[headerName]
-              }
-            }
+            _headers = JSON.parse(JSON.stringify(headers))
+          }
 
-            if (_options.headersToExclude?.length && _request.headers) {
-              for (const headerName of _options.headersToExclude) {
-                delete _headers[headerName]
-              }
+          if (_options.headersToExclude?.length) {
+            for (const headerName of _options.headersToExclude) {
+              delete _headers[headerName]
             }
           }
 
-          const headers = _options.maskHeaders(_headers, span)
-
           span.setAttribute(
             ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
-            JSON.stringify(headers),
+            JSON.stringify(_headers),
           )
         }
 
@@ -338,10 +337,13 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
 
               if (
                 traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
-                && _options.isMaskingEnabled
+                && _options.isMaskBodyEnabled
               ) {
                 requestBody = _options.maskBody(requestBody, span)
-              } else if (_options.schemifyDocSpanPayload) {
+              } else if (
+                traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)
+                && _options.schemifyDocSpanPayload
+              ) {
                 requestBody = schemify(requestBody)
               } else if (typeof requestBody !== 'string') {
                 requestBody = JSON.stringify(requestBody)
