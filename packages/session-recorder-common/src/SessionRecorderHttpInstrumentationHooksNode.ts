@@ -209,6 +209,10 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
               responseBody = responseBuffer.toString('utf-8')
             }
 
+            if (responseBody.length) {
+              responseBody = JSON.parse(JSON.stringify(responseBody))
+            }
+
             if (!skipResponseBodyModification) {
               if (
                 traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
@@ -335,6 +339,8 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
 
               let requestBody = body
               if (!requestBody) return
+
+              requestBody = JSON.parse(JSON.stringify(requestBody))
 
               if (
                 traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
