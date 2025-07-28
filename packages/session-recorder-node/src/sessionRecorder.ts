@@ -5,7 +5,7 @@ import {
   ATTR_MULTIPLAYER_SESSION_RECORDER_VERSION,
   MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH,
 } from '@multiplayer-app/session-recorder-common'
-import { ApiService } from './services/api.service'
+import { ApiService } from './api.service'
 import { ISession } from './types'
 import { getFormattedDate } from './helper'
 import { SESSION_RECORDER_VERSION } from './config'

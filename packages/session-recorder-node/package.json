@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-node",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Multiplayer Fullstack Session Recorder for Node.js",
   "author": {
     "name": "Multiplayer Software, Inc.",

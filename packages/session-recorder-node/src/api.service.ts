@@ -1,5 +1,5 @@
-import { MULTIPLAYER_BASE_API_URL } from '../config'
-import { ISession } from '../types'
+import { MULTIPLAYER_BASE_API_URL } from './config'
+import { ISession } from './types'
 
 export interface ApiServiceConfig {
   apiKey?: string
