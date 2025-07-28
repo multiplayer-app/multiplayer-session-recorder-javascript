@@ -238,16 +238,17 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
           }
 
           if (_options.captureHeaders) {
-            const _headers = options.isMaskHeadersEnabled
-              ? _options.maskHeaders(JSON.parse(JSON.stringify(_response.getHeaders() || {})), span)
-              : JSON.parse(JSON.stringify(_response.getHeaders() || {}))
+            let _headers = JSON.parse(JSON.stringify(_response.getHeaders() || {}))
+            if (_options.isMaskHeadersEnabled) {
+              _headers = _options.maskHeaders(_headers, span)
+            }
 
             if (_options.headersToInclude) {
               const filteredHeaders: any = {}
               for (const headerName of _options.headersToInclude) {
                 filteredHeaders[headerName] = _headers[headerName]
               }
-              Object.assign(_headers, filteredHeaders)
+              _headers = filteredHeaders
             }
 
             if (_options.headersToExclude?.length) {
@@ -288,16 +289,18 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
         const _request = request as IncomingMessage
 
         if (_options.captureHeaders) {
-          const _headers = _options.isMaskHeadersEnabled
-            ? _options.maskHeaders(JSON.parse(JSON.stringify(_request.headers || {})), span)
-            : JSON.parse(JSON.stringify(_request.headers || {}))
+          let _headers = JSON.parse(JSON.stringify(_request.headers || {}))
+
+          if (_options.isMaskHeadersEnabled) {
+            _headers = _options.maskHeaders(_headers, span)
+          }
 
           if (_options.headersToInclude) {
             const filteredHeaders: any = {}
             for (const headerName of _options.headersToInclude) {
               filteredHeaders[headerName] = _headers[headerName]
             }
-            Object.assign(_headers, filteredHeaders)
+            _headers = filteredHeaders
           }
 
           if (_options.headersToExclude?.length) {
