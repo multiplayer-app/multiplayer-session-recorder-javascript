@@ -55,6 +55,13 @@ export function processBody(
 
   let { requestBody, responseBody } = payload
 
+  if (requestBody !== undefined && requestBody !== null) {
+    requestBody = JSON.parse(JSON.stringify(requestBody))
+  }
+  if (responseBody !== undefined && responseBody !== null) {
+    responseBody = JSON.parse(JSON.stringify(responseBody))
+  }
+
   // Apply schemify for document traces
   if (traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)) {
     if (schemifyDocSpanPayload) {
