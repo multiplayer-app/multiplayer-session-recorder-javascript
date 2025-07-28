@@ -3,7 +3,13 @@
   "version": "1.0.0",
   "description": "Multiplayer Fullstack Session Recorder",
   "scripts": {
-    "lint": "eslint **/src/**/*.ts --config .eslintrc"
+    "lint": "eslint **/src/**/*.ts --config .eslintrc",
+    "clean": "find packages -name 'dist' -type d -exec rm -rf {} + && find packages -name 'tsconfig.tsbuildinfo' -type f -delete",
+    "build": "npm run clean && npm run build:common && npm run build:packages",
+    "build:common": "cd packages/session-recorder-common && npm run build",
+    "build:packages": "cd packages/session-recorder-browser && npm run build && cd ../session-recorder-node && npm run build",
+    "prepublish": "npm run clean && npm run build",
+    "publish": "npm version patch "
   },
   "repository": {
     "type": "git",
