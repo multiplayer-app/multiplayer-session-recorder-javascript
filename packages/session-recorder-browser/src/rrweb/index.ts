@@ -128,9 +128,13 @@ export class RecorderBrowserSDK {
         }
       },
     })
+
+    // It will sent full snapshot again but it will fix missing first snapshot issue
+    record.takeFullSnapshot()
+
     if (restartTimeout > 0) {
       this.restartTimeout = setTimeout(() => {
-        this.restart(sessionId, sessionType)
+        record.takeFullSnapshot()
       }, restartTimeout)
     }
   }
