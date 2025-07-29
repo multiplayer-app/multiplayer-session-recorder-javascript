@@ -179,7 +179,6 @@ export class SessionRecorder implements ISessionRecorder {
     }
 
     if (this.sessionId && (this.sessionState === SessionState.started || this.sessionState === SessionState.paused)) {
-
       this._start()
     }
 
@@ -493,9 +492,9 @@ export class SessionRecorder implements ISessionRecorder {
    * Start tracing and recording for the session
    */
   private _start(): void {
+    this.sessionState = SessionState.started
     this._tracer.start(this.sessionId, this.sessionType)
     this._recorder.start(this.sessionId, this.sessionType)
-    this.sessionState = SessionState.started
     if (this.session) {
       recorderEventBus.emit(SESSION_STARTED_EVENT, this.session)
       this._recorder.subscribeToSession(this.session)
@@ -507,9 +506,9 @@ export class SessionRecorder implements ISessionRecorder {
    * Stop tracing and recording for the session
    */
   private _stop(): void {
+    this.sessionState = SessionState.stopped
     this._tracer.stop()
     this._recorder.stop()
-    this.sessionState = SessionState.stopped
   }
 
   /**
