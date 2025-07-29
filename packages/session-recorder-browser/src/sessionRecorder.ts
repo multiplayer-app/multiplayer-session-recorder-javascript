@@ -179,9 +179,7 @@ export class SessionRecorder implements ISessionRecorder {
     }
 
     if (this.sessionId && (this.sessionState === SessionState.started || this.sessionState === SessionState.paused)) {
-      if (this.session) {
-        this._recorder.subscribeToSession(this.session)
-      }
+
       this._start()
     }
 
@@ -500,6 +498,7 @@ export class SessionRecorder implements ISessionRecorder {
     this.sessionState = SessionState.started
     if (this.session) {
       recorderEventBus.emit(SESSION_STARTED_EVENT, this.session)
+      this._recorder.subscribeToSession(this.session)
       this._sessionWidget.seconds = getTimeDifferenceInSeconds(this.session?.startedAt)
     }
   }
@@ -539,7 +538,7 @@ export class SessionRecorder implements ISessionRecorder {
       this._apiService.updateConfigs({ apiKey: this._configs.apiKey })
     }
 
-    this._recorder.subscribeToSession(session)
+
     this._setSession(session)
     this._start()
   }
