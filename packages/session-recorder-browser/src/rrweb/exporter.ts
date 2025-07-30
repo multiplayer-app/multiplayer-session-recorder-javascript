@@ -40,7 +40,14 @@ export class RrwebEventExporter {
       transports: ['websocket'],
     })
 
-    this.socket.on('connect', () => {
+    // this.socket.on('connect', () => {
+    //   this.isConnecting = false
+    //   this.isConnected = true
+    //   this.usePostMessage = false
+    //   this.flushQueue()
+    // })
+
+    this.socket.on('ready', () => {
       this.isConnecting = false
       this.isConnected = true
       this.usePostMessage = false
