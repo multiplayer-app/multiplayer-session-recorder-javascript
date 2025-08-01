@@ -10,7 +10,7 @@ export interface ISession {
     osInfo?: string,
     pixelRatio?: string,
     screenSize?: string,
-  } & object
+  } & any
   sessionAttributes?: {
     userEmail?: string
     userId?: string,
@@ -19,8 +19,7 @@ export interface ISession {
     accountName?: string,
 
     comment?: string
-    // notifyOnUpdates?: boolean // remove
-  } & object
+  } & any
   tags?: {
     key?: string
     value: string
