@@ -15,9 +15,9 @@ The Multiplayer **Session Recorder** is a powerful tool that offers deep session
 You can install the Session Recorder using npm or yarn:
 
 ```bash
-npm install @multiplayer-app/session-recorder-node @multiplayer-app/session-recorder-opentelemetry
+npm install @multiplayer-app/session-recorder-node
 # or
-yarn add @multiplayer-app/session-recorder-node @multiplayer-app/session-recorder-opentelemetry
+yarn add @multiplayer-app/session-recorder-node
 ```
 
 ### Basic Setup
@@ -37,17 +37,15 @@ import { idGenerator } from './opentelemetry'
 Use the following code to initialize the session recorder with your application details:
 
 ```javascript
-  SessionRecorder.init(
-    '{YOUR_API_KEY}',
-    idGenerator,
-    {
-      resourceAttributes: {
-        serviceName: '{YOUR_APPLICATION_NAME}'
-        version: '{YOUR_APPLICATION_VERSION}',
-        environment: '{YOUR_APPLICATION_ENVIRONMENT}',
-      }
+  SessionRecorder.init({
+    apiKey: '{YOUR_API_KEY}',
+    traceIdGenerator: idGenerator,
+    resourceAttributes: {
+      serviceName: '{YOUR_APPLICATION_NAME}'
+      version: '{YOUR_APPLICATION_VERSION}',
+      environment: '{YOUR_APPLICATION_ENVIRONMENT}',
     }
-  )
+  })
 ```
 
 Replace the placeholders with your application’s version, name, environment, and API key.
@@ -61,26 +59,26 @@ This library relies on the following packages:
 ## Example Usage
 
 ```javascript
-import SessionRecorder from '@multiplayer-app/session-recorder-node'
-import { SessionType } from '@multiplayer-app/session-recorder-opentelemetry'
+import {
+    sessionRecorder,
+    SessionType
+} from '@multiplayer-app/session-recorder-node'
 // Session recorder trace id generator which is used during opentelemetry initialization
 import { idGenerator } from './opentelemetry'
 
-SessionRecorder.init(
-  '{YOUR_API_KEY}',
-  idGenerator,
-  {
-    resourceAttributes: {
-      serviceName: '{YOUR_APPLICATION_NAME}'
-      version: '{YOUR_APPLICATION_VERSION}',
-      environment: '{YOUR_APPLICATION_ENVIRONMENT}',
-    }
+sessionRecorder.init({
+  apiKey: '{YOUR_API_KEY}',
+  traceIdGenerator: idGenerator,
+  resourceAttributes: {
+    serviceName: '{YOUR_APPLICATION_NAME}',
+    version: '{YOUR_APPLICATION_VERSION}',
+    environment: '{YOUR_APPLICATION_ENVIRONMENT}',
   }
-)
+})
 
 // ...
 
-  await SessionRecorder.start(
+  await sessionRecorder.start(
     SessionType.PLAIN,
     {
       name: 'This is test session',
@@ -93,6 +91,6 @@ SessionRecorder.init(
 
   // do something here
 
-  await SessionRecorder.stop()
+  await sessionRecorder.stop()
 
 ```
