@@ -106,7 +106,7 @@ export class UIManager {
     }
 
     button.classList.toggle('disabled', isLoading)
-    button.textContent = isLoading ? 'Starting to record...' : 'Start bug-hunting!'
+    button.textContent = isLoading ? 'Starting to record...' : 'Start recording'
   }
 
   public setTimerValue(time: string) {

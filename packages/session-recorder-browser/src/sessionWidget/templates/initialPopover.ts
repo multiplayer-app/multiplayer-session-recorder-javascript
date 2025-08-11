@@ -18,8 +18,8 @@ export const initialPopoverTemplate = `
         <span></span>
       </label>
     </div>
-    <h2>Encountered an issue?</h2>
-    <p>Help us improve by sharing what went wrong. We'll record your steps, so we can see exactly what happened.</p>
+    <h2>Want to record a new session?</h2>
+    <p>Start a fresh full-stack session recording, and continue chatting and bug-hunting!</p>
     <div class="mp-session-debugger-popover-footer">
       <button class="mp-session-debugger-popover-button mp-start-recording">Start Recording!</button>
     </div>
