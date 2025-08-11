@@ -44,6 +44,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   private _finalPopoverVisible: boolean = false
   private _buttonState: ButtonState = ButtonState.IDLE
   private _continuousDebugging: boolean = false
+  private _enableContinuousDebugging: boolean = true
   private uiManager: UIManager
   private readonly commentTextarea: HTMLTextAreaElement | null = null
   private buttonDraggabilityObserver!: MutationObserver
@@ -278,6 +279,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     if (this._isInitialized) return
     this._isInitialized = true
     this.showRecorderButton = options.showWidget
+    this._enableContinuousDebugging = options.enableContinuousDebugging
     const elements = [this.toast]
 
     if (options.showWidget) {
@@ -292,6 +294,13 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     }
 
     this.appendElements(elements)
+    // Hide continuous debugging UI when feature is disabled
+    if (!this._enableContinuousDebugging) {
+      const cont = this.initialPopover.querySelector('.mp-session-debugger-continuous-debugging') as HTMLElement
+      cont && cont.classList.add('hidden')
+      const overlay = this.initialPopover.querySelector('.mp-session-debugger-continuous-debugging-overlay') as HTMLElement
+      overlay && overlay.classList.add('hidden')
+    }
     if (options.showWidget && options.widgetButtonPlacement) {
       this.recorderButton.classList.add(options.widgetButtonPlacement)
       this._recorderPlacement = options.widgetButtonPlacement
@@ -382,17 +391,23 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
           selector: '.mp-start-recording',
           handler: this.startRecording.bind(this),
         },
-        {
-          event: 'change',
-          target: this.initialPopover,
-          selector: '#mp-session-debugger-continuous-debugging-checkbox',
-          handler: this.handleContinuousDebuggingChange.bind(this),
-        },
-        {
-          target: this.initialPopover,
-          selector: '#mp-save-continuous-debug-session',
-          handler: this.handleSaveContinuousDebugSession.bind(this),
-        },
+      )
+      if (this._enableContinuousDebugging) {
+        events.push(
+          {
+            event: 'change',
+            target: this.initialPopover,
+            selector: '#mp-session-debugger-continuous-debugging-checkbox',
+            handler: this.handleContinuousDebuggingChange.bind(this),
+          },
+          {
+            target: this.initialPopover,
+            selector: '#mp-save-continuous-debug-session',
+            handler: this.handleSaveContinuousDebugSession.bind(this),
+          },
+        )
+      }
+      events.push(
         {
           target: this.initialPopover,
           selector: '.mp-session-debugger-modal-close',
@@ -558,6 +573,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   private handleContinuousDebuggingChange(e: InputEvent) {
+    if (!this._enableContinuousDebugging) return
     const checkbox = e.target as HTMLInputElement
     this.emit('continuous-debugging', [checkbox.checked])
   }

@@ -23,6 +23,7 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
 
   showWidget: true,
   widgetButtonPlacement: WidgetButtonPlacement.bottomRight,
+  enableContinuousDebugging: true,
 
   usePostMessageFallback: false,
   exporterApiBaseUrl: MULTIPLAYER_BASE_API_URL,

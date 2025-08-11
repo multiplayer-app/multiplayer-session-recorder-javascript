@@ -63,6 +63,14 @@ export interface SessionRecorderOptions {
   widgetButtonPlacement?: WidgetButtonPlacement
 
   /**
+   * (Optional) Enables the continuous debugging feature and UI.
+   * If false, the UI toggle is hidden and attempts to start a continuous
+   * session are ignored.
+   * @default true
+   */
+  enableContinuousDebugging?: boolean
+
+  /**
    * (Optional) If false, the session recording widget will be hidden from the UI.
    * Use this option if you want to enable session recording without a visible UI element.
    * @default showWidget = true
@@ -241,6 +249,8 @@ export interface SessionWidgetConfig {
   showWidget: boolean
   /** Placement of the widget button */
   widgetButtonPlacement: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  /** Whether continuous debugging feature is enabled */
+  enableContinuousDebugging: boolean
 }
 
 /**

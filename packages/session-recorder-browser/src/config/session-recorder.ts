@@ -24,6 +24,7 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     usePostMessageFallback: isValidBoolean(c.usePostMessageFallback, BASE_CONFIG.usePostMessageFallback),
 
     showWidget: isValidBoolean(c.showWidget, BASE_CONFIG.showWidget),
+    enableContinuousDebugging: isValidBoolean(c.enableContinuousDebugging, BASE_CONFIG.enableContinuousDebugging),
     recordCanvas: isValidBoolean(c.recordCanvas, BASE_CONFIG.recordCanvas),
     widgetButtonPlacement: isValidEnum<WidgetButtonPlacement>(c.widgetButtonPlacement, BASE_CONFIG.widgetButtonPlacement, Object.values(WidgetButtonPlacement)),
     ignoreUrls: isValidArray(c.ignoreUrls, BASE_CONFIG.ignoreUrls),

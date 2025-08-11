@@ -195,6 +195,9 @@ export class SessionRecorder implements ISessionRecorder {
   public async save(): Promise<any> {
     try {
       this._checkOperation('save')
+      if (!this.continuousDebugging || !this._configs.enableContinuousDebugging) {
+        return
+      }
       this._sessionWidget.updateSaveContinuousDebugSessionState(
         ContinuousDebuggingSaveButtonState.SAVING,
       )
@@ -251,6 +254,10 @@ export class SessionRecorder implements ISessionRecorder {
    */
   public start(type: SessionType = SessionType.PLAIN, session?: ISession): void {
     this._checkOperation('start')
+    // If continuous debugging is disabled, force plain mode
+    if (type === SessionType.CONTINUOUS && !this._configs.enableContinuousDebugging) {
+      type = SessionType.PLAIN
+    }
     this.sessionType = type
     this._startRequestController = new AbortController()
     if (session) {
@@ -355,6 +362,9 @@ export class SessionRecorder implements ISessionRecorder {
     sessionPayload?: Omit<ISession, '_id' | 'shortId'>
   ): Promise<void> {
     this._checkOperation('autoStartRemoteContinuousSession')
+    if (!this._configs.enableContinuousDebugging) {
+      return
+    }
     const payload = {
       sessionAttributes: {
         ...this.sessionAttributes,
