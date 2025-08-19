@@ -12,7 +12,7 @@ import {
   SessionState,
   ISession,
   SessionRecorderOptions,
-  SessionRecorderConfigs
+  SessionRecorderConfigs,
 } from './types'
 
 import {
@@ -359,7 +359,7 @@ export class SessionRecorder implements ISessionRecorder {
    * @returns {Promise<void>}
    */
   public async checkRemoteContinuousSession(
-    sessionPayload?: Omit<ISession, '_id' | 'shortId'>
+    sessionPayload?: Omit<ISession, '_id' | 'shortId'>,
   ): Promise<void> {
     this._checkOperation('autoStartRemoteContinuousSession')
     if (!this._configs.enableContinuousDebugging) {

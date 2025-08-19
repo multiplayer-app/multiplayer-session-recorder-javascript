@@ -15,5 +15,5 @@ export const isSessionActive = (session, continuousDebugging: boolean) => {
 }
 
 export const isConsoleEvent = (event: eventWithTime) => {
-  return event.type === EventType.Plugin && event.data?.plugin === "rrweb/console@1"
+  return event.type === EventType.Plugin && event.data?.plugin === 'rrweb/console@1'
 }

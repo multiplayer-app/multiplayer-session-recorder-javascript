@@ -30,6 +30,10 @@ export const ATTR_MULTIPLAYER_INTEGRATION_ID = 'multiplayer.integration.id'
 
 export const ATTR_MULTIPLAYER_SESSION_ID = 'multiplayer.session.id'
 
+export const ATTR_MULTIPLAYER_HTTP_PROXY = 'multiplayer.http.proxy'
+
+export const ATTR_MULTIPLAYER_HTTP_PROXY_TYPE = 'multiplayer.http.proxy.type'
+
 export const ATTR_MULTIPLAYER_HTTP_REQUEST_BODY = 'multiplayer.http.request.body'
 
 export const ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY = 'multiplayer.http.response.body'

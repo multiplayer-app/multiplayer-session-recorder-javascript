@@ -40,7 +40,7 @@ export class SessionRecorder {
     generateSessionShortIdLocally?: boolean | (() => string)
   }): void {
     this._resourceAttributes = config.resourceAttributes || {
-      [ATTR_MULTIPLAYER_SESSION_RECORDER_VERSION]: SESSION_RECORDER_VERSION
+      [ATTR_MULTIPLAYER_SESSION_RECORDER_VERSION]: SESSION_RECORDER_VERSION,
     }
     this._isInitialized = true
 
@@ -68,7 +68,7 @@ export class SessionRecorder {
    */
   public async start(
     sessionType: SessionType,
-    sessionPayload?: Omit<ISession, '_id'>
+    sessionPayload?: Omit<ISession, '_id'>,
   ): Promise<void> {
     if (!this._isInitialized) {
       throw new Error(
@@ -99,7 +99,7 @@ export class SessionRecorder {
 
     sessionPayload.resourceAttributes = {
       ...this._resourceAttributes,
-      ...sessionPayload.resourceAttributes
+      ...sessionPayload.resourceAttributes,
     }
 
     if (this._sessionType === SessionType.CONTINUOUS) {
@@ -112,7 +112,7 @@ export class SessionRecorder {
 
     (this._traceIdGenerator as SessionRecorderIdGenerator).setSessionId(
       this._shortSessionId,
-      this._sessionType
+      this._sessionType,
     )
 
     this._sessionState = 'STARTED'
@@ -133,7 +133,7 @@ export class SessionRecorder {
    * @returns {Promise<void>}
    */
   public async save(
-    sessionData?: ISession
+    sessionData?: ISession,
   ): Promise<void> {
     try {
       if (!this._isInitialized) {
@@ -159,7 +159,7 @@ export class SessionRecorder {
           ...(sessionData || {}),
           name: sessionData?.name
             ? sessionData.name
-            : `Session on ${getFormattedDate(Date.now())}`
+            : `Session on ${getFormattedDate(Date.now())}`,
         },
       )
     } catch (e) {
@@ -173,7 +173,7 @@ export class SessionRecorder {
    * @returns {Promise<void>}
    */
   public async stop(
-    sessionData?: ISession
+    sessionData?: ISession,
   ): Promise<void> {
     try {
       if (!this._isInitialized) {
@@ -247,7 +247,7 @@ export class SessionRecorder {
    * @returns {Promise<void>}
    */
   public async checkRemoteContinuousSession(
-    sessionPayload?: Omit<ISession, '_id' | 'shortId'>
+    sessionPayload?: Omit<ISession, '_id' | 'shortId'>,
   ): Promise<void> {
     if (!this._isInitialized) {
       throw new Error(

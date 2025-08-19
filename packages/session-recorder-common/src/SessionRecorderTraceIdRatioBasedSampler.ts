@@ -4,7 +4,10 @@ import {
   SamplingDecision,
   SamplingResult,
 } from '@opentelemetry/sdk-trace-base'
-import { MULTIPLAYER_TRACE_DEBUG_PREFIX } from './constants.base'
+import {
+  MULTIPLAYER_TRACE_DEBUG_PREFIX,
+  MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
+} from './constants.base'
 
 export class SessionRecorderTraceIdRatioBasedSampler implements Sampler {
   private _upperBound: number
@@ -16,8 +19,8 @@ export class SessionRecorderTraceIdRatioBasedSampler implements Sampler {
 
   shouldSample(context: unknown, traceId: string): SamplingResult {
     if (
-      this._ratio > 0
-      && traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
+      traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
+      || traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
     ) {
       return {
         decision: SamplingDecision.RECORD_AND_SAMPLED,
@@ -37,7 +40,7 @@ export class SessionRecorderTraceIdRatioBasedSampler implements Sampler {
   }
 
   toString(): string {
-    return `MultiplayerTraceIdRatioBasedSampler{${this._ratio}}`
+    return `SessionRecorderTraceIdRatioBasedSampler{${this._ratio}}`
   }
 
   private _normalize(ratio: number): number {

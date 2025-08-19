@@ -1,4 +1,4 @@
-import { SessionType } from '@multiplayer-app/session-recorder-common';
+import { SessionType } from '@multiplayer-app/session-recorder-common'
 
 export interface IResourceAttributes {
   browserInfo?: string,

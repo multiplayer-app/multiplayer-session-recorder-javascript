@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-browser",
-  "version": "0.0.13",
+  "version": "1.0.0",
   "description": "Multiplayer Fullstack Session Recorder for Browser",
   "author": {
     "name": "Multiplayer Software, Inc.",
@@ -24,14 +24,14 @@
     "browser"
   ],
   "scripts": {
-    "lint": "eslint src/**/*.ts --config ../../.eslintrc",
+    "lint": "eslint src/**/*.ts",
     "preversion": "npm run lint",
     "postversion:skip": "git push && git push --tags",
     "build": "rm -rf dist tsconfig.tsbuildinfo && webpack",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@multiplayer-app/session-recorder-common": "0.0.12",
+    "@multiplayer-app/session-recorder-common": "1.0.0",
     "browserify": "17.0.1",
     "clean-webpack-plugin": "4.0.0",
     "css-loader": "6.0.0",

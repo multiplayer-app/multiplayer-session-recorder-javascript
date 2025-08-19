@@ -6,7 +6,7 @@ import {
   isValidNumber,
   isValidBoolean,
   isValidArray,
-  isValidEnum
+  isValidEnum,
 } from './validators'
 
 export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionRecorderConfigs => {

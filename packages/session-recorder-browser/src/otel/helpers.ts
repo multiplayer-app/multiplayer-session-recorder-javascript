@@ -44,7 +44,7 @@ export function shouldProcessTrace(traceId: string): boolean {
 export function processBody(
   payload: HttpPayloadData,
   config: TracerBrowserConfig,
-  span: Span
+  span: Span,
 ): { requestBody?: string; responseBody?: string } {
   const { captureBody, masking, schemifyDocSpanPayload } = config
   const traceId = span.spanContext().traceId
@@ -102,7 +102,7 @@ export function processBody(
 export function processHeaders(
   payload: HttpPayloadData,
   config: TracerBrowserConfig,
-  span: Span
+  span: Span,
 ): { requestHeaders?: string; responseHeaders?: string } {
   const { captureHeaders, masking } = config
 
@@ -175,7 +175,7 @@ export function processHeaders(
 export function processHttpPayload(
   payload: HttpPayloadData,
   config: TracerBrowserConfig,
-  span: Span
+  span: Span,
 ): void {
   const traceId = span.spanContext().traceId
 

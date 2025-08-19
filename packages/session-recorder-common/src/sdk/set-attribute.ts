@@ -1,7 +1,7 @@
 import {
   trace,
   AttributeValue,
-  context
+  context,
 } from '@opentelemetry/api'
 import {
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
@@ -12,7 +12,7 @@ import {
   ATTR_MULTIPLAYER_RPC_RESPONSE_MESSAGE,
   ATTR_MULTIPLAYER_GRPC_REQUEST_MESSAGE,
   ATTR_MULTIPLAYER_GRPC_RESPONSE_MESSAGE,
-  ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY
+  ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY,
 } from '../constants.base'
 import mask, { sensitiveFields, sensitiveHeaders } from './mask'
 
@@ -37,7 +37,7 @@ export const setAttribute = (key: string, value: AttributeValue) => {
  */
 export const setHttpRequestBody = (
   body: any,
-  options: { mask: boolean } = { mask: true }
+  options: { mask: boolean } = { mask: true },
 ) => {
   const span = trace.getSpan(context.active())
   if (!span) return
@@ -57,7 +57,7 @@ export const setHttpRequestBody = (
  */
 export const setHttpRequestHeaders = (
   body: any,
-  options: { mask: boolean } = { mask: true }
+  options: { mask: boolean } = { mask: true },
 ) => {
   const span = trace.getSpan(context.active())
   if (!span) return
@@ -77,7 +77,7 @@ export const setHttpRequestHeaders = (
  */
 export const setHttpResponseBody = (
   body: any,
-  options: { mask: boolean } = { mask: true }
+  options: { mask: boolean } = { mask: true },
 ) => {
   const span = trace.getSpan(context.active())
   if (!span) return
@@ -97,7 +97,7 @@ export const setHttpResponseBody = (
  */
 export const setHttpResponseHeaders = (
   body: any,
-  options: { mask: boolean } = { mask: true }
+  options: { mask: boolean } = { mask: true },
 ) => {
   const span = trace.getSpan(context.active())
   if (!span) return
@@ -117,7 +117,7 @@ export const setHttpResponseHeaders = (
  */
 export const setMessageBody = (
   body: any,
-  options: { mask: boolean } = { mask: true }
+  options: { mask: boolean } = { mask: true },
 ) => {
   const span = trace.getSpan(context.active())
   if (!span) return
@@ -137,7 +137,7 @@ export const setMessageBody = (
  */
 export const setRpcRequestMessage = (
   body: any,
-  options: { mask: boolean } = { mask: true }
+  options: { mask: boolean } = { mask: true },
 ) => {
   const span = trace.getSpan(context.active())
   if (!span) return
@@ -157,7 +157,7 @@ export const setRpcRequestMessage = (
  */
 export const setRpcResponseMessage = (
   body: any,
-  options: { mask: boolean } = { mask: true }
+  options: { mask: boolean } = { mask: true },
 ) => {
   const span = trace.getSpan(context.active())
   if (!span) return
@@ -177,7 +177,7 @@ export const setRpcResponseMessage = (
  */
 export const setGrpcRequestMessage = (
   body: any,
-  options: { mask: boolean } = { mask: true }
+  options: { mask: boolean } = { mask: true },
 ) => {
   const span = trace.getSpan(context.active())
   if (!span) return
@@ -197,7 +197,7 @@ export const setGrpcRequestMessage = (
  */
 export const setGrpcResponseMessage = (
   body: any,
-  options: { mask: boolean } = { mask: true }
+  options: { mask: boolean } = { mask: true },
 ) => {
   const span = trace.getSpan(context.active())
   if (!span) return

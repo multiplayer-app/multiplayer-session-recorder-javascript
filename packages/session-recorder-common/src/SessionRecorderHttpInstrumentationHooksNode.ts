@@ -13,7 +13,7 @@ import {
   MULTIPLAYER_MAX_HTTP_REQUEST_RESPONSE_SIZE,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY_ENCODING,
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
-  MULTIPLAYER_TRACE_DOC_PREFIX
+  MULTIPLAYER_TRACE_DOC_PREFIX,
 } from './constants.node'
 import {
   mask,
@@ -22,7 +22,7 @@ import {
 } from './sdk'
 import {
   sensitiveFields,
-  sensitiveHeaders
+  sensitiveHeaders,
 } from './sdk/mask'
 
 interface HttpResponseHookOptions {
@@ -67,7 +67,7 @@ interface HttpRequestHookOptions {
 }
 
 const setDefaultOptions = (
-  options: HttpResponseHookOptions | HttpResponseHookOptions
+  options: HttpResponseHookOptions | HttpResponseHookOptions,
 ): Omit<HttpResponseHookOptions & HttpResponseHookOptions, 'maskBody' | 'maskHeaders'>
   & {
     maskBody: (arg: any, span: Span) => any
@@ -157,18 +157,18 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
 
         const [oldWrite, oldEnd] = [_response.write, _response.end]
 
-        const chunks: Buffer[] = [];
+        const chunks: Buffer[] = []
 
         if (_options.captureBody) {
           (_response.write as unknown) = function (...restArgs: any[]) {
             chunks.push(Buffer.from(restArgs[0]))
-            // eslint-disable-next-line
+
             // @ts-ignore
             oldWrite.apply(_response, restArgs)
           }
         }
 
-        // eslint-disable-next-line
+
         // @ts-ignore
         _response.end = async function (...restArgs) {
           if (_options.captureBody && restArgs[0]) {
@@ -267,7 +267,7 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
             }
           }
 
-          // eslint-disable-next-line
+
           // @ts-ignore
           return oldEnd.apply(_response, restArgs)
         }

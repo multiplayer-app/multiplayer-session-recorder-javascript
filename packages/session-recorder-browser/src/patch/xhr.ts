@@ -10,7 +10,7 @@ import { DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE } from '../config'
 
 let recordRequestHeaders = true
 let recordResponseHeaders = true
-let shouldRecordBody = true
+const shouldRecordBody = true
 let maxCapturingHttpPayloadSize = DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE
 
 export const setMaxCapturingHttpPayloadSize = (_maxCapturingHttpPayloadSize: number) => {
@@ -20,6 +20,7 @@ export const setMaxCapturingHttpPayloadSize = (_maxCapturingHttpPayloadSize: num
 export const setShouldRecordHttpData = (shouldRecordBody: boolean, shouldRecordHeaders: boolean) => {
   recordRequestHeaders = shouldRecordHeaders
   recordResponseHeaders = shouldRecordHeaders
+  // eslint-disable-next-line
   shouldRecordBody = shouldRecordBody
 }
 
@@ -75,7 +76,7 @@ function _tryReadXHRBody({
       responseBody?: any,
     } = {}
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+
     // @ts-ignore
     const requestHeaders: Headers = {}
     const originalSetRequestHeader = xhr.setRequestHeader.bind(xhr)
@@ -107,7 +108,7 @@ function _tryReadXHRBody({
         return
       }
 
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+
       // @ts-ignore
       const responseHeaders: Headers = {}
       const rawHeaders = xhr.getAllResponseHeaders()
@@ -135,7 +136,7 @@ function _tryReadXHRBody({
       }
     })
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+
     // @ts-ignore
     xhr.networkRequest = networkRequest
 

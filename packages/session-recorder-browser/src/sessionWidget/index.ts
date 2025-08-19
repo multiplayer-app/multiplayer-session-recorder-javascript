@@ -91,8 +91,8 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
         type: 'error',
         message: this._error,
         button: {
-          text: 'Close', onClick: () => this.hideToast()
-        }
+          text: 'Close', onClick: () => this.hideToast(),
+        },
       })
     }
   }

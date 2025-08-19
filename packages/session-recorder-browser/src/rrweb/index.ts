@@ -1,17 +1,17 @@
-import { pack } from '@rrweb/packer';
-import { pluginEvent } from "@rrweb/types";
-import { eventWithTime, record, recordOptions } from 'rrweb';
-import { SessionType } from '@multiplayer-app/session-recorder-common';
-import { getRecordConsolePlugin, LogData } from '@rrweb/rrweb-plugin-console-record';
+import { pack } from '@rrweb/packer'
+import { pluginEvent } from '@rrweb/types'
+import { eventWithTime, record, recordOptions } from 'rrweb'
+import { SessionType } from '@multiplayer-app/session-recorder-common'
+import { getRecordConsolePlugin, LogData } from '@rrweb/rrweb-plugin-console-record'
 
 
 
-import { isConsoleEvent } from '../utils';
-import { CONTINUOUS_DEBUGGING_TIMEOUT } from '../config';
-import { ISession, RecorderConfig } from '../types';
+import { isConsoleEvent } from '../utils'
+import { CONTINUOUS_DEBUGGING_TIMEOUT } from '../config'
+import { ISession, RecorderConfig } from '../types'
 
 
-import { RrwebEventExporter } from './exporter';
+import { RrwebEventExporter } from './exporter'
 
 
 export class RecorderBrowserSDK {
@@ -112,7 +112,7 @@ export class RecorderBrowserSDK {
           if (typeof maskingConfig.maskConsoleEvent === 'function' && isConsoleEvent(event)) {
             const { data } = event as pluginEvent<LogData>
             const maskedPayload = maskingConfig.maskConsoleEvent(data.payload)
-            event.data = { ...data, payload: maskedPayload, }
+            event.data = { ...data, payload: maskedPayload }
           }
 
           const packedEvent = pack(event)

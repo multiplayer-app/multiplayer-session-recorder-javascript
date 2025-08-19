@@ -1,5 +1,0 @@
-package.json
-node_modules
-clients
-libs/multiplayer-blocknote-lib
-**/dist/*

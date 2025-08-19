@@ -4,7 +4,7 @@ import {
 } from '@opentelemetry/sdk-trace-base'
 import { SessionType } from './type'
 import {
-  SessionRecorderTraceIdRatioBasedSampler
+  SessionRecorderTraceIdRatioBasedSampler,
 } from './SessionRecorderTraceIdRatioBasedSampler'
 import {
   MULTIPLAYER_TRACE_DEBUG_PREFIX,

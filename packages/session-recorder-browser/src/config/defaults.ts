@@ -40,5 +40,5 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
 
   captureBody: true,
   captureHeaders: true,
-  masking: DEFAULT_MASKING_CONFIG
+  masking: DEFAULT_MASKING_CONFIG,
 }

@@ -1,6 +1,5 @@
 import * as _toJsonSchema from 'to-json-schema'
 
-// eslint-disable-next-line
 // @ts-ignore
 const toJsonSchema = _toJsonSchema?.default || _toJsonSchema
 
