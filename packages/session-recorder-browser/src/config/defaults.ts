@@ -29,12 +29,11 @@ export const DEFAULT_WIDGET_TEXT_CONFIG: WidgetTextOverridesConfig = {
   continuousOverlayTitle: 'Save time, skip the reproductions',
   continuousOverlayDescription: 'We keep a rolling record of your recent activity. If something doesn’t work as expected, just save the recording and continue working. No need to worry about exceptions and errors - we automatically save recordings for those!',
   saveLastSnapshotButtonText: 'Save recording',
-  submitDialogTitle: 'Submit Recording',
-  submitDialogSubtitle: 'Report this issue with your debug logs and session replay.' +
-    ' Optionally, enter some additional information below.',
-  submitDialogCommentLabel: 'Comment (optional)',
-  submitDialogCommentPlaceholder: 'Add any notes about this recording...',
-  submitDialogSubmitText: 'Submit recording',
+  submitDialogTitle: 'Save recording',
+  submitDialogSubtitle: 'This full-stack session recording will be saved directly to your selected Multiplayer project. All data is automatically correlated end-to-end.',
+  submitDialogCommentLabel: 'You can also add context, comments, or notes.',
+  submitDialogCommentPlaceholder: 'Add a message...',
+  submitDialogSubmitText: 'Save',
   submitDialogCancelText: 'Cancel',
 }
 
