@@ -9,6 +9,35 @@ import {
   isValidEnum,
 } from './validators'
 
+const getWidgetTextOverridesConfig = (config: any, defaultConfig: any) => {
+  if (!config || typeof config !== 'object') {
+    return defaultConfig
+  }
+  
+  return {
+    initialTitleWithContinuous: isValidString(config.initialTitleWithContinuous, defaultConfig.initialTitleWithContinuous),
+    initialTitleWithoutContinuous: isValidString(config.initialTitleWithoutContinuous, defaultConfig.initialTitleWithoutContinuous),
+    initialDescriptionWithContinuous: isValidString(config.initialDescriptionWithContinuous, defaultConfig.initialDescriptionWithContinuous),
+    initialDescriptionWithoutContinuous: isValidString(config.initialDescriptionWithoutContinuous, defaultConfig.initialDescriptionWithoutContinuous),
+    continuousRecordingLabel: isValidString(config.continuousRecordingLabel, defaultConfig.continuousRecordingLabel),
+    startRecordingButtonText: isValidString(config.startRecordingButtonText, defaultConfig.startRecordingButtonText),
+    finalTitle: isValidString(config.finalTitle, defaultConfig.finalTitle),
+    finalDescription: isValidString(config.finalDescription, defaultConfig.finalDescription),
+    commentPlaceholder: isValidString(config.commentPlaceholder, defaultConfig.commentPlaceholder),
+    saveButtonText: isValidString(config.saveButtonText, defaultConfig.saveButtonText),
+    cancelButtonText: isValidString(config.cancelButtonText, defaultConfig.cancelButtonText),
+    continuousOverlayTitle: isValidString(config.continuousOverlayTitle, defaultConfig.continuousOverlayTitle),
+    continuousOverlayDescription: isValidString(config.continuousOverlayDescription, defaultConfig.continuousOverlayDescription),
+    saveLastSnapshotButtonText: isValidString(config.saveLastSnapshotButtonText, defaultConfig.saveLastSnapshotButtonText),
+    submitDialogTitle: isValidString(config.submitDialogTitle, defaultConfig.submitDialogTitle),
+    submitDialogSubtitle: isValidString(config.submitDialogSubtitle, defaultConfig.submitDialogSubtitle),
+    submitDialogCommentLabel: isValidString(config.submitDialogCommentLabel, defaultConfig.submitDialogCommentLabel),
+    submitDialogCommentPlaceholder: isValidString(config.submitDialogCommentPlaceholder, defaultConfig.submitDialogCommentPlaceholder),
+    submitDialogSubmitText: isValidString(config.submitDialogSubmitText, defaultConfig.submitDialogSubmitText),
+    submitDialogCancelText: isValidString(config.submitDialogCancelText, defaultConfig.submitDialogCancelText),
+  }
+}
+
 export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionRecorderConfigs => {
   if (!c) {
     return BASE_CONFIG
@@ -24,9 +53,9 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     usePostMessageFallback: isValidBoolean(c.usePostMessageFallback, BASE_CONFIG.usePostMessageFallback),
 
     showWidget: isValidBoolean(c.showWidget, BASE_CONFIG.showWidget),
-    enableContinuousDebugging: isValidBoolean(c.enableContinuousDebugging, BASE_CONFIG.enableContinuousDebugging),
+    showContinuousRecording: isValidBoolean(c.showContinuousRecording, BASE_CONFIG.showContinuousRecording),
     recordCanvas: isValidBoolean(c.recordCanvas, BASE_CONFIG.recordCanvas),
-    widgetButtonPlacement: isValidEnum<WidgetButtonPlacement>(c.widgetButtonPlacement, BASE_CONFIG.widgetButtonPlacement, Object.values(WidgetButtonPlacement)),
+    widgetButtonPlacement: isValidEnum<WidgetButtonPlacement>(c.widgetButtonPlacement, BASE_CONFIG.widgetButtonPlacement, Object.values(WidgetButtonPlacement) as WidgetButtonPlacement[]),
     ignoreUrls: isValidArray(c.ignoreUrls, BASE_CONFIG.ignoreUrls),
     docTraceRatio: isValidNumber(c.docTraceRatio, BASE_CONFIG.docTraceRatio),
     sampleTraceRatio: isValidNumber(c.sampleTraceRatio, BASE_CONFIG.sampleTraceRatio),
@@ -37,5 +66,6 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     captureBody: isValidBoolean(c.captureBody, BASE_CONFIG.captureBody),
     captureHeaders: isValidBoolean(c.captureHeaders, BASE_CONFIG.captureHeaders),
     masking: getMaskingConfig(c.masking),
+    widgetTextOverrides: getWidgetTextOverridesConfig(c.widgetTextOverrides, BASE_CONFIG.widgetTextOverrides),
   }
 }

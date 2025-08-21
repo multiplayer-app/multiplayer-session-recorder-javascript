@@ -4,7 +4,7 @@ import { ISession } from '../types'
 export interface ApiServiceConfig {
   apiKey?: string
   exporterApiBaseUrl?: string
-  continuousDebugging?: boolean
+  continuousRecording?: boolean
 }
 
 export interface StartSessionRequest {

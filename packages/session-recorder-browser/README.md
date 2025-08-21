@@ -214,7 +214,7 @@ The Session Recorder provides several methods for controlling session recording:
 - `SessionRecorder.pause()` - Pause the current session
 - `SessionRecorder.resume()` - Resume the current session
 - `SessionRecorder.cancel()` - Cancel the current session
-- `SessionRecorder.save()` - Save the continuous debugging session
+- `SessionRecorder.save()` - Save the continuous recording session
 
 ### Configuration
 
@@ -234,7 +234,7 @@ The Session Recorder provides several methods for controlling session recording:
 ### Session Types
 
 - `SessionType.PLAIN` - Standard session recording
-- `SessionType.CONTINUOUS` - Continuous debugging session
+- `SessionType.CONTINUOUS` - Continuous recording session
 
 ### Session States
 

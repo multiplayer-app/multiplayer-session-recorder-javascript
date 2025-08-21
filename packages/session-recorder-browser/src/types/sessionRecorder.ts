@@ -63,12 +63,12 @@ export interface SessionRecorderOptions {
   widgetButtonPlacement?: WidgetButtonPlacement
 
   /**
-   * (Optional) Enables the continuous debugging feature and UI.
+   * (Optional) Enables the continuous recording feature and UI.
    * If false, the UI toggle is hidden and attempts to start a continuous
    * session are ignored.
    * @default true
    */
-  enableContinuousDebugging?: boolean
+  showContinuousRecording?: boolean
 
   /**
    * (Optional) If false, the session recording widget will be hidden from the UI.
@@ -134,6 +134,12 @@ export interface SessionRecorderOptions {
    * @default { maskAllInputs: true, isMaskingEnabled: true }
    */
   masking?: MaskingConfig
+
+  /**
+   * (Optional) Configuration for customizable UI text and labels
+   * @default See PopoverTextConfig defaults
+   */
+  widgetTextOverrides?: WidgetTextOverridesConfig
 }
 
 /**
@@ -249,8 +255,56 @@ export interface SessionWidgetConfig {
   showWidget: boolean
   /** Placement of the widget button */
   widgetButtonPlacement: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-  /** Whether continuous debugging feature is enabled */
-  enableContinuousDebugging: boolean
+  /** Whether continuous recording feature is enabled */
+  showContinuousRecording: boolean
+  /** Configuration for customizable UI text and labels */
+  widgetTextOverrides: WidgetTextOverridesConfig
+}
+
+/**
+ * Interface for customizable widget text configuration
+ */
+export interface WidgetTextOverridesConfig {
+  /** Title for the initial popover when continuous recording is enabled */
+  initialTitleWithContinuous?: string
+  /** Title for the initial popover when continuous recording is disabled */
+  initialTitleWithoutContinuous?: string
+  /** Description for the initial popover when continuous recording is enabled */
+  initialDescriptionWithContinuous?: string
+  /** Description for the initial popover when continuous recording is disabled */
+  initialDescriptionWithoutContinuous?: string
+  /** Label for the continuous recording toggle */
+  continuousRecordingLabel?: string
+  /** Text for the start recording button */
+  startRecordingButtonText?: string
+  /** Title for the final popover */
+  finalTitle?: string
+  /** Description for the final popover */
+  finalDescription?: string
+  /** Placeholder text for the comment textarea */
+  commentPlaceholder?: string
+  /** Text for the save button in final popover */
+  saveButtonText?: string
+  /** Text for the cancel button in final popover */
+  cancelButtonText?: string
+  /** Title for the continuous recording overlay */
+  continuousOverlayTitle?: string
+  /** Description for the continuous recording overlay */
+  continuousOverlayDescription?: string
+  /** Text for the save last snapshot button */
+  saveLastSnapshotButtonText?: string
+  /** Title for the submit session dialog */
+  submitDialogTitle?: string
+  /** Subtitle for the submit session dialog */
+  submitDialogSubtitle?: string
+  /** Label for the comment field in submit dialog */
+  submitDialogCommentLabel?: string
+  /** Placeholder for the comment field in submit dialog */
+  submitDialogCommentPlaceholder?: string
+  /** Text for the submit button in dialog */
+  submitDialogSubmitText?: string
+  /** Text for the cancel button in dialog */
+  submitDialogCancelText?: string
 }
 
 /**
@@ -273,9 +327,9 @@ export interface ISessionRecorder {
   readonly sessionId: string | null
 
   /**
-   * Whether continuous debugging is enabled
+   * Whether continuous recording is enabled
    */
-  readonly continuousDebugging: boolean
+  readonly continuousRecording: boolean
 
   /**
    * The current debug session object
@@ -315,7 +369,7 @@ export interface ISessionRecorder {
   init(configs: SessionRecorderOptions): void
 
   /**
-   * Save the continuous debugging session
+   * Save the continuous recording session
    * @returns Promise that resolves to the save response
    */
   save(): Promise<any>

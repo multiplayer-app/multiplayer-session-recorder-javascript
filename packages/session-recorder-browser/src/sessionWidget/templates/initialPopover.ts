@@ -1,6 +1,7 @@
 import { LogoSvg, CloseXIcon, CapturingIcon } from './icons'
+import { WidgetTextOverridesConfig } from '../../types'
 
-export const initialPopoverTemplate = `
+export const initialPopoverTemplate = (popoverText: WidgetTextOverridesConfig, showContinuousRecording: boolean) => `
 <div class="mp-session-debugger-popover-content">
   <div class="mp-session-debugger-popover-header">
     <a href="https://www.multiplayer.app" target="_blank" rel="noopener noreferrer" title="Multiplayer">
@@ -9,29 +10,33 @@ export const initialPopoverTemplate = `
     <button class="mp-session-debugger-modal-close" aria-label="Close">${CloseXIcon}</button>
   </div>
   <div class="mp-session-debugger-popover-body">
+    ${showContinuousRecording ? `
     <div class="mp-session-debugger-continuous-debugging">
       <div class="mp-session-debugger-continuous-debugging-label">
-        Continuous recording
+        ${popoverText.continuousRecordingLabel}
       </div>
       <label class="mp-session-debugger-continuous-debugging-switch">
         <input type="checkbox" id="mp-session-debugger-continuous-debugging-checkbox">
         <span></span>
       </label>
     </div>
-    <h2>Want to record a new session?</h2>
-    <p>Start a fresh full-stack session recording, and continue chatting and bug-hunting!</p>
+    ` : ''}
+    <h2>${showContinuousRecording ? popoverText.initialTitleWithContinuous : popoverText.initialTitleWithoutContinuous}</h2>
+    <p>${showContinuousRecording ? popoverText.initialDescriptionWithContinuous : popoverText.initialDescriptionWithoutContinuous}</p>
     <div class="mp-session-debugger-popover-footer">
-      <button class="mp-session-debugger-popover-button mp-start-recording">Start Recording!</button>
+      <button class="mp-session-debugger-popover-button mp-start-recording">${popoverText.startRecordingButtonText}</button>
     </div>
+    ${showContinuousRecording ? `
     <div class="mp-session-debugger-continuous-debugging-overlay">
       <div class="mp-session-debugger-continuous-debugging-overlay-content">
-        <h3>${CapturingIcon} You’re continuously recording.</h3>
+        <h3>${CapturingIcon} ${popoverText.continuousOverlayTitle}</h3>
         <p>
-         Press the save button to save your last snapshot. You can continue debugging after saving.
+         ${popoverText.continuousOverlayDescription}
         </p>
       </div>
-      <button class="mp-session-debugger-popover-button" id="mp-save-continuous-debug-session">Save last snapshot</button>
+      <button class="mp-session-debugger-popover-button" id="mp-save-continuous-debug-session">${popoverText.saveLastSnapshotButtonText}</button>
     </div>
+    ` : ''}
   </div>
 </div>
 `

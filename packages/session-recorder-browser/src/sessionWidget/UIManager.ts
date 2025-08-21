@@ -5,7 +5,7 @@ import { initialPopoverTemplate } from './templates/initialPopover'
 import { recordingOverlayTemplate } from './templates/recordingOverlay'
 import { submitSessionDialogTemplate } from './templates/submitSessionDialog'
 import { toastTemplate } from './templates/toast'
-import { ToastConfig } from '../types'
+import { ToastConfig, WidgetTextOverridesConfig } from '../types'
 
 export class UIManager {
   private recorderButton: HTMLButtonElement
@@ -15,6 +15,9 @@ export class UIManager {
   private submitSessionDialog: HTMLElement
   private toast: HTMLElement
   private toastTimeout: NodeJS.Timeout | null = null
+  private widgetTextOverrides: WidgetTextOverridesConfig
+  private showContinuousRecording: boolean
+
   /**
    * Constructor initializes the UIManager with necessary DOM elements
    * @param recorderButton - The main button to start recording
@@ -24,6 +27,8 @@ export class UIManager {
    * @param recordingOverlay - Overlay element for recording indication in extension
    * @param submitSessionDialog - Dialog that opens when recording is stopped from extension
    * @param toast - Toast element for showing success messages
+   * @param widgetTextOverrides - Configuration for customizable text
+   * @param showContinuousRecording - Whether continuous recording is enabled
    */
   constructor(
     recorderButton: HTMLButtonElement,
@@ -32,6 +37,8 @@ export class UIManager {
     recordingOverlay: HTMLElement,
     submitSessionDialog: HTMLElement,
     toast: HTMLElement,
+    widgetTextOverrides: WidgetTextOverridesConfig,
+    showContinuousRecording: boolean,
   ) {
     this.recorderButton = recorderButton
     this.initialPopover = initialPopover
@@ -39,6 +46,8 @@ export class UIManager {
     this.recordingOverlay = recordingOverlay
     this.submitSessionDialog = submitSessionDialog
     this.toast = toast
+    this.widgetTextOverrides = widgetTextOverrides
+    this.showContinuousRecording = showContinuousRecording
   }
 
   /**
@@ -47,7 +56,7 @@ export class UIManager {
    */
   public setRecorderButtonProps() {
     this.recorderButton.className = 'mp-session-debugger-button'
-    this.recorderButton.dataset.tooltip = 'Click to record a bug'
+    this.recorderButton.dataset.tooltip = 'Record an issue'
     insertTrustedHTML(this.recorderButton, `${RecordIcon}`)
   }
 
@@ -67,7 +76,7 @@ export class UIManager {
   public setSubmitSessionDialogProps(): void {
     this.submitSessionDialog.id = 'mp-submission-dialog'
     this.submitSessionDialog.className = 'hidden'
-    insertTrustedHTML(this.submitSessionDialog, submitSessionDialogTemplate)
+    insertTrustedHTML(this.submitSessionDialog, submitSessionDialogTemplate(this.widgetTextOverrides))
   }
 
   /**
@@ -77,7 +86,7 @@ export class UIManager {
   public setInitialPopoverProps() {
     this.initialPopover.className =
       'mp-session-debugger-popover mp-initial-popover hidden'
-    insertTrustedHTML(this.initialPopover, initialPopoverTemplate)
+    insertTrustedHTML(this.initialPopover, initialPopoverTemplate(this.widgetTextOverrides, this.showContinuousRecording))
   }
 
   /**
@@ -86,7 +95,7 @@ export class UIManager {
    */
   public setFinalPopoverProps() {
     this.finalPopover.className = 'mp-session-debugger-popover hidden'
-    insertTrustedHTML(this.finalPopover, finalPopoverTemplate)
+    insertTrustedHTML(this.finalPopover, finalPopoverTemplate(this.widgetTextOverrides))
   }
 
 

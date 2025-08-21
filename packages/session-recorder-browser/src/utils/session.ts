@@ -5,9 +5,9 @@ import { DEBUG_SESSION_MAX_DURATION_SECONDS } from '../config/constants'
  * Session-related utility functions
  */
 
-export const isSessionActive = (session, continuousDebugging: boolean) => {
+export const isSessionActive = (session, continuousRecording: boolean) => {
   if (!session) return false
-  if (continuousDebugging) return true
+  if (continuousRecording) return true
   const startedAt = new Date(session.startedAt)
   const now = new Date()
   const diff = now.getTime() - startedAt.getTime()
