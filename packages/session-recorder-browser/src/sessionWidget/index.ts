@@ -2,20 +2,21 @@ import 'rrweb-player/dist/style.css'
 import { Observable } from 'lib0/observable'
 import { insertTrustedHTML } from '../utils'
 import { formatTimeForSessionTimer } from '../utils'
-import { SessionWidgetConfig, SessionState, ToastConfig } from '../types'
+import { SessionWidgetConfig, SessionState, ToastConfig, WidgetTextOverridesConfig } from '../types'
 import { DragManager } from './dragManager'
 import {
   POPOVER_WIDTH,
   POPOVER_DISTANCE_FROM_BUTTON,
   NON_DRAGGABLE_OFFSET,
 } from './constants'
+import { DEFAULT_WIDGET_TEXT_CONFIG } from 'src/config'
 
 import { UIManager } from './UIManager'
 import {
   ButtonState,
   buttonStates,
-  ContinuousDebuggingSaveButtonState,
-  continuousDebuggingSaveButtonStates,
+  ContinuousRecordingSaveButtonState,
+  continuousRecordingSaveButtonStates,
 } from './buttonStateConfigs'
 
 type SessionWidgetEvents =
@@ -43,8 +44,9 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   private _initialPopoverVisible: boolean = false
   private _finalPopoverVisible: boolean = false
   private _buttonState: ButtonState = ButtonState.IDLE
-  private _continuousDebugging: boolean = false
-  private _enableContinuousDebugging: boolean = true
+  private _continuousRecording: boolean = false
+  private _showContinuousRecording: boolean = true
+  private _widgetTextOverrides: WidgetTextOverridesConfig = DEFAULT_WIDGET_TEXT_CONFIG
   private uiManager: UIManager
   private readonly commentTextarea: HTMLTextAreaElement | null = null
   private buttonDraggabilityObserver!: MutationObserver
@@ -100,7 +102,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   public set isStarted(v: boolean) {
     this._isStarted = v
 
-    if (!this.showRecorderButton && v && !this._continuousDebugging) {
+    if (!this.showRecorderButton && v && !this._continuousRecording) {
       this.overlay.classList.remove('hidden')
       this.makeOverlayDraggable()
 
@@ -113,7 +115,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
     this.recorderButton.classList.toggle('is-started', this._isStarted)
     if (this._isStarted) {
-      if (!this._continuousDebugging) {
+      if (!this._continuousRecording) {
         this.initialPopoverVisible = false
         this.buttonState = ButtonState.RECORDING
       } else {
@@ -127,7 +129,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   public set isPaused(v: boolean) {
     this._isPaused = v
-    if (this._isInitialized && !this.showRecorderButton && v && !this._continuousDebugging) {
+    if (this._isInitialized && !this.showRecorderButton && v && !this._continuousRecording) {
       this.overlay.classList.add('hidden')
       this.submitSessionDialog.classList.remove('hidden')
       this.stopTimer()
@@ -151,6 +153,8 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       this.overlay,
       this.submitSessionDialog,
       this.toast,
+      DEFAULT_WIDGET_TEXT_CONFIG,
+      true, // showContinuousRecording default
     )
     this.uiManager.setRecorderButtonProps()
     this.uiManager.setInitialPopoverProps()
@@ -165,8 +169,8 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     this.observeButtonDraggableMode()
   }
 
-  public updateState(state: SessionState | null, continuousDebugging: boolean) {
-    this._continuousDebugging = continuousDebugging
+  public updateState(state: SessionState | null, continuousRecording: boolean) {
+    this._continuousRecording = continuousRecording
     switch (state) {
       case SessionState.started:
         this.isPaused = false
@@ -187,7 +191,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     }
   }
 
-  public updateContinuousDebuggingState(
+  public updateContinuousRecordingState(
     checked: boolean,
     disabled: boolean = false,
   ) {
@@ -201,14 +205,14 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   public updateSaveContinuousDebugSessionState(
-    state: ContinuousDebuggingSaveButtonState,
+    state: ContinuousRecordingSaveButtonState,
   ) {
     const saveButton = this.initialPopover.querySelector(
       '#mp-save-continuous-debug-session',
     ) as HTMLButtonElement
     if (saveButton) {
       const { textContent, disabled } =
-        continuousDebuggingSaveButtonStates[state]
+        continuousRecordingSaveButtonStates[state]
       saveButton.disabled = disabled
       saveButton.textContent = textContent
     }
@@ -279,7 +283,32 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     if (this._isInitialized) return
     this._isInitialized = true
     this.showRecorderButton = options.showWidget
-    this._enableContinuousDebugging = options.enableContinuousDebugging
+    this._showContinuousRecording = options.showContinuousRecording
+    this._widgetTextOverrides = {
+      ...this._widgetTextOverrides,
+      ...options.widgetTextOverrides
+    }
+    
+    // Recreate UIManager with proper config
+    this.uiManager = new UIManager(
+      this.recorderButton,
+      this.initialPopover,
+      this.finalPopover,
+      this.overlay,
+      this.submitSessionDialog,
+      this.toast,
+      this._widgetTextOverrides,
+      this._showContinuousRecording,
+    )
+    
+    // Re-initialize templates with new config
+    this.uiManager.setRecorderButtonProps()
+    this.uiManager.setInitialPopoverProps()
+    this.uiManager.setFinalPopoverProps()
+    this.uiManager.setOverlayProps()
+    this.uiManager.setSubmitSessionDialogProps()
+    this.uiManager.setToastProps()
+    
     const elements = [this.toast]
 
     if (options.showWidget) {
@@ -294,8 +323,8 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     }
 
     this.appendElements(elements)
-    // Hide continuous debugging UI when feature is disabled
-    if (!this._enableContinuousDebugging) {
+    // Hide continuous recording UI when feature is disabled
+    if (!this._showContinuousRecording) {
       const cont = this.initialPopover.querySelector('.mp-session-debugger-continuous-debugging') as HTMLElement
       cont && cont.classList.add('hidden')
       const overlay = this.initialPopover.querySelector('.mp-session-debugger-continuous-debugging-overlay') as HTMLElement
@@ -392,13 +421,13 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
           handler: this.startRecording.bind(this),
         },
       )
-      if (this._enableContinuousDebugging) {
+      if (this._showContinuousRecording) {
         events.push(
           {
             event: 'change',
             target: this.initialPopover,
             selector: '#mp-session-debugger-continuous-debugging-checkbox',
-            handler: this.handleContinuousDebuggingChange.bind(this),
+            handler: this.handleContinuousRecordingChange.bind(this),
           },
           {
             target: this.initialPopover,
@@ -470,7 +499,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       this.uiManager.setPopoverLoadingState(false)
     }
     this.initialPopoverVisible = false
-    this.buttonState = this._continuousDebugging
+    this.buttonState = this._continuousRecording
       ? ButtonState.CONTINUOUS_DEBUGGING
       : ButtonState.IDLE
     document.removeEventListener('click', this.handleClickOutside)
@@ -535,7 +564,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
     if (this._isStarted) {
       this.buttonState = ButtonState.CANCEL
-      if (this._continuousDebugging) {
+      if (this._continuousRecording) {
         this.initialPopoverVisible = !this.initialPopoverVisible
       } else {
         this.finalPopoverVisible = !this._finalPopoverVisible
@@ -572,8 +601,8 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     }
   }
 
-  private handleContinuousDebuggingChange(e: InputEvent) {
-    if (!this._enableContinuousDebugging) return
+  private handleContinuousRecordingChange(e: InputEvent) {
+    if (!this._showContinuousRecording) return
     const checkbox = e.target as HTMLInputElement
     this.emit('continuous-debugging', [checkbox.checked])
   }
@@ -618,7 +647,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   private onResume() {
     this.finalPopoverVisible = false
-    if (!this._continuousDebugging) {
+    if (!this._continuousRecording) {
       this.buttonState = ButtonState.RECORDING
       this.emit('resume', [])
     } else {

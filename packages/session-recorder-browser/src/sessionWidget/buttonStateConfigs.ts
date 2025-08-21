@@ -13,7 +13,7 @@ export enum ButtonState {
   CONTINUOUS_DEBUGGING = 'CONTINUOUS_DEBUGGING',
 }
 
-export enum ContinuousDebuggingSaveButtonState {
+export enum ContinuousRecordingSaveButtonState {
   IDLE = 'IDLE',
   SAVING = 'SAVING',
   SAVED = 'SAVED',
@@ -27,13 +27,13 @@ export enum ContinuousDebuggingSaveButtonState {
 export const buttonStates = {
   [ButtonState.IDLE]: {
     icon: RecordIcon,
-    tooltip: 'Click to record',
+    tooltip: 'Record an issue',
     classes: [],
     excludeClasses: ['animate-rotate', 'mp-button-blue'],
   },
   [ButtonState.RECORDING]: {
     icon: CapturingIcon,
-    tooltip: 'Click to stop your recording',
+    tooltip: 'The session is recording. Click to end.',
     classes: [],
     excludeClasses: ['mp-button-blue', 'animate-rotate'],
   },
@@ -63,25 +63,25 @@ export const buttonStates = {
   },
 }
 
-export const continuousDebuggingSaveButtonStates = {
-  [ContinuousDebuggingSaveButtonState.IDLE]: {
-    textContent: 'Save last snapshot',
+export const continuousRecordingSaveButtonStates = {
+  [ContinuousRecordingSaveButtonState.IDLE]: {
+    textContent: 'Save recording',
     disabled: false,
     classes: [],
   },
-  [ContinuousDebuggingSaveButtonState.SAVING]: {
+  [ContinuousRecordingSaveButtonState.SAVING]: {
     disabled: true,
-    textContent: 'Saving last snapshot...',
+    textContent: 'Saving recording...',
     classes: [],
   },
-  [ContinuousDebuggingSaveButtonState.SAVED]: {
+  [ContinuousRecordingSaveButtonState.SAVED]: {
     disabled: true,
     textContent: 'Saved',
     classes: [],
   },
-  [ContinuousDebuggingSaveButtonState.ERROR]: {
+  [ContinuousRecordingSaveButtonState.ERROR]: {
     disabled: true,
-    textContent: 'Error saving last snapshot',
+    textContent: 'Error saving the recording',
     classes: [],
   },
 }
