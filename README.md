@@ -26,13 +26,13 @@
   </p>
 </div>
 
-# Multiplayer Full-Stack Session Recorder
+# Multiplayer Full Stack Session Recorder
 
-The Multiplayer Full-Stack Session Recorder is a powerful tool that offers deep session replays with insights spanning frontend screens, platform traces, metrics, and logs. It helps your team pinpoint and resolve bugs faster by providing a complete picture of your backend system architecture. No more wasted hours combing through APM data; the Multiplayer Full-Stack Session Recorder does it all in one place.
+The Multiplayer Full Stack Session Recorder is a powerful tool that offers deep session replays with insights spanning frontend screens, platform traces, metrics, and logs. It helps your team pinpoint and resolve bugs faster by providing a complete picture of your backend system architecture. No more wasted hours combing through APM data; the Multiplayer Full Stack Session Recorder does it all in one place.
 
 ## What you get
 
-- Full‑stack replays: rrweb‑based browser recording correlated with OTLP traces
+- Full stack replays: rrweb‑based browser recording correlated with OTLP traces
 - One‑click shareable sessions: Engineers can share session links containing all relevant information, eliminating the need for long tickets or clarifying issues through back-and-forth communication.
 - Privacy by default: input/text masking and trace payload/header masking
 - Flexible: works with any web app; Node SDK for backend correlation
