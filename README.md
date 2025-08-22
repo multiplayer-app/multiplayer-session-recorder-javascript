@@ -150,4 +150,4 @@ Masking is enabled by default. Review and adjust masking rules to avoid capturin
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [LICENSE](https://github.com/multiplayer-app/multiplayer-session-recorder-javascript/blob/main/LICENSE).
