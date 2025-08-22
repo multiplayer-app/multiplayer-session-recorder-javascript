@@ -26,9 +26,9 @@
   </p>
 </div>
 
-# Multiplayer Session Recorder - JavaScript
+# Multiplayer Full-Stack Session Recorder
 
-The Multiplayer Session Recorder is a powerful tool that offers deep session replays with insights spanning frontend screens, platform traces, metrics, and logs. It helps your team pinpoint and resolve bugs faster by providing a complete picture of your backend system architecture. No more wasted hours combing through APM data; the Multiplayer Session Recorder does it all in one place.
+The Multiplayer Full-Stack Session Recorder is a powerful tool that offers deep session replays with insights spanning frontend screens, platform traces, metrics, and logs. It helps your team pinpoint and resolve bugs faster by providing a complete picture of your backend system architecture. No more wasted hours combing through APM data; the Multiplayer Full-Stack Session Recorder does it all in one place.
 
 ## What you get
 
