@@ -6,19 +6,22 @@ import {
 } from '../constants/constants.base'
 
 export interface SessionRecorderGrpcTraceExporterConfig {
-  /** The gRPC URL to send traces to. Defaults to MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_GRPC_URL */
+  /** The URL to send traces to. Defaults to MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_GRPC_URL */
   url?: string
+  /** API key for authentication. Required. */
+  apiKey: string
   /** Timeout for gRPC requests in milliseconds. Defaults to 30000 */
   timeoutMillis?: number
 }
 
 /**
- * Custom gRPC trace exporter for Session Recorder
- * Extends the OTLP gRPC exporter with Session Recorder-specific configuration
+ * gRPC trace exporter for Session Recorder
+ * Exports traces via gRPC to Multiplayer's OTLP endpoint
  * Only exports spans with trace IDs starting with Multiplayer prefixes
+ * Note: API key authentication may need to be handled at the gRPC client level
  */
 export class SessionRecorderGrpcTraceExporter extends OTLPTraceExporter {
-  constructor(config: SessionRecorderGrpcTraceExporterConfig = {}) {
+  constructor(config: SessionRecorderGrpcTraceExporterConfig) {
     const {
       url = MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_GRPC_URL,
       timeoutMillis = 30000,
@@ -31,18 +34,17 @@ export class SessionRecorderGrpcTraceExporter extends OTLPTraceExporter {
   }
 
   override export(spans: any[], resultCallback: (result: { code: number }) => void): void {
-    // Filter spans to only include those with Multiplayer trace prefixes
     const filteredSpans = spans.filter(span => {
       const traceId = span.spanContext().traceId
       return traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
         traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
     })
 
-    // Only export if there are filtered spans
-    if (filteredSpans.length > 0) {
-      super.export(filteredSpans, resultCallback)
-    } else {
+    if (filteredSpans.length === 0) {
       resultCallback({ code: 0 })
+      return
     }
+
+    super.export(filteredSpans, resultCallback)
   }
 }

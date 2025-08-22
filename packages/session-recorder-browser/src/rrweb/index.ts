@@ -46,13 +46,11 @@ export class RecorderBrowserSDK {
    */
   init(config: RecorderConfig): void {
     this.config = config
-    this.exporter = new RrwebEventExporter(
-      {
-        apiKey: config.apiKey,
-        socketUrl: config.exporterApiBaseUrl || '',
-        usePostMessageFallback: Boolean(config.usePostMessageFallback),
-      },
-    )
+    this.exporter = new RrwebEventExporter({
+      apiKey: config.apiKey,
+      socketUrl: config.apiBaseUrl || '',
+      usePostMessageFallback: Boolean(config.usePostMessageFallback),
+    })
   }
 
   /**

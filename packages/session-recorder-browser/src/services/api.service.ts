@@ -1,5 +1,9 @@
 import messagingService from './messaging.service'
-import { ApiServiceConfig, IResourceAttributes, ISessionAttributes } from '../types'
+import {
+  ApiServiceConfig,
+  IResourceAttributes,
+  ISessionAttributes,
+} from '../types'
 
 
 export interface StartSessionRequest {
@@ -21,7 +25,8 @@ export class ApiService {
   constructor() {
     this.config = {
       apiKey: '',
-      exporterApiBaseUrl: '',
+      apiBaseUrl: '',
+      exporterEndpoint: '',
     }
   }
 
@@ -30,7 +35,10 @@ export class ApiService {
    * @param config - API service configuration
    */
   public init(config: ApiServiceConfig) {
-    this.config = { ...this.config, ...config }
+    this.config = {
+      ...this.config,
+      ...config,
+    }
   }
 
   /**
@@ -165,7 +173,7 @@ export class ApiService {
     body?: any,
     signal?: AbortSignal,
   ): Promise<any> {
-    const url = `${this.config.exporterApiBaseUrl}/v0/radar${path}`
+    const url = `${this.config.apiBaseUrl}/v0/radar${path}`
     const params = {
       method,
       body: body ? JSON.stringify(body) : null,

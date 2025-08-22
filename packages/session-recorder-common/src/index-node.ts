@@ -1,7 +1,6 @@
 export * from './constants/constants.node'
 export { SessionRecorderHttpInstrumentationHooksNode } from './instrumentations/SessionRecorderHttpInstrumentationHooksNode'
 export { SessionRecorderIdGenerator } from './SessionRecorderIdGenerator'
-export { SessionRecorderJsonTraceSerializer } from './SessionRecorderJsonTraceSerializer'
 export { SessionRecorderTraceIdRatioBasedSampler } from './SessionRecorderTraceIdRatioBasedSampler'
 export * as SessionRecorderSdk from './sdk'
 export * from './type'

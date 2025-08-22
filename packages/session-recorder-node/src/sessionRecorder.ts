@@ -30,14 +30,19 @@ export class SessionRecorder {
 
   /**
    * @description Initialize the session recorder
-   * @param apiKey - multiplayer otlp key
-   * @param traceIdGenerator - multiplayer compatible trace id generator
+   * @param config - Configuration object
+   * @param config.apiKey - multiplayer otlp key
+   * @param config.traceIdGenerator - multiplayer compatible trace id generator
+   * @param config.resourceAttributes - Optional resource attributes
+   * @param config.generateSessionShortIdLocally - Optional session short ID generator
+   * @param config.apiBaseUrl - Optional base API URL override
    */
   public init(config: {
     apiKey: string,
     traceIdGenerator: SessionRecorderIdGenerator,
     resourceAttributes?: object,
-    generateSessionShortIdLocally?: boolean | (() => string)
+    generateSessionShortIdLocally?: boolean | (() => string),
+    apiBaseUrl?: string
   }): void {
     this._resourceAttributes = config.resourceAttributes || {
       [ATTR_MULTIPLAYER_SESSION_RECORDER_VERSION]: SESSION_RECORDER_VERSION,
@@ -57,7 +62,10 @@ export class SessionRecorder {
     }
 
     this._traceIdGenerator = config.traceIdGenerator
-    this._apiService.init({ apiKey: config.apiKey })
+    this._apiService.init({
+      apiKey: config.apiKey,
+      apiBaseUrl: config.apiBaseUrl,
+    })
   }
 
   /**

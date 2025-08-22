@@ -1,4 +1,1 @@
-export {
-  SessionRecorderBrowserTraceExporter,
-  type SessionRecorderBrowserTraceExporterConfig,
-} from './SessionRecorderBrowserTraceExporter'
+export * from './SessionRecorderBrowserTraceExporter'

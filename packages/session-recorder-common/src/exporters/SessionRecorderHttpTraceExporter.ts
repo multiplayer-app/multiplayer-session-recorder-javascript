@@ -8,8 +8,8 @@ import {
 export interface SessionRecorderHttpTraceExporterConfig {
   /** The URL to send traces to. Defaults to MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL */
   url?: string
-  /** Custom headers to include in requests */
-  headers?: Record<string, string>
+  /** API key for authentication. Required. */
+  apiKey: string
   /** Timeout for HTTP requests in milliseconds. Defaults to 30000 */
   timeoutMillis?: number
   /** Whether to keep the connection alive. Defaults to true */
@@ -19,15 +19,15 @@ export interface SessionRecorderHttpTraceExporterConfig {
 }
 
 /**
- * Custom HTTP trace exporter for Session Recorder
- * Extends the OTLP HTTP exporter with Session Recorder-specific configuration
+ * HTTP trace exporter for Session Recorder
+ * Exports traces via HTTP to Multiplayer's OTLP endpoint
  * Only exports spans with trace IDs starting with Multiplayer prefixes
  */
 export class SessionRecorderHttpTraceExporter extends OTLPTraceExporter {
-  constructor(config: SessionRecorderHttpTraceExporterConfig = {}) {
+  constructor(config: SessionRecorderHttpTraceExporterConfig) {
     const {
       url = MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
-      headers = {},
+      apiKey,
       timeoutMillis = 30000,
       keepAlive = true,
       concurrencyLimit = 20,
@@ -38,7 +38,7 @@ export class SessionRecorderHttpTraceExporter extends OTLPTraceExporter {
       headers: {
         'Content-Type': 'application/x-protobuf',
         'User-Agent': '@multiplayer-app/session-recorder-common/1.0.0',
-        ...headers,
+        'authorization': apiKey,
       },
       timeoutMillis,
       keepAlive,
@@ -54,11 +54,12 @@ export class SessionRecorderHttpTraceExporter extends OTLPTraceExporter {
         traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
     })
 
-    // Only export if there are filtered spans
-    if (filteredSpans.length > 0) {
-      super.export(filteredSpans, resultCallback)
-    } else {
+    // Only proceed if there are filtered spans
+    if (filteredSpans.length === 0) {
       resultCallback({ code: 0 })
+      return
     }
+
+    super.export(filteredSpans, resultCallback)
   }
 }

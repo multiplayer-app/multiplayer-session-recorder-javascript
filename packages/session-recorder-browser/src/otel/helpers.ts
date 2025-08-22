@@ -7,6 +7,7 @@ import {
   ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
+  MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
 } from '@multiplayer-app/session-recorder-common'
 import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common'
 import { TracerBrowserConfig } from '../types'
@@ -250,4 +251,23 @@ export async function extractResponseBody(response: Response): Promise<string | 
   } else {
     return JSON.stringify(response.body)
   }
+}
+
+export const getExporterEndpoint = (exporterEndpoint: string): string => {
+  const hasPath = exporterEndpoint && (() => {
+    try {
+      const url = new URL(exporterEndpoint)
+      return url.pathname !== '/' && url.pathname !== ''
+    } catch {
+      return false
+    }
+  })()
+
+  if (hasPath) {
+    return exporterEndpoint
+  }
+
+  const trimmedExporterEndpoint = new URL(exporterEndpoint).origin
+
+  return `${trimmedExporterEndpoint}/v1/traces`
 }

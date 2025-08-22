@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-browser",
-  "version": "1.0.0",
+  "version": "1.0.1-alpha.2",
   "description": "Multiplayer Fullstack Session Recorder for Browser",
   "author": {
     "name": "Multiplayer Software, Inc.",
@@ -31,7 +31,7 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@multiplayer-app/session-recorder-common": "1.0.0",
+    "@multiplayer-app/session-recorder-common": "1.0.1-alpha.2",
     "browserify": "17.0.1",
     "clean-webpack-plugin": "4.0.0",
     "css-loader": "6.0.0",
@@ -49,17 +49,17 @@
     "webpack-cli": "5.1.4"
   },
   "dependencies": {
-    "@opentelemetry/auto-instrumentations-web": "0.44.0",
-    "@opentelemetry/context-zone": "1.29.0",
-    "@opentelemetry/core": "1.29.0",
-    "@opentelemetry/exporter-trace-otlp-http": "0.56.0",
-    "@opentelemetry/instrumentation": "0.56.0",
-    "@opentelemetry/otlp-exporter-base": "0.56.0",
-    "@opentelemetry/otlp-transformer": "0.56.0",
-    "@opentelemetry/resources": "1.29.0",
-    "@opentelemetry/sdk-trace-base": "1.29.0",
-    "@opentelemetry/sdk-trace-web": "1.29.0",
-    "@opentelemetry/semantic-conventions": "1.28.0",
+    "@opentelemetry/auto-instrumentations-web": "0.49.0",
+    "@opentelemetry/context-zone": "2.0.1",
+    "@opentelemetry/core": "2.0.1",
+    "@opentelemetry/exporter-trace-otlp-http": "0.203.0",
+    "@opentelemetry/instrumentation": "0.203.0",
+    "@opentelemetry/otlp-exporter-base": "0.203.0",
+    "@opentelemetry/otlp-transformer": "0.203.0",
+    "@opentelemetry/resources": "2.0.1",
+    "@opentelemetry/sdk-trace-base": "2.0.1",
+    "@opentelemetry/sdk-trace-web": "2.0.1",
+    "@opentelemetry/semantic-conventions": "1.36.0",
     "@rrweb/packer": "2.0.0-alpha.15",
     "@rrweb/rrweb-plugin-console-record": "2.0.0-alpha.15",
     "dompurify": "3.2.5",

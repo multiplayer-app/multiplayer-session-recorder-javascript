@@ -1,16 +1,6 @@
-export {
-  SessionRecorderHttpTraceExporter,
-  type SessionRecorderHttpTraceExporterConfig,
-} from './SessionRecorderHttpTraceExporter'
-export {
-  SessionRecorderHttpLogsExporter,
-  type SessionRecorderHttpLogsExporterConfig,
-} from './SessionRecorderHttpLogsExporter'
-export {
-  SessionRecorderGrpcTraceExporter,
-  type SessionRecorderGrpcTraceExporterConfig,
-} from './SessionRecorderGrpcTraceExporter'
-export {
-  SessionRecorderGrpcLogsExporter,
-  type SessionRecorderGrpcLogsExporterConfig,
-} from './SessionRecorderGrpcLogsExporter'
+export * from './SessionRecorderHttpTraceExporter'
+export * from './SessionRecorderHttpLogsExporter'
+export * from './SessionRecorderGrpcTraceExporter'
+export * from './SessionRecorderGrpcLogsExporter'
+export * from './SessionRecorderTraceExporterWrapper'
+export * from './SessionRecorderLogsExporterWrapper'

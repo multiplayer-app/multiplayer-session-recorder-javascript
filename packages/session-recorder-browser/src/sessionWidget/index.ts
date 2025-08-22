@@ -9,7 +9,7 @@ import {
   POPOVER_DISTANCE_FROM_BUTTON,
   NON_DRAGGABLE_OFFSET,
 } from './constants'
-import { DEFAULT_WIDGET_TEXT_CONFIG } from 'src/config'
+import { DEFAULT_WIDGET_TEXT_CONFIG } from '../config'
 
 import { UIManager } from './UIManager'
 import {
@@ -286,9 +286,9 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     this._showContinuousRecording = options.showContinuousRecording
     this._widgetTextOverrides = {
       ...this._widgetTextOverrides,
-      ...options.widgetTextOverrides
+      ...options.widgetTextOverrides,
     }
-    
+
     // Recreate UIManager with proper config
     this.uiManager = new UIManager(
       this.recorderButton,
@@ -300,7 +300,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       this._widgetTextOverrides,
       this._showContinuousRecording,
     )
-    
+
     // Re-initialize templates with new config
     this.uiManager.setRecorderButtonProps()
     this.uiManager.setInitialPopoverProps()
@@ -308,7 +308,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     this.uiManager.setOverlayProps()
     this.uiManager.setSubmitSessionDialogProps()
     this.uiManager.setToastProps()
-    
+
     const elements = [this.toast]
 
     if (options.showWidget) {

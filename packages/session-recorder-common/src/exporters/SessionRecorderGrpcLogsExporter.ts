@@ -6,19 +6,22 @@ import {
 } from '../constants/constants.base'
 
 export interface SessionRecorderGrpcLogsExporterConfig {
-  /** The gRPC URL to send logs to. Defaults to MULTIPLAYER_OTEL_DEFAULT_LOGS_EXPORTER_GRPC_URL */
+  /** The URL to send logs to. Defaults to MULTIPLAYER_OTEL_DEFAULT_LOGS_EXPORTER_GRPC_URL */
   url?: string
+  /** API key for authentication. Required. */
+  apiKey: string
   /** Timeout for gRPC requests in milliseconds. Defaults to 30000 */
   timeoutMillis?: number
 }
 
 /**
- * Custom gRPC logs exporter for Session Recorder
- * Extends the OTLP gRPC exporter with Session Recorder-specific configuration for logs
+ * gRPC logs exporter for Session Recorder
+ * Exports logs via gRPC to Multiplayer's OTLP endpoint
  * Only exports logs with trace IDs starting with Multiplayer prefixes
+ * Note: API key authentication may need to be handled at the gRPC client level
  */
 export class SessionRecorderGrpcLogsExporter extends OTLPLogExporter {
-  constructor(config: SessionRecorderGrpcLogsExporterConfig = {}) {
+  constructor(config: SessionRecorderGrpcLogsExporterConfig) {
     const {
       url = MULTIPLAYER_OTEL_DEFAULT_LOGS_EXPORTER_GRPC_URL,
       timeoutMillis = 30000,
@@ -38,11 +41,12 @@ export class SessionRecorderGrpcLogsExporter extends OTLPLogExporter {
         traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX))
     })
 
-    // Only export if there are filtered logs
-    if (filteredLogs.length > 0) {
-      super.export(filteredLogs, resultCallback)
-    } else {
+    // Only proceed if there are filtered logs
+    if (filteredLogs.length === 0) {
       resultCallback({ code: 0 })
+      return
     }
+
+    super.export(filteredLogs, resultCallback)
   }
 }

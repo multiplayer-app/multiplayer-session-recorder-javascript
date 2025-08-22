@@ -7,15 +7,17 @@ import {
 } from '../constants/constants.base'
 
 export interface SessionRecorderBrowserTraceExporterConfig {
-  /** The URL to send traces to. Defaults to MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL */
+  /** URL for the OTLP endpoint. Defaults to Multiplayer's default traces endpoint. */
   url?: string
-  /** Custom headers to include in requests */
+  /** API key for authentication. Required. */
+  apiKey: string
+  /** Additional headers to include in requests */
   headers?: Record<string, string>
-  /** Timeout for HTTP requests in milliseconds. Defaults to 30000 */
+  /** Request timeout in milliseconds */
   timeoutMillis?: number
-  /** Whether to keep the connection alive. Defaults to true */
+  /** Whether to use keep-alive connections */
   keepAlive?: boolean
-  /** Maximum number of concurrent requests. Defaults to 20 */
+  /** Maximum number of concurrent requests */
   concurrencyLimit?: number
   /** Whether to use postMessage fallback for cross-origin requests */
   usePostMessageFallback?: boolean
@@ -30,50 +32,49 @@ export interface SessionRecorderBrowserTraceExporterConfig {
  * Exports traces via HTTP to Multiplayer's OTLP endpoint with browser-specific optimizations
  * Only exports spans with trace IDs starting with Multiplayer prefixes
  */
-export class SessionRecorderBrowserTraceExporter
-  extends OTLPTraceExporter
-  implements SpanExporter {
-
+export class SessionRecorderBrowserTraceExporter implements SpanExporter {
+  private exporter: OTLPTraceExporter
   private usePostMessage: boolean = false
   private readonly postMessageType: string
   private readonly postMessageTargetOrigin: string
   private readonly config: SessionRecorderBrowserTraceExporterConfig
 
-  constructor(config: SessionRecorderBrowserTraceExporterConfig = {}) {
+  constructor(config: SessionRecorderBrowserTraceExporterConfig) {
     const {
       url = MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
+      apiKey,
       headers = {},
       timeoutMillis = 30000,
       keepAlive = true,
       concurrencyLimit = 20,
-      //   usePostMessageFallback = false,
       postMessageType = 'MULTIPLAYER_SESSION_DEBUGGER_LIB',
       postMessageTargetOrigin = '*',
     } = config
 
-    super({
+    this.config = {
+      ...config,
       url,
-      headers: {
-        'Content-Type': 'application/x-protobuf',
-        'User-Agent': '@multiplayer-app/session-recorder-common/1.0.0',
-        ...headers,
-      },
+      apiKey,
+      headers,
       timeoutMillis,
       keepAlive,
       concurrencyLimit,
-    })
-
-    this.config = config
+    }
     this.postMessageType = postMessageType
     this.postMessageTargetOrigin = postMessageTargetOrigin
+
+    this.exporter = this._createExporter()
   }
 
-  override export(spans: ReadableSpan[], resultCallback: (result: { code: number }) => void): void {
+  export(
+    spans: ReadableSpan[],
+    resultCallback: (result: { code: number }) => void,
+  ): void {
     // Filter spans to only include those with Multiplayer trace prefixes
     const filteredSpans = spans.filter(span => {
       const traceId = span.spanContext().traceId
       return traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
-             traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
+        traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
     })
 
     // Only proceed if there are filtered spans
@@ -87,7 +88,7 @@ export class SessionRecorderBrowserTraceExporter
       return
     }
 
-    super.export(filteredSpans, (result) => {
+    this.exporter.export(filteredSpans, (result) => {
       if (result.code === 0) {
         resultCallback(result)
       } else if (this.config.usePostMessageFallback) {
@@ -97,6 +98,10 @@ export class SessionRecorderBrowserTraceExporter
         resultCallback(result)
       }
     })
+  }
+
+  shutdown(): Promise<void> {
+    return this.exporter.shutdown()
   }
 
   private exportViaPostMessage(spans: ReadableSpan[], resultCallback: (result: { code: number }) => void): void {
@@ -134,7 +139,7 @@ export class SessionRecorderBrowserTraceExporter
       startTime: span.startTime,
       duration: span.duration,
       attributes: span.attributes,
-      parentSpanId: spanContext.spanId, // Using spanId as parentSpanId is not available in newer versions
+      parentSpanId: span.parentSpanContext?.spanId,
       droppedAttributesCount: span.droppedAttributesCount,
       droppedEventsCount: span.droppedEventsCount,
       droppedLinksCount: span.droppedLinksCount,
@@ -143,5 +148,26 @@ export class SessionRecorderBrowserTraceExporter
         asyncAttributesPending: span.resource.asyncAttributesPending,
       },
     }
+  }
+
+  private _createExporter(): OTLPTraceExporter {
+    return new OTLPTraceExporter({
+      url: this.config.url,
+      headers: {
+        'Content-Type': 'application/x-protobuf',
+        'User-Agent': '@multiplayer-app/session-recorder-common/1.0.0',
+        'authorization': this.config.apiKey,
+        ...(this.config.headers || {}),
+      },
+      timeoutMillis: this.config.timeoutMillis,
+      keepAlive: this.config.keepAlive,
+      concurrencyLimit: this.config.concurrencyLimit,
+    })
+  }
+
+  setApiKey(apiKey: string): void {
+    this.config.apiKey = apiKey
+
+    this.exporter = this._createExporter()
   }
 }
