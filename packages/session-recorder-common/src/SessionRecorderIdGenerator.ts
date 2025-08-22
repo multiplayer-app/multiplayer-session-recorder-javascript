@@ -10,7 +10,7 @@ import {
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
   MULTIPLAYER_TRACE_DOC_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
-} from './constants.base'
+} from './constants/constants.base'
 import { getIdGenerator } from './sdk'
 
 export class SessionRecorderIdGenerator extends RandomIdGenerator {

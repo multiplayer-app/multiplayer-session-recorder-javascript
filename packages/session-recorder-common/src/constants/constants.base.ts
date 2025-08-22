@@ -1,3 +1,6 @@
+/**
+ * @deprecated
+ */
 export const MULTIPLAYER_TRACE_DOC_PREFIX = 'd0cd0c'
 
 export const MULTIPLAYER_TRACE_DEBUG_PREFIX = 'debdeb'
@@ -6,9 +9,25 @@ export const MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX = 'cdbcdb'
 
 export const MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH = 16
 
+/**
+ * @deprecated Use MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL instead
+ */
 export const MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_URL = 'https://api.multiplayer.app/v1/traces'
 
+/**
+ * @deprecated Use MULTIPLAYER_OTEL_DEFAULT_LOGS_EXPORTER_HTTP_URL instead
+ */
 export const MULTIPLAYER_OTEL_DEFAULT_LOGS_EXPORTER_URL = 'https://api.multiplayer.app/v1/logs'
+
+export const MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL = 'https://otlp.multiplayer.app/v1/traces'
+
+export const MULTIPLAYER_OTEL_DEFAULT_LOGS_EXPORTER_HTTP_URL = 'https://otlp.multiplayer.app/v1/logs'
+
+export const MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_GRPC_URL = 'https://otlp.multiplayer.app:4317/v1/traces'
+
+export const MULTIPLAYER_OTEL_DEFAULT_LOGS_EXPORTER_GRPC_URL = 'https://otlp.multiplayer.app:4317/v1/logs'
+
+export const MULTIPLAYER_BASE_API_URL = 'https://api.multiplayer.app'
 
 export const MULTIPLAYER_ATTRIBUTE_PREFIX = 'multiplayer.'
 

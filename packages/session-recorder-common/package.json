@@ -38,9 +38,15 @@
   },
   "dependencies": {
     "@opentelemetry/core": "^1.29.0",
-    "@opentelemetry/otlp-exporter-base": "^0.56.0",
-    "@opentelemetry/otlp-transformer": "^0.56.0",
-    "@opentelemetry/sdk-trace-base": "^1.29.0",
+    "@opentelemetry/exporter-logs-otlp-http": "^0.203.0",
+    "@opentelemetry/exporter-logs-otlp-proto": "^0.203.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.203.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.203.0",
+    "@opentelemetry/otlp-exporter-base": "^0.203.0",
+    "@opentelemetry/otlp-transformer": "^0.203.0",
+    "@opentelemetry/resources": "^2.0.1",
+    "@opentelemetry/sdk-trace-base": "^2.0.1",
+    "@opentelemetry/semantic-conventions": "^1.36.0",
     "to-json-schema": "^0.2.5"
   },
   "devDependencies": {

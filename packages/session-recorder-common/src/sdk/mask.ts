@@ -1,5 +1,5 @@
 import type { Span } from '@opentelemetry/api'
-import { MASK_PLACEHOLDER } from '../constants.base'
+import { MASK_PLACEHOLDER } from '../constants/constants.base'
 
 const MAX_DEPTH = 8
 export const sensitiveFields: string[] = [

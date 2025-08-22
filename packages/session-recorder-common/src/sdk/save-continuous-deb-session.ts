@@ -2,7 +2,7 @@ import { context, trace } from '@opentelemetry/api'
 import {
   ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE,
   ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE_REASON,
-} from '../constants.base'
+} from '../constants/constants.base'
 /**
  * @description Set auto save attribute to span
  * @param {String} reason
