@@ -22,7 +22,6 @@ export class TracerBrowserSDK {
   private allowedElements = new Set<string>(['A', 'BUTTON'])
   private idGenerator?: SessionRecorderIdGenerator
   private sessionId = ''
-  private isRegistered = false
   private spanExporterProcessors: SpanProcessor[] = []
 
   constructor() { }
@@ -35,12 +34,11 @@ export class TracerBrowserSDK {
       autoDocTracesRatio: options.docTraceRatio || OTEL_MP_DOC_TRACE_RATIO,
     })
 
-    this.tracerProvider = this.createTracerProvider()
-
     if (this.config.apiKey) {
-      this.addBatchSpanExporter(this.config.apiKey)
+      this.spanExporterProcessors = [this.createBatchSpanExporter(this.config.apiKey)]
     }
 
+    this.tracerProvider = this.createTracerProvider()
     this.registerTracerProvider()
     this.registerInstrumentations()
   }
@@ -76,19 +74,21 @@ export class TracerBrowserSDK {
       )
     }
 
-    const newSpanProcessor = new BatchSpanProcessor(
+    this.spanExporterProcessors = [this.createBatchSpanExporter(apiKey)]
+    // recreate the tracer provider with the new span exporter processor
+    this.tracerProvider = this.createTracerProvider()
+    this.registerTracerProvider()
+    this.registerInstrumentations()
+  }
+
+  private createBatchSpanExporter(apiKey: string): BatchSpanProcessor {
+    return new BatchSpanProcessor(
       new SessionRecorderHttpTraceExporterBrowser({
         apiKey,
         url: `${this.config?.exporterApiBaseUrl}/v1/traces`,
         usePostMessageFallback: this.config?.usePostMessageFallback,
       }),
     )
-
-    this.spanExporterProcessors = [newSpanProcessor]
-    this.tracerProvider = this.createTracerProvider()
-
-    this.registerTracerProvider()
-    this.registerInstrumentations()
   }
 
   private setSessionId(
@@ -114,20 +114,16 @@ export class TracerBrowserSDK {
       }),
       idGenerator: this.idGenerator,
       sampler: new SessionRecorderTraceIdRatioBasedSampler(this.config.sampleTraceRatio),
-      spanProcessors: [
-        this.getSpanSessionIdProcessor(),
-        ...this.spanExporterProcessors,
-      ],
+      spanProcessors: [this.getSpanSessionIdProcessor(), ...this.spanExporterProcessors],
     })
   }
 
   private registerTracerProvider(): void {
-    if (this.isRegistered || !this.tracerProvider) return
+    if (!this.tracerProvider) return
 
     this.tracerProvider.register({
       propagator: new W3CTraceContextPropagator(),
     })
-    this.isRegistered = true
   }
 
   private getSpanSessionIdProcessor(): SpanProcessor {
