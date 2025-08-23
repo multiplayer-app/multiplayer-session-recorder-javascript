@@ -1,23 +1,23 @@
 import 'rrweb-player/dist/style.css'
 import { Observable } from 'lib0/observable'
-
-import { DEFAULT_WIDGET_TEXT_CONFIG } from '../config'
-import { insertTrustedHTML, formatTimeForSessionTimer } from '../utils'
+import { insertTrustedHTML } from '../utils'
+import { formatTimeForSessionTimer } from '../utils'
 import { SessionWidgetConfig, SessionState, ToastConfig, WidgetTextOverridesConfig } from '../types'
+import { DragManager } from './dragManager'
+import {
+  POPOVER_WIDTH,
+  POPOVER_DISTANCE_FROM_BUTTON,
+  NON_DRAGGABLE_OFFSET,
+} from './constants'
+import { DEFAULT_WIDGET_TEXT_CONFIG } from 'src/config'
 
 import { UIManager } from './UIManager'
-import { DragManager } from './dragManager'
 import {
   ButtonState,
   buttonStates,
   ContinuousRecordingSaveButtonState,
   continuousRecordingSaveButtonStates,
 } from './buttonStateConfigs'
-import {
-  POPOVER_WIDTH,
-  NON_DRAGGABLE_OFFSET,
-  POPOVER_DISTANCE_FROM_BUTTON,
-} from './constants'
 
 type SessionWidgetEvents =
   | 'toggle'
@@ -288,7 +288,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       ...this._widgetTextOverrides,
       ...options.widgetTextOverrides
     }
-
+    
     // Recreate UIManager with proper config
     this.uiManager = new UIManager(
       this.recorderButton,
@@ -300,7 +300,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       this._widgetTextOverrides,
       this._showContinuousRecording,
     )
-
+    
     // Re-initialize templates with new config
     this.uiManager.setRecorderButtonProps()
     this.uiManager.setInitialPopoverProps()
@@ -308,7 +308,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     this.uiManager.setOverlayProps()
     this.uiManager.setSubmitSessionDialogProps()
     this.uiManager.setToastProps()
-
+    
     const elements = [this.toast]
 
     if (options.showWidget) {
