@@ -13,7 +13,7 @@ const getWidgetTextOverridesConfig = (config: any, defaultConfig: any) => {
   if (!config || typeof config !== 'object') {
     return defaultConfig
   }
-  
+
   return {
     initialTitleWithContinuous: isValidString(config.initialTitleWithContinuous, defaultConfig.initialTitleWithContinuous),
     initialTitleWithoutContinuous: isValidString(config.initialTitleWithoutContinuous, defaultConfig.initialTitleWithoutContinuous),
@@ -49,7 +49,8 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     application: isValidString(c.application, BASE_CONFIG.application),
     environment: isValidString(c.environment, BASE_CONFIG.environment),
 
-    exporterApiBaseUrl: isValidString(c.exporterApiBaseUrl, BASE_CONFIG.exporterApiBaseUrl),
+    exporterEndpoint: isValidString(c.exporterEndpoint, BASE_CONFIG.exporterEndpoint),
+    apiBaseUrl: isValidString(c.apiBaseUrl, BASE_CONFIG.apiBaseUrl),
     usePostMessageFallback: isValidBoolean(c.usePostMessageFallback, BASE_CONFIG.usePostMessageFallback),
 
     showWidget: isValidBoolean(c.showWidget, BASE_CONFIG.showWidget),
@@ -57,7 +58,6 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     recordCanvas: isValidBoolean(c.recordCanvas, BASE_CONFIG.recordCanvas),
     widgetButtonPlacement: isValidEnum<WidgetButtonPlacement>(c.widgetButtonPlacement, BASE_CONFIG.widgetButtonPlacement, Object.values(WidgetButtonPlacement) as WidgetButtonPlacement[]),
     ignoreUrls: isValidArray(c.ignoreUrls, BASE_CONFIG.ignoreUrls),
-    docTraceRatio: isValidNumber(c.docTraceRatio, BASE_CONFIG.docTraceRatio),
     sampleTraceRatio: isValidNumber(c.sampleTraceRatio, BASE_CONFIG.sampleTraceRatio),
     propagateTraceHeaderCorsUrls: c.propagateTraceHeaderCorsUrls || BASE_CONFIG.propagateTraceHeaderCorsUrls,
     schemifyDocSpanPayload: isValidBoolean(c.schemifyDocSpanPayload, BASE_CONFIG.schemifyDocSpanPayload),

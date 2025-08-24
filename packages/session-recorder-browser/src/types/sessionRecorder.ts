@@ -40,10 +40,15 @@ export interface SessionRecorderOptions {
   environment: string
 
   /**
-   * (Optional) Base URL for the session debugger's exporter API.
+   * (Optional) OTLP collector endpoint.
+   */
+  exporterEndpoint?: string
+
+  /**
+   * (Optional) Base URL for the API calls.
    * This allows customization of the API endpoint for sending session data.
    */
-  exporterApiBaseUrl?: string
+  apiBaseUrl?: string
 
   /**
    * (Optional) An array of URLs or regular expressions that should be ignored by the session debugger.
@@ -83,12 +88,6 @@ export interface SessionRecorderOptions {
    * @default recordCanvas = false
    */
   recordCanvas?: boolean
-
-  /**
-   * (Optional) Trace ID Ratio for document traces
-   * @default 0.15
-   */
-  docTraceRatio?: number
 
   /**
    * (Optional) Trace ID Ratio for sampling
@@ -193,8 +192,10 @@ export interface MaskingConfig {
 export interface BaseConfig {
   /** API key for authentication */
   apiKey: string
-  /** Base URL for the exporter API */
-  exporterApiBaseUrl: string
+  /** Base URL for the API calls */
+  apiBaseUrl: string
+  /** Base URL for the API calls */
+  exporterEndpoint: string
   /** Whether to use post message fallback */
   usePostMessageFallback?: boolean
 }
@@ -213,8 +214,6 @@ export interface TracerBrowserConfig extends BaseConfig {
   environment: string
   /** URLs to ignore during tracing */
   ignoreUrls: Array<string | RegExp>
-  /** Trace ID ratio for document traces */
-  docTraceRatio: number
   /** Trace ID ratio for sampling */
   sampleTraceRatio: number
   /** URLs for CORS trace header propagation */

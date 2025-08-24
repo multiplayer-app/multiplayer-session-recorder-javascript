@@ -14,16 +14,16 @@ import {
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY_ENCODING,
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
   MULTIPLAYER_TRACE_DOC_PREFIX,
-} from './constants.node'
+} from '../constants/constants.node'
 import {
   mask,
   schemify,
   isGzip,
-} from './sdk'
+} from '../sdk'
 import {
   sensitiveFields,
   sensitiveHeaders,
-} from './sdk/mask'
+} from '../sdk/mask'
 
 interface HttpResponseHookOptions {
   maxPayloadSizeBytes?: number

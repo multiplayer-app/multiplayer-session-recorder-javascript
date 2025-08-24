@@ -1,6 +1,18 @@
-import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common'
-import { MaskingConfig, SessionRecorderConfigs, WidgetButtonPlacement, WidgetTextOverridesConfig } from '../types'
-import { MULTIPLAYER_BASE_API_URL, OTEL_MP_DOC_TRACE_RATIO, OTEL_MP_SAMPLE_TRACE_RATIO, DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE } from './constants'
+import {
+  SessionRecorderSdk,
+  MULTIPLAYER_BASE_API_URL,
+  MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
+} from '@multiplayer-app/session-recorder-common'
+import {
+  MaskingConfig,
+  SessionRecorderConfigs,
+  WidgetButtonPlacement,
+  WidgetTextOverridesConfig,
+} from '../types'
+import {
+  OTEL_MP_SAMPLE_TRACE_RATIO,
+  DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
+} from './constants'
 const { mask, sensitiveFields, sensitiveHeaders } = SessionRecorderSdk
 
 export const DEFAULT_MASKING_CONFIG: MaskingConfig = {
@@ -49,7 +61,8 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
   widgetButtonPlacement: WidgetButtonPlacement.bottomRight,
 
   usePostMessageFallback: false,
-  exporterApiBaseUrl: MULTIPLAYER_BASE_API_URL,
+  apiBaseUrl: MULTIPLAYER_BASE_API_URL,
+  exporterEndpoint: MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
 
   recordCanvas: false,
   schemifyDocSpanPayload: true,
@@ -57,12 +70,11 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
   ignoreUrls: [],
   propagateTraceHeaderCorsUrls: [],
 
-  docTraceRatio: OTEL_MP_DOC_TRACE_RATIO,
   sampleTraceRatio: OTEL_MP_SAMPLE_TRACE_RATIO,
   maxCapturingHttpPayloadSize: DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
 
   captureBody: true,
   captureHeaders: true,
   masking: DEFAULT_MASKING_CONFIG,
-  widgetTextOverrides: DEFAULT_WIDGET_TEXT_CONFIG
+  widgetTextOverrides: DEFAULT_WIDGET_TEXT_CONFIG,
 }

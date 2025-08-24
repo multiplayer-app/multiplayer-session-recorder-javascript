@@ -1,0 +1,6 @@
+export * from './SessionRecorderHttpTraceExporter'
+export * from './SessionRecorderHttpLogsExporter'
+export * from './SessionRecorderGrpcTraceExporter'
+export * from './SessionRecorderGrpcLogsExporter'
+export * from './SessionRecorderTraceExporterWrapper'
+export * from './SessionRecorderLogsExporterWrapper'

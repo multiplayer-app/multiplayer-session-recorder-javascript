@@ -7,7 +7,7 @@ import {
 import {
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
-} from './constants.base'
+} from './constants/constants.base'
 
 export class SessionRecorderTraceIdRatioBasedSampler implements Sampler {
   private _upperBound: number

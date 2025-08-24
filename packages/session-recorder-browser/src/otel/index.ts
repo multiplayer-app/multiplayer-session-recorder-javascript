@@ -1,4 +1,4 @@
-import { Resource } from '@opentelemetry/resources'
+import { resourceFromAttributes } from '@opentelemetry/resources'
 import { W3CTraceContextPropagator } from '@opentelemetry/core'
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web'
 import { BatchSpanProcessor, SpanProcessor } from '@opentelemetry/sdk-trace-base'
@@ -9,12 +9,17 @@ import {
   SessionType,
   ATTR_MULTIPLAYER_SESSION_ID,
   SessionRecorderIdGenerator,
-  SessionRecorderHttpTraceExporterBrowser,
+  SessionRecorderBrowserTraceExporter,
   SessionRecorderTraceIdRatioBasedSampler,
 } from '@multiplayer-app/session-recorder-common'
 import { TracerBrowserConfig } from '../types'
-import { OTEL_IGNORE_URLS, OTEL_MP_DOC_TRACE_RATIO } from '../config'
-import { processHttpPayload, headersToObject, extractResponseBody } from './helpers'
+import { OTEL_IGNORE_URLS } from '../config'
+import {
+  processHttpPayload,
+  headersToObject,
+  extractResponseBody,
+  getExporterEndpoint,
+} from './helpers'
 
 export class TracerBrowserSDK {
   private tracerProvider?: WebTracerProvider
@@ -22,6 +27,7 @@ export class TracerBrowserSDK {
   private allowedElements = new Set<string>(['A', 'BUTTON'])
   private sessionId = ''
   private idGenerator
+  private exporter?: SessionRecorderBrowserTraceExporter
 
   constructor() { }
 
@@ -37,12 +43,16 @@ export class TracerBrowserSDK {
     this.config = options
     const { application, version, environment } = this.config
 
-    this.idGenerator = new SessionRecorderIdGenerator({
-      autoDocTracesRatio: options.docTraceRatio || OTEL_MP_DOC_TRACE_RATIO,
+    this.idGenerator = new SessionRecorderIdGenerator()
+
+    this.exporter = new SessionRecorderBrowserTraceExporter({
+      apiKey: options.apiKey,
+      url: getExporterEndpoint(options.exporterEndpoint),
+      usePostMessageFallback: options.usePostMessageFallback,
     })
 
     this.tracerProvider = new WebTracerProvider({
-      resource: new Resource({
+      resource: resourceFromAttributes({
         [SemanticAttributes.SEMRESATTRS_SERVICE_NAME]: application,
         [SemanticAttributes.SEMRESATTRS_SERVICE_VERSION]: version,
         [SemanticAttributes.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment,
@@ -51,12 +61,9 @@ export class TracerBrowserSDK {
       sampler: new SessionRecorderTraceIdRatioBasedSampler(this.config.sampleTraceRatio),
       spanProcessors: [
         this._getSpanSessionIdProcessor(),
+        new BatchSpanProcessor(this.exporter),
       ],
     })
-
-    if (this.config.apiKey) {
-      this.addBatchSpanExporter(this.config.apiKey)
-    }
 
     this.tracerProvider.register({
       // contextManager: new ZoneContextManager(),
@@ -188,21 +195,14 @@ export class TracerBrowserSDK {
     this.setSessionId('')
   }
 
-
-  addBatchSpanExporter(apiKey: string): void {
-    if (!this.tracerProvider) {
+  setApiKey(apiKey: string): void {
+    if (!this.exporter) {
       throw new Error(
-        'Configuration not initialized. Call init() before start().',
+        'Configuration not initialized. Call init() before setApiKey().',
       )
     }
 
-    this.tracerProvider.addSpanProcessor(new BatchSpanProcessor(
-      new SessionRecorderHttpTraceExporterBrowser({
-        apiKey,
-        url: `${this.config?.exporterApiBaseUrl}/v1/traces`,
-        usePostMessageFallback: this.config?.usePostMessageFallback,
-      }),
-    ))
+    this.exporter.setApiKey(apiKey)
   }
 
   private _getSpanSessionIdProcessor(): SpanProcessor {

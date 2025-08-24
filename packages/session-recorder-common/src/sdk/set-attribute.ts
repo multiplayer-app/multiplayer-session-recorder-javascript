@@ -13,7 +13,7 @@ import {
   ATTR_MULTIPLAYER_GRPC_REQUEST_MESSAGE,
   ATTR_MULTIPLAYER_GRPC_RESPONSE_MESSAGE,
   ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY,
-} from '../constants.base'
+} from '../constants/constants.base'
 import mask, { sensitiveFields, sensitiveHeaders } from './mask'
 
 /**

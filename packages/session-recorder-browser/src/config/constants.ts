@@ -1,6 +1,4 @@
 
-export const OTEL_MP_DOC_TRACE_RATIO = 0.15
-
 export const OTEL_MP_SAMPLE_TRACE_RATIO = 0.15
 
 export const SESSION_ID_PROP_NAME = 'multiplayer-session-id'
@@ -28,8 +26,6 @@ export const SESSION_AUTO_CREATED = 'debug-session:auto-created'
 export const SESSION_ADD_EVENT = 'debug-session:rrweb:add-event'
 
 export const DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE = 100000
-
-export const MULTIPLAYER_BASE_API_URL = 'https://api.multiplayer.app'
 
 export const SESSION_RESPONSE = 'multiplayer-debug-session-response'
 

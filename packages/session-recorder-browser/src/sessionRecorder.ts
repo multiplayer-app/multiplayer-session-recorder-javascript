@@ -313,7 +313,7 @@ export class SessionRecorder implements ISessionRecorder {
       this.error = error.message
     }
   }
-  //
+
   /**
    * Cancel the current session
    */
@@ -351,7 +351,6 @@ export class SessionRecorder implements ISessionRecorder {
   public set recordingButtonClickHandler(handler: () => boolean | void) {
     this._sessionWidget.buttonClickExternalHandler = handler
   }
-
 
   /**
    * @description Check if session should be started/stopped automatically
@@ -543,10 +542,9 @@ export class SessionRecorder implements ISessionRecorder {
     if (configureExporters && session.tempApiKey) {
       this._configs.apiKey = session.tempApiKey
       this._recorder.init(this._configs)
-      this._tracer.addBatchSpanExporter(session.tempApiKey)
+      this._tracer.setApiKey(session.tempApiKey)
       this._apiService.updateConfigs({ apiKey: this._configs.apiKey })
     }
-
 
     this._setSession(session)
     this._start()

@@ -3,7 +3,7 @@ import { ISession } from '../types'
 
 export interface ApiServiceConfig {
   apiKey?: string
-  exporterApiBaseUrl?: string
+  apiBaseUrl?: string
   continuousRecording?: boolean
 }
 
@@ -29,16 +29,27 @@ export class ApiService {
 
   constructor() {
     this.config = {
-      exporterApiBaseUrl: MULTIPLAYER_BASE_API_URL,
+      apiBaseUrl: MULTIPLAYER_BASE_API_URL,
     }
   }
 
   /**
    * Initialize the API service
    * @param config - API service configuration
+   * @param config.apiKey - API key for authentication
+   * @param config.apiBaseUrl - Base URL for API endpoints (preferred)
+   * @param config.continuousRecording - Whether continuous recording is enabled
    */
   public init(config: ApiServiceConfig) {
-    this.config = { ...this.config, ...config }
+    const { apiBaseUrl: _apiBaseUrl, ...restConfig } = config
+
+    const apiBaseUrl = _apiBaseUrl || MULTIPLAYER_BASE_API_URL
+
+    this.config = {
+      ...this.config,
+      ...restConfig,
+      apiBaseUrl,
+    }
   }
 
   /**
@@ -46,7 +57,23 @@ export class ApiService {
    * @param config - Partial configuration to update
    */
   public updateConfigs(config: Partial<ApiServiceConfig>) {
-    this.config = { ...this.config, ...config }
+    const { apiBaseUrl: _apiBaseUrl, ...restConfig } = config
+
+    const apiBaseUrl = _apiBaseUrl || MULTIPLAYER_BASE_API_URL
+
+    this.config = {
+      ...this.config,
+      ...restConfig,
+      apiBaseUrl,
+    }
+  }
+
+  /**
+   * Get the current API base URL
+   * @returns The current API base URL
+   */
+  public getApiBaseUrl(): string {
+    return this.config.apiBaseUrl || MULTIPLAYER_BASE_API_URL
   }
 
   /**
@@ -168,7 +195,7 @@ export class ApiService {
     body?: any,
     signal?: AbortSignal,
   ): Promise<any> {
-    const url = `${this.config.exporterApiBaseUrl}/v0/radar${path}`
+    const url = `${this.config.apiBaseUrl}/v0/radar${path}`
     const params = {
       method,
       body: body ? JSON.stringify(body) : null,
