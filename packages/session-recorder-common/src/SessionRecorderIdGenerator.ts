@@ -1,4 +1,4 @@
-import { RandomIdGenerator } from '@opentelemetry/sdk-trace-base'
+import { IdGenerator } from '@opentelemetry/sdk-trace-base'
 import { SessionType } from './type'
 import {
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
@@ -6,41 +6,44 @@ import {
 } from './constants/constants.base'
 import { getIdGenerator } from './sdk'
 
-export class SessionRecorderIdGenerator extends RandomIdGenerator {
+export class SessionRecorderIdGenerator implements IdGenerator {
   sessionShortId: string
   sessionType: SessionType
-
-  generateLongId: () => string
+  private generateLongId: () => string
+  private generateShortId: () => string
 
   constructor() {
-    super()
-
     this.generateLongId = getIdGenerator(16)
+    this.generateShortId = getIdGenerator(8)
     this.sessionShortId = ''
     this.sessionType = SessionType.PLAIN
+  }
 
-    this.generateTraceId = () => {
-      const traceId = this.generateLongId()
+  generateTraceId(): string {
+    const traceId = this.generateLongId()
 
-      if (this.sessionShortId) {
-        let sessionTypePrefix: string = ''
-        switch (this.sessionType) {
-          case SessionType.CONTINUOUS:
-            sessionTypePrefix = MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX
-            break
-          default:
-            sessionTypePrefix = MULTIPLAYER_TRACE_DEBUG_PREFIX
-        }
-
-        const prefix = `${sessionTypePrefix}${this.sessionShortId}`
-
-        const sessionTraceId = `${prefix}${traceId.substring(prefix.length, traceId.length)}`
-
-        return sessionTraceId
+    if (this.sessionShortId) {
+      let sessionTypePrefix: string = ''
+      switch (this.sessionType) {
+        case SessionType.CONTINUOUS:
+          sessionTypePrefix = MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX
+          break
+        default:
+          sessionTypePrefix = MULTIPLAYER_TRACE_DEBUG_PREFIX
       }
 
-      return traceId
+      const prefix = `${sessionTypePrefix}${this.sessionShortId}`
+
+      const sessionTraceId = `${prefix}${traceId.substring(prefix.length, traceId.length)}`
+
+      return sessionTraceId
     }
+
+    return traceId
+  }
+
+  generateSpanId(): string {
+    return this.generateShortId()
   }
 
   setSessionId(

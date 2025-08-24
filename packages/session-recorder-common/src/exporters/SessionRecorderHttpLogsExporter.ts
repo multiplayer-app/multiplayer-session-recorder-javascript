@@ -31,7 +31,7 @@ export class SessionRecorderHttpLogsExporter extends OTLPLogExporter {
     super({
       url,
       headers: {
-        'Content-Type': 'application/x-protobuf',
+        'Content-Type': 'application/json',
         'User-Agent': '@multiplayer-app/session-recorder-common/1.0.0',
         'authorization': apiKey,
       },

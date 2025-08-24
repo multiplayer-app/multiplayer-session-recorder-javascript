@@ -36,9 +36,9 @@ export class SessionRecorderHttpTraceExporter extends OTLPTraceExporter {
     super({
       url,
       headers: {
-        'Content-Type': 'application/x-protobuf',
+        'Content-Type': 'application/json',
         'User-Agent': '@multiplayer-app/session-recorder-common/1.0.0',
-        'authorization': apiKey,
+        'Authorization': apiKey,
       },
       timeoutMillis,
       keepAlive,
@@ -46,15 +46,16 @@ export class SessionRecorderHttpTraceExporter extends OTLPTraceExporter {
     })
   }
 
-  override export(spans: any[], resultCallback: (result: { code: number }) => void): void {
-    // Filter spans to only include those with Multiplayer trace prefixes
+  override export(
+    spans: any[],
+    resultCallback: (result: { code: number }) => void,
+  ): void {
     const filteredSpans = spans.filter(span => {
       const traceId = span.spanContext().traceId
       return traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
         traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
     })
 
-    // Only proceed if there are filtered spans
     if (filteredSpans.length === 0) {
       resultCallback({ code: 0 })
       return

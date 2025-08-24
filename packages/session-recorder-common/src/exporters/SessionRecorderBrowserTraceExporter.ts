@@ -154,9 +154,9 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
     return new OTLPTraceExporter({
       url: this.config.url,
       headers: {
-        'Content-Type': 'application/x-protobuf',
+        'Content-Type': 'application/json',
         'User-Agent': '@multiplayer-app/session-recorder-common/1.0.0',
-        'authorization': this.config.apiKey,
+        'Authorization': this.config.apiKey,
         ...(this.config.headers || {}),
       },
       timeoutMillis: this.config.timeoutMillis,
