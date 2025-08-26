@@ -38,7 +38,9 @@ export class SessionRecorderHttpTraceExporter extends OTLPTraceExporter {
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': '@multiplayer-app/session-recorder-common/1.0.0',
-        'Authorization': apiKey,
+        ...apiKey
+          ? { 'Authorization': apiKey }
+          : {},
       },
       timeoutMillis,
       keepAlive,

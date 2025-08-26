@@ -10,7 +10,7 @@ export interface SessionRecorderBrowserTraceExporterConfig {
   /** URL for the OTLP endpoint. Defaults to Multiplayer's default traces endpoint. */
   url?: string
   /** API key for authentication. Required. */
-  apiKey: string
+  apiKey?: string
   /** Additional headers to include in requests */
   headers?: Record<string, string>
   /** Request timeout in milliseconds */
@@ -39,7 +39,7 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
   private readonly postMessageTargetOrigin: string
   private readonly config: SessionRecorderBrowserTraceExporterConfig
 
-  constructor(config: SessionRecorderBrowserTraceExporterConfig) {
+  constructor(config: SessionRecorderBrowserTraceExporterConfig = {}) {
     const {
       url = MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
       apiKey,
@@ -155,8 +155,7 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       url: this.config.url,
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': '@multiplayer-app/session-recorder-common/1.0.0',
-        'Authorization': this.config.apiKey,
+        ...(this.config.apiKey ? { 'Authorization': this.config.apiKey } : {}),
         ...(this.config.headers || {}),
       },
       timeoutMillis: this.config.timeoutMillis,
