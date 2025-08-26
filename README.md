@@ -210,11 +210,11 @@ SessionRecorder.setSessionAttributes({
 
 ## Setup backend
 
-### Setup opentelemetry
+### Setup opentelemetry data
 
 Use officials opentelemetry guidence from [here](https://opentelemetry.io/docs/languages/js) or [zero-code](https://opentelemetry.io/docs/zero-code/js/) approach
 
-### Send opentelemetry to Multiplayer
+### Send opentelemetry data to Multiplayer
 
 Opentelemetry data can be sent to Multiplayer's collector in few ways:
 
