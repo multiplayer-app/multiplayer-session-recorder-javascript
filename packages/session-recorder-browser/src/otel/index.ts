@@ -154,7 +154,7 @@ export class TracerBrowserSDK {
           },
           '@opentelemetry/instrumentation-user-interaction': {
             shouldPreventSpanCreation: (_event, element: HTMLElement, span) => {
-              if (span['parentSpanId']) {
+              if (span['parentSpanContext']) {
                 return true
               }
               let textContent = ''
