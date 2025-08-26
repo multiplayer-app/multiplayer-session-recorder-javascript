@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-browser",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Multiplayer Fullstack Session Recorder for Browser",
   "author": {
     "name": "Multiplayer Software, Inc.",
@@ -31,7 +31,7 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@multiplayer-app/session-recorder-common": "1.1.0",
+    "@multiplayer-app/session-recorder-common": "1.2.0",
     "browserify": "17.0.1",
     "clean-webpack-plugin": "4.0.0",
     "css-loader": "6.0.0",

@@ -245,11 +245,23 @@ export async function extractResponseBody(response: Response): Promise<string | 
     return null
   }
 
-  if (response.body instanceof ReadableStream) {
-    const responseClone = response.clone()
-    return await responseClone.text()
-  } else {
-    return JSON.stringify(response.body)
+  try {
+    if (response.body instanceof ReadableStream) {
+      // Check if response body is already consumed
+      if (response.bodyUsed) {
+        return null
+      }
+
+      const responseClone = response.clone()
+      return responseClone.text()
+    } else {
+      return JSON.stringify(response.body)
+    }
+  } catch (error) {
+    // If cloning fails (body already consumed), return null
+    // eslint-disable-next-line no-console
+    console.warn('[DEBUGGER_LIB] Failed to extract response body:', error)
+    return null
   }
 }
 

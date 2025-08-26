@@ -2,7 +2,7 @@
 
 <div align="center">
 <a href="https://github.com/multiplayer-app/multiplayer-session-recorder-javascript">
-  <img src="https://img.shields.io/github/stars/multiplayer-app/multiplayer-session-recorder-javascript.svg?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
+  <img src="https://img.shields.io/github/stars/multiplayer-app/multiplayer-session-recorder-javascript?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
 </a>
   <a href="https://github.com/multiplayer-app/multiplayer-session-recorder-javascript/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/multiplayer-app/multiplayer-session-recorder-javascript" alt="License">
