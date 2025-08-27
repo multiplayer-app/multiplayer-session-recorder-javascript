@@ -320,7 +320,7 @@ Deploy [Envoy Proxy](https://github.com/multiplayer-app/multiplayer-proxy) in fr
 
 - Browser SDK: `packages/session-recorder-browser/README.md`
 - Node SDK: `packages/session-recorder-node/README.md`
-- Official product docs: [System Auto‑Documentation](https://www.multiplayer.app/docs/features/system-auto-documentation/)
+- [System Auto‑Documentation](https://www.multiplayer.app/docs/features/system-auto-documentation/)
 
 ## Security and privacy
 
