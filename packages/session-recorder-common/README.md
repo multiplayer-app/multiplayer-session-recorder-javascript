@@ -1,4 +1,32 @@
-# Session Recorder OpenTelemetry Core
+![Description](../../docs/img/header-js.png)
+
+<div align="center">
+<a href="https://github.com/multiplayer-app/multiplayer-session-recorder-javascript">
+  <img src="https://img.shields.io/github/stars/multiplayer-app/multiplayer-session-recorder-javascript?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
+</a>
+  <a href="https://github.com/multiplayer-app/multiplayer-session-recorder-javascript/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/multiplayer-app/multiplayer-session-recorder-javascript" alt="License">
+  </a>
+  <a href="https://multiplayer.app">
+    <img src="https://img.shields.io/badge/Visit-multiplayer.app-blue" alt="Visit Multiplayer">
+  </a>
+  
+</div>
+<div>
+  <p align="center">
+    <a href="https://x.com/trymultiplayer">
+      <img src="https://img.shields.io/badge/Follow%20on%20X-000000?style=for-the-badge&logo=x&logoColor=white" alt="Follow on X" />
+    </a>
+    <a href="https://www.linkedin.com/company/multiplayer-app/">
+      <img src="https://img.shields.io/badge/Follow%20on%20LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" alt="Follow on LinkedIn" />
+    </a>
+    <a href="https://discord.com/invite/q9K3mDzfrx">
+      <img src="https://img.shields.io/badge/Join%20our%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join our Discord" />
+    </a>
+  </p>
+</div>
+
+# Multiplayer Full Stack Session Recorder Common
 
 This package provides implementations of the OpenTelemetry API for trace and metrics. It's intended for use both on the server and in the browser.
 
@@ -36,7 +64,7 @@ import {
   ATTR_MULTIPLAYER_GRPC_REQUEST_MESSAGE,
   ATTR_MULTIPLAYER_GRPC_RESPONSE_MESSAGE,
   ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY,
-} from '@multiplayer-app/session-recorder-opentelemetry'
+} from '@multiplayer-app/session-recorder-common'
 ```
 
 ### Setup opentelemetry for capturing http request/response body
@@ -46,7 +74,7 @@ Session Recorder hooks for nodejs http instrumentation for injecting http reques
 ```javascript
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
 import { type Instrumentation } from '@opentelemetry/instrumentation'
-import { SessionRecorderHttpInstrumentationHooks } from '@multiplayer-app/session-recorder-opentelemetry'
+import { SessionRecorderHttpInstrumentationHooks } from '@multiplayer-app/session-recorder-common'
 
 export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
   '@opentelemetry/instrumentation-http': {
@@ -98,7 +126,7 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
 
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
-import { SessionRecorderHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-opentelemetry'
+import { SessionRecorderHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-common'
 
 const collectorOptions = {
   url: '<opentelemetry-collector-url>', // url is optional and can be omitted - default is https://api.multiplayer.app/v1/traces
@@ -129,7 +157,7 @@ provider.register()
 
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
-import { SessionRecorderIdGenerator, SessionRecorderHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-opentelemetry'
+import { SessionRecorderIdGenerator, SessionRecorderHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-common'
 
 const idGenerator = new SessionRecorderIdGenerator({ autoDocTracesRatio: 0.05 })
 
@@ -164,7 +192,7 @@ Session Recorder sampler will always sample traces with appropriate prefixes, ot
 
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
-import { SessionRecorderTraceIdRatioBasedSampler, SessionRecorderHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-opentelemetry'
+import { SessionRecorderTraceIdRatioBasedSampler, SessionRecorderHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-common'
 
 const collectorOptions = {
   url: '<opentelemetry-collector-url>', // url is optional and can be omitted - default is https://api.multiplayer.app/v1/traces
@@ -192,7 +220,7 @@ const provider = new WebTracerProvider({
 ### Helper for capturing exception in session recording
 
 ```javascript
-import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-opentelemetry'
+import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common'
 
 const error = new Error('Some text here')
 
@@ -202,7 +230,7 @@ SessionRecorderSdk.captureException(error)
 ### Helpers for adding content to session recording
 
 ```javascript
-import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-opentelemetry'
+import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common'
 
 SessionRecorderSdk.setAttribute('{{SOME_KEY}}', '{{SOME_VALUE}}')
 
