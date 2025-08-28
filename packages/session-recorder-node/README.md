@@ -30,7 +30,7 @@
 
 The Multiplayer Full Stack Session Recorder is a powerful tool that offers deep session replays with insights spanning frontend screens, platform traces, metrics, and logs. It helps your team pinpoint and resolve bugs faster by providing a complete picture of your backend system architecture. No more wasted hours combing through APM data; the Multiplayer Full Stack Session Recorder does it all in one place.
 
-### Installation
+## Install
 
 ```bash
 npm i @multiplayer-app/session-recorder-node
@@ -40,13 +40,25 @@ yarn add @multiplayer-app/session-recorder-node
 
 ## Set up backend services
 
-### Set up OpenTelemetry data
+### Route traces and logs to Multiplayer
 
-To set up OpenTelemetry in your backend services see the [OpenTelemetry documentation](https://opentelemetry.io/docs/languages/js). Note: JavaScript supports a [zero-code instrumentation approach](https://opentelemetry.io/docs/zero-code/js)
+Multiplayer Full Stack Session Recorder is built on top of OpenTelemetry.
 
-### Send OpenTelemetry data to Multiplayer
+<!-- To set up OpenTelemetry in your backend services see the [OpenTelemetry documentation](https://opentelemetry.io/docs/languages/js). Note: JavaScript supports a [zero-code instrumentation approach](https://opentelemetry.io/docs/zero-code/js) -->
 
-OpenTelemetry data can be sent to Multiplayer's collector in few ways:
+
+### New to OpenTelemetry?
+
+No problem. You can set it up in a few minutes. If your services don't already use OpenTelemetry, you'll first need to install the OpenTelemetry libraries. Detailed instructions for this can be found in the [OpenTelemetry documentation](https://opentelemetry.io/docs/).
+
+### Already using OpenTelemetry?
+
+You have two primary options for routing your data to Multiplayer:
+
+***Direct Exporter***: This option involves using the Multiplayer Exporter directly within your services. It's a great choice for new applications or startups because it's simple to set up and doesn't require any additional infrastructure. You can configure it to send all session recording data to Multiplayer while optionally sending a sampled subset of data to your existing observability platform.
+
+***OpenTelemetry Collector***: For large, scaled platforms, we recommend using an OpenTelemetry Collector. This approach provides more flexibility by having your services send all telemetry to the collector, which then routes specific session recording data to Multiplayer and other data to your existing observability tools.
+
 
 ### Option 1: Direct Exporter
 
@@ -115,13 +127,17 @@ const logExporter = new OTLPLogExporter({
 })
 ```
 
-### Capturing request and response content
+### Capturing request/response and header content
 
-There"s few options to capture request/response content.
+In addition to sending traces and logs, you need to capture request and response content. We offer two solutions for this:
 
-### Option 1: Instrumentation hook
+***In-Service Code Capture:*** You can use our libraries to capture, serialize, and mask request/response and header content directly within your service code. This is an easy way to get started, especially for new projects, as it requires no extra components in your platform.
 
-Session Recorder library provides request/response for capturing payload.
+***Multiplayer Proxy:*** Alternatively, you can run a [Multiplayer Proxy](https://github.com/multiplayer-app/multiplayer-proxy) to handle this outside of your services. This is ideal for large-scale applications and supports all languages, including those like Java that don't allow for in-service request/response hooks. The proxy can be deployed in various ways, such as an Ingress Proxy, a Sidecar Proxy, or an Embedded Proxy, to best fit your architecture.
+
+### Option 1: In-Service Code Capture
+
+The Multiplayer Session Recorder library provides utilities for capturing request, response and header content. See example below:
 
 ```javascript
 import {
@@ -136,7 +152,10 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
   "@opentelemetry/instrumentation-http": {
     enabled: true,
     responseHook: SessionRecorderHttpInstrumentationHooksNode.responseHook({
+      // list of headers to mask in request/response headers
       maskHeadersList: ["set-cookie"],
+      // set the maximum request/response content size (in bytes) that will be captured
+      // any request/response content greater than size will be not included in session recordings
       maxPayloadSizeBytes: 500000,
       isMaskBodyEnabled: false,
       isMaskHeadersEnabled: true,
@@ -151,17 +170,27 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
 })
 ```
 
-### Option 2: Envoy proxy
+### Option 2: Multiplayer Proxy
 
-Deploy [Multiplayer Envoy Proxy](https://github.com/multiplayer-app/multiplayer-proxy) in front of your backend service.
+The Multiplayer Proxy enables capturing request/response and header content without changing service code. See instructions at the [Multiplayer Proxy repository](https://github.com/multiplayer-app/multiplayer-proxy).
 
-## Set up cli app
+## Set up CLI app
+
+The Multiplayer Full Stack Session Recorder can be used inside the CLI apps.
+
+The [Multiplayer Time Travel Demo](https://github.com/multiplayer-app/multiplayer-time-travel-platform) includes an example [node.js CLI app](https://github.com/multiplayer-app/multiplayer-time-travel-platform/tree/main/clients/nodejs-cli-app).
+
+See an additional example below.
 
 ### Quick start
 
-Use the following code to initialize the session recorder with your application details:
+Use the following code below to initialize and run the session recorder.
 
 ```javascript
+// IMPORTANT: set up OpenTelemetry
+// for an example see ./session-recorder-node/examples/opentelemetry.ts
+// NOTE: for the code belowto work copy examples/opentelemetry.ts to ./opentelemetry.ts
+import { idGenerator } from "./opentelemetry"
 import SessionRecorder from "@multiplayer-app/session-recorder-node"
 import {
   SessionRecorderHttpInstrumentationHooksNode,
@@ -170,8 +199,6 @@ import {
   SessionRecorderHttpTraceExporter,
   SessionRecorderHttpLogsExporter,
 } from "@multiplayer-app/session-recorder-node"
-
-const idGenerator = new SessionRecorderIdGenerator()
 
 SessionRecorder.init({
   apiKey: "MULTIPLAYER_OTLP_KEY", // note: replace with your Multiplayer OTLP key
@@ -182,8 +209,6 @@ SessionRecorder.init({
     environment: "{YOUR_APPLICATION_ENVIRONMENT}",
   }
 })
-
-// ...
 
 await sessionRecorder.start(
   SessionType.PLAIN,
