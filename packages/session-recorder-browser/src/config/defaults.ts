@@ -17,7 +17,7 @@ const { mask, sensitiveFields, sensitiveHeaders } = SessionRecorderSdk
 
 export const DEFAULT_MASKING_CONFIG: MaskingConfig = {
   maskAllInputs: true,
-  isMaskingEnabled: true,
+  isContentMaskingEnabled: true,
   maskBody: mask(sensitiveFields),
   maskHeaders: mask(sensitiveHeaders),
   maskBodyFieldsList: sensitiveFields,

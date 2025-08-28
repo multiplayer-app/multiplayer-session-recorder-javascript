@@ -106,7 +106,7 @@ The Session Recorder supports various configuration options with sensible defaul
 - `usePostMessageFallback`: `false` - Disable post message fallback
 - `widgetButtonPlacement`: `'bottom-right'` - Default widget position
 - `masking.maskAllInputs`: `true` - Mask all inputs by default
-- `masking.isMaskingEnabled`: `true` - Enable masking for debug span payload by default
+- `masking.isContentMaskingEnabled`: `true` - Enable masking for debug span payload by default
 - `captureBody`: `true` - Capture body in traces by default
 - `captureHeaders`: `true` - Capture headers in traces by default
 
@@ -178,7 +178,7 @@ SessionRecorder.init({
       }
       return payload
     },
-    isMaskingEnabled: true, // Enable masking for debug span payload in traces
+    isContentMaskingEnabled: true, // Enable masking for debug span payload in traces
     maskBody: (payload, span) => {
       // Custom trace payload masking
       if (payload && typeof payload === 'object') {
@@ -288,7 +288,7 @@ The Session Recorder includes comprehensive masking options to protect sensitive
 ### Basic Masking Options
 
 - `maskAllInputs`: If `true`, masks all input fields in the recording (default: `true`)
-- `isMaskingEnabled`: If `true`, enables masking for debug span payload in traces (default: `true`)
+- `isContentMaskingEnabled`: If `true`, enables masking for debug span payload in traces (default: `true`)
 
 ### Input Type Masking
 
@@ -440,7 +440,7 @@ SessionRecorder.init({
       }
       return payload
     },
-    isMaskingEnabled: true, // Enable masking for debug span payload in traces
+    isContentMaskingEnabled: true, // Enable masking for debug span payload in traces
     maskBody: (payload, span) => {
       // Custom trace payload masking
       if (payload && typeof payload === 'object') {

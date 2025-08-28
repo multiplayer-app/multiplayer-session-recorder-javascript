@@ -77,27 +77,27 @@ SessionRecorder.init({
   apiKey: '<YOUR_FRONTEND_OTEL_TOKEN>',
   // IMPORTANT: in order to propagate OTLP headers to a backend
   // domain(s) with a different origin, add backend domain(s) below.
-  // E.g. if you serve your website from www.example.com
+  // e.g. if you serve your website from www.example.com
   // and your backend domain is at api.example.com set value as shown below:
   // format: string|RegExp|Array
   // propagateTraceHeaderCorsUrls: [new RegExp('https://api.example.com', 'i')],
 })
 
 
-// Add any key value pairs which should be associated with a session
+// add any key value pairs which should be associated with a session
 SessionRecorder.setSessionAttributes({
   userId: '12345',
   userName: 'Jane Doe',
 })
 
-// Optionally control via API (widget is enabled by default)
-// If you're not using widget (see: `showWidget: true/false`)
+// optionally control via API (widget is enabled by default)
+// if you're not using widget (see: `showWidget: true/false`)
 // then you can programatically control the session recorder
 // by using the methods below
 SessionRecorder.start()
 SessionRecorder.pause()
 SessionRecorder.resume()
-SessionRecorder.stop('Finished session') // Optional: pass reason for stopping the session
+SessionRecorder.stop('Finished session') // optional: pass reason for stopping the session
 ```
 
 ### Advanced config
@@ -106,10 +106,14 @@ SessionRecorder.stop('Finished session') // Optional: pass reason for stopping t
 import SessionRecorder from '@multiplayer-app/debugger-browser'
 
 SessionRecorder.init({
-  version: '1.0.0', // Optional: version of your application
-  application: 'my-app', // Name of your application
+  version: '1.0.0', // optional: version of your application
+  application: 'my-app', // name of your application
   environment: 'production',
-  apiKey: 'your-api-key', // Replace with your Multiplayer OTLP key
+  apiKey: 'your-api-key', // replace with your Multiplayer OTLP key
+  
+  apiBaseUrl: 'https://api.multiplayer.app', // override API base URL if needed
+  exporterEndpoint: 'https://otlp.multiplayer.app', // override OTLP collector URL if needed
+
   showWidget: true, // show in‑app recording widget (default: true)
   recordCanvas: true, // record canvas elements (default: false)
   // Add domains to not capture OTLP data in the session recording
@@ -122,30 +126,48 @@ SessionRecorder.init({
     new RegExp('https://your.backend.api.domain', 'i'), // can be regex or string
     new RegExp('https://another.backend.api.domain', 'i')
   ],
-  sampleTraceRatio: 0.15, // control sampling for documentation/debug spans (default ~0.15)
+
+  // sample trace ratio used when session recording is not active.
+  // configures what percentage (0.00-1.00) of OTLP data
+  // should be sent through `exporters`
+  sampleTraceRatio: 0,
+  
+  // optional: exporters allow you to send
+  // OTLP data to observability platforms
+  exporters: [
+    // example:
+    // import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+    // new OTLPTraceExporter({
+    //   url: '<opentelemetry-collector-url>', 
+    // })
+  ],
+
+  captureBody: true, // capture request/response content
+  captureHeaders: true, // capture request/response header content
+
+  // set the maximum request/response content size (in bytes) that will be captured
+  // any request/response content greater than size will be not included in session recordings
   maxCapturingHttpPayloadSize: 100000,
-  usePostMessageFallback: false, // Enable post message fallback if needed
-  apiBaseUrl: 'https://api.multiplayer.app', // override API base URL if needed
-  exporterEndpoint: 'https://otlp.multiplayer.app', // override OTLP collector URL if needed
-  captureBody: true, // Capture body in traces
-  captureHeaders: true, // Capture headers in traces
-  // Configure masking for sensitive data in session recordings
+
+  // configure masking for sensitive data in session recordings
   masking: {
-    maskAllInputs: true, // Masks all input fields by default
+    maskAllInputs: false, // masks all input fields
     maskInputOptions: {
-      password: true, // Always mask password fields
-      email: false, // Don't mask email fields by default
-      tel: false, // Don't mask telephone fields by default
-      number: false, // Don't mask number fields by default
-      url: false, // Don't mask URL fields by default
-      search: false, // Don't mask search fields by default
-      textarea: false // Don't mask textarea elements by default
+      password: true, // mask password fields
+      email: false, // mask email fields
+      tel: false, // mask telephone fields
+      number: false, // mask number fields
+      url: false, // mask URL fields
+      search: false, // mask search fields
+      textarea: false // mask textarea elements
     },
-    // Class-based masking
-    maskTextClass: /sensitive|private/, // Mask text in elements with these classes
+
+    // class-based masking
+    maskTextClass: /sensitive|private/, // mask text in elements with these classes
     // CSS selector for text masking
-    maskTextSelector: '.sensitive-data', // Mask text in elements matching this selector
-    // Custom masking functions
+    maskTextSelector: '.sensitive-data', // mask text in elements matching this selector
+    
+    // custom masking functions
     maskInput: (text, element) => {
       if (element.classList.contains('credit-card')) {
         return '****-****-****-' + text.slice(-4)
@@ -160,132 +182,154 @@ SessionRecorder.init({
       return '***MASKED***'
     },
     maskConsoleEvent: (payload) => {
-      // Custom console event masking
       if (payload && payload.payload && payload.payload.args) {
-        // Mask sensitive console arguments
+        // mask sensitive console arguments
         payload.payload.args = payload.payload.args.map((arg) =>
           typeof arg === 'string' && arg.includes('password') ? '***MASKED***' : arg
         )
       }
       return payload
     },
-    isMaskingEnabled: true, // Enable masking for debug span payload in traces
+    
+    isContentMaskingEnabled: true, // enable content masking in session recordings
     maskBody: (payload, span) => {
-      // Custom trace payload masking
+      // note: `payload` is already a copy of the original request/response content
       if (payload && typeof payload === 'object') {
-        const maskedPayload = { ...payload }
-        // Mask sensitive trace data
-        if (maskedPayload.requestHeaders) {
-          maskedPayload.requestHeaders = '***MASKED***'
+        // mask sensitive data
+        if (payload.requestHeaders) {
+          payload.requestHeaders = '***MASKED***'
         }
-        if (maskedPayload.responseBody) {
-          maskedPayload.responseBody = '***MASKED***'
+        if (payload.responseBody) {
+          payload.responseBody = '***MASKED***'
         }
-        return maskedPayload
       }
       return payload
     },
     maskHeaders: (headers, span) => {
-      // Custom headers masking
+      // note: `headers` is already a copy of the original request/response content
       if (headers && typeof headers === 'object') {
-        const maskedHeaders = { ...headers }
-        // Mask sensitive headers
-        if (maskedHeaders.authorization) {
-          maskedHeaders.authorization = '***MASKED***'
+        // mask sensitive headers
+        if (headers.authorization) {
+          headers.authorization = '***MASKED***'
         }
-        if (maskedHeaders.cookie) {
-          maskedHeaders.cookie = '***MASKED***'
+        if (headers.cookie) {
+          headers.cookie = '***MASKED***'
         }
-        return maskedHeaders
       }
       return headers
     },
-    // List of body fields to mask in traces
+    // list of field names to mask in request/response content
     maskBodyFieldsList: ['password', 'token', 'secret'],
-    // List of headers to mask in traces
+    // list of headers to mask in request/response headers
     maskHeadersList: ['authorization', 'cookie', 'x-api-key'],
-    // List of headers to include in traces (if specified, only these headers will be captured)
+    // list of headers to capture. An empty array will capture all headers
     headersToInclude: ['content-type', 'user-agent'],
-    // List of headers to exclude from traces
+    // list of headers to exclude from capturing
     headersToExclude: ['authorization', 'cookie']
-  }
+  },
+
+  // advanced options
+
+  // allow Multiplayer Chrome to use post messages through the library
+  usePostMessageFallback: false
 })
 
+// add any key value pairs which should be associated with a session
 SessionRecorder.setSessionAttributes({
   userId: '12345',
   userName: 'John Doe'
 })
 ```
 
-## Setup backend
+### Framework notes
 
-### Setup opentelemetry data
+- Next.js: initialize the browser SDK in a Client Component (see example in the browser README). Ensure it runs only in the browser.
+- CORS: when your frontend calls multiple API domains, set `propagateTraceHeaderCorsUrls` to match them so parent/child spans correlate across services.
 
-Use officials opentelemetry guidence from [here](https://opentelemetry.io/docs/languages/js) or [zero-code](https://opentelemetry.io/docs/zero-code/js/) approach
+## Set up backend
 
-### Send opentelemetry data to Multiplayer
+### Set up OpenTelemetry data
 
-Opentelemetry data can be sent to Multiplayer's collector in few ways:
+To set up OpenTelemetry in your backend services see the [OpenTelemetry documentation](https://opentelemetry.io/docs/languages/js). Note: JavaScript supports a [zero-code instrumentation approach](https://opentelemetry.io/docs/zero-code/js)
 
-### Option 1 (Direct Exporter):
+### Send OpenTelemetry data to Multiplayer
+
+OpenTelemetry data can be sent to Multiplayer's collector in few ways:
+
+### Option 1: Direct Exporter
+
+Send OpenTelemetry data from your services to Multiplayer and optionally other destinations (e.g., OpenTelemetry Collectors, observability platforms, etc.).
+
+This is the quickest way to get started, but consider using an OpenTelemetry Collector (see [Option 2](#option-2-opentelemetry-collector) below) if you're scalling or a have a large platform.
 
 ```javascript
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+import {
+  SessionRecorderHttpTraceExporter,
+  SessionRecorderHttpLogsExporter,
+  SessionRecorderTraceExporterWrapper
+  SessionRecorderLogsExporterWrapper,
+} from "@multiplayer-app/session-recorder-node"
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http"
+import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http"
 
-const traceExporter = new OTLPTraceExporter({
-  url: 'https://otlp.multiplayer.app/v1/traces',
-  headers: {
-    'Authorization': '<YOUR_BACKEND_OTEL_TOKEN>'
-  }
+// set up Multiplayer exporters. Note: GRPC exporters are also available.
+// see: `SessionRecorderGrpcTraceExporter` and `SessionRecorderGrpcLogsExporter`
+const multiplayerTraceExporter = new SessionRecorderHttpTraceExporter({
+  apiKey: "MULTIPLAYER_OTLP_KEY", // note: replace with your Multiplayer OTLP key
 })
+const multiplayerLogExporter = new SessionRecorderHttpLogsExporter({
+  apiKey: "MULTIPLAYER_OTLP_KEY", // note: replace with your Multiplayer OTLP key
+})
+
+// Multiplayer exporter wrappers filter out session recording atrtributes before passing to provided exporter
+const traceExporter = new SessionRecorderTraceExporterWrapper(
+  // add any OTLP trace exporter
+  new OTLPTraceExporter({
+    // ...
+  })
+)
+const logExporter = new SessionRecorderLogsExporterWrapper(
+  // add any OTLP log exporter
+  new OTLPLogExporter({
+    // ...
+  })
+)
 ```
 
-or
+### Option 2: OpenTelemetry Collector
+
+If you're scalling or a have a large platform, consider running a dedicated collector. See the Multiplayer OpenTelemetry collector [repository](https://github.com/multiplayer-app/multiplayer-otlp-collector) which shows how to configure the standard OpenTelemetry Collector to send data to Multiplayer and optional other destinations.
+
+Add standard [OpenTelemetry code](https://opentelemetry.io/docs/languages/js/exporters/) to export OTLP data to your collector.
+
+See a basic example below:
 
 ```javascript
-import { SessionRecorderHttpTraceExporter } from '@multiplayer-app/session-recorder-node'
-
-const traceExporter = new SessionRecorderHttpTraceExporter({
-  url: 'https://otlp.multiplayer.app/v1/traces', // optional
-  apiKey: '<YOUR_BACKEND_OTEL_TOKEN>'
-})
-```
-
-### Option 2 (Collector):
-
-Another option - send otlp data to [opentelemetry collector](https://github.com/multiplayer-app/multiplayer-otlp-collector).
-
-Use following examples to send data to collector
-
-```javascript
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http"
+import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http"
 
 const traceExporter = new OTLPTraceExporter({
   url: 'http://<OTLP_COLLECTOR_URL>/v1/traces',
   headers: {
-    'Authorization': '<YOUR_BACKEND_OTEL_TOKEN>'
+    // ...
+  }
+})
+
+const logExporter = new OTLPLogExporter({
+  url: 'http://<OTLP_COLLECTOR_URL>/v1/logs',
+  headers: {
+    // ...
   }
 })
 ```
 
-or
+### Capturing request and response content
 
-```javascript
-import { SessionRecorderHttpTraceExporter } from '@multiplayer-app/session-recorder-node'
+There's few options to capture request/response content.
 
-const traceExporter = new SessionRecorderHttpTraceExporter({
-  url: 'http://<OTLP_COLLECTOR_URL>/v1/traces',
-  apiKey: '<YOUR_BACKEND_OTEL_TOKEN>'
-})
-```
+### Option 1: Instrumentation hook
 
-### Add request/response payloads
-
-There's few ways to capture request/response payloads:
-
-### Option 1 (instrumentation hook):
-
-SessionRecorder library provides request/response for capturing payload.
+Session Recorder library provides request/response for capturing payload.
 
 ```javascript
 import {
@@ -315,15 +359,9 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
 })
 ```
 
-### Option 2 (Envoy proxy):
+### Option 2 (Envoy proxy)
 
 Deploy [Envoy Proxy](https://github.com/multiplayer-app/multiplayer-proxy) in front of your backend service.
-
-
-## Framework notes
-
-- Next.js: initialize the browser SDK in a Client Component (see example in the browser README). Ensure it runs only in the browser.
-- CORS: when your frontend calls multiple API domains, set `propagateTraceHeaderCorsUrls` to match them so parent/child spans correlate across services.
 
 ## Documentation
 
@@ -337,4 +375,4 @@ Masking is enabled by default. Review and adjust masking rules to avoid capturin
 
 ## License
 
-MIT — see [LICENSE](https://github.com/multiplayer-app/multiplayer-session-recorder-javascript/blob/main/LICENSE).
+MIT — see [LICENSE](./LICENSE).

@@ -130,7 +130,7 @@ export interface SessionRecorderOptions {
 
   /**
    * (Optional) Configuration for masking sensitive data in session recordings
-   * @default { maskAllInputs: true, isMaskingEnabled: true }
+   * @default { maskAllInputs: true, isContentMaskingEnabled: true }
    */
   masking?: MaskingConfig
 
@@ -168,7 +168,7 @@ export interface MaskingConfig {
   /** If true, enables masking for debug span payload in traces
    *  @default true
   */
-  isMaskingEnabled?: boolean;
+  isContentMaskingEnabled?: boolean;
   /** Custom function for masking body in traces */
   maskBody?: (payload: any, span: Span) => any;
   /** Custom function for masking headers in traces */
@@ -203,7 +203,7 @@ export interface BaseConfig {
 /**
  * Configuration interface for the Tracer class
  */
-export type TracerBrowserMasking = Pick<MaskingConfig, 'isMaskingEnabled' | 'maskBody' | 'maskHeaders' | 'maskBodyFieldsList' | 'maskHeadersList' | 'headersToInclude' | 'headersToExclude'>;
+export type TracerBrowserMasking = Pick<MaskingConfig, 'isContentMaskingEnabled' | 'maskBody' | 'maskHeaders' | 'maskBodyFieldsList' | 'maskHeadersList' | 'headersToInclude' | 'headersToExclude'>;
 
 export interface TracerBrowserConfig extends BaseConfig {
   /** Application name */

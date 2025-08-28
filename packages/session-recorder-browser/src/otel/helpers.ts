@@ -1,6 +1,5 @@
 import { Span } from '@opentelemetry/api'
 import {
-  MULTIPLAYER_TRACE_DOC_PREFIX,
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
   ATTR_MULTIPLAYER_HTTP_REQUEST_BODY,
@@ -33,7 +32,6 @@ export interface ProcessedHttpPayload {
  */
 export function shouldProcessTrace(traceId: string): boolean {
   return (
-    traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX) ||
     traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
     traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
   )
@@ -47,7 +45,7 @@ export function processBody(
   config: TracerBrowserConfig,
   span: Span,
 ): { requestBody?: string; responseBody?: string } {
-  const { captureBody, masking, schemifyDocSpanPayload } = config
+  const { captureBody, masking } = config
   const traceId = span.spanContext().traceId
 
   if (!captureBody) {
@@ -63,20 +61,12 @@ export function processBody(
     responseBody = JSON.parse(JSON.stringify(responseBody))
   }
 
-  // Apply schemify for document traces
-  if (traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)) {
-    if (schemifyDocSpanPayload) {
-      requestBody = requestBody && schemify(requestBody)
-      responseBody = responseBody && schemify(responseBody)
-    }
-  }
-
   // Apply masking for debug traces
   if (
     traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
     traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
   ) {
-    if (masking.isMaskingEnabled) {
+    if (masking.isContentMaskingEnabled) {
       requestBody = requestBody && masking.maskBody?.(requestBody, span)
       responseBody = responseBody && masking.maskBody?.(responseBody, span)
     }
