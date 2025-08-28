@@ -75,21 +75,29 @@ SessionRecorder.init({
   version: '1.0.0',
   environment: 'production',
   apiKey: '<YOUR_FRONTEND_OTEL_TOKEN>',
-  // Optional: propagate trace headers to non‑same‑origin backends
+  // IMPORTANT: in order to propagate OTLP headers to a backend
+  // domain(s) with a different origin, add backend domain(s) below.
+  // E.g. if you serve your website from www.example.com
+  // and your backend domain is at api.example.com set value as shown below:
   // format: string|RegExp|Array
   // propagateTraceHeaderCorsUrls: [new RegExp('https://api.example.com', 'i')],
 })
 
+
+// Add any key value pairs which should be associated with a session
 SessionRecorder.setSessionAttributes({
   userId: '12345',
   userName: 'Jane Doe',
 })
 
 // Optionally control via API (widget is enabled by default)
-// SessionRecorder.start()
-// SessionRecorder.pause()
-// SessionRecorder.resume()
-// SessionRecorder.stop('Finished purchase flow')
+// If you're not using widget (see: `showWidget: true/false`)
+// then you can programatically control the session recorder
+// by using the methods below
+SessionRecorder.start()
+SessionRecorder.pause()
+SessionRecorder.resume()
+SessionRecorder.stop('Finished session') // Optional: pass reason for stopping the session
 ```
 
 ### Advanced config
@@ -98,12 +106,13 @@ SessionRecorder.setSessionAttributes({
 import SessionRecorder from '@multiplayer-app/debugger-browser'
 
 SessionRecorder.init({
-  version: '1.0.0',
-  application: 'my-app',
+  version: '1.0.0', // Optional: version of your application
+  application: 'my-app', // Name of your application
   environment: 'production',
-  apiKey: 'your-api-key',
+  apiKey: 'your-api-key', // Replace with your Multiplayer OTLP key
   showWidget: true, // show in‑app recording widget (default: true)
   recordCanvas: true, // record canvas elements (default: false)
+  // Add domains to not capture OTLP data in the session recording
   ignoreUrls: [
     /https:\/\/domain\.to\.ignore\/.*/, // can be regex or string
     /https:\/\/another\.domain\.to\.ignore\/.*/
