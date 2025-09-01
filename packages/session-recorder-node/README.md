@@ -185,8 +185,8 @@ Use the following code below to initialize and run the session recorder.
 
 ```javascript
 // IMPORTANT: set up OpenTelemetry
-// for an example see ./session-recorder-node/examples/opentelemetry.ts
-// NOTE: for the code below to work copy examples/opentelemetry.ts to ./opentelemetry.ts
+// for an example see ./examples/cli/src/opentelemetry.ts
+// NOTE: for the code below to work copy ./examples/cli/src/opentelemetry.ts to ./opentelemetry.ts
 import { idGenerator } from "./opentelemetry"
 import SessionRecorder from "@multiplayer-app/session-recorder-node"
 import {
