@@ -56,7 +56,7 @@ SessionRecorder.init({
   application: 'my-web-app',
   version: '1.0.0',
   environment: 'production',
-  apiKey: '<YOUR_FRONTEND_OTEL_TOKEN>',
+  apiKey: 'MULTIPLAYER_OTLP_KEY',
   // IMPORTANT: in order to propagate OTLP headers to a backend
   // domain(s) with a different origin, add backend domain(s) below.
   // e.g. if you serve your website from www.example.com
@@ -91,7 +91,7 @@ SessionRecorder.init({
   version: '1.0.0', // optional: version of your application
   application: 'my-app', // name of your application
   environment: 'production',
-  apiKey: 'your-api-key', // replace with your Multiplayer OTLP key
+  apiKey: 'MULTIPLAYER_OTLP_KEY', // replace with your Multiplayer OTLP key
   
   apiBaseUrl: 'https://api.multiplayer.app', // override API base URL if needed
   exporterEndpoint: 'https://otlp.multiplayer.app', // override OTLP collector URL if needed
