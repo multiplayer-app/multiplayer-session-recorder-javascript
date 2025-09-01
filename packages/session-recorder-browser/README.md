@@ -209,11 +209,6 @@ SessionRecorder.init({
     // list of headers to exclude from capturing
     headersToExclude: ['authorization', 'cookie']
   },
-
-  // advanced options
-
-  // allow Multiplayer Chrome to use post messages through the library
-  usePostMessageFallback: false
 })
 
 // add any key value pairs which should be associated with a session
