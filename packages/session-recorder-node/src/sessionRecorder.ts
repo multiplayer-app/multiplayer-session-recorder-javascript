@@ -116,6 +116,10 @@ export class SessionRecorder {
       session = await this._apiService.startSession(sessionPayload)
     }
 
+    if (!session?.shortId) {
+      throw new Error('Failed to start session')
+    }
+
     this._shortSessionId = session.shortId as string
 
     (this._traceIdGenerator as SessionRecorderIdGenerator).setSessionId(

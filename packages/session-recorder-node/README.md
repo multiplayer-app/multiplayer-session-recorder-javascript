@@ -44,9 +44,6 @@ yarn add @multiplayer-app/session-recorder-node
 
 Multiplayer Full Stack Session Recorder is built on top of OpenTelemetry.
 
-<!-- To set up OpenTelemetry in your backend services see the [OpenTelemetry documentation](https://opentelemetry.io/docs/languages/js). Note: JavaScript supports a [zero-code instrumentation approach](https://opentelemetry.io/docs/zero-code/js) -->
-
-
 ### New to OpenTelemetry?
 
 No problem. You can set it up in a few minutes. If your services don't already use OpenTelemetry, you'll first need to install the OpenTelemetry libraries. Detailed instructions for this can be found in the [OpenTelemetry documentation](https://opentelemetry.io/docs/).
@@ -189,7 +186,7 @@ Use the following code below to initialize and run the session recorder.
 ```javascript
 // IMPORTANT: set up OpenTelemetry
 // for an example see ./session-recorder-node/examples/opentelemetry.ts
-// NOTE: for the code belowto work copy examples/opentelemetry.ts to ./opentelemetry.ts
+// NOTE: for the code below to work copy examples/opentelemetry.ts to ./opentelemetry.ts
 import { idGenerator } from "./opentelemetry"
 import SessionRecorder from "@multiplayer-app/session-recorder-node"
 import {
@@ -213,7 +210,7 @@ SessionRecorder.init({
 await sessionRecorder.start(
   SessionType.PLAIN,
   {
-    name: "Test session name",
+    name: "This is test session",
     sessionAttributes: {
       accountId: "687e2c0d3ec8ef6053e9dc97",
       accountName: "Acme Corporation"
