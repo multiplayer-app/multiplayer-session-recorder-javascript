@@ -34,13 +34,15 @@ import { LoggerProvider, BatchLogRecordProcessor } from '@opentelemetry/sdk-logs
 import * as apiLogs from '@opentelemetry/api-logs'
 // import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http'
 
-const SERVICE_NAME = ''
-const SERVICE_VERSION = ''
-const PLATFORM_ENV = ''
-const MULTIPLAYER_OTLP_KEY = ''
-const OTLP_TRACES_ENDPOINT = ''
-const OTLP_LOGS_ENDPOINT = ''
-const MULTIPLAYER_OTLP_SPAN_RATIO = ''
+import {
+  OTLP_TRACES_ENDPOINT,
+  OTLP_LOGS_ENDPOINT,
+  MULTIPLAYER_OTLP_KEY,
+  MULTIPLAYER_OTLP_SPAN_RATIO,
+  COMPONENT_NAME,
+  COMPONENT_VERSION,
+  ENVIRONMENT,
+} from './config'
 
 // NOTE: Update instrumentation configuration as needed
 // For more see: https://www.npmjs.com/package/@opentelemetry/auto-instrumentations-node
@@ -65,10 +67,10 @@ const instrumentations = [
 
 const getResource = () => {
   const resourceWithAttributes = resourceFromAttributes({
-    [ATTR_SERVICE_NAME]: SERVICE_NAME,
-    [ATTR_SERVICE_VERSION]: SERVICE_VERSION,
+    [ATTR_SERVICE_NAME]: COMPONENT_NAME,
+    [ATTR_SERVICE_VERSION]: COMPONENT_VERSION,
     [SEMRESATTRS_HOST_NAME]: hostname(),
-    [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: PLATFORM_ENV,
+    [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: ENVIRONMENT,
     [SEMRESATTRS_PROCESS_RUNTIME_VERSION]: process.version,
     [SEMRESATTRS_PROCESS_PID]: process.pid,
   })

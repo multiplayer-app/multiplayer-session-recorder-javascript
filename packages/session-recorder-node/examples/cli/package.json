@@ -1,0 +1,56 @@
+{
+  "name": "cli-example",
+  "version": "1.0.0",
+  "description": "CLI demo",
+  "author": {
+    "name": "Multiplayer Software, Inc.",
+    "url": "https://www.multiplayer.app"
+  },
+  "license": "MIT",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=18",
+    "npm": ">=8"
+  },
+  "keywords": [
+    "multiplayer",
+    "debugger",
+    "platform",
+    "platform debugger",
+    "session recorder",
+    "otlp",
+    "fullstack session recorder"
+  ],
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "build": "npm run clean && npm run compile",
+    "clean": "rm -rf ./dist",
+    "compile": "tsc --build --force",
+    "lint": "eslint src/**/*.ts --config ../../.eslintrc"
+  },
+  "dependencies": {
+    "@multiplayer-app/session-recorder-common": "1.2.2",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/api-logs": "0.203.0",
+    "@opentelemetry/auto-instrumentations-node": "0.62.1",
+    "@opentelemetry/core": "2.0.1",
+    "@opentelemetry/exporter-trace-otlp-http": "0.203.0",
+    "@opentelemetry/exporter-logs-otlp-http": "0.203.0",
+    "@opentelemetry/resources": "2.0.1",
+    "@opentelemetry/sdk-logs": "0.203.0",
+    "@opentelemetry/sdk-trace-base": "2.0.1",
+    "@opentelemetry/sdk-trace-node": "2.0.1",
+    "@opentelemetry/semantic-conventions": "1.36.0",
+    "axios": "^1.10.0",
+    "to-json-schema": "^0.2.5"
+  },
+  "devDependencies": {
+    "@types/jest": "29.5.4",
+    "@types/node": "20.5.7",
+    "@types/restify-errors": "4.3.5",
+    "eslint": "8.48.0",
+    "ts-node": "10.9.1",
+    "typescript": "5.7.3"
+  }
+}
