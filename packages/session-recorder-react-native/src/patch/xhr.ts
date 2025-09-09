@@ -1,5 +1,5 @@
 import {
-  isDocument,
+
   isFormData,
   isNullish,
   isObject,
@@ -28,7 +28,7 @@ function _tryReadXHRBody({
   body,
   url,
 }: {
-  body: Document | XMLHttpRequestBodyInit | any | null | undefined
+  body: any | null | undefined
   url: string | URL | RequestInfo
 }): string | null {
   if (isNullish(body)) {
@@ -39,9 +39,6 @@ function _tryReadXHRBody({
     return body
   }
 
-  if (isDocument(body)) {
-    return body.textContent
-  }
 
   if (isFormData(body)) {
     return formDataToQuery(body)
@@ -55,7 +52,7 @@ function _tryReadXHRBody({
     }
   }
 
-  return `[XHR] Cannot read body of type ${toString.call(body)}`
+  return `[XHR] Cannot read body of type ${Object.prototype.toString.call(body)}`
 }
 
 (function (xhr) {
@@ -78,7 +75,7 @@ function _tryReadXHRBody({
 
 
     // @ts-ignore
-    const requestHeaders: Headers = {}
+    const requestHeaders: Record<string, string> = {}
     const originalSetRequestHeader = xhr.setRequestHeader.bind(xhr)
     xhr.setRequestHeader = (header: string, value: string) => {
       requestHeaders[header] = value
@@ -110,7 +107,7 @@ function _tryReadXHRBody({
 
 
       // @ts-ignore
-      const responseHeaders: Headers = {}
+      const responseHeaders: Record<string, string> = {}
       const rawHeaders = xhr.getAllResponseHeaders()
       const headers = rawHeaders.trim().split(/[\r\n]+/)
       headers.forEach((line) => {

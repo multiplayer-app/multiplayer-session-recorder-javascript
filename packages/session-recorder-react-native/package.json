@@ -1,0 +1,97 @@
+{
+  "name": "@multiplayer-app/session-recorder-react-native",
+  "version": "0.0.1-alpha.6",
+  "description": "Multiplayer Fullstack Session Recorder for React Native",
+  "author": {
+    "name": "Multiplayer Software, Inc.",
+    "url": "https://www.multiplayer.app"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/multiplayer-app/multiplayer-session-recorder-javascript/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/multiplayer-app/multiplayer-session-recorder-javascript.git"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./expo": {
+      "import": "./dist/expo.js",
+      "require": "./dist/expo.js"
+    }
+  },
+  "engines": {
+    "node": ">=18",
+    "npm": ">=8"
+  },
+  "keywords": [
+    "multiplayer",
+    "debugger",
+    "platform",
+    "platform debugger",
+    "session recorder",
+    "otlp",
+    "fullstack session recorder",
+    "react-native",
+    "expo"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "prepublishOnly": "npm run lint && npm run build",
+    "prebuild": "node -p \"'export const version = ' + JSON.stringify(require('./package.json').version)\" > src/version.ts",
+    "build": "tsc && babel ./dist --out-dir dist --extensions '.js' && ./copy-react-native-dist.sh"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.19.3",
+    "@babel/plugin-transform-class-properties": "^7.24.1",
+    "@babel/plugin-transform-private-methods": "^7.24.1",
+    "@babel/plugin-transform-private-property-in-object": "^7.27.1",
+    "@babel/preset-env": "^7.24.1",
+    "@babel/preset-react": "^7.24.1",
+    "@babel/preset-typescript": "^7.24.1",
+    "@react-native/babel-preset": "^0.80.1",
+    "@types/react": "^18.2.0",
+    "@types/react-native": "^0.72.0",
+    "eslint": "8.48.0",
+    "rimraf": "^5.0.5",
+    "typescript": "5.7.3"
+  },
+  "dependencies": {
+    "@multiplayer-app/session-recorder-common": "1.2.6",
+    "@opentelemetry/core": "2.0.1",
+    "@opentelemetry/exporter-trace-otlp-http": "0.203.0",
+    "@opentelemetry/instrumentation": "0.203.0",
+    "@opentelemetry/instrumentation-fetch": "0.203.0",
+    "@opentelemetry/instrumentation-xml-http-request": "0.203.0",
+    "@opentelemetry/otlp-exporter-base": "0.203.0",
+    "@opentelemetry/otlp-transformer": "0.203.0",
+    "@opentelemetry/resources": "2.0.1",
+    "@opentelemetry/sdk-trace-base": "2.0.1",
+    "@opentelemetry/semantic-conventions": "1.36.0",
+    "@react-native-async-storage/async-storage": "^1.21.0",
+    "@react-native-community/netinfo": "^11.1.0",
+    "lib0": "0.2.82",
+    "react-native-gesture-handler": "^2.14.0",
+    "react-native-mmkv": "^2.11.0",
+    "react-native-reanimated": "^3.6.0",
+    "react-native-view-shot": "^4.0.3",
+    "socket.io-client": "4.7.5"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "expo": ">=49.0.0 <54.0.0",
+    "react": ">=18.0.0 <20.0.0",
+    "react-native": ">=0.72.0 <0.82.0"
+  },
+  "optionalDependencies": {
+    "expo-constants": "^15.0.0"
+  }
+}

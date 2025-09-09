@@ -7,9 +7,10 @@ import {
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS
 } from '@multiplayer-app/session-recorder-common'
-import { TracerBrowserConfig } from '../types'
+import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common'
+import { TracerReactNativeConfig } from '../types'
 
-
+const { schemify } = SessionRecorderSdk
 
 export interface HttpPayloadData {
   requestBody?: any
@@ -40,7 +41,7 @@ export function shouldProcessTrace(traceId: string): boolean {
  */
 export function processBody(
   payload: HttpPayloadData,
-  config: TracerBrowserConfig,
+  config: TracerReactNativeConfig,
   span: Span,
 ): { requestBody?: string; responseBody?: string } {
   const { captureBody, masking } = config
@@ -90,7 +91,7 @@ export function processBody(
  */
 export function processHeaders(
   payload: HttpPayloadData,
-  config: TracerBrowserConfig,
+  config: TracerReactNativeConfig,
   span: Span,
 ): { requestHeaders?: string; responseHeaders?: string } {
   const { captureHeaders, masking } = config
@@ -163,7 +164,7 @@ export function processHeaders(
  */
 export function processHttpPayload(
   payload: HttpPayloadData,
-  config: TracerBrowserConfig,
+  config: TracerReactNativeConfig,
   span: Span,
 ): void {
   const traceId = span.spanContext().traceId
@@ -196,7 +197,7 @@ export function processHttpPayload(
 /**
  * Converts Headers object to plain object
  */
-export function headersToObject(headers: Headers | Record<string, string> | HeadersInit | undefined): Record<string, string> {
+export function headersToObject(headers: Headers | Record<string, string> | HeadersInit_ | undefined): Record<string, string> {
   const result: Record<string, string> = {}
 
   if (!headers) {
@@ -204,7 +205,7 @@ export function headersToObject(headers: Headers | Record<string, string> | Head
   }
 
   if (headers instanceof Headers) {
-    headers.forEach((value, key) => {
+    headers.forEach((value: string, key: string) => {
       result[key] = value
     })
   } else if (Array.isArray(headers)) {
