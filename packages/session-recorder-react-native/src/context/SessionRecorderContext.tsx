@@ -1,46 +1,50 @@
-import React, { createContext, useContext, ReactNode, PropsWithChildren, useMemo, useState, useEffect, useRef } from 'react'
+import React, { createContext, useContext, ReactNode, PropsWithChildren, useState, useEffect, useRef, useCallback } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { SessionRecorderOptions, SessionState } from '../types'
 import SessionRecorder from '../session-recorder'
+import { GestureCaptureWrapper } from '../components/GestureCaptureWrapper'
+import sessionRecorder from '../session-recorder'
+import { logger } from '../utils'
 
 interface SessionRecorderContextType {
-  client: typeof SessionRecorder
+  instance: typeof SessionRecorder
 }
 
 const SessionRecorderContext = createContext<SessionRecorderContextType | null>(null)
 
 export interface SessionRecorderProviderProps extends PropsWithChildren {
   options: SessionRecorderOptions
-  client?: typeof SessionRecorder
 }
 
-export const SessionRecorderProvider: React.FC<SessionRecorderProviderProps> = ({ children, client, options }) => {
+export const SessionRecorderProvider: React.FC<SessionRecorderProviderProps> = ({ children, options }) => {
   const [sessionState, setSessionState] = useState<SessionState | null>(null)
-
-  const sessionRecorder = useMemo(() => {
-    if (client) return client
-    SessionRecorder.init(options)
-    return SessionRecorder
-  }, [])
+  const optionsRef = useRef<string>()
 
   useEffect(() => {
-    if (!sessionRecorder) return
-    setSessionState(sessionRecorder.sessionState)
-  }, [sessionRecorder])
+    const newOptions = JSON.stringify(options)
+    if (optionsRef.current === JSON.stringify(options)) return
+    optionsRef.current = newOptions
+    SessionRecorder.init(options)
+  }, [options])
+
+  useEffect(() => {
+    setSessionState(SessionRecorder.sessionState)
+    SessionRecorder.on('state-change', (state: SessionState) => {
+      setSessionState(state)
+    })
+  }, [])
 
   const onToggleSession = () => {
-    if (sessionState === SessionState.started) {
-      setSessionState(SessionState.stopped)
-      sessionRecorder.stop()
+    if (SessionRecorder.sessionState === SessionState.started) {
+      SessionRecorder.stop()
     } else {
-      setSessionState(SessionState.started)
-      sessionRecorder.start()
+      SessionRecorder.start()
     }
   }
 
   return (
-    <SessionRecorderContext.Provider value={{ client: sessionRecorder }}>
-      <TouchEventCapture>
+    <SessionRecorderContext.Provider value={{ instance: sessionRecorder }}>
+      <GestureEventCapture>
         {children}
         <Pressable onPress={onToggleSession}>
           <View
@@ -60,82 +64,73 @@ export const SessionRecorderProvider: React.FC<SessionRecorderProviderProps> = (
             <Text style={{ color: 'white' }}>{sessionState === SessionState.started ? 'Stop' : 'Start'}</Text>
           </View>
         </Pressable>
-      </TouchEventCapture>
+      </GestureEventCapture>
     </SessionRecorderContext.Provider>
   )
 }
 
-// Touch event capture component
-const TouchEventCapture: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const context = useContext(SessionRecorderContext)
-  const viewShotRef = useRef<View>(null)
-
-  // Set the viewshot ref in the session recorder when component mounts
-  useEffect(() => {
-    if (context?.client && viewShotRef.current) {
-      context.client.setViewShotRef?.(viewShotRef.current)
+// Gesture-based event capture component
+const GestureEventCapture: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Set up gesture recording callback
+  const handleGestureRecord = useCallback((gestureType: string, data: any) => {
+    if (SessionRecorder.sessionState !== SessionState.started) {
+      logger.debug('SessionRecorderContext', 'Gesture recording skipped', {
+        client: !!SessionRecorder.sessionState,
+        sessionState: SessionRecorder.sessionState
+      })
+      return
     }
-  }, [context?.client])
+    logger.debug('SessionRecorderContext', 'Gesture recorded', { gestureType, data })
+    try {
+      // Record gesture as appropriate touch events
+      switch (gestureType) {
+        case 'tap':
+          // For tap, record both touch start and end
+          logger.debug('SessionRecorderContext', 'Recording tap as touch start + end')
+          SessionRecorder.recordTouchStart?.(data.x, data.y, undefined, 1.0)
+          SessionRecorder.recordTouchEnd?.(data.x, data.y, undefined, 1.0)
+          break
+
+        case 'pan_start':
+          logger.debug('SessionRecorderContext', 'Recording pan_start as touch start')
+          SessionRecorder.recordTouchStart?.(data.x, data.y, undefined, 1.0)
+          break
+
+        case 'pan_update':
+          logger.debug('SessionRecorderContext', 'Recording pan_update as touch move')
+          SessionRecorder.recordTouchMove?.(data.x, data.y, undefined, 1.0)
+          break
+
+        case 'pan_end':
+          logger.debug('SessionRecorderContext', 'Recording pan_end as touch end')
+          SessionRecorder.recordTouchEnd?.(data.x, data.y, undefined, 1.0)
+          break
+
+        case 'long_press':
+          logger.debug('SessionRecorderContext', 'Recording long_press as touch start + end')
+          SessionRecorder.recordTouchStart?.(data.x, data.y, undefined, 1.0)
+          SessionRecorder.recordTouchEnd?.(data.x, data.y, undefined, 1.0)
+          break
+        default:
+      }
+    } catch (error) {
+      logger.error('SessionRecorderContext', 'Failed to record gesture event', error)
+    }
+  }, [])
 
   // Callback ref to set the viewshot ref immediately when available
   const setViewShotRef = (ref: View | null) => {
-    if (ref && context?.client) {
-      context.client.setViewShotRef?.(ref)
-    }
-  }
-
-  const handleTouchStart = (event: any) => {
-    if (!context?.client || context.client.sessionState !== SessionState.started) return // SessionState.started
-
-    try {
-      const { pageX, pageY, target } = event.nativeEvent
-      const pressure = event.nativeEvent.force || 1.0
-
-      // Record touch start event automatically
-      context.client.recordTouchStart?.(pageX, pageY, target?.toString(), pressure)
-    } catch (error) {
-      console.warn('Failed to record touch start event:', error)
-    }
-  }
-
-  const handleTouchMove = (event: any) => {
-    if (!context?.client || context.client.sessionState !== SessionState.started) return // SessionState.started
-
-    try {
-      const { pageX, pageY, target } = event.nativeEvent
-      const pressure = event.nativeEvent.force || 1.0
-
-      // Record touch move event automatically
-      context.client.recordTouchMove?.(pageX, pageY, target?.toString(), pressure)
-    } catch (error) {
-      console.warn('Failed to record touch move event:', error)
-    }
-  }
-
-  const handleTouchEnd = (event: any) => {
-    if (!context?.client || context.client.sessionState !== SessionState.started) return // SessionState.started
-
-    try {
-      const { pageX, pageY, target } = event.nativeEvent
-      const pressure = event.nativeEvent.force || 1.0
-
-      // Record touch end event automatically
-      context.client.recordTouchEnd?.(pageX, pageY, target?.toString(), pressure)
-    } catch (error) {
-      console.warn('Failed to record touch end event:', error)
+    if (ref) {
+      SessionRecorder.setViewShotRef?.(ref)
     }
   }
 
   return (
-    <View
-      ref={setViewShotRef}
-      style={{ flex: 1 }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      {children}
-    </View>
+    <GestureCaptureWrapper onGestureRecord={handleGestureRecord}>
+      <View ref={setViewShotRef} style={{ flex: 1 }}>
+        {children}
+      </View>
+    </GestureCaptureWrapper>
   )
 }
 

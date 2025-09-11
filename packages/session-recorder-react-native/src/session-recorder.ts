@@ -1,8 +1,10 @@
 
 import { SessionType } from '@multiplayer-app/session-recorder-common'
+import { Observable } from 'lib0/observable'
 
 import { TracerReactNativeSDK } from './otel'
 import { RecorderReactNativeSDK } from './recorder'
+import { logger } from './utils'
 
 import {
   ISession,
@@ -10,7 +12,6 @@ import {
   ISessionRecorder,
   SessionRecorderConfigs,
   SessionRecorderOptions,
-  RRWebEvent,
   EventRecorder
 } from './types'
 import { getFormattedDate, isSessionActive, getNavigatorInfo } from './utils'
@@ -19,11 +20,15 @@ import { DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE, getSessionRecorderConfig } fro
 
 import { StorageService } from './services/storage.service'
 import { ApiService, StartSessionRequest, StopSessionRequest } from './services/api.service'
+import { eventWithTime } from '@rrweb/types'
 
 // Utility functions for React Native
 
+type SessionRecorderEvents =
+  | 'state-change'
 
-class SessionRecorder implements ISessionRecorder, EventRecorder {
+
+class SessionRecorder extends Observable<SessionRecorderEvents> implements ISessionRecorder, EventRecorder {
   private _isInitialized = false
   private _configs: SessionRecorderConfigs | null = null
   private _apiService = new ApiService()
@@ -63,6 +68,7 @@ class SessionRecorder implements ISessionRecorder, EventRecorder {
   }
   set sessionState(state: SessionState | null) {
     this._sessionState = state
+    this.emit('state-change', [state || SessionState.stopped])
     if (state) {
       this._storageService.saveSessionState(state)
     }
@@ -110,6 +116,7 @@ class SessionRecorder implements ISessionRecorder, EventRecorder {
    * Initialize debugger with default or custom configurations
    */
   constructor() {
+    super()
     // Initialize with stored session data if available
     StorageService.initialize()
   }
@@ -130,7 +137,7 @@ class SessionRecorder implements ISessionRecorder, EventRecorder {
         this.sessionType = SessionType.PLAIN
       }
     } catch (error) {
-      console.error('Failed to load stored session data:', error)
+      logger.error('SessionRecorder', 'Failed to load stored session data', error)
       this.session = null
       this.sessionId = null
       this.sessionState = null
@@ -156,10 +163,10 @@ class SessionRecorder implements ISessionRecorder, EventRecorder {
       this._tracer.init(this._configs)
 
     } catch (error) {
-      console.error('Failed to initialize API service:', error)
+      logger.error('SessionRecorder', 'Failed to initialize API service', error)
     }
     if (this._configs.apiKey) {
-      this._recorder.init(this._configs, this)
+      this._recorder.init(this._configs)
     }
 
     if (this.sessionId && (this.sessionState === SessionState.started || this.sessionState === SessionState.paused)) {
@@ -415,7 +422,7 @@ class SessionRecorder implements ISessionRecorder, EventRecorder {
   private _setupSessionAndStart(session: ISession, configureExporters: boolean = true): void {
     if (configureExporters && session.tempApiKey) {
       this._configs!.apiKey = session.tempApiKey
-      this._recorder.init(this._configs!, this)
+      this._recorder.init(this._configs!)
       this._tracer.init(this._configs!)
       this._apiService.updateConfigs({ apiKey: this._configs!.apiKey })
     }
@@ -520,7 +527,7 @@ class SessionRecorder implements ISessionRecorder, EventRecorder {
    * Note: Screen capture and touch events are recorded automatically when session is started
    * @param event - The rrweb event to record
    */
-  recordEvent(event: RRWebEvent): void {
+  recordEvent(event: eventWithTime): void {
     if (!this._isInitialized || this.sessionState !== SessionState.started) {
       return
     }

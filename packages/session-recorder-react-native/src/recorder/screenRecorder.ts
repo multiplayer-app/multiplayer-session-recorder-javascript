@@ -1,7 +1,15 @@
-import { ScreenEvent, RecorderConfig, EventType, FullSnapshotEvent, SerializedNodeWithId, EventRecorder } from '../types'
+import { ScreenEvent, RecorderConfig, EventRecorder } from '../types'
+import { eventWithTime } from '@rrweb/types'
 import { trace, SpanStatusCode } from '@opentelemetry/api'
 import { Dimensions } from 'react-native'
 import { captureRef } from 'react-native-view-shot'
+import {
+  createRecordingMetaEvent,
+  createFullSnapshotEvent,
+  createIncrementalSnapshotWithImageUpdate as createIncrementalSnapshotUtil,
+  generateScreenHash,
+  logger,
+} from '../utils'
 
 export class ScreenRecorder implements EventRecorder {
   private config?: RecorderConfig
@@ -21,6 +29,7 @@ export class ScreenRecorder implements EventRecorder {
   private lastScreenHash: string | null = null
   private enableChangeDetection: boolean = true
   private hashSampleSize: number = 100
+  private currentImageNodeId: number | null = null
 
   init(config: RecorderConfig, eventRecorder?: EventRecorder): void {
     this.config = config
@@ -34,6 +43,12 @@ export class ScreenRecorder implements EventRecorder {
     this.captureCount = 0
     this.lastScreenCapture = null
     this.lastScreenHash = null
+    this.currentImageNodeId = null // Reset image node ID for new session
+    logger.info('ScreenRecorder', 'Screen recording started')
+    // Emit screen recording started meta event
+
+    this.recordEvent(createRecordingMetaEvent())
+
     this._startPeriodicCapture()
 
     // Capture initial screen immediately
@@ -72,7 +87,7 @@ export class ScreenRecorder implements EventRecorder {
       clearInterval(this.captureInterval)
     }
 
-    // Capture screen every 5 seconds
+    // Capture screen every 5 seconds (reduced frequency)
     this.captureInterval = setInterval(() => {
       this._captureScreen()
     }, 5000)
@@ -96,12 +111,21 @@ export class ScreenRecorder implements EventRecorder {
         const hasChanged = this.enableChangeDetection ? this._hasScreenChanged(base64Image) : true
 
         if (hasChanged) {
-          this._createAndEmitFullSnapshotEvent(base64Image)
+          // Use incremental snapshot if we have an existing image node, otherwise create full snapshot
+          if (this.currentImageNodeId !== null && this.lastScreenCapture) {
+            const success = this.updateScreenWithIncrementalSnapshot(base64Image)
+            if (!success) {
+              // Fallback to full snapshot if incremental update fails
+              this._createAndEmitFullSnapshotEvent(base64Image)
+            }
+          } else {
+            // First capture or no existing image node - create full snapshot
+            this._createAndEmitFullSnapshotEvent(base64Image)
+          }
+
           this.lastScreenCapture = base64Image
           this.lastScreenHash = this._generateScreenHash(base64Image)
           this.captureCount++
-        } else {
-          console.log('Screen unchanged, skipping capture')
         }
       }
     } catch (error) {
@@ -112,7 +136,7 @@ export class ScreenRecorder implements EventRecorder {
   private async _captureScreenBase64(): Promise<string | null> {
     try {
       if (!this.viewShotRef) {
-        console.warn('ViewShot ref not available for screen capture')
+        logger.warn('ScreenRecorder', 'ViewShot ref not available for screen capture')
         return null
       }
 
@@ -120,12 +144,12 @@ export class ScreenRecorder implements EventRecorder {
       const result = await captureRef(this.viewShotRef, {
         format: this.captureFormat,
         quality: this.captureQuality,
-        result: 'base64'
+        result: 'base64',
       })
 
       return result
     } catch (error) {
-      console.error('Failed to capture screen:', error)
+      logger.error('ScreenRecorder', 'Failed to capture screen', error)
       return null
     }
   }
@@ -133,45 +157,79 @@ export class ScreenRecorder implements EventRecorder {
   private _createAndEmitFullSnapshotEvent(base64Image: string): void {
     if (!this.screenDimensions) return
 
-    const { width, height } = this.screenDimensions
-
-    // Create a virtual DOM node representing the screen as an image
-    const imageNode: SerializedNodeWithId = {
-      type: 1, // Element node
-      id: this.nodeIdCounter++,
-      tagName: 'img',
-      attributes: {
-        src: `data:image/${this.captureFormat};base64,${base64Image}`,
-        width: width.toString(),
-        height: height.toString(),
-        style: `width: ${width}px; height: ${height}px;`
-      }
-    }
-
-    // Create the root container
-    const rootNode: SerializedNodeWithId = {
-      type: 1, // Element node
-      id: this.nodeIdCounter++,
-      tagName: 'div',
-      attributes: {
-        style: `width: ${width}px; height: ${height}px; position: relative;`
-      },
-      childNodes: [imageNode]
-    }
-
-    const fullSnapshotEvent: FullSnapshotEvent = {
-      type: EventType.FullSnapshot,
-      data: {
-        node: rootNode,
-        initialOffset: {
-          left: 0,
-          top: 0
-        }
-      },
-      timestamp: Date.now()
-    }
-
+    // Use the new createFullSnapshot method
+    const fullSnapshotEvent = this.createFullSnapshot(base64Image)
     this.recordEvent(fullSnapshotEvent)
+  }
+
+  /**
+   * Create a full snapshot event with the given base64 image
+   * @param base64Image - Base64 encoded image data
+   * @returns Full snapshot event
+   */
+  createFullSnapshot(base64Image: string): eventWithTime {
+    if (!this.screenDimensions) {
+      throw new Error('Screen dimensions not available')
+    }
+
+    const { width, height } = this.screenDimensions
+    this.nodeIdCounter = 1
+
+    // Use utility function to create full snapshot event
+    const fullSnapshotEvent = createFullSnapshotEvent(
+      base64Image,
+      width,
+      height,
+      this.captureFormat,
+      { current: this.nodeIdCounter },
+    )
+
+    // Store the image node ID for future incremental updates
+    // The image node ID is the first node created (after the document)
+    this.currentImageNodeId = 0 // First element node is the image
+
+    return fullSnapshotEvent
+  }
+
+  /**
+   * Create an incremental snapshot event with mutation data to update image src
+   * @param base64Image - New base64 encoded image data
+   * @param imageNodeId - ID of the image node to update
+   * @returns Incremental snapshot event with mutation data
+   */
+  createIncrementalSnapshotWithImageUpdate(base64Image: string): eventWithTime {
+    return createIncrementalSnapshotUtil(
+      base64Image,
+      this.captureFormat,
+    )
+  }
+
+
+  /**
+   * Update the screen with a new image using incremental snapshot
+   * @param base64Image - New base64 encoded image data
+   * @returns true if update was successful, false otherwise
+   */
+  updateScreenWithIncrementalSnapshot(base64Image: string): boolean {
+    if (this.currentImageNodeId === null) {
+      logger.warn('ScreenRecorder', 'No image node ID available for incremental update')
+      return false
+    }
+
+    const incrementalEvent = this.createIncrementalSnapshotWithImageUpdate(base64Image)
+    this.recordEvent(incrementalEvent)
+    return true
+  }
+
+  /**
+   * Force a full snapshot (useful when screen dimensions change or for debugging)
+   * @param base64Image - Base64 encoded image data
+   */
+  forceFullSnapshot(base64Image: string): void {
+    this._createAndEmitFullSnapshotEvent(base64Image)
+    this.lastScreenCapture = base64Image
+    this.lastScreenHash = this._generateScreenHash(base64Image)
+    this.captureCount++
   }
 
   /**
@@ -200,37 +258,8 @@ export class ScreenRecorder implements EventRecorder {
    * @returns Hash string for comparison
    */
   private _generateScreenHash(base64Image: string): string {
-    // Use a simple hash that samples the beginning, middle, and end of the base64 string
-    // This is much faster than comparing the entire string
-    const sampleSize = this.hashSampleSize
-    const start = base64Image.substring(0, sampleSize)
-    const middle = base64Image.substring(
-      Math.floor(base64Image.length / 2) - sampleSize / 2,
-      Math.floor(base64Image.length / 2) + sampleSize / 2
-    )
-    const end = base64Image.substring(base64Image.length - sampleSize)
-
-    // Combine samples and create a simple hash
-    const combined = start + middle + end
-    return this._simpleHash(combined)
+    return generateScreenHash(base64Image, this.hashSampleSize)
   }
-
-  /**
-   * Simple hash function for string comparison
-   * @param str - String to hash
-   * @returns Hash value as string
-   */
-  private _simpleHash(str: string): string {
-    let hash = 0
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
-      hash = hash & hash // Convert to 32-bit integer
-    }
-    return Math.abs(hash).toString(36)
-  }
-
-
 
   private _sendEvent(event: ScreenEvent): void {
     // Screen event recorded
@@ -279,14 +308,14 @@ export class ScreenRecorder implements EventRecorder {
     }
   }
 
-
-  async captureSpecificElement(elementRef: any, options?: {
-    format?: 'png' | 'jpg' | 'webp'
-    quality?: number
-  }): Promise<string | null> {
+  async captureSpecificElement(
+    elementRef: any,
+    options?: {
+      format?: 'png' | 'jpg' | 'webp'
+      quality?: number
+    },
+  ): Promise<string | null> {
     try {
-
-
       return await captureRef(elementRef)
     } catch (error) {
       // Failed to capture specific element - silently continue
@@ -349,7 +378,9 @@ export class ScreenRecorder implements EventRecorder {
       },
     }
 
-    this.events.push(event); this._sendEvent(event); this._recordOpenTelemetrySpan(event)
+    this.events.push(event)
+    this._sendEvent(event)
+    this._recordOpenTelemetrySpan(event)
     this.events.push(event)
     this._sendEvent(event)
     this._recordOpenTelemetrySpan(event)
@@ -370,7 +401,9 @@ export class ScreenRecorder implements EventRecorder {
       },
     }
 
-    this.events.push(event); this._sendEvent(event); this._recordOpenTelemetrySpan(event)
+    this.events.push(event)
+    this._sendEvent(event)
+    this._recordOpenTelemetrySpan(event)
     this.events.push(event)
     this._sendEvent(event)
     this._recordScreenCaptureError(error)
@@ -397,15 +430,13 @@ export class ScreenRecorder implements EventRecorder {
     }
 
     if (this.events.length > 0) {
-      const captureTimes = this.events
-        .map(event => event.metadata?.captureTime || 0)
-        .filter(time => time > 0)
+      const captureTimes = this.events.map((event) => event.metadata?.captureTime || 0).filter((time) => time > 0)
 
       if (captureTimes.length > 0) {
         stats.averageCaptureTime = captureTimes.reduce((a, b) => a + b, 0) / captureTimes.length
       }
 
-      const successfulCaptures = this.events.filter(event => event.dataUrl).length
+      const successfulCaptures = this.events.filter((event) => event.dataUrl).length
       stats.successRate = (successfulCaptures / this.events.length) * 100
     }
 
@@ -448,7 +479,9 @@ export class ScreenRecorder implements EventRecorder {
    * This bypasses the change detection and always captures
    */
   forceCapture(): void {
-    if (!this.isRecording) return
+    if (!this.isRecording) {
+      return
+    }
 
     this._captureScreen()
   }

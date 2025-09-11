@@ -1,6 +1,7 @@
 import { InstrumentationBase } from '@opentelemetry/instrumentation'
 import { trace, SpanStatusCode } from '@opentelemetry/api'
 
+const scopeName = "@opentelemetry/instrumentation-user-interaction"
 export class GestureInstrumentation extends InstrumentationBase {
   private _isEnabled = false
 
@@ -28,7 +29,7 @@ export class GestureInstrumentation extends InstrumentationBase {
   recordTap(x: number, y: number, target?: string) {
     if (!this._isEnabled) return
 
-    const span = trace.getTracer('gesture').startSpan('Gesture.tap', {
+    const span = trace.getTracer(scopeName).startSpan('Gesture.tap', {
       attributes: {
         'gesture.type': 'tap',
         'gesture.coordinates.x': x,
@@ -48,7 +49,7 @@ export class GestureInstrumentation extends InstrumentationBase {
   recordSwipe(direction: string, target?: string) {
     if (!this._isEnabled) return
 
-    const span = trace.getTracer('gesture').startSpan('Gesture.swipe', {
+    const span = trace.getTracer(scopeName).startSpan('Gesture.swipe', {
       attributes: {
         'gesture.type': 'swipe',
         'gesture.direction': direction,
@@ -67,7 +68,7 @@ export class GestureInstrumentation extends InstrumentationBase {
   recordPinch(scale: number, target?: string) {
     if (!this._isEnabled) return
 
-    const span = trace.getTracer('gesture').startSpan('Gesture.pinch', {
+    const span = trace.getTracer(scopeName).startSpan('Gesture.pinch', {
       attributes: {
         'gesture.type': 'pinch',
         'gesture.scale': scale,
@@ -86,7 +87,7 @@ export class GestureInstrumentation extends InstrumentationBase {
   recordPan(deltaX: number, deltaY: number, target?: string) {
     if (!this._isEnabled) return
 
-    const span = trace.getTracer('gesture').startSpan('Gesture.pan', {
+    const span = trace.getTracer(scopeName).startSpan('Gesture.pan', {
       attributes: {
         'gesture.type': 'pan',
         'gesture.delta_x': deltaX,
@@ -106,7 +107,7 @@ export class GestureInstrumentation extends InstrumentationBase {
   recordLongPress(duration: number, target?: string) {
     if (!this._isEnabled) return
 
-    const span = trace.getTracer('gesture').startSpan('Gesture.longPress', {
+    const span = trace.getTracer(scopeName).startSpan('Gesture.longPress', {
       attributes: {
         'gesture.type': 'longPress',
         'gesture.duration': duration,
@@ -126,7 +127,7 @@ export class GestureInstrumentation extends InstrumentationBase {
   recordGestureError(error: Error, gestureType: string) {
     if (!this._isEnabled) return
 
-    const span = trace.getTracer('gesture').startSpan(`Gesture.${gestureType}.error`, {
+    const span = trace.getTracer(scopeName).startSpan(`Gesture.${gestureType}.error`, {
       attributes: {
         'gesture.type': gestureType,
         'gesture.error': true,

@@ -92,7 +92,7 @@ function _tryReadXHRBody({
 
         if (
           requestBody?.length
-          && new Blob([requestBody]).size <= maxCapturingHttpPayloadSize
+          && requestBody.length <= maxCapturingHttpPayloadSize
         ) {
           networkRequest.requestBody = requestBody
         }
@@ -126,7 +126,7 @@ function _tryReadXHRBody({
 
         if (
           responseBody?.length
-          && new Blob([responseBody]).size <= maxCapturingHttpPayloadSize
+          && responseBody.length <= maxCapturingHttpPayloadSize
         ) {
           networkRequest.responseBody = responseBody
         }

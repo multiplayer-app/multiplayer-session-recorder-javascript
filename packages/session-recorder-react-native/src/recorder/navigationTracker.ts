@@ -1,5 +1,6 @@
 import { NavigationEvent, RecorderConfig } from '../types'
 import { trace, SpanStatusCode } from '@opentelemetry/api'
+import { logger } from '../utils'
 
 export class NavigationTracker {
   private config?: RecorderConfig
@@ -23,6 +24,7 @@ export class NavigationTracker {
   }
 
   start(): void {
+    logger.info('NavigationTracker', 'Navigation tracking started')
     this.isRecording = true
     this.events = []
     this.navigationStack = []

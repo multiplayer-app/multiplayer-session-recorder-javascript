@@ -1,6 +1,8 @@
-import { GestureEvent, RecorderConfig, EventType, IncrementalSource, IncrementalSnapshotEvent, MouseInteractionType, EventRecorder } from '../types'
+import { GestureEvent, RecorderConfig, EventRecorder } from '../types'
 import { trace, SpanStatusCode } from '@opentelemetry/api'
 import { Dimensions } from 'react-native'
+import { logger } from '../utils'
+import { MouseInteractions, eventWithTime, EventType, IncrementalSource } from '@rrweb/types'
 
 export class GestureRecorder implements EventRecorder {
   private config?: RecorderConfig
@@ -10,9 +12,17 @@ export class GestureRecorder implements EventRecorder {
   private screenDimensions: { width: number; height: number } | null = null
   private lastGestureTime: number = 0
   private gestureThrottleMs: number = 50 // Throttle gestures to avoid spam
+  private lastTouchTime: number = 0
+  private touchThrottleMs: number = 100 // Throttle touch events to max 10 per second
+
+  // Cyclic call detection
+  private isRecordingGesture = false
+  private gestureCallStack: string[] = []
+  private maxGestureCallDepth = 5
   private eventRecorder?: EventRecorder
   private imageNodeId: number = 1 // ID of the image node for touch interactions
   private screenRecorder?: any // Reference to screen recorder for force capture
+
   init(config: RecorderConfig, eventRecorder?: EventRecorder, screenRecorder?: any): void {
     this.config = config
     this.eventRecorder = eventRecorder
@@ -21,10 +31,9 @@ export class GestureRecorder implements EventRecorder {
   }
 
   start(): void {
+    logger.info('GestureRecorder', 'Gesture recording started')
     this.isRecording = true
     this.events = []
-    this._setupGestureHandlers()
-    this._setupAutomaticTouchCapture()
     // Gesture recording started
   }
 
@@ -34,15 +43,6 @@ export class GestureRecorder implements EventRecorder {
     // Gesture recording stopped
   }
 
-  pause(): void {
-    this.isRecording = false
-  }
-
-  resume(): void {
-    this.isRecording = true
-  }
-
-  // Input component registration temporarily disabled
 
   private _getScreenDimensions(): void {
     try {
@@ -53,48 +53,6 @@ export class GestureRecorder implements EventRecorder {
     }
   }
 
-  private _setupInputTracking(): void {
-    // Set up React Native input component tracking
-    try {
-      // This would integrate with React Native's component tracking
-      // For now, we'll provide methods for manual registration
-      // Input tracking setup complete
-    } catch (error) {
-      // Failed to setup input tracking - silently continue
-    }
-  }
-
-  private _setupGestureHandlers(): void {
-    // This would integrate with react-native-gesture-handler
-    // For now, we'll create a comprehensive implementation that can be easily integrated
-    // Setting up gesture handlers
-
-    // Set up global gesture listener
-    this._setupGlobalGestureListener()
-  }
-
-  private _setupGlobalGestureListener(): void {
-    try {
-      // Listen for touch events at the app level
-      // This is a simplified implementation - in production you'd use react-native-gesture-handler
-      // Global gesture listener setup complete
-    } catch (error) {
-      // Failed to setup global gesture listener - silently continue
-    }
-  }
-
-  private _setupAutomaticTouchCapture(): void {
-    try {
-      // This method sets up automatic touch capture
-      // The actual touch capture is handled by the TouchEventCapture component
-      // in the SessionRecorderContext, which automatically calls our recording methods
-
-      // We can add any additional setup here if needed
-      // For now, the TouchEventCapture component handles everything automatically
-    } catch (error) {
-      // Failed to setup automatic touch capture - silently continue
-    }
-  }
 
   private _removeGestureHandlers(): void {
     this.gestureHandlers.clear()
@@ -125,7 +83,7 @@ export class GestureRecorder implements EventRecorder {
 
   private _recordOpenTelemetrySpan(event: GestureEvent): void {
     try {
-      const span = trace.getTracer('gesture').startSpan(`Gesture.${event.type}`, {
+      const span = trace.getTracer('@opentelemetry/instrumentation-user-interaction').startSpan(`Gesture.${event.type}`, {
         attributes: {
           'gesture.type': event.type,
           'gesture.timestamp': event.timestamp,
@@ -342,79 +300,6 @@ export class GestureRecorder implements EventRecorder {
     this._recordEvent(event)
   }
 
-  // Gesture sequence tracking
-  recordGestureSequence(gestures: string[], duration: number, target?: string): void {
-    const event: GestureEvent = {
-      type: 'gestureSequence',
-      timestamp: Date.now(),
-      target,
-      metadata: {
-        gestures: gestures.join(','),
-        duration,
-        gestureCount: gestures.length,
-        screenWidth: this.screenDimensions?.width,
-        screenHeight: this.screenDimensions?.height,
-      },
-    }
-
-    this._recordEvent(event)
-  }
-
-  // Error tracking for gesture failures
-  recordGestureError(error: Error, gestureType: string, target?: string): void {
-    const event: GestureEvent = {
-      type: 'gestureError',
-      timestamp: Date.now(),
-      target,
-      metadata: {
-        errorType: error.name,
-        errorMessage: error.message,
-        gestureType,
-        screenWidth: this.screenDimensions?.width,
-        screenHeight: this.screenDimensions?.height,
-      },
-    }
-
-    this._recordEvent(event)
-
-    // Also record as OpenTelemetry error span
-    try {
-      const span = trace.getTracer('gesture').startSpan(`Gesture.${gestureType}.error`, {
-        attributes: {
-          'gesture.type': gestureType,
-          'gesture.error': true,
-          'gesture.error.type': error.name,
-          'gesture.error.message': error.message,
-          'gesture.timestamp': Date.now(),
-        },
-      })
-
-      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
-      span.recordException(error)
-      span.end()
-    } catch (spanError) {
-      // Failed to record error span - silently continue
-    }
-  }
-
-  // Performance monitoring
-  recordGesturePerformance(gestureType: string, duration: number, target?: string): void {
-    const event: GestureEvent = {
-      type: 'gesturePerformance',
-      timestamp: Date.now(),
-      target,
-      metadata: {
-        gestureType,
-        duration,
-        performance: 'monitoring',
-        screenWidth: this.screenDimensions?.width,
-        screenHeight: this.screenDimensions?.height,
-      },
-    }
-
-    this._recordEvent(event)
-  }
-
   // Get recorded events
   getEvents(): GestureEvent[] {
     return [...this.events]
@@ -464,19 +349,46 @@ export class GestureRecorder implements EventRecorder {
   private _createMouseInteractionEvent(
     x: number,
     y: number,
-    interactionType: MouseInteractionType,
-    target?: string
+    interactionType: MouseInteractions,
+    target?: string,
   ): void {
-    const incrementalSnapshotEvent: IncrementalSnapshotEvent = {
+    const incrementalSnapshotEvent: eventWithTime = {
       type: EventType.IncrementalSnapshot,
       data: {
         source: IncrementalSource.MouseInteraction,
         type: interactionType,
         id: this.imageNodeId, // Reference to the image node
-        x: Math.round(x),
-        y: Math.round(y)
+        x: x, // Preserve decimal precision like web rrweb
+        y: y, // Preserve decimal precision like web rrweb
+        pointerType: 2, // 2 = Touch for React Native (0=Mouse, 1=Pen, 2=Touch)
       },
-      timestamp: Date.now()
+      timestamp: Date.now(),
+    }
+
+    this.recordEvent(incrementalSnapshotEvent)
+  }
+
+  /**
+   * Create mouse move event with positions array (like web rrweb)
+   * @param x - X coordinate
+   * @param y - Y coordinate
+   * @param target - Target element identifier
+   */
+  private _createMouseMoveEvent(x: number, y: number, target?: string): void {
+    const incrementalSnapshotEvent: eventWithTime = {
+      type: EventType.IncrementalSnapshot,
+      data: {
+        source: IncrementalSource.TouchMove, // Use MouseMove instead of MouseInteraction
+        positions: [
+          {
+            x: x, // Preserve decimal precision like web rrweb
+            y: y, // Preserve decimal precision like web rrweb
+            id: this.imageNodeId, // Reference to the image node
+            timeOffset: 0, // No time offset for single position
+          },
+        ],
+      },
+      timestamp: Date.now(),
     }
 
     this.recordEvent(incrementalSnapshotEvent)
@@ -490,25 +402,38 @@ export class GestureRecorder implements EventRecorder {
    * @param pressure - Touch pressure (optional)
    */
   recordTouchStart(x: number, y: number, target?: string, pressure?: number): void {
-    // Record as both gesture event and rrweb event
-    this.recordTap(x, y, target, pressure)
-    this._createMouseInteractionEvent(x, y, MouseInteractionType.TouchStart, target)
+    // Throttle touch events to prevent spam
+    const now = Date.now()
+    if (now - this.lastTouchTime < this.touchThrottleMs) {
+      logger.debug('GestureRecorder', `Touch start throttled (${now - this.lastTouchTime}ms < ${this.touchThrottleMs}ms)`)
+      return
+    }
+    this.lastTouchTime = now
 
-    // Force screen capture after touch interaction
-    this.screenRecorder?.forceCapture()
+    logger.debug('GestureRecorder', 'Touch start recorded', { x, y, target, pressure })
+    // Record as MouseDown (type: 1) like web rrweb
+    this._createMouseInteractionEvent(x, y, MouseInteractions.TouchStart, target)
   }
 
   /**
-   * Record touch move event as rrweb MouseInteraction
+   * Record touch move event as rrweb MouseMove with positions array
    * @param x - X coordinate
    * @param y - Y coordinate
    * @param target - Target element identifier
    * @param pressure - Touch pressure (optional)
    */
   recordTouchMove(x: number, y: number, target?: string, pressure?: number): void {
-    // Record as both gesture event and rrweb event
-    this.recordPan(x - (this.lastGestureTime || 0), y - (this.lastGestureTime || 0), target)
-    this._createMouseInteractionEvent(x, y, MouseInteractionType.TouchMove, target)
+    // Throttle touch move events more aggressively
+    const now = Date.now()
+    if (now - this.lastTouchTime < this.touchThrottleMs * 2) { // 200ms throttle for move events
+      logger.debug('GestureRecorder', `Touch move throttled (${now - this.lastTouchTime}ms < ${this.touchThrottleMs * 2}ms)`)
+      return
+    }
+    this.lastTouchTime = now
+
+    logger.debug('GestureRecorder', 'Touch move recorded', { x, y, target, pressure })
+    // Record as MouseMove with positions array (like web rrweb)
+    this._createMouseMoveEvent(x, y, target)
   }
 
   /**
@@ -519,12 +444,36 @@ export class GestureRecorder implements EventRecorder {
    * @param pressure - Touch pressure (optional)
    */
   recordTouchEnd(x: number, y: number, target?: string, pressure?: number): void {
-    // Record as both gesture event and rrweb event
-    this.recordTap(x, y, target, pressure)
-    this._createMouseInteractionEvent(x, y, MouseInteractionType.TouchEnd, target)
+    // Cyclic call detection
+    if (this.isRecordingGesture) {
+      logger.error('GestureRecorder', 'CYCLIC CALL DETECTED! Already recording gesture', this.gestureCallStack)
+      return
+    }
 
-    // Force screen capture after touch interaction
-    this.screenRecorder?.forceCapture()
+    if (this.gestureCallStack.length >= this.maxGestureCallDepth) {
+      logger.error('GestureRecorder', 'MAX GESTURE CALL DEPTH REACHED!', this.gestureCallStack)
+      return
+    }
+
+    this.isRecordingGesture = true
+    this.gestureCallStack.push('recordTouchEnd')
+
+    try {
+      logger.debug('GestureRecorder', 'Touch end recorded', { x, y, target, pressure })
+      // Always record touch end (no throttling for completion)
+      this.recordTap(x, y, target, pressure)
+      // Record as MouseUp (type: 0) like web rrweb
+      this._createMouseInteractionEvent(x, y, MouseInteractions.TouchEnd, target)
+      // Also record Click (type: 2) like web rrweb
+      // this._createMouseInteractionEvent(x, y, MouseInteractions.Click, target)
+
+      // Only force screen capture on touch end (not on every touch event)
+      logger.debug('GestureRecorder', 'Forcing screen capture after touch end')
+      this.screenRecorder?.forceCapture()
+    } finally {
+      this.isRecordingGesture = false
+      this.gestureCallStack.pop()
+    }
   }
 
   /**
@@ -534,7 +483,8 @@ export class GestureRecorder implements EventRecorder {
    * @param target - Target element identifier
    */
   recordTouchCancel(x: number, y: number, target?: string): void {
-    this._createMouseInteractionEvent(x, y, MouseInteractionType.TouchCancel, target)
+    // Record as MouseUp (type: 0) like web rrweb for touch cancel
+    this._createMouseInteractionEvent(x, y, MouseInteractions.TouchCancel, target)
   }
 
   /**

@@ -4,6 +4,7 @@ import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xm
 import { OTEL_IGNORE_URLS } from '../../config'
 import { TracerReactNativeConfig } from '../../types'
 import { extractResponseBody, headersToObject, processHttpPayload } from '../helpers'
+import { logger } from '../../utils'
 
 export function getInstrumentations(config: TracerReactNativeConfig) {
 
@@ -47,13 +48,13 @@ export function getInstrumentations(config: TracerReactNativeConfig) {
             processHttpPayload(payload, config, span)
           } catch (error) {
             // eslint-disable-next-line
-            console.error('[DEBUGGER_LIB] Failed to capture fetch payload', error)
+            logger.error('DEBUGGER_LIB', 'Failed to capture fetch payload', error)
           }
         },
       })
     )
   } catch (error) {
-    console.warn('Fetch instrumentation not available:', error)
+    logger.warn('DEBUGGER_LIB', 'Fetch instrumentation not available', error)
   }
 
   // XMLHttpRequest instrumentation
@@ -94,13 +95,13 @@ export function getInstrumentations(config: TracerReactNativeConfig) {
             processHttpPayload(payload, config, span)
           } catch (error) {
             // eslint-disable-next-line
-            console.error('[DEBUGGER_LIB] Failed to capture xml-http payload', error)
+            logger.error('DEBUGGER_LIB', 'Failed to capture xml-http payload', error)
           }
         },
       })
     )
   } catch (error) {
-    console.warn('XMLHttpRequest instrumentation not available:', error)
+    logger.warn('DEBUGGER_LIB', 'XMLHttpRequest instrumentation not available', error)
   }
 
   // Custom React Native instrumentations

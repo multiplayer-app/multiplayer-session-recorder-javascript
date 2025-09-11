@@ -1,4 +1,5 @@
 import { InstrumentationBase } from '@opentelemetry/instrumentation'
+import { logger } from '../../utils'
 import { trace, SpanStatusCode } from '@opentelemetry/api'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
@@ -18,7 +19,7 @@ export class ReactNativeInstrumentation extends InstrumentationBase {
         this._wrap(AsyncStorage, 'setItem', this._wrapAsyncStorage)
       }
     } catch (error) {
-      console.warn('@react-native-async-storage/async-storage is not available. AsyncStorage instrumentation will be disabled.')
+      logger.warn('DEBUGGER_LIB', '@react-native-async-storage/async-storage is not available. AsyncStorage instrumentation will be disabled.')
     }
   }
 

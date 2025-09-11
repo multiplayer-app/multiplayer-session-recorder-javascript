@@ -1,30 +1,39 @@
+import { SessionType } from '@multiplayer-app/session-recorder-common'
+// import { pack } from '@rrweb/packer' // Removed to avoid blob creation issues in Hermes
+import { EventExporter } from './eventExporter'
+import { logger } from '../utils'
+import { ScreenRecorder } from './screenRecorder'
 import { GestureRecorder } from './gestureRecorder'
 import { NavigationTracker } from './navigationTracker'
-import { ScreenRecorder } from './screenRecorder'
-import { SessionType } from '@multiplayer-app/session-recorder-common'
-import { RecorderConfig, EventRecorder, RRWebEvent } from '../types'
-
+import { RecorderConfig, EventRecorder } from '../types'
+import { eventWithTime } from '@rrweb/types'
 export class RecorderReactNativeSDK implements EventRecorder {
+  private isRecording = false
   private config?: RecorderConfig
+  private screenRecorder: ScreenRecorder
   private gestureRecorder: GestureRecorder
   private navigationTracker: NavigationTracker
-  private screenRecorder: ScreenRecorder
-  private isRecording = false
-  private eventRecorder?: EventRecorder
-  private recordedEvents: RRWebEvent[] = []
+  private recordedEvents: eventWithTime[] = []
+  private exporter: EventExporter | undefined
+  private sessionId: string | null = null
+  private sessionType: SessionType = SessionType.PLAIN
+
 
   constructor() {
+    this.screenRecorder = new ScreenRecorder()
     this.gestureRecorder = new GestureRecorder()
     this.navigationTracker = new NavigationTracker()
-    this.screenRecorder = new ScreenRecorder()
   }
 
-  init(config: RecorderConfig, eventRecorder?: EventRecorder): void {
+  init(config: RecorderConfig): void {
     this.config = config
-    this.eventRecorder = eventRecorder
     this.gestureRecorder.init(config, this, this.screenRecorder)
     this.navigationTracker.init(config)
     this.screenRecorder.init(config, this)
+    this.exporter = new EventExporter({
+      socketUrl: config.apiBaseUrl || '',
+      apiKey: config.apiKey,
+    })
   }
 
   start(sessionId: string | null, sessionType: SessionType): void {
@@ -32,7 +41,15 @@ export class RecorderReactNativeSDK implements EventRecorder {
       throw new Error('Configuration not initialized. Call init() before start().')
     }
 
+    this.sessionId = sessionId
+    this.sessionType = sessionType
     this.isRecording = true
+
+    // Emit recording started meta event
+
+    if (this.config.recordScreen) {
+      this.screenRecorder.start()
+    }
 
     if (this.config.recordGestures) {
       this.gestureRecorder.start()
@@ -42,9 +59,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
       this.navigationTracker.start()
     }
 
-    if (this.config.recordScreen) {
-      this.screenRecorder.start()
-    }
+
   }
 
   stop(): void {
@@ -52,21 +67,9 @@ export class RecorderReactNativeSDK implements EventRecorder {
     this.gestureRecorder.stop()
     this.navigationTracker.stop()
     this.screenRecorder.stop()
+    this.exporter?.close()
   }
 
-  pause(): void {
-    this.gestureRecorder.pause()
-    this.navigationTracker.pause()
-    this.screenRecorder.pause()
-  }
-
-  resume(): void {
-    if (this.isRecording) {
-      this.gestureRecorder.resume()
-      this.navigationTracker.resume()
-      this.screenRecorder.resume()
-    }
-  }
 
   setNavigationRef(ref: any): void {
     this.navigationTracker.setNavigationRef(ref)
@@ -84,17 +87,22 @@ export class RecorderReactNativeSDK implements EventRecorder {
    * Record an rrweb event
    * @param event - The rrweb event to record
    */
-  recordEvent(event: RRWebEvent): void {
+  recordEvent(event: eventWithTime): void {
     if (!this.isRecording) {
       return
     }
 
-    // Store the event locally
-    this.recordedEvents.push(event)
-
-    // Forward to parent event recorder if available
-    if (this.eventRecorder) {
-      this.eventRecorder.recordEvent(event)
+    if (this.exporter) {
+      logger.debug('RecorderReactNativeSDK', 'Sending to exporter', event)
+      // Skip packing to avoid blob creation issues in Hermes
+      // const packedEvent = pack(event)
+      this.exporter.send({
+        event: event, // Send raw event instead of packed
+        eventType: event.type,
+        timestamp: event.timestamp,
+        debugSessionId: this.sessionId,
+        debugSessionType: this.sessionType,
+      })
     }
   }
 
@@ -147,7 +155,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
    * Get all recorded events
    * @returns Array of recorded rrweb events
    */
-  getRecordedEvents(): RRWebEvent[] {
+  getRecordedEvents(): eventWithTime[] {
     return [...this.recordedEvents]
   }
 
@@ -165,7 +173,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
   getRecordingStats(): { totalEvents: number; isRecording: boolean } {
     return {
       totalEvents: this.recordedEvents.length,
-      isRecording: this.isRecording
+      isRecording: this.isRecording,
     }
   }
 }

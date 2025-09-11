@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-react-native",
-  "version": "0.0.1-alpha.6",
+  "version": "0.0.1-alpha.9",
   "description": "Multiplayer Fullstack Session Recorder for React Native",
   "author": {
     "name": "Multiplayer Software, Inc.",
@@ -78,6 +78,7 @@
     "@opentelemetry/semantic-conventions": "1.36.0",
     "@react-native-async-storage/async-storage": "^1.21.0",
     "@react-native-community/netinfo": "^11.1.0",
+    "@rrweb/types": "^2.0.0-alpha.18",
     "lib0": "0.2.82",
     "react-native-gesture-handler": "^2.14.0",
     "react-native-mmkv": "^2.11.0",

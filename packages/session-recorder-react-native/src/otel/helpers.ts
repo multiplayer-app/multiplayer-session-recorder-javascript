@@ -5,8 +5,9 @@ import {
   ATTR_MULTIPLAYER_HTTP_REQUEST_BODY,
   ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
-  ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS
+  ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
 } from '@multiplayer-app/session-recorder-common'
+import { logger } from '../utils'
 import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common'
 import { TracerReactNativeConfig } from '../types'
 
@@ -197,7 +198,7 @@ export function processHttpPayload(
 /**
  * Converts Headers object to plain object
  */
-export function headersToObject(headers: Headers | Record<string, string> | HeadersInit_ | undefined): Record<string, string> {
+export function headersToObject(headers: Headers | Record<string, string> | Record<string, string | string[]> | string[][] | undefined): Record<string, string> {
   const result: Record<string, string> = {}
 
   if (!headers) {
@@ -249,7 +250,7 @@ export async function extractResponseBody(response: Response): Promise<string | 
   } catch (error) {
     // If cloning fails (body already consumed), return null
     // eslint-disable-next-line no-console
-    console.warn('[DEBUGGER_LIB] Failed to extract response body:', error)
+    logger.warn('DEBUGGER_LIB', 'Failed to extract response body', error)
     return null
   }
 }
