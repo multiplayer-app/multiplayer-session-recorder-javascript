@@ -60,7 +60,7 @@ export function getPlatformAttributes(): Record<string, any> {
   const platformInfo = detectPlatform()
 
   const attributes: Record<string, any> = {
-    'platform': platformInfo.isExpo ? 'expo' : 'react-native',
+    platform: platformInfo.isExpo ? 'expo' : 'react-native',
     'device.type': platformInfo.deviceType,
   }
 
@@ -97,16 +97,16 @@ export function isReactNativeEnvironment(): boolean {
  *   version: '1.2.3',
  *   bundleId: 'com.mycompany.myapp',
  *   buildNumber: '123',
- *   displayName: 'My App'
+ *   displayName: 'My App',
  * })
  * ```
  */
 export function configureAppMetadata(metadata: {
-  name?: string;
-  version?: string;
-  bundleId?: string;
-  buildNumber?: string;
-  displayName?: string;
+  name?: string
+  version?: string
+  bundleId?: string
+  buildNumber?: string
+  displayName?: string
 }): void {
   globalAppMetadata = { ...globalAppMetadata, ...metadata }
 }
@@ -114,13 +114,7 @@ export function configureAppMetadata(metadata: {
 /**
  * Get configured app metadata
  */
-export function getConfiguredAppMetadata(): {
-  name?: string;
-  version?: string;
-  bundleId?: string;
-  buildNumber?: string;
-  displayName?: string;
-} {
+export function getConfiguredAppMetadata(): { name?: string, version?: string, bundleId?: string, buildNumber?: string, displayName?: string, } {
   return { ...globalAppMetadata }
 }
 
@@ -186,7 +180,6 @@ function getExpoMetadata(): { name?: string; version?: string; bundleId?: string
     bundleId: expoConfig.ios?.bundleIdentifier || expoConfig.android?.package,
   }
 }
-
 
 export const getNavigatorInfo = (): IResourceAttributes => {
   const platformInfo = detectPlatform()
@@ -297,7 +290,8 @@ export const getNavigatorInfo = (): IResourceAttributes => {
   // Get build number with multiple fallback strategies
   const getBuildNumber = (): string => {
     // Try Expo config first
-    const expoBuildNumber = Constants.default?.expoConfig?.ios?.buildNumber ||
+    const expoBuildNumber =
+      Constants.default?.expoConfig?.ios?.buildNumber ||
       Constants.expoConfig?.ios?.buildNumber ||
       Constants.default?.expoConfig?.android?.versionCode ||
       Constants.expoConfig?.android?.versionCode

@@ -10,7 +10,7 @@ import { DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE } from '../config'
 
 let recordRequestHeaders = true
 let recordResponseHeaders = true
-const shouldRecordBody = true
+let shouldRecordBody = true
 let maxCapturingHttpPayloadSize = DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE
 
 export const setMaxCapturingHttpPayloadSize = (_maxCapturingHttpPayloadSize: number) => {
@@ -20,7 +20,6 @@ export const setMaxCapturingHttpPayloadSize = (_maxCapturingHttpPayloadSize: num
 export const setShouldRecordHttpData = (shouldRecordBody: boolean, shouldRecordHeaders: boolean) => {
   recordRequestHeaders = shouldRecordHeaders
   recordResponseHeaders = shouldRecordHeaders
-  // eslint-disable-next-line
   shouldRecordBody = shouldRecordBody
 }
 
@@ -31,6 +30,9 @@ function _tryReadXHRBody({
   body: any | null | undefined
   url: string | URL | RequestInfo
 }): string | null {
+  // console.log('--------------------------------')
+  // console.log('DEBUGGER_LIB', 'Trying to read XHR body', { url, body })
+
   if (isNullish(body)) {
     return null
   }
@@ -44,9 +46,11 @@ function _tryReadXHRBody({
     return formDataToQuery(body)
   }
 
+
+
   if (isObject(body)) {
     try {
-      return JSON.stringify(body)
+      return JSON.stringify({ ...body })
     } catch {
       return '[XHR] Failed to stringify response object'
     }
@@ -108,8 +112,9 @@ function _tryReadXHRBody({
 
       // @ts-ignore
       const responseHeaders: Record<string, string> = {}
-      const rawHeaders = xhr.getAllResponseHeaders()
-      const headers = rawHeaders.trim().split(/[\r\n]+/)
+      const rawHeaders = xhr.getAllResponseHeaders() || ''
+      const headers = rawHeaders.trim().split(/[\r\n]+/).filter(Boolean)
+
       headers.forEach((line) => {
         const parts = line.split(': ')
         const header = parts.shift()

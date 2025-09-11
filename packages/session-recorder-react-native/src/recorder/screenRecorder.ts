@@ -149,7 +149,7 @@ export class ScreenRecorder implements EventRecorder {
 
       return result
     } catch (error) {
-      logger.error('ScreenRecorder', 'Failed to capture screen', error)
+      logger.error('ScreenRecorder', 'Failed to capture screen. Make sure react-native-view-shot is properly installed and linked:', error)
       return null
     }
   }

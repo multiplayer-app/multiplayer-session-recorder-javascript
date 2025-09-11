@@ -33,6 +33,7 @@ typings/
 # IDE
 .idea/
 .vscode/
+.cursor/
 .meta/
 
 .DS_Store

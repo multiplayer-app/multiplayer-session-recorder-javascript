@@ -20,5 +20,5 @@
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist", "examples"],
-  "files": ["src/index.ts", "src/expo.ts"]
+  "files": ["src/index.ts"]
 }

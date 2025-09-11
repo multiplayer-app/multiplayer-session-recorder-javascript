@@ -17,7 +17,7 @@ export interface AppMetadata {
 // Auto-detected values from project configuration files
 export const APP_METADATA: AppMetadata = {
   name: "@multiplayer-app/session-recorder-react-native",
-  version: "0.0.1-alpha.9",
+  version: "0.0.1",
   bundleId: undefined,
   buildNumber: undefined,
   displayName: undefined,

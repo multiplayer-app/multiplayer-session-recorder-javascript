@@ -154,6 +154,7 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
     this._isInitialized = true
     this._checkOperation('init')
     await this._loadStoredSessionData()
+
     setMaxCapturingHttpPayloadSize(this._configs.maxCapturingHttpPayloadSize || DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE)
     setShouldRecordHttpData(!this._configs.captureBody, this._configs.captureHeaders)
 

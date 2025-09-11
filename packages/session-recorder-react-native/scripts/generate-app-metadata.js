@@ -128,11 +128,11 @@ export interface AppMetadata {
 
 // Auto-detected values from project configuration files
 export const APP_METADATA: AppMetadata = {
-  name: ${metadata.name ? `"${metadata.name}"` : 'undefined'},
-  version: ${metadata.version ? `"${metadata.version}"` : 'undefined'},
-  bundleId: ${metadata.bundleId ? `"${metadata.bundleId}"` : 'undefined'},
-  buildNumber: ${metadata.buildNumber ? `"${metadata.buildNumber}"` : 'undefined'},
-  displayName: ${metadata.displayName ? `"${metadata.displayName}"` : 'undefined'},
+  name: ${metadata.name ? `'${metadata.name}'` : 'undefined'},
+  version: ${metadata.version ? `'${metadata.version}'` : 'undefined'},
+  bundleId: ${metadata.bundleId ? `'${metadata.bundleId}'` : 'undefined'},
+  buildNumber: ${metadata.buildNumber ? `'${metadata.buildNumber}'` : 'undefined'},
+  displayName: ${metadata.displayName ? `'${metadata.displayName}'` : 'undefined'},
 }
 
 /**
