@@ -13,8 +13,7 @@ import {
 import { TracerReactNativeConfig } from '../types'
 import { getInstrumentations } from './instrumentations'
 import { getExporterEndpoint } from './helpers'
-import { ReactNavigationInstrumentation } from './instrumentations/reactNavigationInstrumentation'
-import { GestureInstrumentation } from './instrumentations/gestureInstrumentation'
+
 import { getPlatformAttributes } from '../utils/platform'
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web'
 
@@ -28,8 +27,6 @@ export class TracerReactNativeSDK {
   private sessionId = ''
   private idGenerator?: SessionRecorderIdGenerator
   private exporter?: any
-  private navigationInstrumentation?: ReactNavigationInstrumentation
-  private gestureInstrumentation?: GestureInstrumentation
   private isInitialized = false
 
   constructor() { }
@@ -79,14 +76,6 @@ export class TracerReactNativeSDK {
       tracerProvider: this.tracerProvider,
       instrumentations: getInstrumentations(this.config),
     })
-
-    // // Initialize React Native specific instrumentations
-    // this.navigationInstrumentation = new ReactNavigationInstrumentation()
-    // this.gestureInstrumentation = new GestureInstrumentation()
-
-    // // Enable the custom instrumentations
-    // this.navigationInstrumentation.enable()
-    // this.gestureInstrumentation.enable()
 
     this.isInitialized = true
   }

@@ -46,8 +46,9 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "prepublishOnly": "npm run lint && npm run build",
-    "prebuild": "node -p \"'export const version = ' + JSON.stringify(require('./package.json').version)\" > src/version.ts",
-    "build": "tsc && babel ./dist --out-dir dist --extensions '.js' && ./copy-react-native-dist.sh"
+    "prebuild": "node -p \"'export const version = ' + JSON.stringify(require('./package.json').version)\" > src/version.ts && node scripts/generate-app-metadata.js",
+    "build": "tsc && babel ./dist --out-dir dist --extensions '.js' && ./copy-react-native-dist.sh",
+    "generate-metadata": "node scripts/generate-app-metadata.js"
   },
   "devDependencies": {
     "@babel/cli": "^7.19.3",

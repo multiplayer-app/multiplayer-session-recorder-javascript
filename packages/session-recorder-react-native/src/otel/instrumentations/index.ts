@@ -1,10 +1,10 @@
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch'
 import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request'
 
+import { logger } from '../../utils'
 import { OTEL_IGNORE_URLS } from '../../config'
 import { TracerReactNativeConfig } from '../../types'
 import { extractResponseBody, headersToObject, processHttpPayload } from '../helpers'
-import { logger } from '../../utils'
 
 export function getInstrumentations(config: TracerReactNativeConfig) {
 
@@ -113,8 +113,3 @@ export function getInstrumentations(config: TracerReactNativeConfig) {
 
   return instrumentations
 }
-
-// Export custom instrumentations for manual use
-export { ReactNativeInstrumentation } from './reactNativeInstrumentation'
-export { ReactNavigationInstrumentation } from './reactNavigationInstrumentation'
-export { GestureInstrumentation } from './gestureInstrumentation'

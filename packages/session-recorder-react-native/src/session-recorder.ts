@@ -161,7 +161,6 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
     try {
       this._apiService.init(this._configs)
       this._tracer.init(this._configs)
-
     } catch (error) {
       logger.error('SessionRecorder', 'Failed to initialize API service', error)
     }
