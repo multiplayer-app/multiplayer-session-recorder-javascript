@@ -4,31 +4,37 @@ export const sharedStyles = StyleSheet.create({
   // Popover styles
   popoverContent: {
     flex: 1,
-    paddingHorizontal: 20
+    paddingHorizontal: 0
   },
   popoverHeader: {
+    flexDirection: 'column',
+    paddingBottom: 8,
+    paddingHorizontal: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor: '#e3ecfd',
+    shadowColor: '#e3ecfd',
+    shadowOffset: { width: 0, height: 10, },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  modalHandle: {
+    marginTop: 8,
+    marginBottom: 16,
+    width: 40,
+    height: 4,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 2,
+    alignSelf: 'center',
+  },
+  popoverHeaderContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB'
+    alignItems: 'flex-start',
   },
-  logoText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#007AFF'
-  },
-  closeButton: {
-    width: 30,
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  closeButtonText: {
-    fontSize: 24,
-    color: '#6B7280'
-  },
+
+
   cancelButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -42,7 +48,7 @@ export const sharedStyles = StyleSheet.create({
   },
   popoverBody: {
     flex: 1,
-    paddingVertical: 20
+    padding: 16
   },
   title: {
     fontSize: 24,

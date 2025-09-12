@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { View, Text, Pressable, Switch, Linking, Alert } from 'react-native'
+import { View, Text, Pressable, Switch, Alert } from 'react-native'
 import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { WidgetTextOverridesConfig } from '../../types'
 import { sharedStyles } from './styles'
+import ModalHeader from './ModalHeader'
 
 interface InitialPopoverProps {
   textOverrides: WidgetTextOverridesConfig
@@ -34,14 +35,7 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
 
   return (
     <View style={sharedStyles.popoverContent}>
-      <View style={sharedStyles.popoverHeader}>
-        <Pressable onPress={() => Linking.openURL('https://www.multiplayer.app')}>
-          <Text style={sharedStyles.logoText}>Multiplayer</Text>
-        </Pressable>
-        <Pressable onPress={onClose} style={sharedStyles.closeButton}>
-          <Text style={sharedStyles.closeButtonText}>×</Text>
-        </Pressable>
-      </View>
+      <ModalHeader />
 
       <View style={sharedStyles.popoverBody}>
         {showContinuousRecording && (

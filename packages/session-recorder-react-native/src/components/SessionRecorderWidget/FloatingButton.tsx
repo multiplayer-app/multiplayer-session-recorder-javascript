@@ -8,20 +8,21 @@ interface FloatingButtonProps {
   sessionState: SessionState | null
   onPress: () => void
 }
-const buttonSize = 52 // Browser version: 42px x 42px
+
+const buttonSize = 52
 const rightOffset = 20
 const topOffset = Platform.OS === 'ios' ? 60 : 40
 
 const FloatingButton: React.FC<FloatingButtonProps> = ({ sessionState, onPress }) => {
-  const position = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current // For tracking position
-  const lastPosition = useRef({ top: topOffset, right: rightOffset }) // Track the last saved position
-  const storageService = useRef(StorageService.getInstance()).current // Singleton instance
+  const position = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current
+  const lastPosition = useRef({ top: topOffset, right: rightOffset })
+  const storageService = useRef(StorageService.getInstance()).current
 
   const screenBounds = useMemo(() => {
     const { width, height } = Dimensions.get('window')
 
     return {
-      minTop: topOffset, // Account for status bar
+      minTop: topOffset,
       maxTop: height - buttonSize,
       minRight: 0,
       maxRight: width - buttonSize
@@ -32,14 +33,12 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({ sessionState, onPress }
   useEffect(() => {
     const savedPosition = storageService.getFloatingButtonPosition()
     if (savedPosition) {
-      // Convert from x,y coordinates to top,right coordinates
-      const { width, height } = Dimensions.get('window')
+      const { width } = Dimensions.get('window')
       const top = savedPosition.y
       const right = width - savedPosition.x - buttonSize
       lastPosition.current = { top, right }
       position.setValue({ x: right, y: top })
     } else {
-      // Set default position
       position.setValue({ x: lastPosition.current.right, y: lastPosition.current.top })
     }
   }, [])
@@ -48,7 +47,6 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({ sessionState, onPress }
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (evt, gestureState) => {
-        // Only start dragging if movement is significant enough
         const distance = Math.sqrt(gestureState.dx * gestureState.dx + gestureState.dy * gestureState.dy)
         return distance > 5
       },
@@ -59,7 +57,7 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({ sessionState, onPress }
       onPanResponderMove: (evt, gestureState) => {
         // Calculate new position based on gesture movement
         const newTop = lastPosition.current.top + gestureState.dy
-        const newRight = lastPosition.current.right - gestureState.dx // Invert dx for right positioning
+        const newRight = lastPosition.current.right - gestureState.dx
 
         // Update position during drag
         position.setValue({ x: newRight, y: newTop })
@@ -74,7 +72,7 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({ sessionState, onPress }
         } else {
           // Calculate new position after dragging
           const newTop = lastPosition.current.top + gestureState.dy
-          const newRight = lastPosition.current.right - gestureState.dx // Invert dx for right positioning
+          const newRight = lastPosition.current.right - gestureState.dx
 
           // Clamp to screen bounds
           const clampedTop = Math.max(screenBounds.minTop, Math.min(screenBounds.maxTop, newTop))
@@ -99,31 +97,20 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({ sessionState, onPress }
   ).current
 
   // Memoized button icon and color for performance
-  const buttonIcon = useMemo(() => {
+  const content = useMemo(() => {
     switch (sessionState) {
       case SessionState.started:
-        return <CapturingIcon size={28} color='white' />
+        return { icon: <CapturingIcon size={28} color='white' />, color: '#FF4444' }
       case SessionState.paused:
-        return <PausedIcon size={28} color='white' />
+        return { icon: <PausedIcon size={28} color='white' />, color: '#FFA500' }
       default:
-        return <RecordIcon size={28} color='#718096' />
-    }
-  }, [sessionState])
-
-  const buttonColor = useMemo(() => {
-    switch (sessionState) {
-      case SessionState.started:
-        return '#FF4444' // Browser primary color when recording
-      case SessionState.paused:
-        return '#FFA500'
-      default:
-        return '#ffffff' // Browser default white background
+        return { icon: <RecordIcon size={28} color='#718096' />, color: '#ffffff' }
     }
   }, [sessionState])
 
   return (
     <Animated.View style={[styles.draggableButton, { top: position.y, right: position.x }]} {...panResponder.panHandlers}>
-      <View style={[styles.floatingButton, { backgroundColor: buttonColor }]}>{buttonIcon}</View>
+      <View style={[styles.floatingButton, { backgroundColor: content.color }]}>{content.icon}</View>
     </Animated.View>
   )
 }

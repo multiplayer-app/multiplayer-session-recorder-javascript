@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { View, Text, Pressable, TextInput, Linking, Alert } from 'react-native'
+import { View, Text, Pressable, TextInput, Alert } from 'react-native'
 import { WidgetTextOverridesConfig } from '../../types'
 import { sharedStyles } from './styles'
+import ModalHeader from './ModalHeader'
 
 interface FinalPopoverProps {
   textOverrides: WidgetTextOverridesConfig
@@ -11,13 +12,7 @@ interface FinalPopoverProps {
   isSubmitting: boolean
 }
 
-const FinalPopover: React.FC<FinalPopoverProps> = ({
-  textOverrides,
-  onStopRecording,
-  onCancelSession,
-  onClose,
-  isSubmitting
-}) => {
+const FinalPopover: React.FC<FinalPopoverProps> = ({ textOverrides, onStopRecording, onCancelSession, isSubmitting }) => {
   const [comment, setComment] = useState('')
 
   const handleStopRecording = async () => {
@@ -30,17 +25,11 @@ const FinalPopover: React.FC<FinalPopoverProps> = ({
 
   return (
     <View style={sharedStyles.popoverContent}>
-      <View style={sharedStyles.popoverHeader}>
-        <Pressable onPress={() => Linking.openURL('https://www.multiplayer.app')}>
-          <Text style={sharedStyles.logoText}>Multiplayer</Text>
-        </Pressable>
+      <ModalHeader>
         <Pressable onPress={onCancelSession} style={sharedStyles.cancelButton}>
           <Text style={sharedStyles.cancelButtonText}>{textOverrides.cancelButtonText}</Text>
         </Pressable>
-        <Pressable onPress={onClose} style={sharedStyles.closeButton}>
-          <Text style={sharedStyles.closeButtonText}>×</Text>
-        </Pressable>
-      </View>
+      </ModalHeader>
 
       <View style={sharedStyles.popoverBody}>
         <Text style={sharedStyles.title}>{textOverrides.finalTitle}</Text>
