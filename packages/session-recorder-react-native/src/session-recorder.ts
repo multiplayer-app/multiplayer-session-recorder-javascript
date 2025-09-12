@@ -16,7 +16,7 @@ import {
 } from './types'
 import { getFormattedDate, isSessionActive, getNavigatorInfo } from './utils'
 import { setMaxCapturingHttpPayloadSize, setShouldRecordHttpData } from './patch/xhr'
-import { DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE, getSessionRecorderConfig } from './config'
+import { BASE_CONFIG, DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE, getSessionRecorderConfig } from './config'
 
 import { StorageService } from './services/storage.service'
 import { ApiService, StartSessionRequest, StopSessionRequest } from './services/api.service'
@@ -30,11 +30,11 @@ type SessionRecorderEvents =
 
 class SessionRecorder extends Observable<SessionRecorderEvents> implements ISessionRecorder, EventRecorder {
   private _isInitialized = false
-  private _configs: SessionRecorderConfigs | null = null
+  private _configs: SessionRecorderConfigs
   private _apiService = new ApiService()
   private _tracer = new TracerReactNativeSDK()
   private _recorder = new RecorderReactNativeSDK()
-  private _storageService = new StorageService()
+  private _storageService = StorageService.getInstance()
   private _startRequestController: AbortController | null = null
 
   // Session ID and state are stored in AsyncStorage
@@ -112,11 +112,16 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
     return null
   }
 
+  public get config(): SessionRecorderConfigs {
+    return this._configs
+  }
+
   /**
    * Initialize debugger with default or custom configurations
    */
   constructor() {
     super()
+    this._configs = BASE_CONFIG
     // Initialize with stored session data if available
     StorageService.initialize()
   }

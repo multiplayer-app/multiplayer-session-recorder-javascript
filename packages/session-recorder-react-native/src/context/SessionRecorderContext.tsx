@@ -1,12 +1,13 @@
 import React, { createContext, useContext, PropsWithChildren, useState, useEffect, useRef } from 'react'
-import { Pressable, Text, View } from 'react-native'
 import { SessionRecorderOptions, SessionState } from '../types'
-import SessionRecorder from '../session-recorder'
 import sessionRecorder from '../session-recorder'
 import { ScreenRecorderView } from '../components/ScreenRecorderView'
+import SessionRecorderWidget from '../components/SessionRecorderWidget'
 
 interface SessionRecorderContextType {
-  instance: typeof SessionRecorder
+  instance: typeof sessionRecorder
+  isInitialized: boolean
+  sessionState: SessionState | null
 }
 
 const SessionRecorderContext = createContext<SessionRecorderContextType | null>(null)
@@ -16,52 +17,29 @@ export interface SessionRecorderProviderProps extends PropsWithChildren {
 }
 
 export const SessionRecorderProvider: React.FC<SessionRecorderProviderProps> = ({ children, options }) => {
-  const [sessionState, setSessionState] = useState<SessionState | null>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
+  const [sessionState, setSessionState] = useState<SessionState | null>(SessionState.stopped)
   const optionsRef = useRef<string>()
 
   useEffect(() => {
     const newOptions = JSON.stringify(options)
     if (optionsRef.current === JSON.stringify(options)) return
     optionsRef.current = newOptions
-    SessionRecorder.init(options)
+    sessionRecorder.init(options)
+    setIsInitialized(true)
   }, [options])
 
   useEffect(() => {
-    setSessionState(SessionRecorder.sessionState)
-    SessionRecorder.on('state-change', (state: SessionState) => {
+    setSessionState(sessionRecorder.sessionState)
+    sessionRecorder.on('state-change', (state: SessionState) => {
       setSessionState(state)
     })
   }, [])
 
-  const onToggleSession = () => {
-    if (SessionRecorder.sessionState === SessionState.started) {
-      SessionRecorder.stop()
-    } else {
-      SessionRecorder.start()
-    }
-  }
-
   return (
-    <SessionRecorderContext.Provider value={{ instance: sessionRecorder }}>
+    <SessionRecorderContext.Provider value={{ instance: sessionRecorder, sessionState, isInitialized }}>
       <ScreenRecorderView>{children}</ScreenRecorderView>
-      <Pressable onPress={onToggleSession}>
-        <View
-          style={{
-            position: 'absolute',
-            right: 0,
-            bottom: 100,
-            width: 48,
-            height: 48,
-            paddingTop: 16,
-            paddingLeft: 10,
-            backgroundColor: 'red',
-            borderTopLeftRadius: 24,
-            borderBottomLeftRadius: 24
-          }}
-        >
-          <Text style={{ color: 'white' }}>{sessionState === SessionState.started ? 'Stop' : 'Start'}</Text>
-        </View>
-      </Pressable>
+      {isInitialized && !!sessionRecorder.config.showWidget && <SessionRecorderWidget />}
     </SessionRecorderContext.Provider>
   )
 }

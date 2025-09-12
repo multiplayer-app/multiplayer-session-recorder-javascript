@@ -1,12 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { ISession, SessionState } from '../types'
+import { logger } from '../utils'
 
 interface CacheData {
   sessionId: string | null
   sessionType: SessionType | null
   sessionState: SessionState | null
   sessionObject: ISession | null
+  floatingButtonPosition: { x: number; y: number } | null
 }
 
 export class StorageService {
@@ -14,29 +16,42 @@ export class StorageService {
   private static readonly SESSION_TYPE_KEY = 'session_type'
   private static readonly SESSION_STATE_KEY = 'session_state'
   private static readonly SESSION_OBJECT_KEY = 'session_object'
+  private static readonly FLOATING_BUTTON_POSITION_KEY = 'floating_button_position'
 
   private static cache: CacheData = {
     sessionId: null,
     sessionType: null,
     sessionState: null,
     sessionObject: null,
+    floatingButtonPosition: null,
   }
 
   private static cacheInitialized = false
+  private static instance: StorageService | null = null
+  private static positionSaveTimeout: NodeJS.Timeout | null = null
 
-  constructor() {
-    StorageService.initialize()
+  private constructor() {
+    // Private constructor for singleton
+  }
+
+  static getInstance(): StorageService {
+    if (!StorageService.instance) {
+      StorageService.instance = new StorageService()
+      StorageService.initialize()
+    }
+    return StorageService.instance
   }
 
   private static async initializeCache(): Promise<void> {
     if (StorageService.cacheInitialized) return
 
     try {
-      const [sessionId, sessionType, sessionState, sessionObject] = await Promise.all([
+      const [sessionId, sessionType, sessionState, sessionObject, floatingButtonPosition] = await Promise.all([
         AsyncStorage.getItem(StorageService.SESSION_ID_KEY),
         AsyncStorage.getItem(StorageService.SESSION_TYPE_KEY),
         AsyncStorage.getItem(StorageService.SESSION_STATE_KEY),
         AsyncStorage.getItem(StorageService.SESSION_OBJECT_KEY),
+        AsyncStorage.getItem(StorageService.FLOATING_BUTTON_POSITION_KEY),
       ])
 
       StorageService.cache = {
@@ -44,6 +59,7 @@ export class StorageService {
         sessionType: sessionType as SessionType | null,
         sessionState: sessionState as SessionState | null,
         sessionObject: sessionObject ? JSON.parse(sessionObject) : null,
+        floatingButtonPosition: floatingButtonPosition ? JSON.parse(floatingButtonPosition) : null,
       }
       StorageService.cacheInitialized = true
     } catch (error) {
@@ -121,6 +137,7 @@ export class StorageService {
     try {
       // Clear cache immediately
       StorageService.cache = {
+        ...StorageService.cache,
         sessionId: null,
         sessionType: null,
         sessionState: null,
@@ -142,13 +159,37 @@ export class StorageService {
     }
   }
 
-  getAllSessionData(): CacheData {
+  getAllSessionData(): Omit<CacheData, 'floatingButtonPosition'> {
     return {
       sessionId: StorageService.cache.sessionId,
       sessionType: StorageService.cache.sessionType,
       sessionState: StorageService.cache.sessionState,
       sessionObject: StorageService.cache.sessionObject,
     }
+  }
+
+  saveFloatingButtonPosition(position: { x: number; y: number }): void {
+    try {
+      StorageService.cache.floatingButtonPosition = position
+
+      // Debounce AsyncStorage writes to avoid excessive I/O
+      if (StorageService.positionSaveTimeout) {
+        clearTimeout(StorageService.positionSaveTimeout)
+      }
+
+      StorageService.positionSaveTimeout = setTimeout(() => {
+        AsyncStorage.setItem(StorageService.FLOATING_BUTTON_POSITION_KEY, JSON.stringify(position)).catch(error => {
+          logger.error('StorageService', 'Failed to persist floating button position', error)
+        })
+      }, 100) // 100ms debounce
+    } catch (error) {
+      logger.error('StorageService', 'Failed to save floating button position', error)
+      throw error
+    }
+  }
+
+  getFloatingButtonPosition(): { x: number; y: number } | null {
+    return StorageService.cache.floatingButtonPosition
   }
 
   // Initialize cache on first use - call this method when the service is first used

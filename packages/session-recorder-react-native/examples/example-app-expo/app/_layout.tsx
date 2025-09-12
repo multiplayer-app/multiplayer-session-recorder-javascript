@@ -4,31 +4,26 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import 'react-native-reanimated'
 
 import { useColorScheme } from '@/hooks/use-color-scheme'
-import { SessionRecorderProvider } from '@multiplayer-app/session-recorder-react-native'
+import { SessionRecorderProvider, SessionRecorder } from '@multiplayer-app/session-recorder-react-native'
 
 export const unstable_settings = {
   anchor: '(tabs)'
 }
+//eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnRlZ3JhdGlvbiI6IjY4YzNjYjE4NTk1NTcwNjMwYzI0NWJkNCIsIndvcmtzcGFjZSI6IjY0OTFjMmU5OGExYTIyMTM2MzM0MzRiYyIsInByb2plY3QiOiI2OGMzY2FhOTU1MGM5YjkwNTgxMmM1ZDYiLCJ0eXBlIjoiT1RFTCIsImlhdCI6MTc1NzY2MTk3Nn0.u4jruzv_zEL9fQMSv748So29OvR5M_itEENb57Yga2c
 
 const sessionRecorderOptions = {
   version: '0.0.1',
   application: 'react-native-app',
   environment: 'development',
   apiKey:
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnRlZ3JhdGlvbiI6IjY4NGZlMDljMjA0NmYwYjM0ZjU5ZDNjYyIsIndvcmtzcGFjZSI6IjY4NGMzYmYwYjQ2MGUzMmY3YWJmZjRlMSIsInByb2plY3QiOiI2ODRjM2M0MmI0NjBlMzJmN2FiZmY1YzgiLCJ0eXBlIjoiT1RFTCIsImlhdCI6MTc1MDA2NTMwOH0.F15dW5RUHtq4-e2FUZD_vK0FJ5USs8SRFbnPYO_0XVk',
-  apiBaseUrl: 'http://localhost',
-  exporterEndpoint: 'http://localhost/v1/traces',
-  showWidget: true,
-  ignoreUrls: [
-    /posthog\.com.*/,
-    /https:\/\/bam\.nr-data\.net\/.*/,
-    /https:\/\/cdn\.jsdelivr\.net\/.*/,
-    /https:\/\/pixel\.source\.app\/.*/
-  ],
-  propagateTraceHeaderCorsUrls: new RegExp(`${process.env.REACT_APP_API_BASE_URL}\.*`, 'i'),
-  sampleTraceRatio: 0.3,
-  schemifyDocSpanPayload: true
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnRlZ3JhdGlvbiI6IjY4YzNjYWY5MmU4OTc2NzgzM2ZhODJiZSIsIndvcmtzcGFjZSI6IjY0OTFjMmU5OGExYTIyMTM2MzM0MzRiYyIsInByb2plY3QiOiI2OGMzY2FhOTU1MGM5YjkwNTgxMmM1ZDYiLCJ0eXBlIjoiT1RFTCIsImlhdCI6MTc1NzY2MTk0NX0.QYEypr9khgFsuCGgCoTa-RNnhG3HDeYbt_AAW7eRZSw',
+  showWidget: true
 }
+
+SessionRecorder.setSessionAttributes({
+  userName: 'John Doe',
+  userId: '12345'
+})
 
 export default function RootLayout() {
   const colorScheme = useColorScheme()

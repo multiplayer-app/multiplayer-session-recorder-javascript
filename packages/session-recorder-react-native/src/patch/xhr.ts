@@ -30,8 +30,6 @@ function _tryReadXHRBody({
   body: any | null | undefined
   url: string | URL | RequestInfo
 }): string | null {
-  // console.log('--------------------------------')
-  // console.log('DEBUGGER_LIB', 'Trying to read XHR body', { url, body })
 
   if (isNullish(body)) {
     return null
@@ -41,12 +39,9 @@ function _tryReadXHRBody({
     return body
   }
 
-
   if (isFormData(body)) {
     return formDataToQuery(body)
   }
-
-
 
   if (isObject(body)) {
     try {
@@ -108,7 +103,6 @@ function _tryReadXHRBody({
       if (xhr.readyState !== xhr.DONE) {
         return
       }
-
 
       // @ts-ignore
       const responseHeaders: Record<string, string> = {}
