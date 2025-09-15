@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { View, Text, Pressable, Switch, Alert } from 'react-native'
+import { View, Text, Pressable, Alert, Switch } from 'react-native'
 import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { WidgetTextOverridesConfig } from '../../types'
 import { sharedStyles } from './styles'

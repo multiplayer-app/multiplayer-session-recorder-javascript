@@ -18,7 +18,7 @@ export class ScreenRecorder implements EventRecorder {
   private captureInterval?: NodeJS.Timeout
   private captureCount: number = 0
   private maxCaptures: number = 100 // Limit captures to prevent memory issues
-  private captureQuality: number = 0.3
+  private captureQuality: number = 0.1
   private captureFormat: 'png' | 'jpg' = 'jpg'
   private screenDimensions: { width: number; height: number } | null = null
   private currentScreen: string | null = null
@@ -451,7 +451,7 @@ export class ScreenRecorder implements EventRecorder {
   // Get current configuration
   getConfiguration(): Record<string, any> {
     return {
-      captureInterval: this.captureInterval ? 5000 : 0, // Default 5 seconds
+      captureInterval: this.captureInterval ? 2000 : 0, // Default 5 seconds
       captureQuality: this.captureQuality,
       captureFormat: this.captureFormat,
       maxCaptures: this.maxCaptures,

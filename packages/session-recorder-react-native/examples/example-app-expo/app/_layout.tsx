@@ -21,7 +21,7 @@ const sessionRecorderOptions = {
 }
 
 SessionRecorder.setSessionAttributes({
-  userName: 'John Doe',
+  userName: 'Gegham Khachatryan',
   userId: '12345'
 })
 
@@ -35,6 +35,7 @@ export default function RootLayout() {
           <Stack.Screen name='(tabs)' options={{ headerShown: false }} />
           <Stack.Screen name='user/[id]' options={{ headerShown: false }} />
           <Stack.Screen name='user-posts/[id]' options={{ headerShown: false }} />
+          <Stack.Screen name='post/[id]' options={{ headerShown: false }} />
           <Stack.Screen name='modal' options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
         <StatusBar style='auto' />

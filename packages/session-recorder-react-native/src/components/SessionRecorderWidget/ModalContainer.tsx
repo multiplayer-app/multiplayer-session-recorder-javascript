@@ -118,15 +118,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: MODAL_HEIGHT,
+    height: 'auto',
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    elevation: 10,
-    shadowColor: 'white',
-    shadowOffset: { width: 0, height: MODAL_HEIGHT - 20 },
-    shadowOpacity: 1,
-    shadowRadius: 0
+    borderTopRightRadius: 20
   }
 })
 

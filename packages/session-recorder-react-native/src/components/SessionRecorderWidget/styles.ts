@@ -16,7 +16,7 @@ export const sharedStyles = StyleSheet.create({
     shadowColor: '#e3ecfd',
     shadowOffset: { width: 0, height: 10, },
     shadowOpacity: 1,
-    shadowRadius: 10,
+    shadowRadius: 5,
     elevation: 3,
   },
   modalHandle: {
@@ -48,34 +48,34 @@ export const sharedStyles = StyleSheet.create({
   },
   popoverBody: {
     flex: 1,
-    padding: 16
+    padding: 16,
+    paddingTop: 32,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2d3748',
     marginBottom: 12
   },
   description: {
-    fontSize: 16,
-    color: '#6B7280',
-    lineHeight: 24,
+    fontSize: 14,
+    color: '#718096',
     marginBottom: 24
   },
   popoverFooter: {
     marginTop: 'auto',
-    paddingTop: 20
+    paddingTop: 48
   },
   actionButton: {
     paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center'
   },
   actionButtonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '600'
+    fontWeight: '500'
   },
 
   // Continuous recording styles
@@ -86,8 +86,15 @@ export const sharedStyles = StyleSheet.create({
     marginBottom: 20,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8
+    borderWidth: 1,
+    borderColor: '#e1e8f1',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 3,
   },
   continuousRecordingLabel: {
     fontSize: 16,
@@ -132,12 +139,12 @@ export const sharedStyles = StyleSheet.create({
 
   // Button color variants
   startButton: {
-    backgroundColor: '#007AFF'
+    backgroundColor: '#473cfb'
   },
   stopButton: {
-    backgroundColor: '#FF4444'
+    backgroundColor: '#473cfb'
   },
   saveButton: {
-    backgroundColor: '#34C759'
+    backgroundColor: '#473cfb'
   }
 })

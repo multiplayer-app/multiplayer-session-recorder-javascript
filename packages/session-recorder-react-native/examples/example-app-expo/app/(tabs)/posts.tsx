@@ -42,7 +42,7 @@ export default function PostsScreen() {
   }
 
   const handlePostPress = (post: Post) => {
-    router.push(`/user/${post.userId}`)
+    router.push(`/post/${post.id}`)
   }
 
   const renderPost = ({ item }: { item: Post }) => (
@@ -93,7 +93,7 @@ export default function PostsScreen() {
     <SafeAreaView style={styles.container}>
       <ThemedView style={styles.header}>
         <ThemedText type='title'>Posts</ThemedText>
-        <ThemedText style={styles.subtitle}>Tap on a post to view details or navigate to user</ThemedText>
+        <ThemedText style={styles.subtitle}>Tap on a post to view details</ThemedText>
       </ThemedView>
 
       <FlatList

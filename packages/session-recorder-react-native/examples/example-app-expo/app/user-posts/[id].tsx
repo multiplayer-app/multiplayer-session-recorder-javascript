@@ -66,10 +66,13 @@ export default function UserPostsScreen() {
   }
 
   const renderPost = ({ item }: { item: Post }) => (
-    <View style={[styles.postCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+    <TouchableOpacity
+      style={[styles.postCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}
+      onPress={() => router.push(`/post/${item.id}`)}
+    >
       <ThemedText style={styles.postTitle}>{item.title}</ThemedText>
       <ThemedText style={styles.postBody}>{item.body}</ThemedText>
-    </View>
+    </TouchableOpacity>
   )
 
   if (loading) {
