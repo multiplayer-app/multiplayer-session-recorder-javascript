@@ -18,11 +18,17 @@ export const getMaskingConfig = (masking?: MaskingConfig): MaskingConfig => {
   return {
     maskHeadersList,
     maskBodyFieldsList,
-    headersToInclude: isValidArray(masking.headersToInclude, baseMasking.headersToInclude ?? []),
-    headersToExclude: isValidArray(masking.headersToExclude, baseMasking.headersToExclude ?? []),
-    isContentMaskingEnabled: isValidBoolean(masking.isContentMaskingEnabled, baseMasking.isContentMaskingEnabled ?? true),
+    headersToInclude: isValidArray(masking.headersToInclude, baseMasking.headersToInclude),
+    headersToExclude: isValidArray(masking.headersToExclude, baseMasking.headersToExclude),
+    isContentMaskingEnabled: isValidBoolean(masking.isContentMaskingEnabled, baseMasking.isContentMaskingEnabled),
     maskBody: isValidFunction(masking.maskBody, mask(maskBodyFieldsList)),
     maskHeaders: isValidFunction(masking.maskHeaders, mask(maskHeadersList)),
-    inputMasking: isValidBoolean(masking.inputMasking, baseMasking.inputMasking ?? true),
+    // Screen masking options
+    maskTextInputs: isValidBoolean(masking.maskTextInputs, baseMasking.maskTextInputs),
+    maskImages: isValidBoolean(masking.maskImages, baseMasking.maskImages),
+    maskButtons: isValidBoolean(masking.maskButtons, baseMasking.maskButtons),
+    maskLabels: isValidBoolean(masking.maskLabels, baseMasking.maskLabels),
+    maskWebViews: isValidBoolean(masking.maskWebViews, baseMasking.maskWebViews),
+    maskSandboxedViews: isValidBoolean(masking.maskSandboxedViews, baseMasking.maskSandboxedViews),
   }
 }

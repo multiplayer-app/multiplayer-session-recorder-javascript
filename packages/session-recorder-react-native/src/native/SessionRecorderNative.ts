@@ -1,10 +1,20 @@
 import { NativeModules } from 'react-native'
 
 export interface MaskingOptions {
-  /** Quality of the captured image (0.1 to 1.0) */
+  /** Quality of the captured image (0.1 to 1.0, default: 0.3 for smaller file size) */
   quality?: number
-  /** Whether to mask all input fields automatically */
-  inputMasking?: boolean
+  /** Whether to mask text inputs (UITextField, UITextView, React Native text components) */
+  maskTextInputs?: boolean
+  /** Whether to mask images (UIImageView, React Native Image components) */
+  maskImages?: boolean
+  /** Whether to mask buttons (UIButton) */
+  maskButtons?: boolean
+  /** Whether to mask labels (UILabel) */
+  maskLabels?: boolean
+  /** Whether to mask web views (WKWebView) */
+  maskWebViews?: boolean
+  /** Whether to mask sandboxed views (system views that don't belong to current process) */
+  maskSandboxedViews?: boolean
 }
 
 

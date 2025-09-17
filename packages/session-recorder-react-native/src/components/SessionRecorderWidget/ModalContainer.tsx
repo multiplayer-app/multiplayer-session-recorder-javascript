@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Animated, Pressable, StyleSheet, Dimensions, Modal, SafeAreaView } from 'react-native'
+import { Animated, Pressable, StyleSheet, Dimensions, Modal } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')

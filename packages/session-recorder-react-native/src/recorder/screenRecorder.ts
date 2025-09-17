@@ -41,10 +41,7 @@ export class ScreenRecorder implements EventRecorder {
     // Initialize masking configuration
     this.maskingConfig = {
       enabled: true,
-      inputMasking: this.config?.masking?.inputMasking ?? true,
-      defaultOptions: {
-        quality: this.captureQuality,
-      },
+      ...this.config.masking,
     }
 
     // Update the masking service configuration

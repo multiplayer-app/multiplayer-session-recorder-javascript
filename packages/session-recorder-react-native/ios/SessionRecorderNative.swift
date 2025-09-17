@@ -1,8 +1,47 @@
 import UIKit
 import React
+import WebKit
 
 @objc(SessionRecorderNative)
 class SessionRecorderNative: NSObject {
+
+  // Configuration options
+  private var maskTextInputs: Bool = true
+  private var maskImages: Bool = false
+  private var maskButtons: Bool = false
+  private var maskLabels: Bool = false
+  private var maskWebViews: Bool = false
+  private var maskSandboxedViews: Bool = false
+  private var imageQuality: CGFloat = 0.1
+
+  // React Native view types
+  private let reactNativeTextView: AnyClass? = NSClassFromString("RCTTextView")
+  private let reactNativeImageView: AnyClass? = NSClassFromString("RCTImageView")
+  private let reactNativeTextInput: AnyClass? = NSClassFromString("RCTUITextField")
+  private let reactNativeTextInputView: AnyClass? = NSClassFromString("RCTUITextView")
+
+  // System sandboxed views (usually sensitive)
+  private let systemSandboxedView: AnyClass? = NSClassFromString("_UIRemoteView")
+
+  // SwiftUI view types
+  private let swiftUITextBasedViewTypes = [
+    "SwiftUI.CGDrawingView", // Text, Button
+    "SwiftUI.TextEditorTextView", // TextEditor
+    "SwiftUI.VerticalTextView", // TextField, vertical axis
+  ].compactMap(NSClassFromString)
+
+  private let swiftUIImageLayerTypes = [
+    "SwiftUI.ImageLayer",
+  ].compactMap(NSClassFromString)
+
+  private let swiftUIGenericTypes = [
+    "_TtC7SwiftUIP33_A34643117F00277B93DEBAB70EC0697122_UIShapeHitTestingView",
+  ].compactMap(NSClassFromString)
+
+  // Safe layer types that shouldn't be masked
+  private let swiftUISafeLayerTypes: [AnyClass] = [
+    "SwiftUI.GradientLayer", // Views like LinearGradient, RadialGradient, or AngularGradient
+  ].compactMap(NSClassFromString)
 
   @objc func captureAndMask(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.main.async {
@@ -24,7 +63,7 @@ class SessionRecorderNative: NSObject {
       // Apply masking to sensitive elements
       let maskedImage = self.applyMasking(to: image, in: window)
 
-      if let data = maskedImage.jpegData(compressionQuality: 0.5) {
+      if let data = maskedImage.jpegData(compressionQuality: self.imageQuality) {
         let base64 = data.base64EncodedString()
         resolve(base64)
       } else {
@@ -35,6 +74,9 @@ class SessionRecorderNative: NSObject {
 
   @objc func captureAndMaskWithOptions(_ options: NSDictionary, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.main.async {
+      // Update configuration from options
+      self.updateConfiguration(from: options)
+
       guard let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) else {
         reject("NO_WINDOW", "Unable to get key window", nil)
         return
@@ -53,12 +95,36 @@ class SessionRecorderNative: NSObject {
       // Apply masking with custom options
       let maskedImage = self.applyMaskingWithOptions(to: image, in: window, options: options)
 
-      if let data = maskedImage.jpegData(compressionQuality: 0.5) {
+      if let data = maskedImage.jpegData(compressionQuality: self.imageQuality) {
         let base64 = data.base64EncodedString()
         resolve(base64)
       } else {
         reject("ENCODING_FAILED", "Failed to encode image", nil)
       }
+    }
+  }
+
+  private func updateConfiguration(from options: NSDictionary) {
+    if let maskTextInputs = options["maskTextInputs"] as? Bool {
+      self.maskTextInputs = maskTextInputs
+    }
+    if let maskImages = options["maskImages"] as? Bool {
+      self.maskImages = maskImages
+    }
+    if let maskSandboxedViews = options["maskSandboxedViews"] as? Bool {
+      self.maskSandboxedViews = maskSandboxedViews
+    }
+    if let maskButtons = options["maskButtons"] as? Bool {
+      self.maskButtons = maskButtons
+    }
+    if let maskLabels = options["maskLabels"] as? Bool {
+      self.maskLabels = maskLabels
+    }
+    if let maskWebViews = options["maskWebViews"] as? Bool {
+      self.maskWebViews = maskWebViews
+    }
+    if let quality = options["quality"] as? NSNumber {
+      self.imageQuality = CGFloat(quality.floatValue)
     }
   }
 
@@ -73,23 +139,26 @@ class SessionRecorderNative: NSObject {
     // Draw the original image
     image.draw(in: CGRect(origin: .zero, size: image.size))
 
-    // Find and mask sensitive elements
-    let sensitiveElements = findSensitiveElements(in: window)
 
-    for element in sensitiveElements {
-      let frame = element.frame
-      let maskingType = getMaskingType(for: element)
+    var maskableWidgets: [CGRect] = []
+    var maskChildren = false
+    findMaskableWidgets(window, window, &maskableWidgets, &maskChildren)
 
-      switch maskingType {
-      case .blur:
-        applyBlurMask(in: context, frame: frame)
-      case .rectangle:
-        applyRectangleMask(in: context, frame: frame)
-      case .pixelate:
-        applyPixelateMask(in: context, frame: frame, image: image)
-      case .none:
-        break
+    for frame in maskableWidgets {
+      // Skip zero rects (which indicate invalid coordinates)
+      if frame == CGRect.zero { continue }
+
+      // Validate frame dimensions before processing
+      guard frame.size.width.isFinite && frame.size.height.isFinite &&
+            frame.origin.x.isFinite && frame.origin.y.isFinite else {
+        continue
       }
+
+      // Clip the frame to the image bounds to avoid drawing outside context
+      let clippedFrame = frame.intersection(CGRect(origin: .zero, size: image.size))
+      if clippedFrame.isNull || clippedFrame.isEmpty { continue }
+
+      applyCleanMask(in: context, frame: clippedFrame)
     }
 
     let maskedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
@@ -98,102 +167,306 @@ class SessionRecorderNative: NSObject {
     return maskedImage
   }
 
-  private func findSensitiveElements(in view: UIView) -> [UIView] {
-    var sensitiveElements: [UIView] = []
+  private func findMaskableWidgets(_ view: UIView, _ window: UIWindow, _ maskableWidgets: inout [CGRect], _ maskChildren: inout Bool) {
+    // Skip hidden or transparent views
+    if !view.isVisible() {
+      return
+    }
 
-    func traverseView(_ view: UIView) {
-      // Check if this view should be masked
-      if shouldMaskView(view) {
-        sensitiveElements.append(view)
-      }
-
-      // Recursively check subviews
-      for subview in view.subviews {
-        traverseView(subview)
+    // Check for UITextView (TextEditor, SwiftUI.TextEditorTextView, SwiftUI.UIKitTextView)
+    if let textView = view as? UITextView {
+      if isTextViewSensitive(textView) {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
       }
     }
 
-    traverseView(view)
-    return sensitiveElements
+    // Check for UITextField (SwiftUI: TextField, SecureField)
+    if let textField = view as? UITextField {
+      if isTextFieldSensitive(textField) {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    // React Native text views
+    if let reactNativeTextView = reactNativeTextView {
+      if view.isKind(of: reactNativeTextView), maskTextInputs {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    // React Native text inputs
+    if let reactNativeTextInput = reactNativeTextInput {
+      if view.isKind(of: reactNativeTextInput), maskTextInputs {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    if let reactNativeTextInputView = reactNativeTextInputView {
+      if view.isKind(of: reactNativeTextInputView), maskTextInputs {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    // UIImageView (SwiftUI: Some control images like the ones in Picker view)
+    if let imageView = view as? UIImageView {
+      if isImageViewSensitive(imageView) {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    // React Native image views
+    if let reactNativeImageView = reactNativeImageView {
+      if view.isKind(of: reactNativeImageView), maskImages {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    // UILabel (Text, this code might never be reachable in SwiftUI)
+    if let label = view as? UILabel {
+      if isLabelSensitive(label) {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    // WKWebView (Link, this code might never be reachable in SwiftUI)
+    if let webView = view as? WKWebView {
+      if isAnyInputSensitive(webView) {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    // UIButton (SwiftUI: SwiftUI.UIKitIconPreferringButton and other subclasses)
+    if let button = view as? UIButton {
+      if isButtonSensitive(button) {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    // UISwitch (SwiftUI: Toggle)
+    if let theSwitch = view as? UISwitch {
+      if isSwitchSensitive(theSwitch) {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    // UIPickerView (SwiftUI: Picker with .pickerStyle(.wheel))
+    if let picker = view as? UIPickerView {
+      if isTextInputSensitive(picker), !view.subviews.isEmpty {
+        maskableWidgets.append(picker.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    // Detect any views that don't belong to the current process (likely system views)
+    if maskSandboxedViews,
+       let systemSandboxedView,
+       view.isKind(of: systemSandboxedView) {
+      maskableWidgets.append(view.toAbsoluteRect(window))
+      return
+    }
+
+    let hasSubViews = !view.subviews.isEmpty
+
+    // SwiftUI: Text based views like Text, Button, TextEditor
+    if swiftUITextBasedViewTypes.contains(where: view.isKind(of:)) {
+      if isTextInputSensitive(view), !hasSubViews {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    // SwiftUI: Image based views like Image, AsyncImage
+    if swiftUIImageLayerTypes.contains(where: view.layer.isKind(of:)) {
+      if isSwiftUIImageSensitive(view), !hasSubViews {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    // Generic SwiftUI types
+    if swiftUIGenericTypes.contains(where: { view.isKind(of: $0) }), !isSwiftUILayerSafe(view.layer) {
+      if isTextInputSensitive(view), !hasSubViews {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+    }
+
+    // Recursively check subviews
+    if !view.subviews.isEmpty {
+      for child in view.subviews {
+        if !child.isVisible() {
+          continue
+        }
+        findMaskableWidgets(child, window, &maskableWidgets, &maskChildren)
+      }
+    }
+    maskChildren = false
   }
 
-  private func shouldMaskView(_ view: UIView) -> Bool {
-    // Check for UITextField - mask all text fields when inputMasking is enabled
-    if view is UITextField {
+  // MARK: - Sensitive Content Detection Methods
+
+  private func isAnyInputSensitive(_ view: UIView) -> Bool {
+    return isTextInputSensitive(view) || maskImages
+  }
+
+  private func isTextInputSensitive(_ view: UIView) -> Bool {
+    return maskTextInputs || view.isNoCapture()
+  }
+
+  private func isLabelSensitive(_ view: UILabel) -> Bool {
+    return isTextInputSensitive(view) && hasText(view.text)
+  }
+
+  private func isButtonSensitive(_ view: UIButton) -> Bool {
+    return isTextInputSensitive(view) && hasText(view.titleLabel?.text)
+  }
+
+  private func isTextViewSensitive(_ view: UITextView) -> Bool {
+    return (isTextInputSensitive(view) || view.isSensitiveText()) && hasText(view.text)
+  }
+
+  private func isSwitchSensitive(_ view: UISwitch) -> Bool {
+    var containsText = true
+    if #available(iOS 14.0, *) {
+      containsText = hasText(view.title)
+    }
+    return isTextInputSensitive(view) && containsText
+  }
+
+  private func isTextFieldSensitive(_ view: UITextField) -> Bool {
+    return (isTextInputSensitive(view) || view.isSensitiveText()) && (hasText(view.text) || hasText(view.placeholder))
+  }
+
+  private func isSwiftUILayerSafe(_ layer: CALayer) -> Bool {
+    return swiftUISafeLayerTypes.contains(where: { layer.isKind(of: $0) })
+  }
+
+  private func hasText(_ text: String?) -> Bool {
+    if let text = text, !text.isEmpty {
+      return true
+    } else {
+      // if there's no text, there's nothing to mask
+      return false
+    }
+  }
+
+  private func isSwiftUIImageSensitive(_ view: UIView) -> Bool {
+    // No way of checking if this is an asset image or not
+    // No way of checking if there's actual content in the image or not
+    return maskImages || view.isNoCapture()
+  }
+
+  private func isImageViewSensitive(_ view: UIImageView) -> Bool {
+    // if there's no image, there's nothing to mask
+    guard let image = view.image else { return false }
+
+    // sensitive, regardless
+    if view.isNoCapture() {
       return true
     }
 
-    // Check for UITextView - mask all text views when inputMasking is enabled
-    if view is UITextView {
-      return true
+    // asset images are probably not sensitive
+    if isAssetsImage(image) {
+      return false
     }
 
-    return false
+    // symbols are probably not sensitive
+    if image.isSymbolImage {
+      return false
+    }
+
+    return maskImages
   }
 
-  private func getMaskingType(for view: UIView) -> MaskingType {
-    // Default masking type for all text inputs
-    return .rectangle
+  private func isAssetsImage(_ image: UIImage) -> Bool {
+    // https://github.com/daydreamboy/lldb_scripts#9-pimage
+    // do not mask if its an asset image, likely not PII anyway
+    return image.imageAsset?.value(forKey: "_containingBundle") != nil
+  }
+
+  private func applyCleanMask(in context: CGContext, frame: CGRect) {
+    // Final validation before drawing to prevent CoreGraphics NaN errors
+    guard frame.size.width.isFinite && frame.size.height.isFinite &&
+          frame.origin.x.isFinite && frame.origin.y.isFinite &&
+          frame.size.width > 0 && frame.size.height > 0 else {
+      return
+    }
+
+    // Clean, consistent solid color masking approach
+    // Use system gray colors that adapt to light/dark mode
+    context.setFillColor(UIColor.systemGray5.cgColor)
+    context.fill(frame)
+
+    // Add subtle border for visual definition
+    context.setStrokeColor(UIColor.systemGray4.cgColor)
+    context.setLineWidth(0.5)
+    context.stroke(frame)
   }
 
   private func applyBlurMask(in context: CGContext, frame: CGRect) {
-    // Create a blur effect
-    context.setFillColor(UIColor.black.withAlphaComponent(0.8).cgColor)
+    // Final validation before drawing to prevent CoreGraphics NaN errors
+    guard frame.size.width.isFinite && frame.size.height.isFinite &&
+          frame.origin.x.isFinite && frame.origin.y.isFinite &&
+          frame.size.width > 0 && frame.size.height > 0 else {
+      return
+    }
+
+    // Clean solid color masking
+    // Use a consistent gray color for consistent appearance
+    context.setFillColor(UIColor.systemGray5.cgColor)
     context.fill(frame)
 
-    // Add some noise to make it look blurred
-    context.setFillColor(UIColor.white.withAlphaComponent(0.3).cgColor)
-    for _ in 0..<20 {
-      let randomX = frame.origin.x + CGFloat.random(in: 0...frame.width)
-      let randomY = frame.origin.y + CGFloat.random(in: 0...frame.height)
-      let randomSize = CGFloat.random(in: 2...8)
-      context.fillEllipse(in: CGRect(x: randomX, y: randomY, width: randomSize, height: randomSize))
-    }
+    // Add subtle border for visual definition
+    context.setStrokeColor(UIColor.systemGray4.cgColor)
+    context.setLineWidth(1.0)
+    context.stroke(frame)
   }
 
   private func applyRectangleMask(in context: CGContext, frame: CGRect) {
-    // Simple rectangle fill
-    context.setFillColor(UIColor.gray.cgColor)
+    // Final validation before drawing to prevent CoreGraphics NaN errors
+    guard frame.size.width.isFinite && frame.size.height.isFinite &&
+          frame.origin.x.isFinite && frame.origin.y.isFinite &&
+          frame.size.width > 0 && frame.size.height > 0 else {
+      return
+    }
+
+    // Clean solid rectangle masking
+    context.setFillColor(UIColor.systemGray5.cgColor)
     context.fill(frame)
 
-    // Add some text-like pattern
-    context.setFillColor(UIColor.darkGray.cgColor)
-    let lineHeight: CGFloat = 4
-    let spacing: CGFloat = 8
-
-    for i in stride(from: frame.origin.y + spacing, to: frame.origin.y + frame.height - spacing, by: lineHeight + spacing) {
-      let lineWidth = CGFloat.random(in: frame.width * 0.3...frame.width * 0.8)
-      let lineX = frame.origin.x + CGFloat.random(in: 0...(frame.width - lineWidth))
-      context.fill(CGRect(x: lineX, y: i, width: lineWidth, height: lineHeight))
-    }
+    // Add subtle border
+    context.setStrokeColor(UIColor.systemGray4.cgColor)
+    context.setLineWidth(1.0)
+    context.stroke(frame)
   }
 
   private func applyPixelateMask(in context: CGContext, frame: CGRect, image: UIImage) {
-    // Create a pixelated effect
-    let pixelSize: CGFloat = 8
-    let pixelCountX = Int(frame.width / pixelSize)
-    let pixelCountY = Int(frame.height / pixelSize)
-
-    for x in 0..<pixelCountX {
-      for y in 0..<pixelCountY {
-        let pixelFrame = CGRect(
-          x: frame.origin.x + CGFloat(x) * pixelSize,
-          y: frame.origin.y + CGFloat(y) * pixelSize,
-          width: pixelSize,
-          height: pixelSize
-        )
-
-        // Use a random color for each pixel
-        let randomColor = UIColor(
-          red: CGFloat.random(in: 0...1),
-          green: CGFloat.random(in: 0...1),
-          blue: CGFloat.random(in: 0...1),
-          alpha: 1.0
-        )
-        context.setFillColor(randomColor.cgColor)
-        context.fill(pixelFrame)
-      }
+    // Final validation before drawing to prevent CoreGraphics NaN errors
+    guard frame.size.width.isFinite && frame.size.height.isFinite &&
+          frame.origin.x.isFinite && frame.origin.y.isFinite &&
+          frame.size.width > 0 && frame.size.height > 0 else {
+      return
     }
+
+    // Clean solid color masking (consistent with other methods)
+    context.setFillColor(UIColor.systemGray5.cgColor)
+    context.fill(frame)
+
+    // Add subtle border
+    context.setStrokeColor(UIColor.systemGray4.cgColor)
+    context.setLineWidth(1.0)
+    context.stroke(frame)
   }
 }
 
@@ -202,4 +475,84 @@ private enum MaskingType {
   case rectangle
   case pixelate
   case none
+}
+
+
+extension UIView {
+  func isVisible() -> Bool {
+    // Check for NaN values in frame dimensions
+    let frame = self.frame
+    let width = frame.size.width
+    let height = frame.size.height
+
+    // Validate that dimensions are finite numbers (not NaN or infinite)
+    guard width.isFinite && height.isFinite else {
+      return false
+    }
+
+    return !isHidden && alpha > 0.01 && width > 0 && height > 0
+  }
+
+  func toAbsoluteRect(_ window: UIWindow) -> CGRect {
+    let bounds = self.bounds
+
+    // Validate bounds before conversion to prevent NaN values
+    guard bounds.size.width.isFinite && bounds.size.height.isFinite &&
+          bounds.origin.x.isFinite && bounds.origin.y.isFinite else {
+      // Return a zero rect if bounds contain NaN values
+      return CGRect.zero
+    }
+
+    let convertedRect = convert(bounds, to: window)
+
+    // Validate the converted rect to ensure no NaN values were introduced
+    guard convertedRect.size.width.isFinite && convertedRect.size.height.isFinite &&
+          convertedRect.origin.x.isFinite && convertedRect.origin.y.isFinite else {
+      // Return a zero rect if conversion resulted in NaN values
+      return CGRect.zero
+    }
+
+    return convertedRect
+  }
+
+  func isNoCapture() -> Bool {
+    // Check for common patterns that indicate sensitive content
+
+
+    // Check accessibility label for sensitive keywords
+    if let accessibilityLabel = accessibilityLabel?.lowercased() {
+      let sensitiveKeywords = ["password", "secret", "private", "sensitive", "confidential"]
+      if sensitiveKeywords.contains(where: accessibilityLabel.contains) {
+        return true
+      }
+    }
+
+    // Check for secure text entry
+    if let textField = self as? UITextField {
+      return textField.isSecureTextEntry
+    }
+
+    // Check for password-related class names or accessibility identifiers
+    if let accessibilityIdentifier = accessibilityIdentifier?.lowercased() {
+      let sensitiveIdentifiers = ["password", "secret", "private", "sensitive", "confidential"]
+      if sensitiveIdentifiers.contains(where: accessibilityIdentifier.contains) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  func isSensitiveText() -> Bool {
+    // Check if this view contains sensitive text content
+    if let textField = self as? UITextField {
+      return textField.isSecureTextEntry || isNoCapture()
+    }
+
+    if let textView = self as? UITextView {
+      return isNoCapture()
+    }
+
+    return false
+  }
 }

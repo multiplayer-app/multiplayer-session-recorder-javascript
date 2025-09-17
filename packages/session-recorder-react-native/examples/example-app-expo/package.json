@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
-    "@multiplayer-app/session-recorder-react-native": "^0.0.1-beta.13",
+    "@multiplayer-app/session-recorder-react-native": "^0.0.1-beta.14",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",

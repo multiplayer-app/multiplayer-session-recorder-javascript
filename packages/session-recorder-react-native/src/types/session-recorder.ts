@@ -160,10 +160,31 @@ export interface MaskingConfig {
   /** List of headers to exclude from traces */
   headersToExclude?: string[]
 
-  /** Whether to mask all input fields during screen recording
+  // Screen masking options
+  /** Whether to mask text inputs (UITextField, UITextView, React Native text components)
    *  @default true
   */
-  inputMasking?: boolean
+  maskTextInputs?: boolean
+  /** Whether to mask images (UIImageView, React Native Image components)
+   *  @default false
+  */
+  maskImages?: boolean
+  /** Whether to mask buttons (UIButton)
+   *  @default false
+  */
+  maskButtons?: boolean
+  /** Whether to mask labels (UILabel)
+   *  @default false
+  */
+  maskLabels?: boolean
+  /** Whether to mask web views (WKWebView)
+   *  @default false
+  */
+  maskWebViews?: boolean
+  /** Whether to mask sandboxed views (system views that don't belong to current process)
+   *  @default true
+  */
+  maskSandboxedViews?: boolean
 }
 
 /**

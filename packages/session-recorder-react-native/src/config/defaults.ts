@@ -15,7 +15,7 @@ import {
 } from './constants'
 const { mask, sensitiveFields, sensitiveHeaders } = SessionRecorderSdk
 
-export const DEFAULT_MASKING_CONFIG: MaskingConfig = {
+export const DEFAULT_MASKING_CONFIG: Required<MaskingConfig> = {
   isContentMaskingEnabled: true,
   maskBody: mask(sensitiveFields),
   maskHeaders: mask(sensitiveHeaders),
@@ -23,7 +23,13 @@ export const DEFAULT_MASKING_CONFIG: MaskingConfig = {
   maskHeadersList: sensitiveHeaders,
   headersToInclude: [],
   headersToExclude: [],
-  inputMasking: true,
+  // Screen masking options
+  maskTextInputs: true,
+  maskImages: false,
+  maskLabels: false,
+  maskButtons: false,
+  maskWebViews: false,
+  maskSandboxedViews: false,
 }
 
 export const DEFAULT_WIDGET_TEXT_CONFIG: WidgetTextOverridesConfig = {

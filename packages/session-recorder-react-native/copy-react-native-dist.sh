@@ -5,6 +5,8 @@ set -e
 
 # Configuration
 SOURCE_DIR="./dist"
+SOURCE_DIR_IOS="./ios"
+SOURCE_DIR_ANDROID="./android"
 TARGET_DIR="./examples/example-app-expo/node_modules/@multiplayer-app/session-recorder-react-native"
 
 echo "📱 Copying React Native dist to sample Expo app..."
@@ -26,6 +28,8 @@ fi
 # Copy the dist folder
 echo "🔄 Copying dist folder..."
 cp -r "$SOURCE_DIR" "$TARGET_DIR/"
+cp -r "$SOURCE_DIR_IOS" "$TARGET_DIR/"
+cp -r "$SOURCE_DIR_ANDROID" "$TARGET_DIR/"
 
 
 echo "✅ Successfully copied dist folder to sample Expo app!"

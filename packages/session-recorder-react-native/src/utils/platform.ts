@@ -379,6 +379,6 @@ export const getNavigatorInfo = (): IResourceAttributes => {
     environment: platformInfo.isExpo ? 'expo' : 'react-native',
 
     // Additional platform attributes
-    ...getPlatformAttributes(),
+    // ...getPlatformAttributes(),
   }
 }

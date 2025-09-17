@@ -5,17 +5,33 @@ import { logger } from '../utils'
 export interface ScreenMaskingConfig {
   /** Whether screen masking is enabled */
   enabled: boolean
-  /** Whether to mask all input fields automatically */
-  inputMasking: boolean
-  /** Default masking options */
-  defaultOptions?: MaskingOptions
+  /** Whether to mask text inputs (UITextField, UITextView, React Native text components) */
+  maskTextInputs?: boolean
+  /** Whether to mask images (UIImageView, React Native Image components) */
+  maskImages?: boolean
+  /** Whether to mask buttons (UIButton) */
+  maskButtons?: boolean
+  /** Whether to mask labels (UILabel) */
+  maskLabels?: boolean
+  /** Whether to mask web views (WKWebView) */
+  maskWebViews?: boolean
+  /** Whether to mask sandboxed views (system views that don't belong to current process) */
+  maskSandboxedViews?: boolean
 }
 
 export class ScreenMaskingService {
   private config: ScreenMaskingConfig
   private isAvailable: boolean = false
 
-  constructor(config: ScreenMaskingConfig = { enabled: true, inputMasking: true }) {
+  constructor(config: ScreenMaskingConfig = {
+    enabled: true,
+    maskTextInputs: true,
+    maskImages: false,
+    maskButtons: false,
+    maskLabels: false,
+    maskWebViews: false,
+    maskSandboxedViews: false
+  }) {
     this.config = config
     this.checkAvailability()
   }
@@ -43,7 +59,7 @@ export class ScreenMaskingService {
   /**
    * Capture screen with masking applied
    */
-  async captureMaskedScreen(options?: MaskingOptions): Promise<string | null> {
+  async captureMaskedScreen(options: MaskingOptions): Promise<string | null> {
     if (!this.isAvailable || !this.config.enabled) {
       logger.warn('ScreenMaskingService', 'Screen masking is not available or disabled')
       return null
@@ -51,13 +67,9 @@ export class ScreenMaskingService {
 
     try {
       const maskingOptions: MaskingOptions = {
-        ...this.config.defaultOptions,
-        ...options,
-        inputMasking: this.config.inputMasking,
+        ...this.config, ...options,
       }
-
       const maskedImageBase64 = await SessionRecorderNative.captureAndMaskWithOptions(maskingOptions)
-      logger.info('ScreenMaskingService', 'Successfully captured masked screen')
       return maskedImageBase64
     } catch (error) {
       logger.error('ScreenMaskingService', 'Failed to capture masked screen:', error)
@@ -76,7 +88,6 @@ export class ScreenMaskingService {
 
     try {
       const maskedImageBase64 = await SessionRecorderNative.captureAndMask()
-      logger.info('ScreenMaskingService', 'Successfully captured masked screen (basic)')
       return maskedImageBase64
     } catch (error) {
       logger.error('ScreenMaskingService', 'Failed to capture masked screen (basic):', error)

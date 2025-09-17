@@ -106,7 +106,9 @@ export function createFullSnapshotEvent(
           {
             type: NodeType.Element,
             tagName: 'body',
-            attributes: {},
+            attributes: {
+              style: 'margin: 0; padding: 0; width: 100%; height: 100%;',
+            },
             childNodes: [rootNode],
             id: nodeIdCounter.current++,
           },

@@ -30,7 +30,7 @@ const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = () => {
 
   const onStartRecording = async (sessionType: SessionType) => {
     try {
-      instance.start(sessionType)
+      await instance.start(sessionType)
       closeModal()
     } catch (error) {
       Alert.alert('Error', 'Failed to start recording')

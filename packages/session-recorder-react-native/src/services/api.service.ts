@@ -104,12 +104,17 @@ export class ApiService {
     request: StartSessionRequest,
     signal?: AbortSignal,
   ): Promise<any> {
-    return this.makeRequest(
-      '/debug-sessions/start',
-      'POST',
-      request,
-      signal,
-    )
+    try {
+      const res = await this.makeRequest(
+        '/debug-sessions/start',
+        'POST',
+        request,
+        signal,
+      )
+      return res
+    } catch (error: any) {
+      throw error
+    }
   }
 
   /**

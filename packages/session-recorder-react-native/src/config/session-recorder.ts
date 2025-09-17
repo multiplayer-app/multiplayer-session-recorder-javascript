@@ -43,7 +43,7 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     schemifyDocSpanPayload: isValidBoolean(c.schemifyDocSpanPayload, BASE_CONFIG.schemifyDocSpanPayload),
     maxCapturingHttpPayloadSize: isValidNumber(c.maxCapturingHttpPayloadSize, BASE_CONFIG.maxCapturingHttpPayloadSize),
 
-    masking: getMaskingConfig(c.masking),
+
     captureBody: isValidBoolean(c.captureBody, BASE_CONFIG.captureBody),
     captureHeaders: isValidBoolean(c.captureHeaders, BASE_CONFIG.captureHeaders),
     widgetTextOverrides: getWidgetTextOverridesConfig(c.widgetTextOverrides, BASE_CONFIG.widgetTextOverrides),
@@ -51,5 +51,7 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     recordScreen: isValidBoolean(c.recordScreen, BASE_CONFIG.recordScreen),
     recordGestures: isValidBoolean(c.recordGestures, BASE_CONFIG.recordGestures),
     recordNavigation: isValidBoolean(c.recordNavigation, BASE_CONFIG.recordNavigation),
+
+    masking: getMaskingConfig(c.masking),
   }
 }

@@ -191,6 +191,7 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
     if (type === SessionType.CONTINUOUS && !this._configs?.showContinuousRecording) {
       type = SessionType.PLAIN
     }
+    logger.info('SessionRecorder', 'Starting session with type:', type)
     this.sessionType = type
     this._startRequestController = new AbortController()
     if (session) {
@@ -378,6 +379,7 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
       }
     } catch (error: any) {
       this.error = error.message
+      logger.error('SessionRecorder', 'Error creating session:', error.message)
       if (this.continuousRecording) {
         this.sessionType = SessionType.PLAIN
       }
