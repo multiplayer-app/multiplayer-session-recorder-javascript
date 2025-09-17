@@ -18,14 +18,15 @@ fi
 
 # Check if target directory exists
 if [ ! -d "$TARGET_DIR" ]; then
-    echo "❌ Target directory does not exist: $TARGET_DIR"
-    echo "💡 Please make sure the sample-expo-app is set up and has the package installed"
-    exit 1
+    echo "⚠️  Target directory does not exist: $TARGET_DIR"
+    echo "💡 Skipping script execution - please make sure the sample-expo-app is set up and has the package installed"
+    exit 0
 fi
 
 # Copy the dist folder
 echo "🔄 Copying dist folder..."
 cp -r "$SOURCE_DIR" "$TARGET_DIR/"
+
 
 echo "✅ Successfully copied dist folder to sample Expo app!"
 echo "📍 Source: $SOURCE_DIR"

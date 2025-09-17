@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-react-native",
-  "version": "0.0.1-beta.4",
+  "version": "0.0.1-beta.13",
   "description": "Multiplayer Fullstack Session Recorder for React Native",
   "author": {
     "name": "Multiplayer Software, Inc.",
@@ -40,7 +40,7 @@
   "scripts": {
     "clean": "rimraf dist",
     "prepublishOnly": "npm run build",
-    "build": "tsc && babel ./dist --out-dir dist --extensions '.js' && ./copy-react-native-dist.sh",
+    "build": "tsc && babel ./dist --out-dir dist --extensions '.js'",
     "generate-metadata": "node scripts/generate-app-metadata.js"
   },
   "devDependencies": {
@@ -88,5 +88,23 @@
   },
   "optionalDependencies": {
     "expo-constants": "^15.0.0"
+  },
+  "react-native": {
+    "ios": {
+      "podspecPath": "./SessionRecorderNative.podspec"
+    },
+    "android": {
+      "sourceDir": "./android",
+      "packageImportPath": "import com.multiplayer.sessionrecorder.SessionRecorderPackage;"
+    }
+  },
+  "expo": {
+    "ios": {
+      "podspecPath": "./SessionRecorderNative.podspec"
+    },
+    "android": {
+      "sourceDir": "./android",
+      "packageImportPath": "import com.multiplayer.sessionrecorder.SessionRecorderPackage;"
+    }
   }
 }

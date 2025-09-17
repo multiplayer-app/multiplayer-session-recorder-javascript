@@ -150,7 +150,6 @@ export interface MaskingConfig {
   /** Custom function for masking headers in traces */
   maskHeaders?: (headers: any, span: any) => any;
 
-
   /** List of body fields to mask in traces */
   maskBodyFieldsList?: string[]
   /** List of headers to mask in traces */
@@ -160,6 +159,11 @@ export interface MaskingConfig {
   headersToInclude?: string[]
   /** List of headers to exclude from traces */
   headersToExclude?: string[]
+
+  /** Whether to mask all input fields during screen recording
+   *  @default true
+  */
+  inputMasking?: boolean
 }
 
 /**
@@ -222,6 +226,8 @@ export interface RecorderConfig extends BaseConfig {
   recordNavigation?: boolean
   /** Whether to record screen */
   recordScreen?: boolean
+  /** Configuration for masking sensitive data in session recordings */
+  masking?: MaskingConfig
 }
 
 /**

@@ -5,14 +5,14 @@
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
-    "@multiplayer-app/session-recorder-react-native": "^0.0.1-beta.4",
+    "@multiplayer-app/session-recorder-react-native": "^0.0.1-beta.13",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
@@ -35,7 +35,7 @@
     "react-native-reanimated": "~4.1.0",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
-    "react-native-svg": "15.12.1",
+    "react-native-svg": "^15.13.0",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1"
   },

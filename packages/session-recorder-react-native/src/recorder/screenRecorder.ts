@@ -10,6 +10,7 @@ import {
   generateScreenHash,
   logger,
 } from '../utils'
+import { screenMaskingService, ScreenMaskingConfig } from '../services/screenMaskingService'
 
 export class ScreenRecorder implements EventRecorder {
   private config?: RecorderConfig
@@ -30,11 +31,24 @@ export class ScreenRecorder implements EventRecorder {
   private enableChangeDetection: boolean = true
   private hashSampleSize: number = 100
   private currentImageNodeId: number | null = null
+  private maskingConfig?: ScreenMaskingConfig
 
   init(config: RecorderConfig, eventRecorder?: EventRecorder): void {
     this.config = config
     this.eventRecorder = eventRecorder
     this._getScreenDimensions()
+
+    // Initialize masking configuration
+    this.maskingConfig = {
+      enabled: true,
+      inputMasking: this.config?.masking?.inputMasking ?? true,
+      defaultOptions: {
+        quality: this.captureQuality,
+      },
+    }
+
+    // Update the masking service configuration
+    screenMaskingService.updateConfig(this.maskingConfig)
   }
 
   start(): void {
@@ -135,6 +149,21 @@ export class ScreenRecorder implements EventRecorder {
 
   private async _captureScreenBase64(): Promise<string | null> {
     try {
+      // Try native masking first if available
+      if (screenMaskingService.isScreenMaskingAvailable()) {
+        logger.info('ScreenRecorder', 'Using native masking for screen capture')
+        const maskedImage = await screenMaskingService.captureMaskedScreen({
+          quality: this.captureQuality,
+        })
+
+        if (maskedImage) {
+          return maskedImage
+        }
+
+        logger.warn('ScreenRecorder', 'Native masking failed, falling back to view-shot')
+      }
+
+      // Fallback to react-native-view-shot
       if (!this.viewShotRef) {
         logger.warn('ScreenRecorder', 'ViewShot ref not available for screen capture')
         return null

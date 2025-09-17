@@ -23,6 +23,7 @@ export const DEFAULT_MASKING_CONFIG: MaskingConfig = {
   maskHeadersList: sensitiveHeaders,
   headersToInclude: [],
   headersToExclude: [],
+  inputMasking: true,
 }
 
 export const DEFAULT_WIDGET_TEXT_CONFIG: WidgetTextOverridesConfig = {

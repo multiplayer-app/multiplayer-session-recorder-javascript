@@ -23,5 +23,6 @@ export const getMaskingConfig = (masking?: MaskingConfig): MaskingConfig => {
     isContentMaskingEnabled: isValidBoolean(masking.isContentMaskingEnabled, baseMasking.isContentMaskingEnabled ?? true),
     maskBody: isValidFunction(masking.maskBody, mask(maskBodyFieldsList)),
     maskHeaders: isValidFunction(masking.maskHeaders, mask(maskHeadersList)),
+    inputMasking: isValidBoolean(masking.inputMasking, baseMasking.inputMasking ?? true),
   }
 }
