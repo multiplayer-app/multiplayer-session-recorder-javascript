@@ -1,22 +1,35 @@
 package com.multiplayer.sessionrecorder
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.graphics.*
+import android.os.Build
+import android.os.Handler
+import android.os.HandlerThread
 import android.util.Base64
+import android.view.PixelCopy
 import android.view.View
-import android.widget.EditText
-import android.widget.TextView
+import android.view.ViewGroup
+import android.view.Window
+import android.widget.*
+import android.webkit.WebView
 import com.facebook.react.bridge.*
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 class SessionRecorderModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
+
+    // Configuration object for masking behavior
+    private var config: SessionRecorderConfig = SessionRecorderConfig()
 
     override fun getName() = "SessionRecorderNative"
 
     @ReactMethod
     fun captureAndMask(promise: Promise) {
-        val activity = currentActivity ?: return promise.reject("NO_ACTIVITY", "No activity found")
+        val activity = reactApplicationContext.currentActivity ?: return promise.reject("NO_ACTIVITY", "No activity found")
 
         try {
             val maskedImage = captureAndMaskScreen(activity, null)
@@ -28,7 +41,7 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun captureAndMaskWithOptions(options: ReadableMap, promise: Promise) {
-        val activity = currentActivity ?: return promise.reject("NO_ACTIVITY", "No activity found")
+        val activity = reactApplicationContext.currentActivity ?: return promise.reject("NO_ACTIVITY", "No activity found")
 
         try {
             val maskedImage = captureAndMaskScreen(activity, options)
@@ -39,164 +52,440 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
     }
 
     private fun captureAndMaskScreen(activity: Activity, options: ReadableMap?): String {
+        // Update configuration from options
+        updateConfiguration(options)
+
         val rootView = activity.window.decorView.rootView
+        val window = activity.window
 
-        // Enable drawing cache
-        rootView.isDrawingCacheEnabled = true
-        rootView.buildDrawingCache()
+        // Use modern PixelCopy for API 24+ (Android 7.0+), fallback to drawing cache for older devices
+        val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            captureWithPixelCopy(rootView, window)
+        } else {
+            captureWithDrawingCache(rootView)
+        }
 
-        val bitmap = Bitmap.createBitmap(rootView.drawingCache)
-        rootView.isDrawingCacheEnabled = false
+        bitmap ?: throw RuntimeException("Failed to capture screen")
 
         // Apply masking
         val maskedBitmap = applyMasking(bitmap, rootView, options)
 
         // Convert to base64
         val output = ByteArrayOutputStream()
-        maskedBitmap.compress(Bitmap.CompressFormat.JPEG, 70, output)
+        val quality = (config.imageQuality * 100).toInt().coerceIn(1, 100)
+        maskedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)
         val base64 = Base64.encodeToString(output.toByteArray(), Base64.DEFAULT)
 
         return base64
+    }
+
+    @SuppressLint("NewApi")
+    private fun captureWithPixelCopy(rootView: View, window: Window): Bitmap? {
+        val bitmap = Bitmap.createBitmap(rootView.width, rootView.height, Bitmap.Config.ARGB_8888)
+        val latch = CountDownLatch(1)
+        var success = false
+
+        val thread = HandlerThread("SessionRecorderScreenshot")
+        thread.start()
+        val handler = Handler(thread.looper)
+
+        try {
+            PixelCopy.request(window, bitmap, { copyResult ->
+                try {
+                    success = copyResult == PixelCopy.SUCCESS
+                } catch (e: Exception) {
+                    success = false
+                } finally {
+                    latch.countDown()
+                }
+            }, handler)
+
+            // Wait for capture to complete (max 2 seconds)
+            latch.await(2, TimeUnit.SECONDS)
+
+            return if (success) bitmap else null
+        } catch (e: Exception) {
+            bitmap.recycle()
+            return null
+        } finally {
+            thread.quit()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun captureWithDrawingCache(rootView: View): Bitmap? {
+        return try {
+            // Enable drawing cache
+            rootView.isDrawingCacheEnabled = true
+            rootView.buildDrawingCache()
+
+            val bitmap = Bitmap.createBitmap(rootView.drawingCache)
+            rootView.isDrawingCacheEnabled = false
+            bitmap
+        } catch (e: Exception) {
+            rootView.isDrawingCacheEnabled = false
+            null
+        }
+    }
+
+    private fun updateConfiguration(options: ReadableMap?) {
+        options?.let { opts ->
+            config = SessionRecorderConfig(
+                maskTextInputs = if (opts.hasKey("maskTextInputs")) opts.getBoolean("maskTextInputs") else config.maskTextInputs,
+                maskImages = if (opts.hasKey("maskImages")) opts.getBoolean("maskImages") else config.maskImages,
+                maskButtons = if (opts.hasKey("maskButtons")) opts.getBoolean("maskButtons") else config.maskButtons,
+                maskWebViews = if (opts.hasKey("maskWebViews")) opts.getBoolean("maskWebViews") else config.maskWebViews,
+                imageQuality = if (opts.hasKey("quality")) opts.getDouble("quality").toFloat() else config.imageQuality,
+                noCaptureLabel = if (opts.hasKey("noCaptureLabel")) opts.getString("noCaptureLabel") ?: "no-capture" else config.noCaptureLabel
+            )
+        }
     }
 
     private fun applyMasking(bitmap: Bitmap, rootView: View, options: ReadableMap?): Bitmap {
         val maskedBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(maskedBitmap)
 
-        // Find sensitive elements
-        val sensitiveElements = findSensitiveElements(rootView)
+        // Find maskable widgets
+        val maskableWidgets = mutableListOf<Rect>()
+        findMaskableWidgets(rootView, rootView, maskableWidgets)
 
-        for (element in sensitiveElements) {
-            val location = IntArray(2)
-            element.getLocationOnScreen(location)
+        for (frame in maskableWidgets) {
+            // Skip zero rects (which indicate invalid coordinates)
+            if (frame.isEmpty) continue
 
-            val frame = Rect(
-                location[0],
-                location[1],
-                location[0] + element.width,
-                location[1] + element.height
+            // Validate frame dimensions before processing
+            if (!frame.isValid()) continue
+
+            // Clip the frame to the image bounds to avoid drawing outside context
+            val clippedFrame = Rect(
+                frame.left.coerceAtLeast(0),
+                frame.top.coerceAtLeast(0),
+                frame.right.coerceAtMost(bitmap.width),
+                frame.bottom.coerceAtMost(bitmap.height)
             )
 
-            val maskingType = getMaskingType(element)
+            if (clippedFrame.isEmpty) continue
 
-            when (maskingType) {
-                MaskingType.BLUR -> applyBlurMask(canvas, frame)
-                MaskingType.RECTANGLE -> applyRectangleMask(canvas, frame)
-                MaskingType.PIXELATE -> applyPixelateMask(canvas, frame)
-                MaskingType.NONE -> { /* No masking */ }
-            }
+            applyCleanMask(canvas, clippedFrame)
         }
 
         return maskedBitmap
     }
 
-    private fun findSensitiveElements(view: View): List<View> {
-        val sensitiveElements = mutableListOf<View>()
+    private fun findMaskableWidgets(
+        view: View,
+        rootView: View,
+        maskableWidgets: MutableList<Rect>,
+        visitedViews: MutableSet<Int> = mutableSetOf()
+    ) {
+        val viewId = System.identityHashCode(view)
 
-        fun traverseView(currentView: View) {
-            if (shouldMaskView(currentView)) {
-                sensitiveElements.add(currentView)
+        // Check for cycles to prevent stack overflow
+        if (viewId in visitedViews) {
+            return
+        }
+        visitedViews.add(viewId)
+
+        // Skip hidden or transparent views
+        if (!view.isVisible()) {
+            return
+        }
+
+        // Masking logic - clean and organized
+        when {
+            view is EditText && view.shouldMaskEditText() -> {
+                maskableWidgets.add(view.toAbsoluteRect(rootView))
+                return
             }
 
-            if (currentView is ViewGroup) {
-                for (i in 0 until currentView.childCount) {
-                    traverseView(currentView.getChildAt(i))
-                }
+            view is Button && view.shouldMaskButton() -> {
+                maskableWidgets.add(view.toAbsoluteRect(rootView))
+                return
+            }
+
+            view is ImageView && view.shouldMaskImage() -> {
+                maskableWidgets.add(view.toAbsoluteRect(rootView))
+                return
+            }
+
+            view is WebView && view.shouldMaskWebView() -> {
+                maskableWidgets.add(view.toAbsoluteRect(rootView))
+                return
             }
         }
 
-        traverseView(view)
-        return sensitiveElements
+
+        // Detect React Native views
+        if (isReactNativeView(view)) {
+            if (shouldMaskReactNativeView(view)) {
+                maskableWidgets.add(view.toAbsoluteRect(rootView))
+                return
+            }
+        }
+
+        // Recursively check subviews
+        if (view is ViewGroup) {
+            try {
+                val childCount = view.childCount
+                for (i in 0 until childCount) {
+                    try {
+                        val child = view.getChildAt(i)
+                        if (child != null && child.isVisible()) {
+                            findMaskableWidgets(child, rootView, maskableWidgets, visitedViews)
+                        }
+                    } catch (e: IndexOutOfBoundsException) {
+                        // Skip this child if it's no longer valid
+                        continue
+                    } catch (e: Exception) {
+                        // Skip this child if any other error occurs
+                        continue
+                    }
+                }
+            } catch (e: Exception) {
+                // If we can't iterate through children, just skip this view group
+                return
+            }
+        }
     }
 
-    private fun shouldMaskView(view: View): Boolean {
-        // Check for EditText - mask all text fields when inputMasking is enabled
-        if (view is EditText) {
-            return true
+    // MARK: - Sensitive Content Detection Methods
+
+    private fun View.isAnyInputSensitive(): Boolean {
+        return this.isTextInputSensitive() || config.maskImages
+    }
+
+    private fun View.isTextInputSensitive(): Boolean {
+        return config.maskTextInputs && this is EditText
+    }
+
+    // Masking methods for different view types
+    private fun Button.shouldMaskButton(): Boolean {
+        return config.maskButtons || this.isExplicitlyMasked(config.noCaptureLabel)
+    }
+
+    private fun ImageView.shouldMaskImage(): Boolean {
+        return config.maskImages || this.isExplicitlyMasked(config.noCaptureLabel)
+    }
+
+    private fun WebView.shouldMaskWebView(): Boolean {
+        return config.maskWebViews || this.isExplicitlyMasked(config.noCaptureLabel)
+    }
+
+    private fun EditText.shouldMaskEditText(): Boolean {
+        return this.isTextInputSensitive() || this.isExplicitlyMasked(config.noCaptureLabel)
+    }
+
+    // Check if view is explicitly marked as sensitive
+    private fun View.isExplicitlyMasked(noCaptureLabel: String = "no-capture"): Boolean {
+        return (tag as? String)?.lowercase()?.contains(noCaptureLabel.lowercase()) == true ||
+               contentDescription?.toString()?.lowercase()?.contains(noCaptureLabel.lowercase()) == true
+    }
+
+
+    private fun hasText(text: String?): Boolean {
+        return !text.isNullOrEmpty()
+    }
+
+    private fun isReactNativeView(view: View): Boolean {
+        // Check for React Native view class names
+        val className = view.javaClass.simpleName
+        return className.contains("React") || className.contains("RCT")
+    }
+
+    private fun shouldMaskReactNativeView(view: View): Boolean {
+        val className = view.javaClass.simpleName
+
+        // React Native text views
+        if (className.contains("TextInput") || className.contains("TextView")) {
+            return config.maskTextInputs
         }
 
-        // Check for TextView - mask all text views when inputMasking is enabled
-        if (view is TextView) {
-            return true
+        // React Native image views
+        if (className.contains("ImageView") || className.contains("Image")) {
+            return config.maskImages
         }
 
         return false
     }
 
-    private fun getMaskingType(view: View): MaskingType {
-        // Default masking type for all text inputs
-        return MaskingType.RECTANGLE
-    }
+    private fun applyCleanMask(canvas: Canvas, frame: Rect) {
+        // Final validation before drawing to prevent Canvas errors
+        if (!frame.isValid()) return
 
-    private fun applyBlurMask(canvas: Canvas, frame: Rect) {
+        // Clean, consistent solid color masking approach
+        // Use system gray colors that adapt to light/dark mode
         val paint = Paint().apply {
-            color = Color.BLACK
-            alpha = 200 // Semi-transparent
+            color = Color.parseColor("#F5F5F5") // Light gray background
         }
-
         canvas.drawRect(frame, paint)
 
-        // Add some noise to make it look blurred
-        paint.color = Color.WHITE
-        paint.alpha = 80
-
-        for (i in 0..20) {
-            val randomX = frame.left + (Math.random() * frame.width()).toFloat()
-            val randomY = frame.top + (Math.random() * frame.height()).toFloat()
-            val randomSize = (Math.random() * 6 + 2).toFloat()
-            canvas.drawCircle(randomX, randomY, randomSize, paint)
+        // Add subtle border for visual definition
+        paint.apply {
+            color = Color.parseColor("#E0E0E0") // Slightly darker gray border
+            style = Paint.Style.STROKE
+            strokeWidth = 1f
         }
-    }
-
-    private fun applyRectangleMask(canvas: Canvas, frame: Rect) {
-        val paint = Paint().apply {
-            color = Color.GRAY
-        }
-
         canvas.drawRect(frame, paint)
-
-        // Add some text-like pattern
-        paint.color = Color.DKGRAY
-        val lineHeight = 4f
-        val spacing = 8f
-
-        var y = frame.top + spacing
-        while (y < frame.bottom - spacing) {
-            val lineWidth = (Math.random() * frame.width() * 0.5 + frame.width() * 0.3).toFloat()
-            val x = frame.left + (Math.random() * (frame.width() - lineWidth)).toFloat()
-            canvas.drawRect(x, y, x + lineWidth, y + lineHeight, paint)
-            y += lineHeight + spacing
-        }
-    }
-
-    private fun applyPixelateMask(canvas: Canvas, frame: Rect) {
-        val pixelSize = 8f
-        val pixelCountX = (frame.width() / pixelSize).toInt()
-        val pixelCountY = (frame.height() / pixelSize).toInt()
-
-        val paint = Paint()
-
-        for (x in 0 until pixelCountX) {
-            for (y in 0 until pixelCountY) {
-                val pixelFrame = RectF(
-                    frame.left + x * pixelSize,
-                    frame.top + y * pixelSize,
-                    frame.left + (x + 1) * pixelSize,
-                    frame.top + (y + 1) * pixelSize
-                )
-
-                // Use a random color for each pixel
-                paint.color = Color.rgb(
-                    (Math.random() * 255).toInt(),
-                    (Math.random() * 255).toInt(),
-                    (Math.random() * 255).toInt()
-                )
-                canvas.drawRect(pixelFrame, paint)
-            }
-        }
     }
 
     private enum class MaskingType {
         BLUR, RECTANGLE, PIXELATE, NONE
     }
+}
+
+// Extension functions for View
+private fun View.isVisible(): Boolean {
+    try {
+        // Check for NaN values in dimensions
+        val width = width.toFloat()
+        val height = height.toFloat()
+
+        // Validate that dimensions are finite numbers (not NaN or infinite)
+        if (width.isNaN() || height.isNaN() || width.isInfinite() || height.isInfinite()) {
+            return false
+        }
+
+        return visibility == View.VISIBLE && alpha > 0.01f && width > 0 && height > 0
+    } catch (e: Exception) {
+        // If we can't determine visibility, assume it's not visible
+        return false
+    }
+}
+
+private fun View.isViewStateStableForMatrixOperations(): Boolean {
+    return try {
+        isAttachedToWindow &&
+            isLaidOut &&
+            // Check if view has valid dimensions
+            width > 0 && height > 0 &&
+            // Check if view is not in layout transition
+            !isInLayout &&
+            // Check if view doesn't have transient state (animations, etc.)
+            !hasTransientState() &&
+            // Check if view is not currently being animated
+            !isAnimationRunning() &&
+            // Check if view tree is not currently computing layout
+            !isComputingLayout() &&
+            // Check if view hierarchy is stable
+            rootView?.isAttachedToWindow == true
+    } catch (e: Throwable) {
+        // If any check fails, assume unstable state
+        false
+    }
+}
+
+private fun View.isAnimationRunning(): Boolean {
+    return try {
+        animation?.hasStarted() == true && animation?.hasEnded() != true
+    } catch (e: Throwable) {
+        false
+    }
+}
+
+private fun View.isComputingLayout(): Boolean {
+    return try {
+        // Check if direct parent ViewGroup is in layout
+        (parent as? ViewGroup)?.isInLayout == true
+    } catch (e: Throwable) {
+        false
+    }
+}
+
+private fun View.toAbsoluteRect(rootView: View): Rect {
+    try {
+        val location = IntArray(2)
+
+        // Use stable view state check before accessing location
+        if (isViewStateStableForMatrixOperations()) {
+            getLocationOnScreen(location)
+        } else {
+            // Use zero coordinates as fallback when view state is unstable
+            location[0] = 0
+            location[1] = 0
+        }
+
+        val rootLocation = IntArray(2)
+        rootView.getLocationOnScreen(rootLocation)
+
+        // Convert to relative coordinates within the root view
+        val relativeX = location[0] - rootLocation[0]
+        val relativeY = location[1] - rootLocation[1]
+
+        // Validate bounds before conversion to prevent NaN values
+        val width = this.width.toFloat()
+        val height = this.height.toFloat()
+
+        if (width.isNaN() || height.isNaN() || width.isInfinite() || height.isInfinite() ||
+            relativeX.toFloat().isNaN() || relativeY.toFloat().isNaN() ||
+            relativeX.toFloat().isInfinite() || relativeY.toFloat().isInfinite()) {
+            return Rect()
+        }
+
+        return Rect(
+            relativeX,
+            relativeY,
+            relativeX + width.toInt(),
+            relativeY + height.toInt()
+        )
+    } catch (e: Exception) {
+        // If we can't get the rect, return empty rect
+        return Rect()
+    }
+}
+
+private fun View.isNoCapture(): Boolean {
+    // Check for common patterns that indicate sensitive content
+
+    // Check content description for sensitive keywords
+    contentDescription?.toString()?.lowercase()?.let { desc ->
+        val sensitiveKeywords = listOf("password", "secret", "private", "sensitive", "confidential")
+        if (sensitiveKeywords.any { desc.contains(it) }) {
+            return true
+        }
+    }
+
+    // Check for secure text entry in EditText
+    if (this is EditText) {
+        val inputType = inputType
+        return (inputType and android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD) != 0 ||
+               (inputType and android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD) != 0
+    }
+
+    // Check for password-related tag or accessibility identifier
+    tag?.toString()?.lowercase()?.let { tag ->
+        val sensitiveIdentifiers = listOf("password", "secret", "private", "sensitive", "confidential")
+        if (sensitiveIdentifiers.any { tag.contains(it) }) {
+            return true
+        }
+    }
+
+    return false
+}
+
+private fun View.isSensitiveText(): Boolean {
+    // Check if this view contains sensitive text content
+    if (this is EditText) {
+        return isSecureTextEntry() || isNoCapture()
+    }
+
+    return false
+}
+
+private fun EditText.isSecureTextEntry(): Boolean {
+    val inputType = inputType
+    return (inputType and android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD) != 0 ||
+           (inputType and android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD) != 0
+}
+
+private fun Rect.isValid(): Boolean {
+    return left >= 0 && top >= 0 && right > left && bottom > top &&
+           width() > 0 && height() > 0
+}
+
+private fun Int.isFinite(): Boolean {
+    return this != Int.MAX_VALUE && this != Int.MIN_VALUE
+}
+
+private fun Float.isFinite(): Boolean {
+    return !this.isNaN() && !this.isInfinite()
 }
