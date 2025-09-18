@@ -25,13 +25,17 @@ if [ ! -d "$TARGET_DIR" ]; then
     exit 0
 fi
 
-# Copy the dist folder
-echo "🔄 Copying dist folder..."
+# Copy the dist and native folders
+echo "🔄 Copying dist folder and native sources..."
 cp -r "$SOURCE_DIR" "$TARGET_DIR/"
 cp -r "$SOURCE_DIR_IOS" "$TARGET_DIR/"
 cp -r "$SOURCE_DIR_ANDROID" "$TARGET_DIR/"
 
+# Ensure RN autolinking config and metadata are in sync
+echo "🛠️  Syncing react-native.config.js and package.json..."
+cp -f "./react-native.config.js" "$TARGET_DIR/react-native.config.js"
+cp -f "./package.json" "$TARGET_DIR/package.json"
 
-echo "✅ Successfully copied dist folder to sample Expo app!"
-echo "📍 Source: $SOURCE_DIR"
-echo "📍 Target: $TARGET_DIR/dist"
+echo "✅ Successfully synced package into sample Expo app."
+echo "📍 Source: $(pwd)"
+echo "📍 Target: $TARGET_DIR"

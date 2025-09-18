@@ -11,16 +11,15 @@ import android.view.PixelCopy
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
-import android.widget.*
 import android.webkit.WebView
+import android.widget.*
 import com.facebook.react.bridge.*
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 
 class SessionRecorderModule(reactContext: ReactApplicationContext) :
-    ReactContextBaseJavaModule(reactContext) {
+        ReactContextBaseJavaModule(reactContext) {
 
     // Configuration object for masking behavior
     private var config: SessionRecorderConfig = SessionRecorderConfig()
@@ -29,7 +28,9 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun captureAndMask(promise: Promise) {
-        val activity = reactApplicationContext.currentActivity ?: return promise.reject("NO_ACTIVITY", "No activity found")
+        val activity =
+                reactApplicationContext.currentActivity
+                        ?: return promise.reject("NO_ACTIVITY", "No activity found")
 
         try {
             val maskedImage = captureAndMaskScreen(activity, null)
@@ -41,7 +42,9 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun captureAndMaskWithOptions(options: ReadableMap, promise: Promise) {
-        val activity = reactApplicationContext.currentActivity ?: return promise.reject("NO_ACTIVITY", "No activity found")
+        val activity =
+                reactApplicationContext.currentActivity
+                        ?: return promise.reject("NO_ACTIVITY", "No activity found")
 
         try {
             val maskedImage = captureAndMaskScreen(activity, options)
@@ -58,12 +61,14 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
         val rootView = activity.window.decorView.rootView
         val window = activity.window
 
-        // Use modern PixelCopy for API 24+ (Android 7.0+), fallback to drawing cache for older devices
-        val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            captureWithPixelCopy(rootView, window)
-        } else {
-            captureWithDrawingCache(rootView)
-        }
+        // Use modern PixelCopy for API 24+ (Android 7.0+), fallback to drawing cache for older
+        // devices
+        val bitmap =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    captureWithPixelCopy(rootView, window)
+                } else {
+                    captureWithDrawingCache(rootView)
+                }
 
         bitmap ?: throw RuntimeException("Failed to capture screen")
 
@@ -90,15 +95,20 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
         val handler = Handler(thread.looper)
 
         try {
-            PixelCopy.request(window, bitmap, { copyResult ->
-                try {
-                    success = copyResult == PixelCopy.SUCCESS
-                } catch (e: Exception) {
-                    success = false
-                } finally {
-                    latch.countDown()
-                }
-            }, handler)
+            PixelCopy.request(
+                    window,
+                    bitmap,
+                    { copyResult ->
+                        try {
+                            success = copyResult == PixelCopy.SUCCESS
+                        } catch (e: Exception) {
+                            success = false
+                        } finally {
+                            latch.countDown()
+                        }
+                    },
+                    handler
+            )
 
             // Wait for capture to complete (max 2 seconds)
             latch.await(2, TimeUnit.SECONDS)
@@ -130,14 +140,29 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
 
     private fun updateConfiguration(options: ReadableMap?) {
         options?.let { opts ->
-            config = SessionRecorderConfig(
-                maskTextInputs = if (opts.hasKey("maskTextInputs")) opts.getBoolean("maskTextInputs") else config.maskTextInputs,
-                maskImages = if (opts.hasKey("maskImages")) opts.getBoolean("maskImages") else config.maskImages,
-                maskButtons = if (opts.hasKey("maskButtons")) opts.getBoolean("maskButtons") else config.maskButtons,
-                maskWebViews = if (opts.hasKey("maskWebViews")) opts.getBoolean("maskWebViews") else config.maskWebViews,
-                imageQuality = if (opts.hasKey("quality")) opts.getDouble("quality").toFloat() else config.imageQuality,
-                noCaptureLabel = if (opts.hasKey("noCaptureLabel")) opts.getString("noCaptureLabel") ?: "no-capture" else config.noCaptureLabel
-            )
+            config =
+                    SessionRecorderConfig(
+                            maskTextInputs =
+                                    if (opts.hasKey("maskTextInputs"))
+                                            opts.getBoolean("maskTextInputs")
+                                    else config.maskTextInputs,
+                            maskImages =
+                                    if (opts.hasKey("maskImages")) opts.getBoolean("maskImages")
+                                    else config.maskImages,
+                            maskButtons =
+                                    if (opts.hasKey("maskButtons")) opts.getBoolean("maskButtons")
+                                    else config.maskButtons,
+                            maskWebViews =
+                                    if (opts.hasKey("maskWebViews")) opts.getBoolean("maskWebViews")
+                                    else config.maskWebViews,
+                            imageQuality =
+                                    if (opts.hasKey("quality")) opts.getDouble("quality").toFloat()
+                                    else config.imageQuality,
+                            noCaptureLabel =
+                                    if (opts.hasKey("noCaptureLabel"))
+                                            opts.getString("noCaptureLabel") ?: "no-capture"
+                                    else config.noCaptureLabel
+                    )
         }
     }
 
@@ -157,12 +182,13 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
             if (!frame.isValid()) continue
 
             // Clip the frame to the image bounds to avoid drawing outside context
-            val clippedFrame = Rect(
-                frame.left.coerceAtLeast(0),
-                frame.top.coerceAtLeast(0),
-                frame.right.coerceAtMost(bitmap.width),
-                frame.bottom.coerceAtMost(bitmap.height)
-            )
+            val clippedFrame =
+                    Rect(
+                            frame.left.coerceAtLeast(0),
+                            frame.top.coerceAtLeast(0),
+                            frame.right.coerceAtMost(bitmap.width),
+                            frame.bottom.coerceAtMost(bitmap.height)
+                    )
 
             if (clippedFrame.isEmpty) continue
 
@@ -173,10 +199,10 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
     }
 
     private fun findMaskableWidgets(
-        view: View,
-        rootView: View,
-        maskableWidgets: MutableList<Rect>,
-        visitedViews: MutableSet<Int> = mutableSetOf()
+            view: View,
+            rootView: View,
+            maskableWidgets: MutableList<Rect>,
+            visitedViews: MutableSet<Int> = mutableSetOf()
     ) {
         val viewId = System.identityHashCode(view)
 
@@ -197,23 +223,19 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
                 maskableWidgets.add(view.toAbsoluteRect(rootView))
                 return
             }
-
             view is Button && view.shouldMaskButton() -> {
                 maskableWidgets.add(view.toAbsoluteRect(rootView))
                 return
             }
-
             view is ImageView && view.shouldMaskImage() -> {
                 maskableWidgets.add(view.toAbsoluteRect(rootView))
                 return
             }
-
             view is WebView && view.shouldMaskWebView() -> {
                 maskableWidgets.add(view.toAbsoluteRect(rootView))
                 return
             }
         }
-
 
         // Detect React Native views
         if (isReactNativeView(view)) {
@@ -278,9 +300,9 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
     // Check if view is explicitly marked as sensitive
     private fun View.isExplicitlyMasked(noCaptureLabel: String = "no-capture"): Boolean {
         return (tag as? String)?.lowercase()?.contains(noCaptureLabel.lowercase()) == true ||
-               contentDescription?.toString()?.lowercase()?.contains(noCaptureLabel.lowercase()) == true
+                contentDescription?.toString()?.lowercase()?.contains(noCaptureLabel.lowercase()) ==
+                        true
     }
-
 
     private fun hasText(text: String?): Boolean {
         return !text.isNullOrEmpty()
@@ -295,12 +317,20 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
     private fun shouldMaskReactNativeView(view: View): Boolean {
         val className = view.javaClass.simpleName
 
-        // React Native text views
-        if (className.contains("TextInput") || className.contains("TextView")) {
+        // React Native input views: only treat EditText-like classes as inputs.
+        // Examples: ReactEditText, EditText, TextInputEditText
+        if (className.contains("EditText") ||
+                        className.contains("ReactEditText") ||
+                        className.contains("TextInputEditText") ||
+                        // Some RN implementations may expose TextInput class names without TextView
+                        // suffix
+                        (className.contains("TextInput") && !className.contains("TextView"))
+        ) {
             return config.maskTextInputs
         }
 
-        // React Native image views
+        // Do NOT mask generic ReactTextView labels when maskTextInputs is enabled
+        // Only mask images when explicitly configured
         if (className.contains("ImageView") || className.contains("Image")) {
             return config.maskImages
         }
@@ -314,9 +344,10 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
 
         // Clean, consistent solid color masking approach
         // Use system gray colors that adapt to light/dark mode
-        val paint = Paint().apply {
-            color = Color.parseColor("#F5F5F5") // Light gray background
-        }
+        val paint =
+                Paint().apply {
+                    color = Color.parseColor("#F5F5F5") // Light gray background
+                }
         canvas.drawRect(frame, paint)
 
         // Add subtle border for visual definition
@@ -329,7 +360,10 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
     }
 
     private enum class MaskingType {
-        BLUR, RECTANGLE, PIXELATE, NONE
+        BLUR,
+        RECTANGLE,
+        PIXELATE,
+        NONE
     }
 }
 
@@ -355,19 +389,20 @@ private fun View.isVisible(): Boolean {
 private fun View.isViewStateStableForMatrixOperations(): Boolean {
     return try {
         isAttachedToWindow &&
-            isLaidOut &&
-            // Check if view has valid dimensions
-            width > 0 && height > 0 &&
-            // Check if view is not in layout transition
-            !isInLayout &&
-            // Check if view doesn't have transient state (animations, etc.)
-            !hasTransientState() &&
-            // Check if view is not currently being animated
-            !isAnimationRunning() &&
-            // Check if view tree is not currently computing layout
-            !isComputingLayout() &&
-            // Check if view hierarchy is stable
-            rootView?.isAttachedToWindow == true
+                isLaidOut &&
+                // Check if view has valid dimensions
+                width > 0 &&
+                height > 0 &&
+                // Check if view is not in layout transition
+                !isInLayout &&
+                // Check if view doesn't have transient state (animations, etc.)
+                !hasTransientState() &&
+                // Check if view is not currently being animated
+                !isAnimationRunning() &&
+                // Check if view tree is not currently computing layout
+                !isComputingLayout() &&
+                // Check if view hierarchy is stable
+                rootView?.isAttachedToWindow == true
     } catch (e: Throwable) {
         // If any check fails, assume unstable state
         false
@@ -415,18 +450,19 @@ private fun View.toAbsoluteRect(rootView: View): Rect {
         val width = this.width.toFloat()
         val height = this.height.toFloat()
 
-        if (width.isNaN() || height.isNaN() || width.isInfinite() || height.isInfinite() ||
-            relativeX.toFloat().isNaN() || relativeY.toFloat().isNaN() ||
-            relativeX.toFloat().isInfinite() || relativeY.toFloat().isInfinite()) {
+        if (width.isNaN() ||
+                        height.isNaN() ||
+                        width.isInfinite() ||
+                        height.isInfinite() ||
+                        relativeX.toFloat().isNaN() ||
+                        relativeY.toFloat().isNaN() ||
+                        relativeX.toFloat().isInfinite() ||
+                        relativeY.toFloat().isInfinite()
+        ) {
             return Rect()
         }
 
-        return Rect(
-            relativeX,
-            relativeY,
-            relativeX + width.toInt(),
-            relativeY + height.toInt()
-        )
+        return Rect(relativeX, relativeY, relativeX + width.toInt(), relativeY + height.toInt())
     } catch (e: Exception) {
         // If we can't get the rect, return empty rect
         return Rect()
@@ -448,12 +484,13 @@ private fun View.isNoCapture(): Boolean {
     if (this is EditText) {
         val inputType = inputType
         return (inputType and android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD) != 0 ||
-               (inputType and android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD) != 0
+                (inputType and android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD) != 0
     }
 
     // Check for password-related tag or accessibility identifier
     tag?.toString()?.lowercase()?.let { tag ->
-        val sensitiveIdentifiers = listOf("password", "secret", "private", "sensitive", "confidential")
+        val sensitiveIdentifiers =
+                listOf("password", "secret", "private", "sensitive", "confidential")
         if (sensitiveIdentifiers.any { tag.contains(it) }) {
             return true
         }
@@ -474,12 +511,11 @@ private fun View.isSensitiveText(): Boolean {
 private fun EditText.isSecureTextEntry(): Boolean {
     val inputType = inputType
     return (inputType and android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD) != 0 ||
-           (inputType and android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD) != 0
+            (inputType and android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD) != 0
 }
 
 private fun Rect.isValid(): Boolean {
-    return left >= 0 && top >= 0 && right > left && bottom > top &&
-           width() > 0 && height() > 0
+    return left >= 0 && top >= 0 && right > left && bottom > top && width() > 0 && height() > 0
 }
 
 private fun Int.isFinite(): Boolean {

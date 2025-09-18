@@ -133,7 +133,7 @@ export default function PostDetailScreen() {
       // Cancel edit mode - reset to original post data
       setEditedPost(post)
     }
-    setIsEditMode(!isEditMode)
+    setIsEditMode((prev) => !prev)
   }
 
   const handleFieldChange = (field: string, value: string) => {
