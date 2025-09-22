@@ -196,7 +196,7 @@ export class GestureRecorder implements EventRecorder {
         attributes: {
           'gesture.type': event.type,
           'gesture.timestamp': event.timestamp,
-          'gesture.platform': 'react-native-native',
+          'gesture.platform': 'react-native',
           'gesture.source': 'native-module',
         },
       })

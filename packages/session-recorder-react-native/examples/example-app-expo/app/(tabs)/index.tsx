@@ -33,38 +33,15 @@ export default function HomeScreen() {
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <Link href='/modal'>
-          <Link.Trigger
-            accessibilityLabel='Open modal to explore app features'
-            accessibilityRole='button'
-            testID='explore-modal-link'
-          >
+          <Link.Trigger>
             <ThemedText type='subtitle'>Step 2: Explore</ThemedText>
           </Link.Trigger>
           <Link.Preview />
           <Link.Menu>
-            <Link.MenuAction
-              title='Action'
-              icon='cube'
-              onPress={() => {}}
-              accessibilityLabel='Perform action'
-              testID='action-menu-item'
-            />
-            <Link.MenuAction
-              title='Share'
-              icon='square.and.arrow.up'
-              onPress={() => {}}
-              accessibilityLabel='Share content'
-              testID='share-menu-item'
-            />
+            <Link.MenuAction title='Action' icon='cube' onPress={() => {}} />
+            <Link.MenuAction title='Share' icon='square.and.arrow.up' onPress={() => {}} />
             <Link.Menu title='More' icon='ellipsis'>
-              <Link.MenuAction
-                title='Delete'
-                icon='trash'
-                destructive
-                onPress={() => {}}
-                accessibilityLabel='Delete item'
-                testID='delete-menu-item'
-              />
+              <Link.MenuAction title='Delete' icon='trash' destructive onPress={() => {}} />
             </Link.Menu>
           </Link.Menu>
         </Link>
