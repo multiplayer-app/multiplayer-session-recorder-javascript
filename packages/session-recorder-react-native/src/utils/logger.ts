@@ -19,7 +19,7 @@ export interface LoggerConfig {
 
 class Logger {
   private config: LoggerConfig = {
-    level: LogLevel.INFO,
+    level: LogLevel.ERROR,
     enableConsole: true,
     enablePrefix: true,
     prefix: '[SessionRecorder]',

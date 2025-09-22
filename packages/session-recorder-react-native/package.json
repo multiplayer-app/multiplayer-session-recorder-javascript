@@ -74,7 +74,6 @@
     "@react-native-community/netinfo": "^11.1.0",
     "@rrweb/types": "^2.0.0-alpha.18",
     "lib0": "0.2.82",
-    "react-native-gesture-handler": "^2.14.0",
     "react-native-mmkv": "^2.11.0",
     "react-native-reanimated": "^3.6.0",
     "react-native-view-shot": "^4.0.3",

@@ -62,11 +62,13 @@ export const ScreenRecorderView = ({ children }: ScreenRecorderViewProps) => {
     }
   }
 
+  const gesturesEnabled = SessionRecorder.sessionState === SessionState.started
+
   return (
-    <GestureCaptureWrapper onGestureRecord={handleGestureRecord}>
-      <View ref={setViewShotRef} style={{ flex: 1 }}>
+    <View ref={setViewShotRef} style={{ flex: 1 }}>
+      <GestureCaptureWrapper enabled={gesturesEnabled} onGestureRecord={handleGestureRecord}>
         {children}
-      </View>
-    </GestureCaptureWrapper>
+      </GestureCaptureWrapper>
+    </View>
   )
 }

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Animated, Pressable, StyleSheet, Dimensions, Modal } from 'react-native'
+import { Animated, Pressable, StyleSheet, Dimensions, Modal, PanResponder } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 const MODAL_HEIGHT = SCREEN_HEIGHT * 0.7
@@ -56,28 +55,42 @@ const ModalContainer: React.FC<ModalContainerProps> = ({ isVisible, onClose, chi
     }
   }, [isVisible, fadeAnim, translateY])
 
-  const panGesture = Gesture.Pan()
-    .onUpdate((event) => {
-      translateY.setValue(event.translationY)
-    })
-    .onEnd((event) => {
-      const { translationY, velocityY } = event
+  // PanResponder for swipe-to-dismiss functionality
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Only respond to downward swipes
+        return gestureState.dy > 10
+      },
+      onPanResponderGrant: () => {
+        // Reset any ongoing animations
+        translateY.stopAnimation()
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        // Only allow downward movement
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy)
+        }
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        const { dy, vy } = gestureState
 
-      // If swiped down with sufficient distance or velocity, close modal
-      if (translationY > SWIPE_THRESHOLD || velocityY > 500) {
-        animateClose()
-      } else {
-        // Snap back to original position
-        Animated.spring(translateY, {
-          toValue: 0,
-          useNativeDriver: true,
-          tension: 100,
-          friction: 8
-        }).start()
+        // If swiped down with sufficient distance or velocity, close modal
+        if (dy > SWIPE_THRESHOLD || vy > 500) {
+          animateClose()
+        } else {
+          // Snap back to original position
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 100,
+            friction: 8
+          }).start()
+        }
       }
     })
-    .activeOffsetY(10)
-    .runOnJS(true)
+  ).current
 
   return (
     <>
@@ -87,13 +100,9 @@ const ModalContainer: React.FC<ModalContainerProps> = ({ isVisible, onClose, chi
         </Animated.View>
       )}
       <Modal visible={isVisible} transparent animationType='none' onRequestClose={onClose}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <GestureDetector gesture={panGesture}>
-            <Animated.View style={[styles.modal, { transform: [{ translateY }] }]}>
-              <SafeAreaView style={styles.safeArea}>{children}</SafeAreaView>
-            </Animated.View>
-          </GestureDetector>
-        </GestureHandlerRootView>
+        <Animated.View style={[styles.modal, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
+          <SafeAreaView style={styles.safeArea}>{children}</SafeAreaView>
+        </Animated.View>
       </Modal>
     </>
   )

@@ -1,86 +1,55 @@
 import React, { ReactNode, useCallback, useMemo } from 'react'
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler'
+import { View, PanResponder } from 'react-native'
 
 export interface GestureCaptureWrapperProps {
   children: ReactNode
   onGestureRecord: (gestureType: string, data: any) => void
+  enabled?: boolean
 }
 
-export const GestureCaptureWrapper: React.FC<GestureCaptureWrapperProps> = ({ children, onGestureRecord }) => {
+export const GestureCaptureWrapper: React.FC<GestureCaptureWrapperProps> = ({ children, onGestureRecord, enabled }) => {
   const recordGesture = useCallback(
     (gestureType: string, data: any) => {
-      // Record with session recorder
+      if (!enabled) return
       onGestureRecord(gestureType, data)
     },
-    [onGestureRecord]
+    [enabled, onGestureRecord]
   )
 
-  // Create tap gesture
-  const tapGesture = useMemo(() => {
-    return Gesture.Tap()
-      .runOnJS(true)
-      .onStart((event) => {
+  // Native touch event implementation as fallback
+  const panResponder = useMemo(() => {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
         recordGesture('tap', {
-          x: event.x,
-          y: event.y,
+          x: evt.nativeEvent.locationX,
+          y: evt.nativeEvent.locationY,
           timestamp: Date.now()
         })
-      })
-  }, [recordGesture])
-
-  // Create pan gesture (for swipes and drags)
-  const panGesture = useMemo(() => {
-    return Gesture.Pan()
-      .runOnJS(true)
-      .onStart((event) => {
-        recordGesture('pan_start', {
-          x: event.x,
-          y: event.y,
-          timestamp: Date.now()
-        })
-      })
-      .onUpdate((event) => {
+      },
+      onPanResponderMove: (evt) => {
         recordGesture('pan_update', {
-          x: event.x,
-          y: event.y,
-          translationX: event.translationX,
-          translationY: event.translationY,
-          velocityX: event.velocityX,
-          velocityY: event.velocityY,
+          x: evt.nativeEvent.locationX,
+          y: evt.nativeEvent.locationY,
+          translationX: evt.nativeEvent.pageX - evt.nativeEvent.locationX,
+          translationY: evt.nativeEvent.pageY - evt.nativeEvent.locationY,
           timestamp: Date.now()
         })
-      })
-      .onEnd((event) => {
+      },
+      onPanResponderRelease: (evt) => {
         recordGesture('pan_end', {
-          x: event.x,
-          y: event.y,
-          translationX: event.translationX,
-          translationY: event.translationY,
-          velocityX: event.velocityX,
-          velocityY: event.velocityY,
+          x: evt.nativeEvent.locationX,
+          y: evt.nativeEvent.locationY,
           timestamp: Date.now()
         })
-      })
-  }, [recordGesture])
-
-  // Create long press gesture
-  const longPressGesture = useMemo(() => {
-    return Gesture.LongPress()
-      .runOnJS(true)
-      .minDuration(500)
-      .onStart((event) => {
-        recordGesture('long_press', {
-          x: event.x,
-          y: event.y,
-          duration: 500,
-          timestamp: Date.now()
-        })
-      })
+      }
+    })
   }, [recordGesture])
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <GestureDetector gesture={Gesture.Simultaneous(tapGesture, panGesture, longPressGesture)}>{children}</GestureDetector>
-    </GestureHandlerRootView>
+    <View collapsable={false} style={{ flex: 1 }} pointerEvents='box-none' {...panResponder.panHandlers}>
+      {children}
+    </View>
   )
 }

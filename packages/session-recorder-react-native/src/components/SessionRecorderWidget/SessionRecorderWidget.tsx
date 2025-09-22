@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Alert } from 'react-native'
+import { Alert, View, StyleSheet } from 'react-native'
 import { SessionState } from '../../types'
 import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { useSessionRecorder } from '../../context/SessionRecorderContext'
@@ -98,7 +98,9 @@ const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = () => {
 
   return (
     <>
-      <FloatingButton sessionState={sessionState} onPress={openModal} />
+      <View pointerEvents='box-none' style={styles.overlayContainer}>
+        <FloatingButton sessionState={sessionState} onPress={openModal} />
+      </View>
       <ModalContainer isVisible={isModalVisible} onClose={closeModal}>
         {renderModalContent}
       </ModalContainer>
@@ -107,3 +109,9 @@ const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = () => {
 }
 
 export default SessionRecorderWidget
+
+const styles = StyleSheet.create({
+  overlayContainer: {
+    ...StyleSheet.absoluteFillObject
+  }
+})

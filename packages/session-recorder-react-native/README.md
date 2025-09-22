@@ -202,7 +202,7 @@ SessionRecorder.init({
 
 1. **Screen recording not working**: Ensure you have the necessary permissions
 2. **Navigation tracking not working**: Make sure you've set the navigation ref
-3. **Gesture recording issues**: Check that react-native-gesture-handler is properly configured
+3. **Gesture recording issues**: Gesture recording uses native PanResponder and should work out of the box
 4. **Expo environment not detected**: Ensure `expo-constants` is installed and accessible
 5. **Expo build issues**: Make sure you're using the correct entry point for Expo applications
 
