@@ -7,10 +7,12 @@ import com.facebook.react.uimanager.ViewManager
 
 class SessionRecorderPackage : ReactPackage {
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-        return listOf(SessionRecorderModule(reactContext))
+        return listOf(SessionRecorderModule(reactContext), GestureRecorderModule(reactContext))
     }
 
-    override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
+    override fun createViewManagers(
+            reactContext: ReactApplicationContext
+    ): List<ViewManager<*, *>> {
         return emptyList()
     }
 }
