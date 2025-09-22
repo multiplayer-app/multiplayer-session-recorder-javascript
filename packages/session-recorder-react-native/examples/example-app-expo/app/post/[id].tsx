@@ -4,7 +4,7 @@ import { ThemedView } from '@/components/themed-view'
 import { useColorScheme } from '@/hooks/use-color-scheme'
 import { router, useLocalSearchParams } from 'expo-router'
 import React, { useEffect, useState } from 'react'
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, Switch, Alert } from 'react-native'
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, Switch } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 interface Post {
@@ -84,48 +84,30 @@ export default function PostDetailScreen() {
       const updatedData = await response.json()
       setPost(updatedData)
       setIsEditMode(false)
-      Alert.alert('Success', 'Post updated successfully!')
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'An error occurred')
+      // Error occurred during update
     } finally {
       setUpdating(false)
     }
   }
 
   const deletePost = async () => {
-    Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
-      {
-        text: 'Cancel',
-        style: 'cancel'
-      },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            setDeleting(true)
-            const response = await fetch(`https://jsonplaceholder.typicode.com/posts/${id}`, {
-              method: 'DELETE'
-            })
+    try {
+      setDeleting(true)
+      const response = await fetch(`https://jsonplaceholder.typicode.com/posts/${id}`, {
+        method: 'DELETE'
+      })
 
-            if (!response.ok) {
-              throw new Error('Failed to delete post')
-            }
-
-            Alert.alert('Success', 'Post deleted successfully!', [
-              {
-                text: 'OK',
-                onPress: () => router.back()
-              }
-            ])
-          } catch (err) {
-            Alert.alert('Error', err instanceof Error ? err.message : 'An error occurred')
-          } finally {
-            setDeleting(false)
-          }
-        }
+      if (!response.ok) {
+        throw new Error('Failed to delete post')
       }
-    ])
+
+      router.back()
+    } catch (err) {
+      // Error occurred during delete
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const handleEditToggle = () => {

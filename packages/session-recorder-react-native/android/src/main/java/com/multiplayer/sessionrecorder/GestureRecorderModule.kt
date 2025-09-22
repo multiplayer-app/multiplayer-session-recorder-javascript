@@ -315,4 +315,14 @@ class GestureRecorderModule(reactContext: ReactApplicationContext) :
             .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
             .emit(eventName, params)
   }
+
+  // Required for ReactModuleWithSpec to avoid NativeEventEmitter warnings
+  @ReactMethod
+  fun addListener(eventName: String) {
+    // Keep default implementation
+  }
+  @ReactMethod
+  fun removeListeners(count: Int) {
+    // Keep default implementation
+  }
 }

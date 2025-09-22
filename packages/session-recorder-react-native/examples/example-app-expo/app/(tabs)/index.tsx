@@ -45,14 +45,14 @@ export default function HomeScreen() {
             <Link.MenuAction
               title='Action'
               icon='cube'
-              onPress={() => alert('Action pressed')}
+              onPress={() => {}}
               accessibilityLabel='Perform action'
               testID='action-menu-item'
             />
             <Link.MenuAction
               title='Share'
               icon='square.and.arrow.up'
-              onPress={() => alert('Share pressed')}
+              onPress={() => {}}
               accessibilityLabel='Share content'
               testID='share-menu-item'
             />
@@ -61,7 +61,7 @@ export default function HomeScreen() {
                 title='Delete'
                 icon='trash'
                 destructive
-                onPress={() => alert('Delete pressed')}
+                onPress={() => {}}
                 accessibilityLabel='Delete item'
                 testID='delete-menu-item'
               />
