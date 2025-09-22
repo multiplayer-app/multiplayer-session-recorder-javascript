@@ -49,6 +49,9 @@ export default function PostsScreen() {
     <TouchableOpacity
       style={[styles.postCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}
       onPress={() => handlePostPress(item)}
+      accessibilityLabel={`View post: ${item.title}`}
+      accessibilityRole='button'
+      testID={`post-card-${item.id}`}
     >
       <ThemedText style={styles.postTitle} numberOfLines={2}>
         {item.title}
@@ -81,6 +84,9 @@ export default function PostsScreen() {
           <TouchableOpacity
             style={[styles.retryButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
             onPress={fetchPosts}
+            accessibilityLabel='Retry loading posts'
+            accessibilityRole='button'
+            testID='retry-posts-button'
           >
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>

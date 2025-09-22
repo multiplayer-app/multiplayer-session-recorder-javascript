@@ -438,6 +438,13 @@ export interface GestureEvent {
   direction?: string
   target?: string
   coordinates?: { x: number; y: number }
+  targetInfo?: {
+    identifier: string
+    label?: string
+    role?: string
+    testId?: string
+    text?: string
+  }
   metadata?: Record<string, any>
 }
 

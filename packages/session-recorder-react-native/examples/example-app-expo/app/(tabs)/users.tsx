@@ -66,6 +66,9 @@ export default function UsersScreen() {
     <TouchableOpacity
       style={[styles.userCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}
       onPress={() => handleUserPress(item)}
+      accessibilityLabel={`View user profile for ${item.name}`}
+      accessibilityRole='button'
+      testID={`user-card-${item.id}`}
     >
       <View style={styles.userHeader}>
         <View style={[styles.avatar, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}>
@@ -109,6 +112,9 @@ export default function UsersScreen() {
           <TouchableOpacity
             style={[styles.retryButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
             onPress={fetchUsers}
+            accessibilityLabel='Retry loading users'
+            accessibilityRole='button'
+            testID='retry-users-button'
           >
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>

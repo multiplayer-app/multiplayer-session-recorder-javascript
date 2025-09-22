@@ -27,8 +27,7 @@ class Logger {
 
   private componentPrefixes: Map<string, string> = new Map([
     ['ScreenRecorder', '📸'],
-    ['GestureRecorder', '👆'],
-    ['GestureCaptureWrapper', '📸'],
+    ['NativeGestureRecorder', '👆'],
     ['SessionRecorderContext', '🎯'],
     ['EventExporter', '📤'],
     ['NavigationTracker', '📸'],

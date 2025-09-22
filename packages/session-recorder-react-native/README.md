@@ -118,13 +118,111 @@ SessionRecorder.save()
 
 ## Features
 
-- **Gesture Recording**: Track taps, swipes, and other touch interactions
+- **Gesture Recording**: Track taps, swipes, and other touch interactions with target element information
 - **Navigation Tracking**: Monitor screen transitions and navigation state
 - **Screen Recording**: Capture periodic screenshots (requires permissions)
 - **OpenTelemetry Integration**: Correlate with backend traces
 - **HTTP Masking**: Protect sensitive data in request/response headers and bodies
 - **Session Management**: Start, pause, resume, and stop sessions
 - **Expo Support**: Full compatibility with Expo applications including automatic environment detection
+
+## Gesture Recording & Target Element Information
+
+The session recorder automatically captures target element information for all gesture interactions, enriching your OpenTelemetry traces with valuable context about what users are interacting with.
+
+### Captured Attributes
+
+When users interact with elements, the following attributes are automatically added to gesture spans:
+
+| Attribute                | Description                               | Example           |
+| ------------------------ | ----------------------------------------- | ----------------- |
+| `gesture.target`         | Primary identifier for the target element | `"Submit Button"` |
+| `gesture.target.label`   | Accessibility label of the element        | `"Submit form"`   |
+| `gesture.target.role`    | Accessibility role of the element         | `"button"`        |
+| `gesture.target.test_id` | Test ID of the element                    | `"submit-btn"`    |
+| `gesture.target.text`    | Text content of the element               | `"Submit"`        |
+
+### How Target Information is Extracted
+
+The recorder automatically extracts target information from React Native elements using the following priority:
+
+1. **`accessibilityLabel`** - Explicit accessibility label (highest priority)
+2. **Text content** - Text from child elements
+3. **`testID`** - Test identifier (lowest priority)
+
+### Best Practices for Better Trace Information
+
+To get the most useful target information in your traces, follow these practices:
+
+#### 1. Use Accessibility Labels
+
+```jsx
+<TouchableOpacity accessibilityLabel='Submit user registration form' accessibilityRole='button' onPress={handleSubmit}>
+  <Text>Submit</Text>
+</TouchableOpacity>
+```
+
+#### 2. Add Test IDs for Testing Context
+
+```jsx
+<TouchableOpacity testID='registration-submit-btn' accessibilityLabel='Submit registration' onPress={handleSubmit}>
+  <Text>Submit</Text>
+</TouchableOpacity>
+```
+
+#### 3. Use Semantic Text Content
+
+```jsx
+<TouchableOpacity onPress={handleSubmit}>
+  <Text>Submit Registration</Text> {/* Clear, descriptive text */}
+</TouchableOpacity>
+```
+
+#### 4. Avoid Generic Labels
+
+```jsx
+// ❌ Poor trace information
+<TouchableOpacity accessibilityLabel="Button" onPress={handleSubmit}>
+  <Text>Click</Text>
+</TouchableOpacity>
+
+// ✅ Rich trace information
+<TouchableOpacity
+  accessibilityLabel="Submit user registration form"
+  testID="registration-submit"
+  onPress={handleSubmit}
+>
+  <Text>Submit Registration</Text>
+</TouchableOpacity>
+```
+
+### Example Trace Output
+
+With proper element labeling, your gesture traces will include rich context:
+
+```json
+{
+  "spanName": "Gesture.tap",
+  "attributes": {
+    "gesture.type": "tap",
+    "gesture.platform": "react-native",
+    "gesture.coordinates.x": 150.5,
+    "gesture.coordinates.y": 200.3,
+    "gesture.target": "Submit user registration form",
+    "gesture.target.label": "Submit user registration form",
+    "gesture.target.role": "button",
+    "gesture.target.test_id": "registration-submit",
+    "gesture.target.text": "Submit Registration"
+  }
+}
+```
+
+This rich context helps you:
+
+- **Debug user interactions** more effectively
+- **Understand user behavior** patterns
+- **Identify UI issues** faster
+- **Correlate frontend actions** with backend events
 
 ## Permissions
 
