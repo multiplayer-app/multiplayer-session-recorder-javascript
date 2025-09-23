@@ -17,7 +17,7 @@ export const sharedStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10, },
     shadowOpacity: 1,
     shadowRadius: 5,
-    elevation: 3,
+    elevation: 10,
   },
   modalHandle: {
     marginTop: 8,
@@ -60,11 +60,11 @@ export const sharedStyles = StyleSheet.create({
   description: {
     fontSize: 14,
     color: '#718096',
-    marginBottom: 24
+    marginBottom: 16
   },
   popoverFooter: {
     marginTop: 'auto',
-    paddingTop: 48
+    paddingTop: 16
   },
   actionButton: {
     paddingVertical: 16,
@@ -96,31 +96,43 @@ export const sharedStyles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
+
   continuousRecordingLabel: {
     fontSize: 16,
     fontWeight: '500',
     color: '#374151'
   },
+
   continuousOverlay: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: '#FEF3C7',
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#F59E0B'
+    borderColor: '#e1e8f1',
+    backgroundColor: '#fff',
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 3,
+    flexDirection: 'column',
+    gap: 8,
   },
-  continuousOverlayContent: {
-    marginBottom: 16
+
+  continuousOverlayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
+
   continuousOverlayTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#92400E',
-    marginBottom: 8
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#2d3748',
   },
+
   continuousOverlayDescription: {
     fontSize: 14,
-    color: '#92400E',
+    color: '#718096',
     lineHeight: 20
   },
 

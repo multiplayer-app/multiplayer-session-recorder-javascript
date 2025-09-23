@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Alert, View, StyleSheet } from 'react-native'
+import { View, StyleSheet } from 'react-native'
 import { SessionState } from '../../types'
 import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { useSessionRecorder } from '../../context/SessionRecorderContext'
@@ -7,11 +7,12 @@ import FloatingButton from './FloatingButton'
 import ModalContainer from './ModalContainer'
 import InitialPopover from './InitialPopover'
 import FinalPopover from './FinalPopover'
+import { logger } from '../../utils'
 
 interface SessionRecorderWidgetProps {}
 
 const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = () => {
-  const { sessionState, instance } = useSessionRecorder()
+  const { sessionState, sessionType, instance } = useSessionRecorder()
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -33,18 +34,19 @@ const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = () => {
       await instance.start(sessionType)
       closeModal()
     } catch (error) {
-      Alert.alert('Error', 'Failed to start recording')
+      logger.error('SessionRecorderWidget', 'Failed to start recording', error)
+      throw error
     }
   }
 
-  const onStopRecording = async (comment: string) => {
+  const onStopRecording = async (comment?: string) => {
     try {
       setIsSubmitting(true)
       await instance.stop(comment)
       closeModal()
-      Alert.alert('Success', 'Session saved successfully')
     } catch (error) {
-      Alert.alert('Error', 'Failed to save session')
+      logger.error('SessionRecorderWidget', 'Failed to stop recording', error)
+      throw error
     } finally {
       setIsSubmitting(false)
     }
@@ -55,25 +57,18 @@ const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = () => {
       await instance.cancel()
       closeModal()
     } catch (error) {
-      Alert.alert('Error', 'Failed to cancel session')
+      logger.error('SessionRecorderWidget', 'Failed to cancel session', error)
     }
   }
 
   const onSaveContinuousSession = async () => {
-    try {
-      setIsSubmitting(true)
-      await instance.save()
-      closeModal()
-      Alert.alert('Success', 'Continuous session saved successfully')
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save continuous session')
-    } finally {
-      setIsSubmitting(false)
-    }
+    return instance.save()
   }
 
   const renderModalContent = useMemo(() => {
-    if (sessionState === SessionState.started || sessionState === SessionState.paused) {
+    const isStarted = sessionState === SessionState.started || sessionState === SessionState.paused
+    const isContinuous = sessionType === SessionType.CONTINUOUS
+    if (isStarted && !isContinuous) {
       return (
         <FinalPopover
           isSubmitting={isSubmitting}
@@ -84,12 +79,15 @@ const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = () => {
         />
       )
     }
+
     return (
       <InitialPopover
         isSubmitting={isSubmitting}
         textOverrides={textOverrides}
+        isContinuous={isStarted && isContinuous}
         showContinuousRecording={showContinuousRecording}
         onClose={closeModal}
+        onStopRecording={onStopRecording}
         onStartRecording={onStartRecording}
         onSaveContinuousSession={onSaveContinuousSession}
       />

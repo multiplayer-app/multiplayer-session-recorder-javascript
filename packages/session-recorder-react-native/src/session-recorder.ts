@@ -68,7 +68,7 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
   }
   set sessionState(state: SessionState | null) {
     this._sessionState = state
-    this.emit('state-change', [state || SessionState.stopped])
+    this.emit('state-change', [state || SessionState.stopped, this.sessionType])
     if (state) {
       this._storageService.saveSessionState(state)
     }
@@ -217,7 +217,7 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
           sessionAttributes: { comment },
           stoppedAt: Date.now(),
         }
-        const response = await this._apiService.stopSession(this.sessionId!, request)
+        await this._apiService.stopSession(this.sessionId!, request)
       }
       this._clearSession()
     } catch (error: any) {
@@ -391,6 +391,8 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    */
   private _start(): void {
     this.sessionState = SessionState.started
+    this.sessionType = this.sessionType
+
     if (this.sessionId) {
       this._tracer.start(this.sessionId, this.sessionType)
       this._recorder.start(this.sessionId, this.sessionType)

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Animated, Pressable, StyleSheet, Dimensions, Modal, PanResponder } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 const MODAL_HEIGHT = SCREEN_HEIGHT * 0.7
@@ -101,7 +101,9 @@ const ModalContainer: React.FC<ModalContainerProps> = ({ isVisible, onClose, chi
       )}
       <Modal visible={isVisible} transparent animationType='none' onRequestClose={onClose}>
         <Animated.View style={[styles.modal, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
-          <SafeAreaView style={styles.safeArea}>{children}</SafeAreaView>
+          <SafeAreaProvider>
+            <SafeAreaView style={styles.safeArea}>{children}</SafeAreaView>
+          </SafeAreaProvider>
         </Animated.View>
       </Modal>
     </>

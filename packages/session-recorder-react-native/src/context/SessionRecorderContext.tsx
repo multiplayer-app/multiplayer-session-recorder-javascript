@@ -3,10 +3,12 @@ import { SessionRecorderOptions, SessionState } from '../types'
 import sessionRecorder from '../session-recorder'
 import { ScreenRecorderView } from '../components/ScreenRecorderView'
 import SessionRecorderWidget from '../components/SessionRecorderWidget'
+import { SessionType } from '@multiplayer-app/session-recorder-common'
 
 interface SessionRecorderContextType {
   instance: typeof sessionRecorder
   isInitialized: boolean
+  sessionType: SessionType | null
   sessionState: SessionState | null
 }
 
@@ -19,6 +21,8 @@ export interface SessionRecorderProviderProps extends PropsWithChildren {
 export const SessionRecorderProvider: React.FC<SessionRecorderProviderProps> = ({ children, options }) => {
   const [isInitialized, setIsInitialized] = useState(false)
   const [sessionState, setSessionState] = useState<SessionState | null>(SessionState.stopped)
+  const [sessionType, setSessionType] = useState<SessionType | null>(SessionType.PLAIN)
+
   const optionsRef = useRef<string>()
 
   useEffect(() => {
@@ -31,13 +35,14 @@ export const SessionRecorderProvider: React.FC<SessionRecorderProviderProps> = (
 
   useEffect(() => {
     setSessionState(sessionRecorder.sessionState)
-    sessionRecorder.on('state-change', (state: SessionState) => {
+    sessionRecorder.on('state-change', (state: SessionState, sessionType: SessionType) => {
       setSessionState(state)
+      setSessionType(sessionType)
     })
   }, [])
 
   return (
-    <SessionRecorderContext.Provider value={{ instance: sessionRecorder, sessionState, isInitialized }}>
+    <SessionRecorderContext.Provider value={{ instance: sessionRecorder, sessionState, sessionType, isInitialized }}>
       <ScreenRecorderView>{children}</ScreenRecorderView>
       {isInitialized && !!sessionRecorder.config.showWidget && <SessionRecorderWidget />}
     </SessionRecorderContext.Provider>
