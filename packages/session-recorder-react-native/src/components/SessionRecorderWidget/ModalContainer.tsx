@@ -17,7 +17,6 @@ const ModalContainer: React.FC<ModalContainerProps> = ({ isVisible, onClose, chi
   const [visible, setVisible] = useState<boolean>(isVisible)
 
   const SWIPE_THRESHOLD = 100 // Distance to trigger close
-  const MAX_SWIPE_DISTANCE = 200 // Maximum swipe distance
 
   const animateClose = () => {
     Animated.parallel([
@@ -111,20 +110,16 @@ const ModalContainer: React.FC<ModalContainerProps> = ({ isVisible, onClose, chi
   ).current
 
   return (
-    <>
-      {visible && (
-        <Animated.View style={{ ...styles.backdrop, opacity: fadeAnim }}>
-          <Pressable style={styles.backdropPressable} onPress={animateClose} />
-        </Animated.View>
-      )}
-      <Modal visible={visible} transparent animationType='none' onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType='none' onRequestClose={onClose}>
+      <Animated.View style={{ ...styles.backdrop, opacity: fadeAnim }}>
+        <Pressable style={styles.backdropPressable} onPress={animateClose} />
         <Animated.View style={[styles.modal, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
           <SafeAreaProvider>
             <SafeAreaView style={styles.safeArea}>{children}</SafeAreaView>
           </SafeAreaProvider>
         </Animated.View>
-      </Modal>
-    </>
+      </Animated.View>
+    </Modal>
   )
 }
 
