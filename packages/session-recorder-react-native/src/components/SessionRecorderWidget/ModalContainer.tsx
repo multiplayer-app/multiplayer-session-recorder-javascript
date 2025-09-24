@@ -14,7 +14,7 @@ interface ModalContainerProps {
 const ModalContainer: React.FC<ModalContainerProps> = ({ isVisible, onClose, children }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const translateY = useRef(new Animated.Value(0)).current
-  const [animatedFinished, setAnimatedFinished] = useState(false)
+  const [visible, setVisible] = useState<boolean>(isVisible)
 
   const SWIPE_THRESHOLD = 100 // Distance to trigger close
   const MAX_SWIPE_DISTANCE = 200 // Maximum swipe distance
@@ -32,12 +32,14 @@ const ModalContainer: React.FC<ModalContainerProps> = ({ isVisible, onClose, chi
         useNativeDriver: true
       })
     ]).start(() => {
+      setVisible(false)
       onClose()
     })
   }
 
   useEffect(() => {
     if (isVisible) {
+      setVisible(true)
       // Start from bottom and animate to position
       translateY.setValue(MODAL_HEIGHT)
       Animated.parallel([
@@ -52,8 +54,24 @@ const ModalContainer: React.FC<ModalContainerProps> = ({ isVisible, onClose, chi
           useNativeDriver: true
         })
       ]).start()
+    } else if (visible) {
+      // If external isVisible turned false, animate close then hide
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true
+        }),
+        Animated.timing(translateY, {
+          toValue: MODAL_HEIGHT,
+          duration: 250,
+          useNativeDriver: true
+        })
+      ]).start(() => {
+        setVisible(false)
+      })
     }
-  }, [isVisible, fadeAnim, translateY])
+  }, [isVisible, fadeAnim, translateY, visible])
 
   // PanResponder for swipe-to-dismiss functionality
   const panResponder = useRef(
@@ -94,12 +112,12 @@ const ModalContainer: React.FC<ModalContainerProps> = ({ isVisible, onClose, chi
 
   return (
     <>
-      {isVisible && (
+      {visible && (
         <Animated.View style={{ ...styles.backdrop, opacity: fadeAnim }}>
           <Pressable style={styles.backdropPressable} onPress={animateClose} />
         </Animated.View>
       )}
-      <Modal visible={isVisible} transparent animationType='none' onRequestClose={onClose}>
+      <Modal visible={visible} transparent animationType='none' onRequestClose={onClose}>
         <Animated.View style={[styles.modal, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
           <SafeAreaProvider>
             <SafeAreaView style={styles.safeArea}>{children}</SafeAreaView>

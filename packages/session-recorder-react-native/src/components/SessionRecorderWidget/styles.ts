@@ -12,9 +12,9 @@ export const sharedStyles = StyleSheet.create({
     paddingHorizontal: 16,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    backgroundColor: '#e3ecfd',
-    shadowColor: '#e3ecfd',
-    shadowOffset: { width: 0, height: 10, },
+    backgroundColor: '#f4f9ff',
+    shadowColor: '#f4f9ff',
+    shadowOffset: { width: 0, height: 5, },
     shadowOpacity: 1,
     shadowRadius: 5,
     elevation: 10,
@@ -39,7 +39,14 @@ export const sharedStyles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#F3F4F6'
+    borderWidth: 1,
+    borderColor: '#e1e8f1',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 3,
   },
   cancelButtonText: {
     color: '#374151',
@@ -49,7 +56,7 @@ export const sharedStyles = StyleSheet.create({
   popoverBody: {
     flex: 1,
     padding: 16,
-    paddingTop: 32,
+    paddingTop: 24,
   },
   title: {
     fontSize: 18,

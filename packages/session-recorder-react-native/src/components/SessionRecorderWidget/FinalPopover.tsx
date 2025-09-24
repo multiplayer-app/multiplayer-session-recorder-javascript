@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { View, Text, Pressable, TextInput, Alert } from 'react-native'
+import { View, Text, Pressable, TextInput, Alert, ScrollView, Keyboard } from 'react-native'
 import { WidgetTextOverridesConfig } from '../../types'
 import { sharedStyles } from './styles'
 import ModalHeader from './ModalHeader'
@@ -14,6 +14,7 @@ interface FinalPopoverProps {
 
 const FinalPopover: React.FC<FinalPopoverProps> = ({ textOverrides, onStopRecording, onCancelSession, isSubmitting }) => {
   const [comment, setComment] = useState('')
+  const inputAccessoryViewID = 'final-popover-comment-accessory'
 
   const handleStopRecording = async () => {
     try {
@@ -31,7 +32,7 @@ const FinalPopover: React.FC<FinalPopoverProps> = ({ textOverrides, onStopRecord
         </Pressable>
       </ModalHeader>
 
-      <View style={sharedStyles.popoverBody}>
+      <ScrollView style={sharedStyles.popoverBody} keyboardShouldPersistTaps='handled' contentInsetAdjustmentBehavior='automatic'>
         <Text style={sharedStyles.title}>{textOverrides.finalTitle}</Text>
         <Text style={sharedStyles.description}>{textOverrides.finalDescription}</Text>
 
@@ -43,6 +44,9 @@ const FinalPopover: React.FC<FinalPopoverProps> = ({ textOverrides, onStopRecord
           multiline
           numberOfLines={3}
           textAlignVertical='top'
+          returnKeyType='done'
+          blurOnSubmit
+          onSubmitEditing={() => Keyboard.dismiss()}
         />
 
         <View style={sharedStyles.popoverFooter}>
@@ -54,7 +58,7 @@ const FinalPopover: React.FC<FinalPopoverProps> = ({ textOverrides, onStopRecord
             <Text style={sharedStyles.actionButtonText}>{isSubmitting ? 'Saving...' : textOverrides.saveButtonText}</Text>
           </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </View>
   )
 }

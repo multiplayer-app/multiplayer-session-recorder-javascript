@@ -32,7 +32,7 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
   const handleStartRecording = async () => {
     try {
       setLoading(true)
-      onStartRecording(SessionType.PLAIN)
+      await onStartRecording(SessionType.PLAIN)
     } catch (error) {
       Alert.alert('Error', 'Failed to start recording')
     } finally {
@@ -88,9 +88,10 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
             <Switch
               disabled={loading}
               value={continuousRecording}
+              ios_backgroundColor='#e2e8f0'
               onValueChange={handleToggleContinuousRecording}
-              trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={continuousRecording ? '#007AFF' : '#f4f3f4'}
+              trackColor={{ false: '#e2e8f0', true: '#493bff' }}
+              thumbColor={'#ffffff'}
             />
           </View>
         )}
