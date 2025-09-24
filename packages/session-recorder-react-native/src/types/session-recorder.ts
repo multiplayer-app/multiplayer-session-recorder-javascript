@@ -51,16 +51,6 @@ export interface SessionRecorderOptions {
   ignoreUrls?: Array<string | RegExp>
 
   /**
-   * (Optional) Determines where the record button should be placed on the screen.
-   * Possible values:
-   *  - 'top-left'
-   *  - 'top-right'
-   *  - 'bottom-left'
-   *  - 'bottom-right'
-   */
-  widgetButtonPlacement?: WidgetButtonPlacement
-
-  /**
    * (Optional) Enables the continuous recording feature and UI.
    * If false, the UI toggle is hidden and attempts to start a continuous
    * session are ignored.
@@ -69,11 +59,21 @@ export interface SessionRecorderOptions {
   showContinuousRecording?: boolean
 
   /**
-   * (Optional) If false, the session recording widget will be hidden from the UI.
-   * Use this option if you want to enable session recording without a visible UI element.
-   * @default showWidget = true
+   * Optional widget configuration
    */
-  showWidget?: boolean
+  widget?: {
+    /** Enables/disables the widget entirely
+     * @default true
+    */
+    enabled?: boolean
+    /** Floating button config
+     * @default visible: true, placement: 'bottom-right'
+    */
+    button?: {
+      visible?: boolean
+      placement?: WidgetButtonPlacement
+    }
+  }
 
 
   /**

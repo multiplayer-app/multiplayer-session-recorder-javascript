@@ -1,69 +1,67 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useCallback, memo } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { SessionState } from '../../types'
 import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { useSessionRecorder } from '../../context/SessionRecorderContext'
+
 import FloatingButton from './FloatingButton'
 import ModalContainer from './ModalContainer'
 import InitialPopover from './InitialPopover'
 import FinalPopover from './FinalPopover'
 import { logger } from '../../utils'
+import { useSessionRecorderStore } from '../../context/useSessionRecorderStore'
 
 interface SessionRecorderWidgetProps {}
 
-const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = () => {
-  const { sessionState, sessionType, instance } = useSessionRecorder()
-  const [isModalVisible, setIsModalVisible] = useState(false)
+const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = memo(() => {
+  const { instance, openWidgetModal, closeWidgetModal } = useSessionRecorder()
+  const sessionType = useSessionRecorderStore<SessionType | null>((s) => s.sessionType)
+  const isModalVisible = useSessionRecorderStore<boolean>((s) => s.isWidgetModalVisible)
+  const sessionState = useSessionRecorderStore<SessionState | null>((s) => s.sessionState)
+
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Get configuration from instance
   const config = instance.config
+  const widget = config.widget
   const textOverrides = config.widgetTextOverrides
   const showContinuousRecording = config.showContinuousRecording
 
-  const openModal = () => {
-    setIsModalVisible(true)
-  }
-
-  const closeModal = () => {
-    setIsModalVisible(false)
-  }
-
-  const onStartRecording = async (sessionType: SessionType) => {
+  const onStartRecording = useCallback(async (sessionType: SessionType) => {
     try {
       await instance.start(sessionType)
-      closeModal()
+      closeWidgetModal()
     } catch (error) {
       logger.error('SessionRecorderWidget', 'Failed to start recording', error)
       throw error
     }
-  }
+  }, [])
 
-  const onStopRecording = async (comment?: string) => {
+  const onStopRecording = useCallback(async (comment?: string) => {
     try {
       setIsSubmitting(true)
       await instance.stop(comment)
-      closeModal()
+      closeWidgetModal()
     } catch (error) {
       logger.error('SessionRecorderWidget', 'Failed to stop recording', error)
       throw error
     } finally {
       setIsSubmitting(false)
     }
-  }
+  }, [])
 
-  const onCancelSession = async () => {
+  const onCancelSession = useCallback(async () => {
     try {
       await instance.cancel()
-      closeModal()
+      closeWidgetModal()
     } catch (error) {
       logger.error('SessionRecorderWidget', 'Failed to cancel session', error)
     }
-  }
+  }, [])
 
-  const onSaveContinuousSession = async () => {
+  const onSaveContinuousSession = useCallback(async () => {
     return instance.save()
-  }
+  }, [])
 
   const renderModalContent = useMemo(() => {
     const isStarted = sessionState === SessionState.started || sessionState === SessionState.paused
@@ -73,7 +71,7 @@ const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = () => {
         <FinalPopover
           isSubmitting={isSubmitting}
           textOverrides={textOverrides}
-          onClose={closeModal}
+          onClose={closeWidgetModal}
           onStopRecording={onStopRecording}
           onCancelSession={onCancelSession}
         />
@@ -86,25 +84,38 @@ const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = () => {
         textOverrides={textOverrides}
         isContinuous={isStarted && isContinuous}
         showContinuousRecording={showContinuousRecording}
-        onClose={closeModal}
+        onClose={closeWidgetModal}
         onStopRecording={onStopRecording}
         onStartRecording={onStartRecording}
         onSaveContinuousSession={onSaveContinuousSession}
       />
     )
-  }, [sessionState, isSubmitting, textOverrides, showContinuousRecording])
+  }, [
+    sessionState,
+    sessionType,
+    isSubmitting,
+    textOverrides,
+    showContinuousRecording,
+    closeWidgetModal,
+    onStopRecording,
+    onCancelSession,
+    onStartRecording,
+    onSaveContinuousSession
+  ])
 
   return (
     <>
-      <View pointerEvents='box-none' style={styles.overlayContainer}>
-        <FloatingButton sessionState={sessionState} onPress={openModal} />
-      </View>
-      <ModalContainer isVisible={isModalVisible} onClose={closeModal}>
+      {widget.button?.visible && (
+        <View pointerEvents='box-none' style={styles.overlayContainer}>
+          <FloatingButton sessionState={sessionState} onPress={openWidgetModal} />
+        </View>
+      )}
+      <ModalContainer isVisible={isModalVisible} onClose={closeWidgetModal}>
         {renderModalContent}
       </ModalContainer>
     </>
   )
-}
+})
 
 export default SessionRecorderWidget
 

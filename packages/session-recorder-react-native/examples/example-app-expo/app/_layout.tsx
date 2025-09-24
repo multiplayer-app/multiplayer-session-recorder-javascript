@@ -5,31 +5,38 @@ import 'react-native-reanimated'
 
 import { useColorScheme } from '@/hooks/use-color-scheme'
 import { SessionRecorderProvider, SessionRecorder } from '@multiplayer-app/session-recorder-react-native'
+import { useEffect } from 'react'
 
 export const unstable_settings = {
   anchor: '(tabs)'
 }
-//eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnRlZ3JhdGlvbiI6IjY4YzNjYjE4NTk1NTcwNjMwYzI0NWJkNCIsIndvcmtzcGFjZSI6IjY0OTFjMmU5OGExYTIyMTM2MzM0MzRiYyIsInByb2plY3QiOiI2OGMzY2FhOTU1MGM5YjkwNTgxMmM1ZDYiLCJ0eXBlIjoiT1RFTCIsImlhdCI6MTc1NzY2MTk3Nn0.u4jruzv_zEL9fQMSv748So29OvR5M_itEENb57Yga2c
 
-const sessionRecorderOptions = {
+SessionRecorder.init({
   version: '0.0.1',
   application: 'react-native-app',
   environment: 'development',
   apiKey:
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnRlZ3JhdGlvbiI6IjY4Y2E4MTc1ZDIzYTRmODBmNDljNWRiZSIsIndvcmtzcGFjZSI6IjY0OTFjMmU5OGExYTIyMTM2MzM0MzRiYyIsInByb2plY3QiOiI2OGMzY2FhOTU1MGM5YjkwNTgxMmM1ZDYiLCJ0eXBlIjoiT1RFTCIsImlhdCI6MTc1ODEwMTg3N30.CXWrtmwqQ3MsKxBpBOqKHNpS6orj_lOeHEltebZZMII',
-  showWidget: true
-}
-
-SessionRecorder.setSessionAttributes({
-  userName: 'Gegham Khachatryan',
-  userId: '12345'
+  widget: {
+    enabled: true,
+    button: { visible: true }
+  }
 })
 
 export default function RootLayout() {
   const colorScheme = useColorScheme()
 
+  useEffect(() => {
+    // Set session attributes
+    SessionRecorder.setSessionAttributes({
+      userName: 'John Doe',
+      userEmail: 'john.doe@example.com',
+      userId: '12345'
+    })
+  }, [])
+
   return (
-    <SessionRecorderProvider options={sessionRecorderOptions}>
+    <SessionRecorderProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
           <Stack.Screen name='(tabs)' options={{ headerShown: false }} />

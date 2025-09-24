@@ -1,13 +1,13 @@
-import { SessionRecorderConfigs, SessionRecorderOptions, WidgetButtonPlacement } from '../types'
+import { SessionRecorderConfigs, SessionRecorderOptions } from '../types'
 import { BASE_CONFIG } from './defaults'
 import { getMaskingConfig } from './masking'
 import {
   isValidString,
   isValidNumber,
   isValidBoolean,
-  isValidArray,
-  isValidEnum,
+  isValidArray
 } from './validators'
+import { getWidgetConfig } from './widget'
 
 const getWidgetTextOverridesConfig = (config: any, defaultConfig: any) => {
   if (!config || typeof config !== 'object') {
@@ -19,10 +19,13 @@ const getWidgetTextOverridesConfig = (config: any, defaultConfig: any) => {
   }, {} as Record<string, any>)
 }
 
+
 export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionRecorderConfigs => {
   if (!c) {
     return BASE_CONFIG
   }
+
+
 
   return {
     apiKey: isValidString(c.apiKey, BASE_CONFIG.apiKey),
@@ -34,9 +37,8 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     apiBaseUrl: isValidString(c.apiBaseUrl, BASE_CONFIG.apiBaseUrl),
     usePostMessageFallback: isValidBoolean(c.usePostMessageFallback, BASE_CONFIG.usePostMessageFallback),
 
-    showWidget: isValidBoolean(c.showWidget, BASE_CONFIG.showWidget),
+
     showContinuousRecording: isValidBoolean(c.showContinuousRecording, BASE_CONFIG.showContinuousRecording),
-    widgetButtonPlacement: isValidEnum<WidgetButtonPlacement>(c.widgetButtonPlacement, BASE_CONFIG.widgetButtonPlacement, Object.values(WidgetButtonPlacement) as WidgetButtonPlacement[]),
     ignoreUrls: isValidArray(c.ignoreUrls, BASE_CONFIG.ignoreUrls),
     sampleTraceRatio: isValidNumber(c.sampleTraceRatio, BASE_CONFIG.sampleTraceRatio),
     propagateTraceHeaderCorsUrls: c.propagateTraceHeaderCorsUrls || BASE_CONFIG.propagateTraceHeaderCorsUrls,
@@ -53,5 +55,6 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     recordNavigation: isValidBoolean(c.recordNavigation, BASE_CONFIG.recordNavigation),
 
     masking: getMaskingConfig(c.masking),
+    widget: getWidgetConfig(c.widget),
   }
 }

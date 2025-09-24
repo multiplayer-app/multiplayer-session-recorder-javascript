@@ -5,9 +5,7 @@ import {
 } from '@multiplayer-app/session-recorder-common'
 import {
   MaskingConfig,
-  SessionRecorderConfigs,
-  WidgetButtonPlacement,
-  WidgetTextOverridesConfig,
+  SessionRecorderConfigs, WidgetButtonPlacement, WidgetTextOverridesConfig
 } from '../types'
 import {
   OTEL_MP_SAMPLE_TRACE_RATIO,
@@ -62,9 +60,15 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
   application: '',
   environment: '',
 
-  showWidget: true,
   showContinuousRecording: true,
-  widgetButtonPlacement: WidgetButtonPlacement.bottomRight,
+
+  widget: {
+    enabled: true,
+    button: {
+      visible: true,
+      placement: WidgetButtonPlacement.bottomRight,
+    },
+  },
 
   usePostMessageFallback: false,
   apiBaseUrl: MULTIPLAYER_BASE_API_URL,

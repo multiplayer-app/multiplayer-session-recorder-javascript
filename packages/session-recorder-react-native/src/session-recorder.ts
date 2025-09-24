@@ -22,20 +22,26 @@ import { StorageService } from './services/storage.service'
 import { ApiService, StartSessionRequest, StopSessionRequest } from './services/api.service'
 import { eventWithTime } from '@rrweb/types'
 
-// Utility functions for React Native
 
-type SessionRecorderEvents =
-  | 'state-change'
-
+type SessionRecorderEvents = 'state-change'
 
 class SessionRecorder extends Observable<SessionRecorderEvents> implements ISessionRecorder, EventRecorder {
-  private _isInitialized = false
+
   private _configs: SessionRecorderConfigs
   private _apiService = new ApiService()
   private _tracer = new TracerReactNativeSDK()
   private _recorder = new RecorderReactNativeSDK()
   private _storageService = StorageService.getInstance()
   private _startRequestController: AbortController | null = null
+
+  // Whether the session recorder is initialized
+  private _isInitialized = false
+  get isInitialized(): boolean {
+    return this._isInitialized
+  }
+  set isInitialized(isInitialized: boolean) {
+    this._isInitialized = isInitialized
+  }
 
   // Session ID and state are stored in AsyncStorage
   private _sessionId: string | null = null
@@ -155,6 +161,7 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    * @param configs - custom configurations for session debugger
    */
   public async init(configs: SessionRecorderOptions): Promise<void> {
+    if (this._isInitialized) return
     this._configs = getSessionRecorderConfig({ ...this._configs, ...configs })
     this._isInitialized = true
     this._checkOperation('init')
