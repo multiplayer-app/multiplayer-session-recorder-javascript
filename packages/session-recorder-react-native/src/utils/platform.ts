@@ -378,6 +378,8 @@ export const getNavigatorInfo = (): IResourceAttributes => {
     isReactNative: platformInfo.isReactNative,
     environment: platformInfo.isExpo ? 'expo' : 'react-native',
 
+    // System type identifier (previously in system tags)
+    systemType: 'mobile',
     // Additional platform attributes
     // ...getPlatformAttributes(),
   }

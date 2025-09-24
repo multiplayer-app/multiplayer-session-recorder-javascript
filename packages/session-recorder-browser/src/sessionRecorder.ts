@@ -156,6 +156,7 @@ export class SessionRecorder implements ISessionRecorder {
     }
   }
 
+
   /**
    * Initialize the session debugger
    * @param configs - custom configurations for session debugger

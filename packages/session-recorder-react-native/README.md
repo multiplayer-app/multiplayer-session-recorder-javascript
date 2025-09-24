@@ -75,14 +75,43 @@ The package will automatically:
 - Add Expo-specific attributes to traces
 - Optimize performance for Expo runtime
 
-### React Navigation Integration
+### Navigation integration
 
-```javascript
+#### Expo Router (recommended)
+
+Expo Router already manages the NavigationContainer. Don’t add your own.
+
+```tsx
+import { useEffect } from 'react'
+import { Stack, useNavigationContainerRef } from 'expo-router'
+import SessionRecorder from '@multiplayer-app/session-recorder-react-native'
+
+export default function RootLayout() {
+  const navigationRef = useNavigationContainerRef()
+
+  useEffect(() => {
+    const unsub = navigationRef.addListener?.('state', () => {
+      SessionRecorder.setNavigationRef(navigationRef)
+      unsub?.()
+    })
+    return unsub
+  }, [navigationRef])
+
+  return <Stack />
+}
+```
+
+#### Classic React Navigation (no Expo Router)
+
+If you own the `NavigationContainer`, set the ref in `onReady`:
+
+```tsx
 import { NavigationContainer } from '@react-navigation/native'
+import { useRef } from 'react'
 import SessionRecorder from '@multiplayer-app/session-recorder-react-native'
 
 export default function App() {
-  const navigationRef = useRef(null)
+  const navigationRef = useRef<any>(null)
 
   return (
     <NavigationContainer

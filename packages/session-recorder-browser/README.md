@@ -49,6 +49,7 @@ yarn add @multiplayer-app/session-recorder-browser @opentelemetry/api
 ## Set up web client:
 
 ### Quick start
+
 ```javascript
 import SessionRecorder from '@multiplayer-app/session-recorder-browser'
 
@@ -56,7 +57,7 @@ SessionRecorder.init({
   application: 'my-web-app',
   version: '1.0.0',
   environment: 'production',
-  apiKey: 'MULTIPLAYER_OTLP_KEY',  // note: replace with your Multiplayer OTLP key
+  apiKey: 'MULTIPLAYER_OTLP_KEY' // note: replace with your Multiplayer OTLP key
   // IMPORTANT: in order to propagate OTLP headers to a backend
   // domain(s) with a different origin, add backend domain(s) below.
   // e.g. if you serve your website from www.example.com
@@ -65,11 +66,10 @@ SessionRecorder.init({
   // propagateTraceHeaderCorsUrls: [new RegExp('https://api.example.com', 'i')],
 })
 
-
 // add any key value pairs which should be associated with a session
 SessionRecorder.setSessionAttributes({
   userId: '12345',
-  userName: 'Jane Doe',
+  userName: 'John Doe'
 })
 
 // optionally control via API (widget is enabled by default)
@@ -92,7 +92,7 @@ SessionRecorder.init({
   application: 'my-app', // name of your application
   environment: 'production',
   apiKey: 'MULTIPLAYER_OTLP_KEY', // note: replace with your Multiplayer OTLP key
-  
+
   apiBaseUrl: 'https://api.multiplayer.app', // override API base URL if needed
   exporterEndpoint: 'https://otlp.multiplayer.app', // override OTLP collector URL if needed
 
@@ -113,14 +113,14 @@ SessionRecorder.init({
   // configures what percentage (0.00-1.00) of OTLP data
   // should be sent through `exporters`
   sampleTraceRatio: 0,
-  
+
   // optional: exporters allow you to send
   // OTLP data to observability platforms
   exporters: [
     // example:
     // import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
     // new OTLPTraceExporter({
-    //   url: '<opentelemetry-collector-url>', 
+    //   url: '<opentelemetry-collector-url>',
     // })
   ],
 
@@ -148,7 +148,7 @@ SessionRecorder.init({
     maskTextClass: /sensitive|private/, // mask text in elements with these classes
     // CSS selector for text masking
     maskTextSelector: '.sensitive-data', // mask text in elements matching this selector
-    
+
     // custom masking functions
     maskInput: (text, element) => {
       if (element.classList.contains('credit-card')) {
@@ -172,7 +172,7 @@ SessionRecorder.init({
       }
       return payload
     },
-    
+
     isContentMaskingEnabled: true, // enable content masking in session recordings
     maskBody: (payload, span) => {
       // note: `payload` is already a copy of the original request/response content
@@ -208,7 +208,7 @@ SessionRecorder.init({
     headersToInclude: ['content-type', 'user-agent'],
     // list of headers to exclude from capturing
     headersToExclude: ['authorization', 'cookie']
-  },
+  }
 })
 
 // add any key value pairs which should be associated with a session

@@ -139,6 +139,7 @@ export interface SessionRecorderOptions {
    * @default See PopoverTextConfig defaults
    */
   widgetTextOverrides?: WidgetTextOverridesConfig
+
 }
 
 /**

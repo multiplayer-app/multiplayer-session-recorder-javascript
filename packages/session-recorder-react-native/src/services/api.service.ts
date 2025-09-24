@@ -6,6 +6,7 @@ export interface StartSessionRequest {
   sessionAttributes?: ISessionAttributes
   resourceAttributes?: IResourceAttributes
   debugSessionData?: Record<string, any>
+  tags?: { key?: string, value: string }[]
 }
 
 export interface StopSessionRequest {

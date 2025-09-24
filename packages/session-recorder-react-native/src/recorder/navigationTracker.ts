@@ -6,7 +6,6 @@ export class NavigationTracker {
   private config?: RecorderConfig
   private isRecording = false
   private navigationRef: any = null
-  private events: NavigationEvent[] = []
   private navigationListeners: Map<string, any> = new Map()
   private currentRoute: string | null = null
   private navigationStack: string[] = []
@@ -26,7 +25,6 @@ export class NavigationTracker {
   start(): void {
     logger.info('NavigationTracker', 'Navigation tracking started')
     this.isRecording = true
-    this.events = []
     this.navigationStack = []
     this.navigationStartTime = Date.now()
     this._setupNavigationListener()
@@ -102,11 +100,43 @@ export class NavigationTracker {
     }
   }
 
+  private _getFriendlyRouteTitle(): string | null {
+    try {
+      const current = this.navigationRef?.getCurrentRoute?.()
+      if (!current) return null
+      // Prefer a title set via navigation.setOptions({ title }) if present in params
+      const titleFromParams = (current.params && (current.params as any).title) as string | undefined
+      if (titleFromParams && typeof titleFromParams === 'string') {
+        return titleFromParams
+      }
+
+      // Fallback to a prettified route name (handles Expo Router style names like 'user-posts/[id]')
+      if (current.name && typeof current.name === 'string') {
+        const raw = current.name as string
+        // Remove group segments like "(tabs)/" at the beginning
+        const withoutGroups = raw.replace(/^\([^)]*\)\//, '')
+        // Take last path segment (e.g., 'user-posts/[id]' -> '[id]' is removed later, 'post/[id]' -> 'post')
+        const lastSegment = withoutGroups.split('/').filter(Boolean).slice(-2).join(' ')
+        // Remove dynamic segments like '[id]'
+        const withoutParams = lastSegment.replace(/\[[^\]]+\]/g, '').trim()
+        // Replace dashes/underscores with spaces and collapse spaces
+        const spaced = withoutParams.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim()
+        // Title case
+        const titleCase = spaced.split(' ').map(w => w ? (w.charAt(0).toUpperCase() + w.slice(1)) : w).join(' ')
+        return titleCase || raw
+      }
+
+      return null
+    } catch {
+      return null
+    }
+  }
+
   private _recordNavigationEvent(eventType: string, data: any): void {
     if (!this.isRecording) return
 
     const event: NavigationEvent = {
-      type: 'navigate', // Default type
+      type: 'navigate',
       timestamp: Date.now(),
       metadata: {
         eventType,
@@ -115,24 +145,27 @@ export class NavigationTracker {
       },
     }
 
-    if (data) {
-      if (data.routeName) {
-        event.routeName = data.routeName
-        this._updateNavigationStack(data.routeName, eventType)
-      }
-      if (data.params) {
-        event.params = data.params
-      }
-      if (data.key) {
-        event.metadata!.routeKey = data.key
-      }
-    }
+    const currentRoute = this.navigationRef?.getCurrentRoute?.() || {}
+    const friendlyTitle = this._getFriendlyRouteTitle()
+    const routeName = data?.routeName || currentRoute?.name
+    const params = data?.params || currentRoute?.params
+    const key = data?.key || currentRoute?.key
 
-    this.events.push(event)
-    this._sendEvent(event)
+    if (routeName) {
+      event.routeName = routeName
+      this._updateNavigationStack(routeName, eventType)
+    }
+    if (params) {
+      event.params = params
+    }
+    if (key) {
+      event.metadata!.routeKey = key
+    }
+    if (friendlyTitle) {
+      event.metadata!.friendlyRouteName = friendlyTitle
+    }
     this._recordOpenTelemetrySpan(event)
   }
-
 
 
   private _updateNavigationStack(routeName: string, eventType: string): void {
@@ -147,10 +180,6 @@ export class NavigationTracker {
         this.navigationStack.splice(index, 1)
       }
     }
-  }
-
-  private _sendEvent(event: NavigationEvent): void {
-    // Navigation event recorded
   }
 
   private _recordOpenTelemetrySpan(event: NavigationEvent): void {
@@ -184,227 +213,6 @@ export class NavigationTracker {
     }
   }
 
-  // Public methods for manual event recording
-  recordNavigate(routeName: string, params?: Record<string, any>): void {
-    const event: NavigationEvent = {
-      type: 'navigate',
-      timestamp: Date.now(),
-      routeName,
-      params,
-      metadata: {
-        navigationDuration: Date.now() - this.navigationStartTime,
-        stackDepth: this.navigationStack.length,
-        manual: true,
-      },
-    }
-
-    this._updateNavigationStack(routeName, 'focus')
-    this._recordEvent(event)
-  }
-
-  recordGoBack(): void {
-    const event: NavigationEvent = {
-      type: 'goBack',
-      timestamp: Date.now(),
-      metadata: {
-        navigationDuration: Date.now() - this.navigationStartTime,
-        stackDepth: this.navigationStack.length,
-        manual: true,
-      },
-    }
-
-    this._recordEvent(event)
-  }
-
-  recordReset(routes: any[]): void {
-    const event: NavigationEvent = {
-      type: 'reset',
-      timestamp: Date.now(),
-      metadata: {
-        navigationDuration: Date.now() - this.navigationStartTime,
-        routesCount: routes.length,
-        manual: true,
-      },
-    }
-
-    // Update navigation stack
-    this.navigationStack = routes.map(route => route.name || route.routeName)
-    if (routes.length > 0) {
-      this.currentRoute = routes[0].name || routes[0].routeName
-    }
-
-    this._recordEvent(event)
-    this._recordEvent(event)
-  }
-
-  private _recordEvent(event: NavigationEvent): void {
-    if (!this.isRecording) return
-
-    this.events.push(event)
-    this._sendEvent(event)
-    this._recordOpenTelemetrySpan(event)
-  }
-
-  // Advanced navigation tracking methods
-  recordDeepLink(url: string, params?: Record<string, any>): void {
-    const event: NavigationEvent = {
-      type: 'navigate',
-      timestamp: Date.now(),
-      routeName: 'deepLink',
-      params: { url, ...params },
-      metadata: {
-        navigationDuration: Date.now() - this.navigationStartTime,
-        stackDepth: this.navigationStack.length,
-        deepLink: true,
-      },
-    }
-
-    this._recordEvent(event)
-    this._recordEvent(event)
-  }
-
-  recordTabChange(tabName: string, tabIndex: number): void {
-    const event: NavigationEvent = {
-      type: 'navigate',
-      timestamp: Date.now(),
-      routeName: tabName,
-      params: { tabIndex },
-      metadata: {
-        navigationDuration: Date.now() - this.navigationStartTime,
-        stackDepth: this.navigationStack.length,
-        tabChange: true,
-        tabIndex,
-      },
-    }
-
-    this._recordEvent(event)
-    this._recordEvent(event)
-  }
-
-  recordModalOpen(modalName: string, params?: Record<string, any>): void {
-    const event: NavigationEvent = {
-      type: 'navigate',
-      timestamp: Date.now(),
-      routeName: modalName,
-      params,
-      metadata: {
-        navigationDuration: Date.now() - this.navigationStartTime,
-        stackDepth: this.navigationStack.length,
-        modal: true,
-      },
-    }
-
-    this._recordEvent(event)
-    this._recordEvent(event)
-  }
-
-  recordModalClose(modalName: string): void {
-    const event: NavigationEvent = {
-      type: 'goBack',
-      timestamp: Date.now(),
-      routeName: modalName,
-      metadata: {
-        navigationDuration: Date.now() - this.navigationStartTime,
-        stackDepth: this.navigationStack.length,
-        modal: true,
-        modalClose: true,
-      },
-    }
-
-    this._recordEvent(event)
-    this._recordEvent(event)
-  }
-
-  recordStackPush(routeName: string, params?: Record<string, any>): void {
-    const event: NavigationEvent = {
-      type: 'navigate',
-      timestamp: Date.now(),
-      routeName,
-      params,
-      metadata: {
-        navigationDuration: Date.now() - this.navigationStartTime,
-        stackDepth: this.navigationStack.length,
-        stackOperation: 'push',
-      },
-    }
-
-    this._recordEvent(event)
-    this._recordEvent(event)
-  }
-
-  recordStackPop(routeName?: string): void {
-    const event: NavigationEvent = {
-      type: 'goBack',
-      timestamp: Date.now(),
-      routeName,
-      metadata: {
-        navigationDuration: Date.now() - this.navigationStartTime,
-        stackDepth: this.navigationStack.length,
-        stackOperation: 'pop',
-      },
-    }
-
-    this._recordEvent(event)
-    this._recordEvent(event)
-  }
-
-  // Performance monitoring
-  recordNavigationPerformance(routeName: string, loadTime: number): void {
-    const event: NavigationEvent = {
-      type: 'navigate',
-      timestamp: Date.now(),
-      routeName,
-      metadata: {
-        navigationDuration: Date.now() - this.navigationStartTime,
-        stackDepth: this.navigationStack.length,
-        performance: 'monitoring',
-        loadTime,
-      },
-    }
-
-    this._recordEvent(event)
-    this._recordEvent(event)
-  }
-
-  // Error tracking
-  recordNavigationError(error: Error, routeName?: string): void {
-    const event: NavigationEvent = {
-      type: 'navigate',
-      timestamp: Date.now(),
-      routeName,
-      metadata: {
-        navigationDuration: Date.now() - this.navigationStartTime,
-        stackDepth: this.navigationStack.length,
-        error: true,
-        errorType: error.name,
-        errorMessage: error.message,
-      },
-    }
-
-    this._recordEvent(event)
-    this._recordEvent(event)
-
-    // Also record as OpenTelemetry error span
-    try {
-      const span = trace.getTracer('navigation').startSpan('Navigation.error', {
-        attributes: {
-          'navigation.system': 'ReactNavigation',
-          'navigation.error': true,
-          'navigation.error.type': error.name,
-          'navigation.error.message': error.message,
-          'navigation.route_name': routeName || 'unknown',
-          'navigation.timestamp': Date.now(),
-        },
-      })
-
-      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
-      span.recordException(error)
-      span.end()
-    } catch (spanError) {
-      // Failed to record error span - silently continue
-    }
-  }
-
   // Get current navigation state
   getCurrentRoute(): string | null {
     return this.currentRoute
@@ -416,25 +224,6 @@ export class NavigationTracker {
 
   getNavigationDepth(): number {
     return this.navigationStack.length
-  }
-
-  // Get recorded events
-  getEvents(): NavigationEvent[] {
-    return [...this.events]
-  }
-
-  // Clear events
-  clearEvents(): void {
-    this.events = []
-  }
-
-  // Get navigation statistics
-  getNavigationStats(): Record<string, number> {
-    const stats: Record<string, number> = {}
-    this.events.forEach(event => {
-      stats[event.type] = (stats[event.type] || 0) + 1
-    })
-    return stats
   }
 
   // Get recording status

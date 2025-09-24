@@ -67,5 +67,6 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     captureHeaders: isValidBoolean(c.captureHeaders, BASE_CONFIG.captureHeaders),
     masking: getMaskingConfig(c.masking),
     widgetTextOverrides: getWidgetTextOverridesConfig(c.widgetTextOverrides, BASE_CONFIG.widgetTextOverrides),
+
   }
 }

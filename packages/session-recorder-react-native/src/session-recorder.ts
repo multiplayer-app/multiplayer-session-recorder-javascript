@@ -121,7 +121,6 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
   public get config(): SessionRecorderConfigs {
     return this._configs
   }
-
   /**
    * Initialize debugger with default or custom configurations
    */
@@ -553,63 +552,22 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
   }
 
   /**
-   * Record touch start event (internal use - touch recording is automatic)
-   * @param x - X coordinate
-   * @param y - Y coordinate
-   * @param target - Target element identifier
-   * @param pressure - Touch pressure
-   * @internal
-   */
-  recordTouchStart(x: number, y: number, target?: string, pressure?: number): void {
-    if (!this._isInitialized || this.sessionState !== SessionState.started) {
-      return
-    }
-
-    // Forward to gesture recorder
-    this._recorder.recordTouchStart(x, y, target, pressure)
-  }
-
-  /**
-   * Record touch move event (internal use - touch recording is automatic)
-   * @param x - X coordinate
-   * @param y - Y coordinate
-   * @param target - Target element identifier
-   * @param pressure - Touch pressure
-   * @internal
-   */
-  recordTouchMove(x: number, y: number, target?: string, pressure?: number): void {
-    if (!this._isInitialized || this.sessionState !== SessionState.started) {
-      return
-    }
-
-    // Forward to gesture recorder
-    this._recorder.recordTouchMove(x, y, target, pressure)
-  }
-
-  /**
-   * Record touch end event (internal use - touch recording is automatic)
-   * @param x - X coordinate
-   * @param y - Y coordinate
-   * @param target - Target element identifier
-   * @param pressure - Touch pressure
-   * @internal
-   */
-  recordTouchEnd(x: number, y: number, target?: string, pressure?: number): void {
-    if (!this._isInitialized || this.sessionState !== SessionState.started) {
-      return
-    }
-
-    // Forward to gesture recorder
-    this._recorder.recordTouchEnd(x, y, target, pressure)
-  }
-
-  /**
    * Set the viewshot ref for screen capture
    * @param ref - React Native View ref for screen capture
    */
   setViewShotRef(ref: any): void {
     if (this._recorder) {
       this._recorder.setViewShotRef(ref)
+    }
+  }
+
+  /**
+   * Set the navigation ref for navigation tracking
+   * @param ref - React Native Navigation ref for navigation tracking
+   */
+  setNavigationRef(ref: any): void {
+    if (this._recorder) {
+      this._recorder.setNavigationRef(ref)
     }
   }
 }

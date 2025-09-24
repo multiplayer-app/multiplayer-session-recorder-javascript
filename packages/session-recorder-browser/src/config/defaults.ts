@@ -77,4 +77,5 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
   captureHeaders: true,
   masking: DEFAULT_MASKING_CONFIG,
   widgetTextOverrides: DEFAULT_WIDGET_TEXT_CONFIG,
+
 }
