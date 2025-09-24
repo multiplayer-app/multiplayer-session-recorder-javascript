@@ -1,5 +1,5 @@
 import { Dimensions } from 'react-native'
-import { trace, SpanStatusCode } from '@opentelemetry/api'
+import { trace, SpanStatusCode, Span } from '@opentelemetry/api'
 import { logger } from '../utils'
 import { GestureEvent, RecorderConfig, EventRecorder } from '../types'
 import { MouseInteractions, eventWithTime, EventType, IncrementalSource } from '@rrweb/types'
@@ -19,6 +19,8 @@ export class GestureRecorder implements EventRecorder {
   private imageNodeId: number = 1 // ID of the image node for touch interactions
   private screenRecorder?: any // Reference to screen recorder for force capture
   private gestureEventListener?: any // Native event listener
+  private currentPanSpan?: Span // Aggregated span for pan gesture
+  private panMoveCount: number = 0
 
   init(config: RecorderConfig, eventRecorder?: EventRecorder, screenRecorder?: any): void {
     this.config = config
@@ -192,14 +194,93 @@ export class GestureRecorder implements EventRecorder {
         targetInfo: event.targetInfo,
         hasTargetInfo: !!event.targetInfo
       })
-      const span = trace.getTracer('@opentelemetry/instrumentation-user-interaction').startSpan(`NativeGesture.${event.type}`, {
-        attributes: {
-          'gesture.type': event.type,
-          'gesture.timestamp': event.timestamp,
-          'gesture.platform': 'react-native',
-          'gesture.source': 'native-module',
-        },
-      })
+      // Special handling to aggregate pan gestures into a single span
+      if (event.type === 'pan_start') {
+        // End any previously dangling pan span defensively
+        if (this.currentPanSpan) {
+          this.currentPanSpan.setStatus({ code: SpanStatusCode.OK })
+          this.currentPanSpan.end()
+        }
+        this.panMoveCount = 0
+        const panSpan = trace
+          .getTracer('@opentelemetry/instrumentation-user-interaction')
+          .startSpan('NativeGesture.pan')
+
+        panSpan.setAttribute('gesture.type', 'pan')
+        panSpan.setAttribute('gesture.timestamp', event.timestamp)
+        panSpan.setAttribute('gesture.platform', 'react-native')
+        panSpan.setAttribute('gesture.source', 'native-module')
+
+        if (event.coordinates) {
+          panSpan.setAttribute('gesture.start.x', event.coordinates.x)
+          panSpan.setAttribute('gesture.start.y', event.coordinates.y)
+        }
+        if (event.target) {
+          panSpan.setAttribute('gesture.target', this._truncateText(event.target, 50))
+        }
+        // Enrich with target info if provided
+        const info = event.targetInfo
+        if (info) {
+          if (info.label) {
+            const truncatedLabel = this._truncateText(String(info.label), 50)
+            panSpan.setAttribute('gesture.target.label', truncatedLabel)
+          }
+          if (info.role) {
+            panSpan.setAttribute('gesture.target.role', String(info.role))
+          }
+          if (info.testId) {
+            panSpan.setAttribute('gesture.target.test_id', String(info.testId))
+          }
+          if (info.text) {
+            const truncatedText = this._truncateText(String(info.text), 50)
+            panSpan.setAttribute('gesture.target.text', truncatedText)
+          }
+        }
+        // Save the span for subsequent move/end events
+        this.currentPanSpan = panSpan
+        return
+      }
+
+      if (event.type === 'pan_move') {
+        if (this.currentPanSpan) {
+          this.panMoveCount += 1
+          this.currentPanSpan.setAttribute('gesture.pan.move_count', this.panMoveCount)
+          if (event.coordinates) {
+            this.currentPanSpan.setAttribute('gesture.last.x', event.coordinates.x)
+            this.currentPanSpan.setAttribute('gesture.last.y', event.coordinates.y)
+          }
+          // Don't end the span here; just update it
+          return
+        }
+        // If we received a move without a start, fall through to single-shot span below
+      }
+
+      if (event.type === 'pan_end') {
+        if (this.currentPanSpan) {
+          if (event.coordinates) {
+            this.currentPanSpan.setAttribute('gesture.end.x', event.coordinates.x)
+            this.currentPanSpan.setAttribute('gesture.end.y', event.coordinates.y)
+          }
+          this.currentPanSpan.setStatus({ code: SpanStatusCode.OK })
+          this.currentPanSpan.end()
+          this.currentPanSpan = undefined
+          this.panMoveCount = 0
+          return
+        }
+        // If no current span, fall through and create a single-shot span for the end event
+      }
+
+      // Default behavior: create a short-lived span per non-pan event
+      const span = trace
+        .getTracer('@opentelemetry/instrumentation-user-interaction')
+        .startSpan(`NativeGesture.${event.type}`, {
+          attributes: {
+            'gesture.type': event.type,
+            'gesture.timestamp': event.timestamp,
+            'gesture.platform': 'react-native',
+            'gesture.source': 'native-module',
+          },
+        })
 
       if (event.coordinates) {
         span.setAttribute('gesture.coordinates.x', event.coordinates.x)
