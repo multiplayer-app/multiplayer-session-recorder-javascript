@@ -149,7 +149,7 @@ function autoDetectAppMetadata(): { name?: string; version?: string; bundleId?: 
 /**
  * Enhanced app metadata detection with automatic fallbacks
  */
-function getAppMetadata(): { name?: string; version?: string; bundleId?: string } {
+export function getAppMetadata(): { name?: string; version?: string; bundleId?: string } {
   // Priority order:
   // 1. Expo config (if available)
   // 2. Manually configured metadata
@@ -248,7 +248,7 @@ export const getNavigatorInfo = (): IResourceAttributes => {
   const getScreenSize = (): string => {
     return `${Math.round(screenData.width)}x${Math.round(screenData.height)}`
   }
-
+  const metadata = getAppMetadata()
   // Get app info with fallbacks for non-Expo apps
   const getAppInfo = (): string => {
     const appName = getAppName()
@@ -258,7 +258,7 @@ export const getNavigatorInfo = (): IResourceAttributes => {
 
   // Get app name with automatic detection
   const getAppName = (): string => {
-    const metadata = getAppMetadata()
+
     if (metadata.name) return metadata.name
 
     // Try configured display name as fallback
@@ -271,7 +271,6 @@ export const getNavigatorInfo = (): IResourceAttributes => {
 
   // Get app version with automatic detection
   const getAppVersion = (): string => {
-    const metadata = getAppMetadata()
     if (metadata.version) return metadata.version
 
     // Final fallback
@@ -280,7 +279,6 @@ export const getNavigatorInfo = (): IResourceAttributes => {
 
   // Get bundle ID with automatic detection
   const getBundleId = (): string => {
-    const metadata = getAppMetadata()
     if (metadata.bundleId) return metadata.bundleId
 
     // Fallback
@@ -305,11 +303,6 @@ export const getNavigatorInfo = (): IResourceAttributes => {
     return '1'
   }
 
-  // Get network info (basic)
-  const getNetworkInfo = (): string => {
-    // This is a basic implementation - in a real app you might want to use @react-native-community/netinfo
-    return 'Unknown'
-  }
 
   // Get hardware info
   const getHardwareInfo = (): string => {
@@ -322,7 +315,6 @@ export const getNavigatorInfo = (): IResourceAttributes => {
     // Core platform info
     platform: platformInfo.isExpo ? 'expo' : 'react-native',
     userAgent: getBrowserInfo(),
-    language: 'en', // Could be enhanced with react-native-localize if available
     timestamp: new Date().toISOString(),
 
     // Device and OS information
@@ -356,14 +348,8 @@ export const getNavigatorInfo = (): IResourceAttributes => {
     expoVersion: platformInfo.expoVersion,
     deviceType: getDeviceType(),
 
-    // Additional device info
-    deviceModel: Platform.OS === 'ios' ? 'iOS Device' : 'Android Device',
-    deviceManufacturer: Platform.OS === 'ios' ? 'Apple' : 'Android Manufacturer',
-    deviceBrand: Platform.OS === 'ios' ? 'Apple' : 'Android Brand',
-
     // Performance and hardware
     hardwareInfo: getHardwareInfo(),
-    networkInfo: getNetworkInfo(),
 
     // Screen details
     screenDensity: PixelRatio.getFontScale(),

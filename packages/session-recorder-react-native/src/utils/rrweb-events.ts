@@ -1,5 +1,6 @@
 import { Dimensions } from 'react-native'
 import { EventType, eventWithTime, NodeType, serializedNodeWithId, IncrementalSource, mutationData } from '@rrweb/types'
+import { getAppMetadata } from './platform'
 
 /**
  * Creates a meta event to mark the start of recording
@@ -10,11 +11,12 @@ import { EventType, eventWithTime, NodeType, serializedNodeWithId, IncrementalSo
  */
 export function createRecordingMetaEvent(): eventWithTime {
   const screenDimensions = Dimensions.get('window')
+  const metadata = getAppMetadata()
 
   return {
     type: EventType.Meta,
     data: {
-      href: 'https://go.multiplayer.app/session-recorder-react-native',
+      href: metadata.bundleId || metadata.name || 'https://native.multiplayer.app',
       width: screenDimensions.width,
       height: screenDimensions.height,
     },
