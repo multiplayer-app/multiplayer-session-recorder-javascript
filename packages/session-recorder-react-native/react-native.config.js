@@ -5,7 +5,7 @@ module.exports = {
         sourceDir: './android'
       },
       ios: {
-        podspecPath: './SessionRecorderNative.podspec'
+        // podspecPath: './SessionRecorderNative.podspec'
       }
     }
   }

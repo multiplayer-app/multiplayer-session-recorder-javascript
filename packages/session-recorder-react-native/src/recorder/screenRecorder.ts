@@ -111,7 +111,7 @@ export class ScreenRecorder implements EventRecorder {
     }
   }
 
-  private async _captureScreen(): Promise<void> {
+  private async _captureScreen(timestamp?: number): Promise<void> {
     if (!this.isRecording || this.captureCount >= this.maxCaptures) return
 
     try {
@@ -124,14 +124,14 @@ export class ScreenRecorder implements EventRecorder {
         if (hasChanged) {
           // Use incremental snapshot if we have an existing image node, otherwise create full snapshot
           if (this.currentImageNodeId !== null && this.lastScreenCapture) {
-            const success = this.updateScreenWithIncrementalSnapshot(base64Image)
+            const success = this.updateScreenWithIncrementalSnapshot(base64Image, timestamp)
             if (!success) {
               // Fallback to full snapshot if incremental update fails
-              this._createAndEmitFullSnapshotEvent(base64Image)
+              this._createAndEmitFullSnapshotEvent(base64Image, timestamp)
             }
           } else {
             // First capture or no existing image node - create full snapshot
-            this._createAndEmitFullSnapshotEvent(base64Image)
+            this._createAndEmitFullSnapshotEvent(base64Image, timestamp)
           }
 
           this.lastScreenCapture = base64Image
@@ -180,20 +180,21 @@ export class ScreenRecorder implements EventRecorder {
     }
   }
 
-  private _createAndEmitFullSnapshotEvent(base64Image: string): void {
+  private _createAndEmitFullSnapshotEvent(base64Image: string, timestamp?: number): void {
     if (!this.screenDimensions) return
 
     // Use the new createFullSnapshot method
-    const fullSnapshotEvent = this.createFullSnapshot(base64Image)
+    const fullSnapshotEvent = this.createFullSnapshot(base64Image, timestamp)
     this.recordEvent(fullSnapshotEvent)
   }
 
   /**
    * Create a full snapshot event with the given base64 image
    * @param base64Image - Base64 encoded image data
+   * @param timestamp - Optional timestamp to use for the event
    * @returns Full snapshot event
    */
-  createFullSnapshot(base64Image: string): eventWithTime {
+  createFullSnapshot(base64Image: string, timestamp?: number): eventWithTime {
     if (!this.screenDimensions) {
       throw new Error('Screen dimensions not available')
     }
@@ -208,6 +209,7 @@ export class ScreenRecorder implements EventRecorder {
       height,
       this.captureFormat,
       { current: this.nodeIdCounter },
+      timestamp,
     )
 
     // Store the image node ID for future incremental updates
@@ -220,13 +222,15 @@ export class ScreenRecorder implements EventRecorder {
   /**
    * Create an incremental snapshot event with mutation data to update image src
    * @param base64Image - New base64 encoded image data
-   * @param imageNodeId - ID of the image node to update
+   * @param captureFormat - Image format (png, jpg, etc.)
+   * @param timestamp - Optional timestamp to use for the event
    * @returns Incremental snapshot event with mutation data
    */
-  createIncrementalSnapshotWithImageUpdate(base64Image: string): eventWithTime {
+  createIncrementalSnapshotWithImageUpdate(base64Image: string, captureFormat?: string, timestamp?: number): eventWithTime {
     return createIncrementalSnapshotUtil(
       base64Image,
-      this.captureFormat,
+      captureFormat || this.captureFormat,
+      timestamp,
     )
   }
 
@@ -234,15 +238,16 @@ export class ScreenRecorder implements EventRecorder {
   /**
    * Update the screen with a new image using incremental snapshot
    * @param base64Image - New base64 encoded image data
+   * @param timestamp - Optional timestamp to use for the event
    * @returns true if update was successful, false otherwise
    */
-  updateScreenWithIncrementalSnapshot(base64Image: string): boolean {
+  updateScreenWithIncrementalSnapshot(base64Image: string, timestamp?: number): boolean {
     if (this.currentImageNodeId === null) {
       logger.warn('ScreenRecorder', 'No image node ID available for incremental update')
       return false
     }
 
-    const incrementalEvent = this.createIncrementalSnapshotWithImageUpdate(base64Image)
+    const incrementalEvent = this.createIncrementalSnapshotWithImageUpdate(base64Image, 'jpg', timestamp)
     this.recordEvent(incrementalEvent)
     return true
   }
@@ -503,13 +508,14 @@ export class ScreenRecorder implements EventRecorder {
   /**
    * Force capture screen (useful after touch interactions)
    * This bypasses the change detection and always captures
+   * @param timestamp - Optional timestamp to use for the capture event
    */
-  forceCapture(): void {
+  forceCapture(timestamp?: number): void {
     if (!this.isRecording) {
       return
     }
 
-    this._captureScreen()
+    this._captureScreen(timestamp)
   }
 
   /**

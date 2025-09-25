@@ -15,22 +15,53 @@ yarn add @multiplayer-app/session-recorder-react-native
 This package requires the following dependencies to be installed in your React Native application:
 
 ```bash
-npm install @react-native-async-storage/async-storage @react-native-community/netinfo react-native-mmkv
+npm install @react-native-async-storage/async-storage @react-native-community/netinfo react-native-mmkv react-native-svg
 # or
-yarn add @react-native-async-storage/async-storage @react-native-community/netinfo react-native-mmkv
+yarn add @react-native-async-storage/async-storage @react-native-community/netinfo react-native-mmkv react-native-svg
 ```
 
-**Note**: If these dependencies are not installed, the session recorder will throw clear error messages indicating which dependencies are missing.
+**Important**: Native modules like `@react-native-async-storage/async-storage` and `react-native-svg` must be installed directly in your app's `package.json`. React Native autolinking only links native modules that are declared by the app itself, not modules pulled in transitively by libraries. If you don't add them directly, you may see errors like "NativeModule: AsyncStorage is null" or SVGs not rendering.
 
-### Expo Installation
-
-For Expo applications, the package automatically detects the Expo environment and provides Expo-specific optimizations:
+#### Bare React Native projects
 
 ```bash
-npx expo install @multiplayer-app/session-recorder-react-native
+# install native deps in the app
+npm install @react-native-async-storage/async-storage @react-native-community/netinfo react-native-mmkv react-native-svg
+
+# iOS: install pods from your app's ios directory
+cd ios && pod install && cd -
 ```
 
-The package will automatically detect if you're running in an Expo environment and provide the appropriate configuration.
+#### Expo projects
+
+Use Expo's version-aware installer so versions match the SDK:
+
+```bash
+npx expo install @react-native-async-storage/async-storage @react-native-community/netinfo react-native-mmkv react-native-svg
+```
+
+If you use Expo Router or a managed workflow, no extra autolinking steps are required beyond installing the packages.
+
+#### Why direct install is required
+
+- Autolinking scans only the app's `package.json`
+- iOS CocoaPods/Android Gradle include native modules only when the app declares them
+- Libraries should list native requirements as `peerDependencies` and document installation
+
+<!-- Removed separate Expo Installation block to avoid duplication. Expo users should install native deps with `expo install` as shown above. -->
+
+### Troubleshooting AsyncStorage
+
+If you encounter:
+
+```
+[@RNC/AsyncStorage]: NativeModule: AsyncStorage is null
+```
+
+1. Ensure `@react-native-async-storage/async-storage` is installed in your app (not only in this library)
+2. iOS: run `cd ios && pod install`, then rebuild the app
+3. Clear Metro cache: `npm start -- --reset-cache` (or `expo start -c`)
+4. Clean builds: uninstall the app from device/simulator and rebuild
 
 ## Setup
 

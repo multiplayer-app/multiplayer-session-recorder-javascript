@@ -1,5 +1,5 @@
 import { IResourceAttributes } from '../types'
-import Constants from 'expo-constants'
+import OptionalConstants from './constants.optional'
 import { Platform, Dimensions, PixelRatio } from 'react-native'
 import { version } from '../version'
 import { getAutoDetectedAppMetadata } from './app-metadata'
@@ -22,11 +22,11 @@ export interface PlatformInfo {
 export function detectPlatform(): PlatformInfo {
   try {
     // Check if we're in an Expo environment
-    const isExpo = !!Constants.default?.expoVersion || !!Constants.expoVersion
+    const isExpo = !!OptionalConstants?.expoVersion
 
     if (isExpo) {
-      const expoVersion = Constants.default?.expoVersion || Constants.expoVersion
-      const platform = Constants.default?.platform || Constants.platform
+      const expoVersion = OptionalConstants?.expoVersion
+      const platform = OptionalConstants?.platform
 
       return {
         isExpo: true,
@@ -171,7 +171,7 @@ export function getAppMetadata(): { name?: string; version?: string; bundleId?: 
  * Get metadata from Expo config
  */
 function getExpoMetadata(): { name?: string; version?: string; bundleId?: string } {
-  const expoConfig = Constants.default?.expoConfig || Constants.expoConfig
+  const expoConfig = OptionalConstants?.expoConfig
   if (!expoConfig) return {}
 
   return {
@@ -212,7 +212,7 @@ export const getNavigatorInfo = (): IResourceAttributes => {
   // Get OS version details
   const getOSInfo = (): string => {
     if (platformInfo.isExpo) {
-      const platform = Constants.default?.platform || Constants.platform
+      const platform = OptionalConstants?.platform
       if (platform?.ios) {
         return `iOS ${Platform.Version}`
       } else if (platform?.android) {
@@ -289,10 +289,8 @@ export const getNavigatorInfo = (): IResourceAttributes => {
   const getBuildNumber = (): string => {
     // Try Expo config first
     const expoBuildNumber =
-      Constants.default?.expoConfig?.ios?.buildNumber ||
-      Constants.expoConfig?.ios?.buildNumber ||
-      Constants.default?.expoConfig?.android?.versionCode ||
-      Constants.expoConfig?.android?.versionCode
+      OptionalConstants?.expoConfig?.ios?.buildNumber ||
+      OptionalConstants?.expoConfig?.android?.versionCode
     if (expoBuildNumber) return expoBuildNumber.toString()
 
     // Try configured metadata for non-Expo apps

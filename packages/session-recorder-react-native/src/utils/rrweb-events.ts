@@ -31,6 +31,7 @@ export function createRecordingMetaEvent(): eventWithTime {
  * @param height - Screen height
  * @param captureFormat - Image format (png, jpg, etc.)
  * @param nodeIdCounter - Starting node ID counter (will be modified)
+ * @param timestamp - Optional timestamp to use for the event
  * @returns Full snapshot event
  */
 export function createFullSnapshotEvent(
@@ -39,6 +40,7 @@ export function createFullSnapshotEvent(
   height: number,
   captureFormat: string = 'jpg',
   nodeIdCounter: { current: number },
+  timestamp?: number,
 ): eventWithTime {
   // Create a virtual DOM node representing the screen as an image
   const imageNode: serializedNodeWithId = {
@@ -127,20 +129,21 @@ export function createFullSnapshotEvent(
       node: domNode,
       initialOffset: { left: 0, top: 0 },
     },
-    timestamp: Date.now(),
+    timestamp: timestamp || Date.now(),
   }
 }
 
 /**
  * Create an incremental snapshot event with mutation data to update image src
  * @param base64Image - New base64 encoded image data
- * @param imageNodeId - ID of the image node to update
  * @param captureFormat - Image format (png, jpg, etc.)
+ * @param timestamp - Optional timestamp to use for the event
  * @returns Incremental snapshot event with mutation data
  */
 export function createIncrementalSnapshotWithImageUpdate(
   base64Image: string,
   captureFormat: string = 'jpg',
+  timestamp?: number,
 ): eventWithTime {
   const mutationData: mutationData = {
     source: IncrementalSource.Mutation,
@@ -160,7 +163,7 @@ export function createIncrementalSnapshotWithImageUpdate(
   return {
     type: EventType.IncrementalSnapshot,
     data: mutationData,
-    timestamp: Date.now(),
+    timestamp: timestamp || Date.now(),
   }
 }
 

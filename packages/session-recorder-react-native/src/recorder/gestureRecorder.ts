@@ -333,10 +333,10 @@ export class GestureRecorder implements EventRecorder {
   }
 
   // Public methods for manual event recording (same as before)
-  recordTap(x: number, y: number, target?: string, pressure?: number): void {
+  recordTap(x: number, y: number, target?: string, pressure?: number, timestamp?: number): void {
     const event: GestureEvent = {
       type: 'tap',
-      timestamp: Date.now(),
+      timestamp: timestamp || Date.now(),
       coordinates: { x, y },
       target,
       metadata: {
@@ -521,7 +521,7 @@ export class GestureRecorder implements EventRecorder {
     this.lastTouchTime = now
 
     logger.debug('GestureRecorder', 'Touch start recorded', { x, y, target, pressure })
-    this._createMouseInteractionEvent(x, y, MouseInteractions.TouchStart, target)
+    this._createMouseInteractionEvent(x, y, MouseInteractions.TouchStart, now)
   }
 
   recordTouchMove(x: number, y: number, target?: string, pressure?: number): void {
@@ -538,17 +538,20 @@ export class GestureRecorder implements EventRecorder {
   }
 
   recordTouchEnd(x: number, y: number, target?: string, pressure?: number): void {
-    logger.debug('GestureRecorder', 'Touch end recorded', { x, y, target, pressure })
-    this.recordTap(x, y, target, pressure)
-    this._createMouseInteractionEvent(x, y, MouseInteractions.TouchEnd, target)
+    const timestamp = Date.now()
+
+    logger.debug('GestureRecorder', 'Touch end recorded', { x, y, target, pressure, timestamp })
+
+    this.recordTap(x, y, target, pressure, timestamp)
+    this._createMouseInteractionEvent(x, y, MouseInteractions.TouchEnd, timestamp)
 
     // Only force screen capture on touch end (not on every touch event)
     logger.debug('GestureRecorder', 'Forcing screen capture after touch end')
-    this.screenRecorder?.forceCapture()
+    this.screenRecorder?.forceCapture(timestamp)
   }
 
   recordTouchCancel(x: number, y: number, target?: string): void {
-    this._createMouseInteractionEvent(x, y, MouseInteractions.TouchCancel, target)
+    this._createMouseInteractionEvent(x, y, MouseInteractions.TouchCancel)
   }
 
   setImageNodeId(nodeId: number): void {
@@ -574,7 +577,7 @@ export class GestureRecorder implements EventRecorder {
     x: number,
     y: number,
     interactionType: MouseInteractions,
-    target?: string,
+    timestamp?: number,
   ): void {
     const incrementalSnapshotEvent: eventWithTime = {
       type: EventType.IncrementalSnapshot,
@@ -586,7 +589,7 @@ export class GestureRecorder implements EventRecorder {
         y: y, // Preserve decimal precision like web rrweb
         pointerType: 2, // 2 = Touch for React Native (0=Mouse, 1=Pen, 2=Touch)
       },
-      timestamp: Date.now(),
+      timestamp: timestamp || Date.now(),
     }
 
     this.recordEvent(incrementalSnapshotEvent)

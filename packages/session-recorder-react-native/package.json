@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-react-native",
-  "version": "0.0.1-beta.16",
+  "version": "0.0.1-beta.19",
   "description": "Multiplayer Fullstack Session Recorder for React Native",
   "author": {
     "name": "Multiplayer Software, Inc.",
@@ -83,19 +83,14 @@
   "peerDependencies": {
     "@opentelemetry/api": "^1.9.0",
     "react": ">=18.0.0 <20.0.0",
+    "expo-constants": "*",
     "react-native": ">=0.72.0 <0.83.0",
     "react-native-svg": ">=15.12.0 <16.0.0",
     "react-native-safe-area-context": ">=4.0.0 <6.0.0 || ^5.0.0"
   },
   "peerDependenciesMeta": {
-    "react-native-svg": {
-      "optional": true
-    },
-    "react-native-safe-area-context": {
+    "expo-constants": {
       "optional": true
     }
-  },
-  "optionalDependencies": {
-    "expo-constants": "^15.0.0"
   }
 }
