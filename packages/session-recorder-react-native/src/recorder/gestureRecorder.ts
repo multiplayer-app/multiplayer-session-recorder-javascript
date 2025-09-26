@@ -1,4 +1,4 @@
-import { Dimensions } from 'react-native'
+import { Dimensions, Platform } from 'react-native'
 import { trace, SpanStatusCode, Span } from '@opentelemetry/api'
 import { logger } from '../utils'
 import { GestureEvent, RecorderConfig, EventRecorder } from '../types'
@@ -34,6 +34,12 @@ export class GestureRecorder implements EventRecorder {
     this.isRecording = true
     this.events = []
 
+    // Check if we're on web platform
+    if (Platform.OS === 'web') {
+      logger.warn('GestureRecorder', 'Native gesture recording not available on web platform')
+      return
+    }
+
     // Start native gesture recording
     GestureRecorderNative.startGestureRecording()
       .then(() => {
@@ -48,6 +54,12 @@ export class GestureRecorder implements EventRecorder {
   stop(): void {
     this.isRecording = false
     this._removeGestureEventListener()
+
+    // Check if we're on web platform
+    if (Platform.OS === 'web') {
+      logger.warn('GestureRecorder', 'Native gesture recording not available on web platform')
+      return
+    }
 
     // Stop native gesture recording
     GestureRecorderNative.stopGestureRecording()

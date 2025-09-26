@@ -76,7 +76,7 @@
     "@react-native-community/netinfo": "^11.1.0",
     "@rrweb/types": "^2.0.0-alpha.18",
     "lib0": "0.2.82",
-    "react-native-reanimated": "^3.6.0",
+    "react-native-reanimated": "^4.1.1",
     "react-native-view-shot": "^4.0.3",
     "socket.io-client": "4.7.5"
   },

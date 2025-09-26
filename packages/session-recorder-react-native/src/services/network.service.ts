@@ -1,6 +1,31 @@
-import NetInfo from '@react-native-community/netinfo'
+import { Platform } from 'react-native'
 import { logger } from '../utils'
 import { sessionRecorderStore } from '../context/SessionRecorderStore'
+
+// Safe import for NetInfo with web fallback
+let NetInfo: any = null
+const isWeb = Platform.OS === 'web'
+
+if (!isWeb) {
+  try {
+    NetInfo = require('@react-native-community/netinfo').default
+  } catch (error) {
+    console.warn('NetInfo not available:', error)
+  }
+} else {
+  // Web fallback using navigator.onLine
+  NetInfo = {
+    fetch: () => Promise.resolve({
+      isConnected: true, // Default to connected for web
+      type: 'unknown',
+      isInternetReachable: true
+    }),
+    addEventListener: (callback: (state: any) => void) => {
+      // Return a no-op function for web
+      return () => { }
+    }
+  }
+}
 
 export interface NetworkState {
   isConnected: boolean
@@ -47,7 +72,7 @@ export class NetworkService {
       })
 
       // Listen for network state changes
-      this.unsubscribe = NetInfo.addEventListener(state => {
+      this.unsubscribe = NetInfo.addEventListener((state: any) => {
         const wasOnline = this._isOnline
         this._isOnline = state.isConnected ?? true
 

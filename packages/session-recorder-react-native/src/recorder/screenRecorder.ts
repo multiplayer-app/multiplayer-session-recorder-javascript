@@ -1,8 +1,7 @@
 import { ScreenEvent, RecorderConfig, EventRecorder } from '../types'
 import { eventWithTime } from '@rrweb/types'
 import { trace, SpanStatusCode } from '@opentelemetry/api'
-import { Dimensions } from 'react-native'
-import { captureRef } from 'react-native-view-shot'
+import { Dimensions, Platform } from 'react-native'
 import {
   createRecordingMetaEvent,
   createFullSnapshotEvent,
@@ -11,6 +10,21 @@ import {
   logger,
 } from '../utils'
 import { screenMaskingService, ScreenMaskingConfig } from '../services/screenMaskingService'
+
+// Safe import for react-native-view-shot with web fallback
+let captureRef: any = null
+const isWeb = Platform.OS === 'web'
+
+if (!isWeb) {
+  try {
+    captureRef = require('react-native-view-shot').captureRef
+  } catch (error) {
+    console.warn('react-native-view-shot not available:', error)
+  }
+} else {
+  // Web fallback - return null for now
+  captureRef = () => Promise.resolve(null)
+}
 
 export class ScreenRecorder implements EventRecorder {
   private config?: RecorderConfig
@@ -147,6 +161,12 @@ export class ScreenRecorder implements EventRecorder {
 
   private async _captureScreenBase64(): Promise<string | null> {
     try {
+      // Check if we're on web platform
+      if (isWeb) {
+        logger.warn('ScreenRecorder', 'Screen capture not available on web platform')
+        return null
+      }
+
       // Try native masking first if available
       if (screenMaskingService.isScreenMaskingAvailable()) {
         logger.info('ScreenRecorder', 'Using native masking for screen capture')
@@ -165,6 +185,12 @@ export class ScreenRecorder implements EventRecorder {
       // Fallback to react-native-view-shot
       if (!this.viewShotRef) {
         logger.warn('ScreenRecorder', 'ViewShot ref not available for screen capture')
+        return null
+      }
+
+      // Check if captureRef is available
+      if (!captureRef) {
+        logger.warn('ScreenRecorder', 'react-native-view-shot not available')
         return null
       }
 
@@ -349,6 +375,10 @@ export class ScreenRecorder implements EventRecorder {
     },
   ): Promise<string | null> {
     try {
+      if (isWeb || !captureRef) {
+        logger.warn('ScreenRecorder', 'Element capture not available on web platform')
+        return null
+      }
       return await captureRef(elementRef)
     } catch (error) {
       // Failed to capture specific element - silently continue

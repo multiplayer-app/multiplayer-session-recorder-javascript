@@ -1,4 +1,4 @@
-import { NativeModules } from 'react-native'
+import { NativeModules, Platform } from 'react-native'
 
 export interface MaskingOptions {
   /** Quality of the captured image (0.1 to 1.0, default: 0.3 for smaller file size) */
@@ -35,12 +35,43 @@ export interface SessionRecorderNativeModule {
   captureAndMaskWithOptions(options: MaskingOptions): Promise<string>
 }
 
-// Get the native module
-const { SessionRecorderNative } = NativeModules
+// Check if we're on web platform
+const isWeb = Platform.OS === 'web'
 
-// Validate that the native module is available
-if (!SessionRecorderNative) {
-  console.warn('SessionRecorderNative module is not available. Auto-linking may not have completed yet.')
+// Get the native module only if not on web
+let SessionRecorderNative: SessionRecorderNativeModule | null = null
+
+if (!isWeb) {
+  try {
+    const { SessionRecorderNative: NativeModule } = NativeModules
+    SessionRecorderNative = NativeModule
+  } catch (error) {
+    console.warn('Failed to access SessionRecorderNative module:', error)
+  }
 }
 
-export default SessionRecorderNative as SessionRecorderNativeModule
+// Validate that the native module is available
+if (!SessionRecorderNative && !isWeb) {
+  console.warn('SessionRecorderNative module is not available. Auto-linking may not have completed yet.')
+} else if (isWeb) {
+  console.info('SessionRecorderNative: Running on web platform, native module disabled')
+}
+
+// Create a safe wrapper that handles web platform
+const SafeSessionRecorderNative: SessionRecorderNativeModule = {
+  async captureAndMask(): Promise<string> {
+    if (isWeb || !SessionRecorderNative) {
+      throw new Error('SessionRecorderNative is not available on web platform')
+    }
+    return SessionRecorderNative.captureAndMask()
+  },
+
+  async captureAndMaskWithOptions(options: MaskingOptions): Promise<string> {
+    if (isWeb || !SessionRecorderNative) {
+      throw new Error('SessionRecorderNative is not available on web platform')
+    }
+    return SessionRecorderNative.captureAndMaskWithOptions(options)
+  }
+}
+
+export default SafeSessionRecorderNative

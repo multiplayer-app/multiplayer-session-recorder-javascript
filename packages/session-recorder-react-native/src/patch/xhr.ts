@@ -1,3 +1,4 @@
+import { Platform } from 'react-native'
 import {
 
   isFormData,
@@ -7,6 +8,9 @@ import {
 } from '../utils/type-utils'
 import { formDataToQuery } from '../utils/request-utils'
 import { DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE } from '../config'
+
+// Check if we're on web platform
+const isWeb = Platform.OS === 'web'
 
 let recordRequestHeaders = true
 let recordResponseHeaders = true
@@ -54,88 +58,93 @@ function _tryReadXHRBody({
   return `[XHR] Cannot read body of type ${Object.prototype.toString.call(body)}`
 }
 
-(function (xhr) {
-  const originalOpen = XMLHttpRequest.prototype.open
+// Only patch XMLHttpRequest if not on web platform or if XMLHttpRequest is available
+if (!isWeb && typeof XMLHttpRequest !== 'undefined') {
+  (function (xhr) {
+    const originalOpen = XMLHttpRequest.prototype.open
 
-  xhr.open = function (
-    method: string,
-    url: string | URL,
-    async = true,
-    username?: string | null,
-    password?: string | null,
-  ) {
-    const xhr = this as XMLHttpRequest
-    const networkRequest: {
-      requestHeaders?: any,
-      requestBody?: any,
-      responseHeaders?: any,
-      responseBody?: any,
-    } = {}
+    xhr.open = function (
+      method: string,
+      url: string | URL,
+      async = true,
+      username?: string | null,
+      password?: string | null,
+    ) {
+      const xhr = this as XMLHttpRequest
+      const networkRequest: {
+        requestHeaders?: any,
+        requestBody?: any,
+        responseHeaders?: any,
+        responseBody?: any,
+      } = {}
 
-
-    // @ts-ignore
-    const requestHeaders: Record<string, string> = {}
-    const originalSetRequestHeader = xhr.setRequestHeader.bind(xhr)
-    xhr.setRequestHeader = (header: string, value: string) => {
-      requestHeaders[header] = value
-      return originalSetRequestHeader(header, value)
-    }
-    if (recordRequestHeaders) {
-      networkRequest.requestHeaders = requestHeaders
-    }
-
-    const originalSend = xhr.send.bind(xhr)
-    xhr.send = (body) => {
-      if (shouldRecordBody) {
-        const requestBody = _tryReadXHRBody({ body, url })
-
-        if (
-          requestBody?.length
-          && requestBody.length <= maxCapturingHttpPayloadSize
-        ) {
-          networkRequest.requestBody = requestBody
-        }
-      }
-      return originalSend(body)
-    }
-
-    xhr.addEventListener('readystatechange', () => {
-      if (xhr.readyState !== xhr.DONE) {
-        return
-      }
 
       // @ts-ignore
-      const responseHeaders: Record<string, string> = {}
-      const rawHeaders = xhr.getAllResponseHeaders() || ''
-      const headers = rawHeaders.trim().split(/[\r\n]+/).filter(Boolean)
+      const requestHeaders: Record<string, string> = {}
+      const originalSetRequestHeader = xhr.setRequestHeader.bind(xhr)
+      xhr.setRequestHeader = (header: string, value: string) => {
+        requestHeaders[header] = value
+        return originalSetRequestHeader(header, value)
+      }
+      if (recordRequestHeaders) {
+        networkRequest.requestHeaders = requestHeaders
+      }
 
-      headers.forEach((line) => {
-        const parts = line.split(': ')
-        const header = parts.shift()
-        const value = parts.join(': ')
-        if (header) {
-          responseHeaders[header] = value
+      const originalSend = xhr.send.bind(xhr)
+      xhr.send = (body) => {
+        if (shouldRecordBody) {
+          const requestBody = _tryReadXHRBody({ body, url })
+
+          if (
+            requestBody?.length
+            && requestBody.length <= maxCapturingHttpPayloadSize
+          ) {
+            networkRequest.requestBody = requestBody
+          }
+        }
+        return originalSend(body)
+      }
+
+      xhr.addEventListener('readystatechange', () => {
+        if (xhr.readyState !== xhr.DONE) {
+          return
+        }
+
+        // @ts-ignore
+        const responseHeaders: Record<string, string> = {}
+        const rawHeaders = xhr.getAllResponseHeaders() || ''
+        const headers = rawHeaders.trim().split(/[\r\n]+/).filter(Boolean)
+
+        headers.forEach((line) => {
+          const parts = line.split(': ')
+          const header = parts.shift()
+          const value = parts.join(': ')
+          if (header) {
+            responseHeaders[header] = value
+          }
+        })
+        if (recordResponseHeaders) {
+          networkRequest.responseHeaders = responseHeaders
+        }
+        if (shouldRecordBody) {
+          const responseBody = _tryReadXHRBody({ body: xhr.response, url })
+
+          if (
+            responseBody?.length
+            && responseBody.length <= maxCapturingHttpPayloadSize
+          ) {
+            networkRequest.responseBody = responseBody
+          }
         }
       })
-      if (recordResponseHeaders) {
-        networkRequest.responseHeaders = responseHeaders
-      }
-      if (shouldRecordBody) {
-        const responseBody = _tryReadXHRBody({ body: xhr.response, url })
-
-        if (
-          responseBody?.length
-          && responseBody.length <= maxCapturingHttpPayloadSize
-        ) {
-          networkRequest.responseBody = responseBody
-        }
-      }
-    })
 
 
-    // @ts-ignore
-    xhr.networkRequest = networkRequest
+      // @ts-ignore
+      xhr.networkRequest = networkRequest
 
-    originalOpen.call(xhr, method, url as string, async, username, password)
-  }
-})(XMLHttpRequest.prototype)
+      originalOpen.call(xhr, method, url as string, async, username, password)
+    }
+  })(XMLHttpRequest.prototype)
+} else if (isWeb) {
+  console.info('XHR patch: Skipping XMLHttpRequest patching on web platform')
+}
