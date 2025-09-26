@@ -43,17 +43,25 @@ export const OTEL_IGNORE_URLS = [
   // Traces endpoint
   /.*\/v1\/traces/,
   // Debug sessions endpoints
-  /.*\/v0\/radar\/debug-sessions\/start$/,
-  /.*\/v0\/radar\/debug-sessions\/[^/]+\/stop$/,
-  /.*\/v0\/radar\/debug-sessions\/[^/]+\/cancel$/,
+  /.*\/v0\/radar\/debug-sessions\/start\/?$/,
+  /.*\/v0\/radar\/debug-sessions\/[^/]+\/stop\/?$/,
+  /.*\/v0\/radar\/debug-sessions\/[^/]+\/cancel\/?$/,
 
   // Continuous debug sessions endpoints
-  /.*\/v0\/radar\/continuous-debug-sessions\/start$/,
-  /.*\/v0\/radar\/continuous-debug-sessions\/[^/]+\/save$/,
-  /.*\/v0\/radar\/continuous-debug-sessions\/[^/]+\/cancel$/,
+  /.*\/v0\/radar\/continuous-debug-sessions\/start\/?$/,
+  /.*\/v0\/radar\/continuous-debug-sessions\/[^/]+\/save\/?$/,
+  /.*\/v0\/radar\/continuous-debug-sessions\/[^/]+\/cancel\/?$/,
 
   // Remote debug session endpoint
-  /.*\/v0\/radar\/remote-debug-session\/check$/,
+  /.*\/v0\/radar\/remote-debug-session\/check\/?$/,
+
+  // Connectivity probe endpoints (avoid noisy spans)
+  /https:\/\/clients3\.google\.com\/generate_204/,
+  /http:\/\/clients3\.google\.com\/generate_204/,
+  /http(s)?:\/\/www\.google\.com\/generate_204/,
+  /http(s)?:\/\/connectivitycheck\.android\.com\/generate_204/,
+  /http(s)?:\/\/connectivitycheck\.gstatic\.com\/generate_204/,
+  /http(s)?:\/\/captive\.apple\.com/,
 
   // Or use a more general pattern to catch all radar API endpoints
   // /.*\/v0\/radar\/.*/

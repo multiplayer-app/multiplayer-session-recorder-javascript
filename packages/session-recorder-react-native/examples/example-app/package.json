@@ -10,7 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@multiplayer-app/session-recorder-react-native": "^0.0.1-beta.21",
+    "@multiplayer-app/session-recorder-react-native": "^0.0.1-beta.23",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native/new-app-screen": "0.81.4",
@@ -19,7 +19,6 @@
     "@react-navigation/native-stack": "^7.3.26",
     "react": "19.1.0",
     "react-native": "0.81.4",
-    "react-native-mmkv": "^3.3.3",
     "react-native-safe-area-context": "^5.6.1",
     "react-native-screens": "^4.16.0",
     "react-native-svg": "^15.13.0"

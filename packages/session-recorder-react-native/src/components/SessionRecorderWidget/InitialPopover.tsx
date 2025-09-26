@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react'
-import { View, Text, Pressable, Alert, Switch } from 'react-native'
+import { View, Text, Pressable, Switch } from 'react-native'
 import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { TextOverridesOptions } from '../../types'
 import { sharedStyles } from './styles'
 import ModalHeader from './ModalHeader'
 import { CapturingIcon } from './icons'
+import { logger } from '../../utils'
 
 interface InitialPopoverProps extends React.PropsWithChildren {
   isContinuous: boolean
@@ -33,16 +34,11 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
   const [continuousRecording, setContinuousRecording] = useState(isContinuous)
 
   const handleStartRecording = async () => {
-    if (!isOnline) {
-      Alert.alert('Offline', 'Cannot start recording while offline. Please check your internet connection.')
-      return
-    }
-
     try {
       setLoading(true)
       await onStartRecording(SessionType.PLAIN)
     } catch (error) {
-      Alert.alert('Error', 'Failed to start recording')
+      logger.error('InitialPopover', 'Failed to start recording', error)
     } finally {
       setLoading(false)
     }
@@ -58,7 +54,7 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
         await onStopRecording()
       }
     } catch (error) {
-      Alert.alert('Error', `Failed to ${value ? 'start' : 'stop'} continuous recording`)
+      logger.error('InitialPopover', 'Failed to toggle continuous recording', error)
     } finally {
       setLoading(false)
     }
@@ -69,7 +65,7 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
       setSaving(true)
       await onSaveContinuousSession()
     } catch (error) {
-      Alert.alert('Error', 'Failed to save continuous session')
+      logger.error('InitialPopover', 'Failed to save continuous session', error)
     } finally {
       setSaving(false)
     }
@@ -94,7 +90,7 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
           <View style={sharedStyles.continuousRecordingSection}>
             <Text style={sharedStyles.continuousRecordingLabel}>{textContent.label}</Text>
             <Switch
-              disabled={loading}
+              disabled={loading || !isOnline}
               value={continuousRecording}
               ios_backgroundColor='#e2e8f0'
               onValueChange={handleToggleContinuousRecording}
@@ -109,7 +105,7 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
             <Text style={sharedStyles.description}>{textContent.description}</Text>
             <View style={sharedStyles.popoverFooter}>
               <Pressable
-                disabled={loading}
+                disabled={loading || !isOnline}
                 onPress={handleStartRecording}
                 style={[sharedStyles.actionButton, sharedStyles.startButton]}
               >
@@ -130,7 +126,7 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
             </View>
             <View style={sharedStyles.popoverFooter}>
               <Pressable
-                disabled={saving}
+                disabled={saving || !isOnline}
                 onPress={handleSaveContinuousSession}
                 style={[sharedStyles.actionButton, sharedStyles.saveButton]}
               >

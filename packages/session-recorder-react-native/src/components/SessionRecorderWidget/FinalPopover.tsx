@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
-import { View, Text, Pressable, TextInput, Alert, ScrollView, Keyboard } from 'react-native'
+import { View, Text, Pressable, TextInput, ScrollView, Keyboard } from 'react-native'
 import { TextOverridesOptions } from '../../types'
 import { sharedStyles } from './styles'
 import ModalHeader from './ModalHeader'
+import { logger } from '../../utils'
 
 interface FinalPopoverProps extends React.PropsWithChildren {
+  isOnline: boolean
   textOverrides: TextOverridesOptions
   onStopRecording: (comment: string) => void
   onCancelSession: () => void
@@ -13,6 +15,7 @@ interface FinalPopoverProps extends React.PropsWithChildren {
 }
 
 const FinalPopover: React.FC<FinalPopoverProps> = ({
+  isOnline,
   textOverrides,
   onStopRecording,
   onCancelSession,
@@ -25,14 +28,14 @@ const FinalPopover: React.FC<FinalPopoverProps> = ({
     try {
       await onStopRecording(comment)
     } catch (error) {
-      Alert.alert('Error', 'Failed to save session')
+      logger.error('FinalPopover', 'Failed to save session', error)
     }
   }
 
   return (
     <View style={sharedStyles.popoverContent}>
       <ModalHeader>
-        <Pressable onPress={onCancelSession} style={sharedStyles.cancelButton}>
+        <Pressable onPress={onCancelSession} disabled={!isOnline} style={sharedStyles.cancelButton}>
           <Text style={sharedStyles.cancelButtonText}>{textOverrides.cancelButtonText}</Text>
         </Pressable>
       </ModalHeader>
@@ -45,6 +48,7 @@ const FinalPopover: React.FC<FinalPopoverProps> = ({
         <TextInput
           style={sharedStyles.commentInput}
           placeholder={textOverrides.commentPlaceholder}
+          placeholderTextColor={'#9CA3AF'}
           value={comment}
           onChangeText={setComment}
           multiline
@@ -57,9 +61,9 @@ const FinalPopover: React.FC<FinalPopoverProps> = ({
 
         <View style={sharedStyles.popoverFooter}>
           <Pressable
+            disabled={isSubmitting || !isOnline}
             style={[sharedStyles.actionButton, sharedStyles.stopButton]}
             onPress={handleStopRecording}
-            disabled={isSubmitting}
           >
             <Text style={sharedStyles.actionButtonText}>{isSubmitting ? 'Saving...' : textOverrides.saveButtonText}</Text>
           </Pressable>

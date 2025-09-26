@@ -31,28 +31,26 @@ const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = memo(() => {
     sessionRecorderStore.setState({ error: null })
   }, [])
 
-  const setError = useCallback((errorMessage: string) => {
+  const handleError = useCallback((error: any, message: string) => {
+    const errorMessage = error instanceof Error ? error.message : message
+    logger.error('SessionRecorderWidget', message, error)
     sessionRecorderStore.setState({ error: errorMessage })
   }, [])
 
   const onStartRecording = useCallback(
     async (sessionType: SessionType) => {
       if (!isOnline) {
-        const errorMessage = 'Cannot start recording while offline'
-        logger.warn('SessionRecorderWidget', errorMessage)
-        setError(errorMessage)
+        handleError(new Error('Cannot start recording while offline'), 'Cannot start recording while offline')
         return
       }
       try {
         await instance.start(sessionType)
         closeWidgetModal()
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to start recording'
-        logger.error('SessionRecorderWidget', 'Failed to start recording', error)
-        setError(errorMessage)
+        handleError(error, 'Failed to start recording')
       }
     },
-    [isOnline, setError]
+    [isOnline, handleError]
   )
 
   const onStopRecording = useCallback(
@@ -62,14 +60,12 @@ const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = memo(() => {
         await instance.stop(comment)
         closeWidgetModal()
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to stop recording'
-        logger.error('SessionRecorderWidget', 'Failed to stop recording', error)
-        setError(errorMessage)
+        handleError(error, 'Failed to stop recording')
       } finally {
         setIsSubmitting(false)
       }
     },
-    [setError]
+    [handleError]
   )
 
   const onCancelSession = useCallback(async () => {
@@ -77,21 +73,17 @@ const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = memo(() => {
       await instance.cancel()
       closeWidgetModal()
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to cancel session'
-      logger.error('SessionRecorderWidget', 'Failed to cancel session', error)
-      setError(errorMessage)
+      handleError(error, 'Failed to cancel session')
     }
-  }, [setError])
+  }, [handleError])
 
   const onSaveContinuousSession = useCallback(async () => {
     try {
       await instance.save()
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to save continuous session'
-      logger.error('SessionRecorderWidget', 'Failed to save continuous session', error)
-      setError(errorMessage)
+      handleError(error, 'Failed to save continuous session')
     }
-  }, [setError])
+  }, [handleError])
 
   const isStarted = sessionState === SessionState.started || sessionState === SessionState.paused
   const isContinuous = sessionType === SessionType.CONTINUOUS
@@ -106,6 +98,7 @@ const SessionRecorderWidget: React.FC<SessionRecorderWidgetProps> = memo(() => {
       <ModalContainer isVisible={isModalVisible} onClose={closeWidgetModal}>
         {isStarted && !isContinuous ? (
           <FinalPopover
+            isOnline={isOnline}
             isSubmitting={isSubmitting}
             textOverrides={widget.textOverrides}
             onClose={closeWidgetModal}

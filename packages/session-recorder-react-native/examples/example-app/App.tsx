@@ -18,13 +18,13 @@ import {
   DarkTheme,
 } from '@react-navigation/native';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import config from './config';
 
 SessionRecorder.init({
   version: '0.0.1',
   application: 'react-native-app',
   environment: 'development',
-  apiKey:
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnRlZ3JhdGlvbiI6IjY4Y2E4MTc1ZDIzYTRmODBmNDljNWRiZSIsIndvcmtzcGFjZSI6IjY0OTFjMmU5OGExYTIyMTM2MzM0MzRiYyIsInByb2plY3QiOiI2OGMzY2FhOTU1MGM5YjkwNTgxMmM1ZDYiLCJ0eXBlIjoiT1RFTCIsImlhdCI6MTc1ODEwMTg3N30.CXWrtmwqQ3MsKxBpBOqKHNpS6orj_lOeHEltebZZMII',
+  apiKey: config.SESSION_RECORDER_API_KEY,
   recordScreen: true,
   recordGestures: true,
   recordNavigation: true,
