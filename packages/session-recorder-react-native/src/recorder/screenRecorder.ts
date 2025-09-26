@@ -10,21 +10,9 @@ import {
   logger,
 } from '../utils'
 import { screenMaskingService, ScreenMaskingConfig } from '../services/screenMaskingService'
-
-// Safe import for react-native-view-shot with web fallback
-let captureRef: any = null
+import { captureRef } from 'react-native-view-shot'
 const isWeb = Platform.OS === 'web'
 
-if (!isWeb) {
-  try {
-    captureRef = require('react-native-view-shot').captureRef
-  } catch (error) {
-    console.warn('react-native-view-shot not available:', error)
-  }
-} else {
-  // Web fallback - return null for now
-  captureRef = () => Promise.resolve(null)
-}
 
 export class ScreenRecorder implements EventRecorder {
   private config?: RecorderConfig
