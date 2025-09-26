@@ -33,6 +33,7 @@ typings/
 # IDE
 .idea/
 .vscode/
+.cursor/
 .meta/
 
 .DS_Store
@@ -45,3 +46,17 @@ cronjobs/signups/export/
 
 BlockNote
 vite.config.ts.timestamp-*.mjs
+
+# Android
+.gradle/
+android/build/
+android/app/build/
+android/.gradle/
+*.apk
+*.aab
+
+# iOS
+ios/build/
+ios/Pods/
+ios/Podfile.lock
+*.ipa

@@ -156,6 +156,7 @@ export class SessionRecorder implements ISessionRecorder {
     }
   }
 
+
   /**
    * Initialize the session debugger
    * @param configs - custom configurations for session debugger
@@ -502,6 +503,8 @@ export class SessionRecorder implements ISessionRecorder {
    */
   private _start(): void {
     this.sessionState = SessionState.started
+    this.sessionType = this.sessionType
+
     this._tracer.start(this.sessionId, this.sessionType)
     this._recorder.start(this.sessionId, this.sessionType)
     if (this.session) {

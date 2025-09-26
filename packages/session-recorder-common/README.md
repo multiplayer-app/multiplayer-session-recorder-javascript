@@ -10,7 +10,7 @@
   <a href="https://multiplayer.app">
     <img src="https://img.shields.io/badge/Visit-multiplayer.app-blue" alt="Visit Multiplayer">
   </a>
-  
+
 </div>
 <div>
   <p align="center">
@@ -63,7 +63,7 @@ import {
   ATTR_MULTIPLAYER_RPC_RESPONSE_MESSAGE,
   ATTR_MULTIPLAYER_GRPC_REQUEST_MESSAGE,
   ATTR_MULTIPLAYER_GRPC_RESPONSE_MESSAGE,
-  ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY,
+  ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY
 } from '@multiplayer-app/session-recorder-common'
 ```
 
@@ -126,14 +126,14 @@ export const instrumentations: Instrumentation[] = getNodeAutoInstrumentations({
 
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
-import { SessionRecorderHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-common'
+import { SessionRecorderBrowserTraceExporter } from '@multiplayer-app/session-recorder-common'
 
 const collectorOptions = {
   url: '<opentelemetry-collector-url>', // url is optional and can be omitted - default is https://api.multiplayer.app/v1/traces
   apiKey: '<multiplayer-otlp-key>' // api key from multiplayer integration
 }
 
-const exporter = new SessionRecorderHttpTraceExporterBrowser(collectorOptions)
+const exporter = new SessionRecorderBrowserTraceExporter(collectorOptions)
 const provider = new WebTracerProvider({
   spanProcessors: [
     new BatchSpanProcessor(exporter, {
@@ -154,10 +154,9 @@ provider.register()
 
 ### Session Recorder id generator
 
-
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
-import { SessionRecorderIdGenerator, SessionRecorderHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-common'
+import { SessionRecorderIdGenerator, SessionRecorderBrowserTraceExporter } from '@multiplayer-app/session-recorder-common'
 
 const idGenerator = new SessionRecorderIdGenerator({ autoDocTracesRatio: 0.05 })
 
@@ -166,7 +165,7 @@ const collectorOptions = {
   apiKey: '<multiplayer-otlp-key>' // api key from multiplayer integration
 }
 
-const exporter = new SessionRecorderHttpTraceExporterBrowser(collectorOptions)
+const exporter = new SessionRecorderBrowserTraceExporter(collectorOptions)
 const provider = new WebTracerProvider({
   spanProcessors: [
     new BatchSpanProcessor(exporter, {
@@ -192,14 +191,17 @@ Session Recorder sampler will always sample traces with appropriate prefixes, ot
 
 ```javascript
 import { BatchSpanProcessor, WebTracerProvider } from '@opentelemetry/sdk-trace-web'
-import { SessionRecorderTraceIdRatioBasedSampler, SessionRecorderHttpTraceExporterBrowser } from '@multiplayer-app/session-recorder-common'
+import {
+  SessionRecorderTraceIdRatioBasedSampler,
+  SessionRecorderBrowserTraceExporter
+} from '@multiplayer-app/session-recorder-common'
 
 const collectorOptions = {
   url: '<opentelemetry-collector-url>', // url is optional and can be omitted - default is https://api.multiplayer.app/v1/traces
   apiKey: '<multiplayer-otlp-key>' // api key from multiplayer integration
 }
 
-const exporter = new SessionRecorderHttpTraceExporterBrowser(collectorOptions)
+const exporter = new SessionRecorderBrowserTraceExporter(collectorOptions)
 const provider = new WebTracerProvider({
   spanProcessors: [
     new BatchSpanProcessor(exporter, {
@@ -237,22 +239,21 @@ SessionRecorderSdk.setAttribute('{{SOME_KEY}}', '{{SOME_VALUE}}')
 // following helpers do masking of sensitive fields
 SessionRecorderSdk.setHttpRequestBody('{{ANY_REQUEST_PAYLOAD_HERE}}')
 
-SessionRecorderSdk.setHttpRequestHeaders({ Cookie: '...', Authorization: '...'})
+SessionRecorderSdk.setHttpRequestHeaders({ Cookie: '...', Authorization: '...' })
 
-SessionRecorderSdk.setHttpResponseBody({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+SessionRecorderSdk.setHttpResponseBody({ some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}' })
 
 SessionRecorderSdk.setHttpResponseHeaders({ 'Set-Cookie': '...' })
 
-SessionRecorderSdk.setMessageBody({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+SessionRecorderSdk.setMessageBody({ some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}' })
 
-SessionRecorderSdk.setRpcRequestMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+SessionRecorderSdk.setRpcRequestMessage({ some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}' })
 
-SessionRecorderSdk.setRpcResponseMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+SessionRecorderSdk.setRpcResponseMessage({ some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}' })
 
-SessionRecorderSdk.setGrpcRequestMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
+SessionRecorderSdk.setGrpcRequestMessage({ some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}' })
 
-SessionRecorderSdk.setGrpcResponseMessage({some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}'})
-
+SessionRecorderSdk.setGrpcResponseMessage({ some_payload: '{{ANY_REQUEST_PAYLOAD_HERE}}' })
 ```
 
 ## License

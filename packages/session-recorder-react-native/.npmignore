@@ -1,0 +1,10 @@
+.eslintrc
+.eslintignnore
+node_modules
+README.md
+tsconfig.tsbuildinfo
+examples
+src/
+tsconfig.json
+babel.config.js
+scripts

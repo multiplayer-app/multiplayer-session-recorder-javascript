@@ -69,5 +69,9 @@ export const getNavigatorInfo = (): IResourceAttributes => {
     cookiesEnabled,
     hardwareConcurrency,
     packageVersion,
+    // System type identifier (previously in system tags)
+    systemType: 'web',
+    // Platform identifier (previously in system tags)
+    platform: osInfo
   }
 }

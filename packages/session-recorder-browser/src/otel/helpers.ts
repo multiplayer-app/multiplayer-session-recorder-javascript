@@ -5,13 +5,11 @@ import {
   ATTR_MULTIPLAYER_HTTP_REQUEST_BODY,
   ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
-  ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
-  MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
+  ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS
 } from '@multiplayer-app/session-recorder-common'
-import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common'
 import { TracerBrowserConfig } from '../types'
 
-const { schemify } = SessionRecorderSdk
+
 
 export interface HttpPayloadData {
   requestBody?: any

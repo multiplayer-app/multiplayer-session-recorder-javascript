@@ -140,6 +140,6 @@ function _tryReadXHRBody({
     // @ts-ignore
     xhr.networkRequest = networkRequest
 
-    originalOpen.call(xhr, method, url, async, username, password)
+    originalOpen.call(xhr, method, url as string, async, username, password)
   }
 })(XMLHttpRequest.prototype)
