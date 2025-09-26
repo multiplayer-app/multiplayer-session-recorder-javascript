@@ -21,16 +21,22 @@ export class EventExporter {
   private attempts: number = 0
   private sessionId: string | null = null
 
-  constructor(private options: { socketUrl: string, apiKey: string }) { }
+  private socketUrl: string
+  private apiKey: string
+
+  constructor(options: { socketUrl: string, apiKey: string }) {
+    this.socketUrl = options.socketUrl
+    this.apiKey = options.apiKey
+  }
 
   private init(): void {
     if (this.isConnecting || this.isConnected) return
     this.attempts++
     this.isConnecting = true
-    this.socket = io(this.options.socketUrl, {
+    this.socket = io(this.socketUrl, {
       path: '/v0/radar/ws',
       auth: {
-        'x-api-key': this.options.apiKey,
+        'x-api-key': this.apiKey,
       },
       reconnectionAttempts: 2,
       transports: ['websocket'],
@@ -71,6 +77,14 @@ export class EventExporter {
     this.socket.on(SESSION_AUTO_CREATED, (data: any) => {
 
     })
+  }
+
+  setApiKey(apiKey: string): void {
+    this.apiKey = apiKey
+  }
+
+  setSocketUrl(socketUrl: string): void {
+    this.socketUrl = socketUrl
   }
 
   private checkReconnectionAttempts(): void {

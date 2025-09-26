@@ -12,7 +12,8 @@ class SessionRecorderNative: NSObject {
   private var maskLabels: Bool = false
   private var maskWebViews: Bool = false
   private var maskSandboxedViews: Bool = false
-  private var imageQuality: CGFloat = 0.1
+  private var imageQuality: CGFloat = 0.05
+  private var scale: CGFloat = 1.0
 
   // React Native view types
   private let reactNativeTextView: AnyClass? = NSClassFromString("RCTTextView")
@@ -63,9 +64,15 @@ class SessionRecorderNative: NSObject {
       // Apply masking to sensitive elements
       let maskedImage = self.applyMasking(to: image, in: window)
 
-      if let data = maskedImage.jpegData(compressionQuality: self.imageQuality) {
-        let base64 = data.base64EncodedString()
-        resolve(base64)
+      // Apply optional scaling (resolution downsample)
+      let finalImage = self.scale < 1.0 ? self.resizeImage(maskedImage, scale: self.scale) : maskedImage
+
+      // Debug logging
+      print("SessionRecorder captureAndMask: Scale = \(self.scale), Original size = \(maskedImage.size), Final size = \(finalImage.size)")
+
+      if let data = finalImage.jpegData(compressionQuality: self.imageQuality) {
+          let base64 = data.base64EncodedString()
+          resolve(base64)
       } else {
         reject("ENCODING_FAILED", "Failed to encode image", nil)
       }
@@ -95,7 +102,13 @@ class SessionRecorderNative: NSObject {
       // Apply masking with custom options
       let maskedImage = self.applyMaskingWithOptions(to: image, in: window, options: options)
 
-      if let data = maskedImage.jpegData(compressionQuality: self.imageQuality) {
+      // Apply optional scaling (resolution downsample)
+      let finalImage = self.scale < 1.0 ? self.resizeImage(maskedImage, scale: self.scale) : maskedImage
+
+      // Debug logging
+      print("SessionRecorder captureAndMaskWithOptions: Scale = \(self.scale), Original size = \(maskedImage.size), Final size = \(finalImage.size)")
+
+      if let data = finalImage.jpegData(compressionQuality: self.imageQuality) {
         let base64 = data.base64EncodedString()
         resolve(base64)
       } else {
@@ -105,6 +118,8 @@ class SessionRecorderNative: NSObject {
   }
 
   private func updateConfiguration(from options: NSDictionary) {
+    print("SessionRecorder: updateConfiguration called with options: \(options)")
+
     if let maskTextInputs = options["maskTextInputs"] as? Bool {
       self.maskTextInputs = maskTextInputs
     }
@@ -125,6 +140,16 @@ class SessionRecorderNative: NSObject {
     }
     if let quality = options["quality"] as? NSNumber {
       self.imageQuality = CGFloat(quality.floatValue)
+    }
+    if let scale = options["scale"] as? NSNumber {
+      self.scale = CGFloat(scale.floatValue)
+      print("SessionRecorder: Scale updated to \(self.scale) (from NSNumber: \(scale))")
+    } else if let scale = options["scale"] as? Double {
+      self.scale = CGFloat(scale)
+      print("SessionRecorder: Scale updated to \(self.scale) (from Double: \(scale))")
+    } else if let scale = options["scale"] as? Float {
+      self.scale = CGFloat(scale)
+      print("SessionRecorder: Scale updated to \(self.scale) (from Float: \(scale))")
     }
   }
 
@@ -467,6 +492,22 @@ class SessionRecorderNative: NSObject {
     context.setStrokeColor(UIColor.systemGray4.cgColor)
     context.setLineWidth(1.0)
     context.stroke(frame)
+  }
+
+  private func resizeImage(_ image: UIImage, scale: CGFloat) -> UIImage {
+      // Simple approach: scale the logical size directly
+      let newSize = CGSize(
+        width: max(1.0, image.size.width * scale),
+        height: max(1.0, image.size.height * scale)
+      )
+
+
+      // Use the same scale as the original image to maintain quality
+      UIGraphicsBeginImageContextWithOptions(newSize, false, image.scale)
+      image.draw(in: CGRect(origin: .zero, size: newSize))
+      let newImage = UIGraphicsGetImageFromCurrentImageContext()
+      UIGraphicsEndImageContext()
+      return newImage ?? image
   }
 }
 

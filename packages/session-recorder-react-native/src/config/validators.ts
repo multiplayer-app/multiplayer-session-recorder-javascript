@@ -18,8 +18,8 @@ export const isValidBoolean = (value: boolean | undefined, defaultValue: boolean
   return typeof value === 'boolean' ? value : defaultValue
 }
 
-export const isValidArray = (value: any[] | undefined, defaultValue: any[]) => {
-  return Array.isArray(value) ? value : defaultValue
+export const isValidArray = <T>(value: ReadonlyArray<T> | undefined, defaultValue: ReadonlyArray<T>): T[] => {
+  return Array.isArray(value) ? [...value] as T[] : [...defaultValue] as T[]
 }
 
 export const isValidEnum = <T>(value: any | T, defaultValue: T, enumValues: T[]): T => {

@@ -17,13 +17,10 @@ Pod::Spec.new do |s|
   s.requires_arc = true
 
   s.dependency "React-Core"
+  s.dependency "React"
 
-  # Swift support
-  s.swift_version = "5.0"
-  
-  # Ensure proper linking for React Native
+  # Ensure proper linking for Expo
   s.pod_target_xcconfig = {
-    "DEFINES_MODULE" => "YES",
-    "SWIFT_OPTIMIZATION_LEVEL" => "-Onone"
+    "HEADER_SEARCH_PATHS" => "\"$(PODS_ROOT)/React-Core/React\""
   }
 end

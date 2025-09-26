@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../components/themed-text';
 import { ThemedView } from '../components/themed-view';
@@ -51,7 +58,9 @@ export default function UserScreen({ route, navigation }: Props) {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`https://jsonplaceholder.typicode.com/users/${id}`);
+      const response = await fetch(
+        `https://jsonplaceholder.typicode.com/users/${id}`,
+      );
       if (!response.ok) {
         throw new Error('Failed to fetch user');
       }
@@ -66,9 +75,12 @@ export default function UserScreen({ route, navigation }: Props) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <ThemedView style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={Colors[colorScheme ?? 'light'].tint} />
+          <ActivityIndicator
+            size="large"
+            color={Colors[colorScheme ?? 'light'].tint}
+          />
           <ThemedText style={styles.loadingText}>Loading user...</ThemedText>
         </ThemedView>
       </SafeAreaView>
@@ -77,11 +89,14 @@ export default function UserScreen({ route, navigation }: Props) {
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <ThemedView style={styles.centerContainer}>
           <ThemedText style={styles.errorText}>Error: {error}</ThemedText>
           <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
+            style={[
+              styles.retryButton,
+              { backgroundColor: Colors[colorScheme ?? 'light'].tint },
+            ]}
             onPress={fetchUser}
           >
             <Text style={styles.retryButtonText}>Retry</Text>
@@ -93,7 +108,7 @@ export default function UserScreen({ route, navigation }: Props) {
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <ThemedView style={styles.centerContainer}>
           <ThemedText style={styles.errorText}>User not found</ThemedText>
         </ThemedView>
@@ -102,15 +117,23 @@ export default function UserScreen({ route, navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         <ThemedView style={styles.userCard}>
           <View style={styles.userHeader}>
-            <View style={[styles.avatar, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}>
+            <View
+              style={[
+                styles.avatar,
+                { backgroundColor: Colors[colorScheme ?? 'light'].tint },
+              ]}
+            >
               <Text style={styles.avatarText}>
                 {user.name
                   .split(' ')
-                  .map((n) => n[0])
+                  .map(n => n[0])
                   .join('')}
               </Text>
             </View>
@@ -121,7 +144,9 @@ export default function UserScreen({ route, navigation }: Props) {
           </View>
 
           <View style={styles.detailsSection}>
-            <ThemedText style={styles.sectionTitle}>Contact Information</ThemedText>
+            <ThemedText style={styles.sectionTitle}>
+              Contact Information
+            </ThemedText>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>📧 Email:</Text>
               <ThemedText style={styles.detailValue}>{user.email}</ThemedText>
@@ -140,19 +165,27 @@ export default function UserScreen({ route, navigation }: Props) {
             <ThemedText style={styles.sectionTitle}>Address</ThemedText>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>🏠 Street:</Text>
-              <ThemedText style={styles.detailValue}>{user.address.street}</ThemedText>
+              <ThemedText style={styles.detailValue}>
+                {user.address.street}
+              </ThemedText>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>🏢 Suite:</Text>
-              <ThemedText style={styles.detailValue}>{user.address.suite}</ThemedText>
+              <ThemedText style={styles.detailValue}>
+                {user.address.suite}
+              </ThemedText>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>🏙️ City:</Text>
-              <ThemedText style={styles.detailValue}>{user.address.city}</ThemedText>
+              <ThemedText style={styles.detailValue}>
+                {user.address.city}
+              </ThemedText>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>📮 Zipcode:</Text>
-              <ThemedText style={styles.detailValue}>{user.address.zipcode}</ThemedText>
+              <ThemedText style={styles.detailValue}>
+                {user.address.zipcode}
+              </ThemedText>
             </View>
           </View>
 
@@ -160,21 +193,32 @@ export default function UserScreen({ route, navigation }: Props) {
             <ThemedText style={styles.sectionTitle}>Company</ThemedText>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>🏢 Name:</Text>
-              <ThemedText style={styles.detailValue}>{user.company.name}</ThemedText>
+              <ThemedText style={styles.detailValue}>
+                {user.company.name}
+              </ThemedText>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>💬 Catchphrase:</Text>
-              <ThemedText style={styles.detailValue}>{user.company.catchPhrase}</ThemedText>
+              <ThemedText style={styles.detailValue}>
+                {user.company.catchPhrase}
+              </ThemedText>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>💼 Business:</Text>
-              <ThemedText style={styles.detailValue}>{user.company.bs}</ThemedText>
+              <ThemedText style={styles.detailValue}>
+                {user.company.bs}
+              </ThemedText>
             </View>
           </View>
 
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-            onPress={() => navigation.navigate('UserPosts', { id: user.id.toString() })}
+            style={[
+              styles.actionButton,
+              { backgroundColor: Colors[colorScheme ?? 'light'].tint },
+            ]}
+            onPress={() =>
+              navigation.navigate('UserPosts', { id: user.id.toString() })
+            }
           >
             <Text style={styles.actionButtonText}>View Posts</Text>
           </TouchableOpacity>

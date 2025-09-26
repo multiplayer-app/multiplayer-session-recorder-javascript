@@ -1,9 +1,21 @@
 
-import { SessionType } from '@multiplayer-app/session-recorder-common'
-import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web'
-import { Span } from '@opentelemetry/api'
-import type { ISession } from './session'
+import { Span } from '@opentelemetry/api';
+import { SessionType } from '@multiplayer-app/session-recorder-common';
+import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
+import type { ISession } from './session';
 
+
+// WidgetButtonPlacement moved to configs.ts
+
+export enum SessionState {
+  started = '2',
+  paused = '1',
+  stopped = '0',
+}
+
+/**
+ * Enumeration for widget button placement positions
+ */
 export enum WidgetButtonPlacement {
   topLeft = 'top-left',
   topRight = 'top-right',
@@ -11,6 +23,10 @@ export enum WidgetButtonPlacement {
   bottomRight = 'bottom-right',
 }
 
+/**
+ * Main configuration interface for the Session Recorder
+ * Contains all configurable options for session recording, tracing, and UI
+ */
 export interface SessionRecorderOptions {
   /**
    * The API key used to authenticate with the session debugger service.
@@ -72,9 +88,14 @@ export interface SessionRecorderOptions {
     button?: {
       visible?: boolean
       placement?: WidgetButtonPlacement
-    }
-  }
+    },
 
+    /**
+     * (Optional) Configuration for customizable UI text and labels
+     * @default See PopoverTextConfig defaults
+     */
+    textOverrides?: TextOverridesOptions
+  }
 
   /**
    * (Optional) Trace ID Ratio for sampling
@@ -99,13 +120,6 @@ export interface SessionRecorderOptions {
    */
   maxCapturingHttpPayloadSize?: number
 
-  /**
-   * (Optional) If true, uses post message fallback
-   * @default false
-   */
-  usePostMessageFallback?: boolean
-
-
   /** If true, captures body in traces
    *  @default true
   */
@@ -114,161 +128,33 @@ export interface SessionRecorderOptions {
    *  @default true
   */
   captureHeaders?: boolean
-
   /**
    * (Optional) Configuration for masking sensitive data in session recordings
    * @default { maskAllInputs: true, isContentMaskingEnabled: true }
    */
-  masking?: MaskingConfig
-
+  masking?: MaskingOptions
+  /** Whether to record gestures */
+  recordGestures?: boolean
+  /** Whether to record navigation */
+  recordNavigation?: boolean
+  /** Whether to record screen */
+  recordScreen?: boolean
   /**
-   * (Optional) Configuration for customizable UI text and labels
-   * @default See PopoverTextConfig defaults
+   * (Optional) Logger configuration overrides
+   * Allows setting log level, console enabling, and prefix customizations
    */
-  widgetTextOverrides?: WidgetTextOverridesConfig
-
-
-  /** Whether to record gestures */
-  recordGestures?: boolean
-  /** Whether to record navigation */
-  recordNavigation?: boolean
-  /** Whether to record screen */
-  recordScreen?: boolean
+  logger?: {
+    level?: number
+    enabled?: boolean
+  }
 }
 
-/**
- * Interface for masking configuration
- */
-export interface MaskingConfig {
-  // Span masking
-  /** If true, enables masking for debug span payload in traces
-   *  @default true
-  */
-  isContentMaskingEnabled?: boolean;
-  /** Custom function for masking body in traces */
-  maskBody?: (payload: any, span: Span) => any;
-  /** Custom function for masking headers in traces */
-  maskHeaders?: (headers: any, span: any) => any;
-
-  /** List of body fields to mask in traces */
-  maskBodyFieldsList?: string[]
-  /** List of headers to mask in traces */
-  maskHeadersList?: string[]
-
-  /** List of headers to include in traces (if specified, only these headers will be captured) */
-  headersToInclude?: string[]
-  /** List of headers to exclude from traces */
-  headersToExclude?: string[]
-
-  // Screen masking options
-  /** Whether to mask text inputs (UITextField, UITextView, React Native text components)
-   *  @default true
-  */
-  maskTextInputs?: boolean
-  /** Whether to mask images (UIImageView, React Native Image components)
-   *  @default false
-  */
-  maskImages?: boolean
-  /** Whether to mask buttons (UIButton)
-   *  @default false
-  */
-  maskButtons?: boolean
-  /** Whether to mask labels (UILabel)
-   *  @default false
-  */
-  maskLabels?: boolean
-  /** Whether to mask web views (WKWebView)
-   *  @default false
-  */
-  maskWebViews?: boolean
-  /** Whether to mask sandboxed views (system views that don't belong to current process)
-   *  @default true
-  */
-  maskSandboxedViews?: boolean
-}
-
-/**
- * Base configuration interface with common properties
- */
-export interface BaseConfig {
-  /** API key for authentication */
-  apiKey: string
-  /** Base URL for the API calls */
-  apiBaseUrl: string
-  /** Base URL for the API calls */
-  exporterEndpoint: string
-  /** Whether to use post message fallback */
-  usePostMessageFallback?: boolean
-}
-
-/**
- * Configuration interface for the Tracer class
- */
-export type TracerReactNativeMasking = Pick<MaskingConfig, 'isContentMaskingEnabled' | 'maskBody' | 'maskHeaders' | 'maskBodyFieldsList' | 'maskHeadersList' | 'headersToInclude' | 'headersToExclude'>;
-
-export interface TracerReactNativeConfig extends BaseConfig {
-  /** Application name */
-  application: string
-  /** Application version */
-  version: string
-  /** Environment (e.g., 'production', 'staging') */
-  environment: string
-  /** URLs to ignore during tracing */
-  ignoreUrls: Array<string | RegExp>
-  /** Trace ID ratio for sampling */
-  sampleTraceRatio: number
-  /** URLs for CORS trace header propagation */
-  propagateTraceHeaderCorsUrls: PropagateTraceHeaderCorsUrls
-  /** Whether to schematize document span payload */
-  schemifyDocSpanPayload: boolean
-  /** Maximum size for capturing HTTP payload */
-  maxCapturingHttpPayloadSize: number
-  /** If true, captures body in traces
-   *  @default true
-  */
-  captureBody: boolean
-  /** If true, captures headers in traces
-   *  @default true
-  */
-  captureHeaders: boolean
-  /** Configuration for masking sensitive data in session recordings */
-  masking: TracerReactNativeMasking
-}
-
-/**
- * Configuration interface for the Recorder class
- */
-// export type RecorderMasking = Pick<MaskingConfig, 'maskAllInputs' | 'maskTextClass' | 'maskTextSelector' | 'maskInputOptions' | 'maskInput' | 'maskText' | 'maskConsoleEvent'>;
-
-export interface RecorderConfig extends BaseConfig {
-  /** Whether to record gestures */
-  recordGestures?: boolean
-  /** Whether to record navigation */
-  recordNavigation?: boolean
-  /** Whether to record screen */
-  recordScreen?: boolean
-  /** Configuration for masking sensitive data in session recordings */
-  masking?: MaskingConfig
-}
-
-/**
- * Configuration interface for the SessionWidget class
- */
-export interface SessionWidgetConfig {
-  /** Whether to show the widget */
-  showWidget: boolean
-  /** Placement of the widget button */
-  widgetButtonPlacement: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-  /** Whether continuous recording feature is enabled */
-  showContinuousRecording: boolean
-  /** Configuration for customizable UI text and labels */
-  widgetTextOverrides: WidgetTextOverridesConfig
-}
 
 /**
  * Interface for customizable widget text configuration
+ * Allows overriding default text labels and messages in the UI
  */
-export interface WidgetTextOverridesConfig {
+export interface TextOverridesOptions {
   /** Title for the initial popover when continuous recording is enabled */
   initialTitleWithContinuous?: string
   /** Title for the initial popover when continuous recording is disabled */
@@ -312,18 +198,46 @@ export interface WidgetTextOverridesConfig {
 }
 
 /**
- * Configuration interface for the ApiService class
+ * Interface for masking configuration options
+ * Controls what data is masked in both traces and screen recordings
  */
-export interface ApiServiceConfig extends BaseConfig { }
+export interface MaskingOptions {
+  // Span masking
+  /** If true, enables masking for debug span payload in traces */
+  isContentMaskingEnabled?: boolean
+  /** Custom function for masking body in traces */
+  maskBody?: (payload: any, span: Span) => any
+  /** Custom function for masking headers in traces */
+  maskHeaders?: (headers: any, span: any) => any
 
-export interface SessionRecorderConfigs extends Required<SessionRecorderOptions> { }
+  /** List of body fields to mask in traces */
+  maskBodyFieldsList?: string[]
+  /** List of headers to mask in traces */
+  maskHeadersList?: string[]
 
-export enum SessionState {
-  started = '2',
-  paused = '1',
-  stopped = '0',
+  /** List of headers to include in traces (if specified, only these headers will be captured) */
+  headersToInclude?: string[]
+  /** List of headers to exclude from traces */
+  headersToExclude?: string[]
+
+  // Screen masking options
+  /** Whether to mask text inputs (UITextField, UITextView, React Native text components) */
+  maskTextInputs?: boolean
+  /** Whether to mask images (UIImageView, React Native Image components) */
+  maskImages?: boolean
+  /** Whether to mask buttons (UIButton) */
+  maskButtons?: boolean
+  /** Whether to mask labels (UILabel) */
+  maskLabels?: boolean
+  /** Whether to mask web views (WKWebView) */
+  maskWebViews?: boolean
+  /** Whether to mask sandboxed views (system views that don't belong to current process) */
+  maskSandboxedViews?: boolean
 }
-
+/**
+ * Main interface for the Session Recorder
+ * Defines the public API for session recording functionality
+ */
 export interface ISessionRecorder {
   /**
    * The current session ID
@@ -411,16 +325,14 @@ export interface ISessionRecorder {
    * @param attributes - the attributes to set
    */
   setSessionAttributes(attributes: Record<string, any>): void
-
-  /**
-   * Set a custom click handler for the recording button
-   * @param handler - function that will be invoked when the button is clicked
-   */
-  set recordingButtonClickHandler(handler: () => boolean | void)
 }
 
-export type Breaker = {}
 
+
+/**
+ * Interface representing screen capture events
+ * Contains metadata about screen recordings
+ */
 export interface ScreenEvent {
   screenName: string
   timestamp: number
@@ -430,6 +342,10 @@ export interface ScreenEvent {
   dataUrl?: string
 }
 
+/**
+ * Interface representing gesture/touch events
+ * Contains information about user interactions with the screen
+ */
 export interface GestureEvent {
   type: string
   timestamp: number
@@ -448,6 +364,10 @@ export interface GestureEvent {
   metadata?: Record<string, any>
 }
 
+/**
+ * Interface representing navigation events
+ * Contains information about screen/route changes
+ */
 export interface NavigationEvent {
   type: string
   timestamp: number

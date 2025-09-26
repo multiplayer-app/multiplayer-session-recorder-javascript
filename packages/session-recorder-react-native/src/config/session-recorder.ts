@@ -1,4 +1,5 @@
 import { SessionRecorderConfigs, SessionRecorderOptions } from '../types'
+import { LogLevel } from '../utils'
 import { BASE_CONFIG } from './defaults'
 import { getMaskingConfig } from './masking'
 import {
@@ -9,14 +10,15 @@ import {
 } from './validators'
 import { getWidgetConfig } from './widget'
 
-const getWidgetTextOverridesConfig = (config: any, defaultConfig: any) => {
+
+const getLoggerConfig = (config: any) => {
   if (!config || typeof config !== 'object') {
-    return defaultConfig
+    return BASE_CONFIG.logger
   }
-  return Object.keys(defaultConfig).reduce((acc, key) => {
-    acc[key] = isValidString(config[key], defaultConfig[key])
-    return acc
-  }, {} as Record<string, any>)
+  return {
+    level: isValidNumber(config.level, LogLevel.INFO),
+    enabled: isValidBoolean(config.enabled, false),
+  }
 }
 
 
@@ -24,8 +26,6 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
   if (!c) {
     return BASE_CONFIG
   }
-
-
 
   return {
     apiKey: isValidString(c.apiKey, BASE_CONFIG.apiKey),
@@ -35,8 +35,6 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
 
     exporterEndpoint: isValidString(c.exporterEndpoint, BASE_CONFIG.exporterEndpoint),
     apiBaseUrl: isValidString(c.apiBaseUrl, BASE_CONFIG.apiBaseUrl),
-    usePostMessageFallback: isValidBoolean(c.usePostMessageFallback, BASE_CONFIG.usePostMessageFallback),
-
 
     showContinuousRecording: isValidBoolean(c.showContinuousRecording, BASE_CONFIG.showContinuousRecording),
     ignoreUrls: isValidArray(c.ignoreUrls, BASE_CONFIG.ignoreUrls),
@@ -48,7 +46,7 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
 
     captureBody: isValidBoolean(c.captureBody, BASE_CONFIG.captureBody),
     captureHeaders: isValidBoolean(c.captureHeaders, BASE_CONFIG.captureHeaders),
-    widgetTextOverrides: getWidgetTextOverridesConfig(c.widgetTextOverrides, BASE_CONFIG.widgetTextOverrides),
+
 
     recordScreen: isValidBoolean(c.recordScreen, BASE_CONFIG.recordScreen),
     recordGestures: isValidBoolean(c.recordGestures, BASE_CONFIG.recordGestures),
@@ -56,5 +54,6 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
 
     masking: getMaskingConfig(c.masking),
     widget: getWidgetConfig(c.widget),
+    logger: getLoggerConfig(c.logger),
   }
 }

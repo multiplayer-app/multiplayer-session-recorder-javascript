@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Animated, Pressable, StyleSheet, Dimensions, Modal, PanResponder } from 'react-native'
+import { Animated, Pressable, StyleSheet, Dimensions, Modal, PanResponder, Platform } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -111,14 +111,16 @@ const ModalContainer: React.FC<ModalContainerProps> = ({ isVisible, onClose, chi
 
   return (
     <Modal visible={visible} transparent animationType='none' onRequestClose={onClose}>
-      <Animated.View style={{ ...styles.backdrop, opacity: fadeAnim }}>
-        <Pressable style={styles.backdropPressable} onPress={animateClose} />
-        <Animated.View style={[styles.modal, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
-          <SafeAreaProvider>
-            <SafeAreaView style={styles.safeArea}>{children}</SafeAreaView>
-          </SafeAreaProvider>
+      <SafeAreaProvider>
+        <Animated.View style={{ ...styles.backdrop, opacity: fadeAnim }}>
+          <Pressable style={styles.backdropPressable} onPress={animateClose} />
+          <Animated.View style={[styles.modal, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
+            <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+              {children}
+            </SafeAreaView>
+          </Animated.View>
         </Animated.View>
-      </Animated.View>
+      </SafeAreaProvider>
     </Modal>
   )
 }
@@ -136,17 +138,29 @@ const styles = StyleSheet.create({
     flex: 1
   },
   safeArea: {
-    flex: 1
+    flex: 1,
+    backgroundColor: 'white'
   },
   modal: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 'auto',
+    maxHeight: MODAL_HEIGHT,
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
-    borderTopRightRadius: 20
+    borderTopRightRadius: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8
+      },
+      android: {
+        elevation: 8
+      }
+    })
   }
 })
 

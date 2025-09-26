@@ -19,7 +19,8 @@ export class ScreenRecorder implements EventRecorder {
   private captureInterval?: NodeJS.Timeout
   private captureCount: number = 0
   private maxCaptures: number = 100 // Limit captures to prevent memory issues
-  private captureQuality: number = 0.1
+  private captureQuality: number = 0.2
+  private captureScale: number = 0.66
   private captureFormat: 'png' | 'jpg' = 'jpg'
   private screenDimensions: { width: number; height: number } | null = null
   private currentScreen: string | null = null
@@ -151,6 +152,7 @@ export class ScreenRecorder implements EventRecorder {
         logger.info('ScreenRecorder', 'Using native masking for screen capture')
         const maskedImage = await screenMaskingService.captureMaskedScreen({
           quality: this.captureQuality,
+          scale: this.captureScale,
         })
 
         if (maskedImage) {

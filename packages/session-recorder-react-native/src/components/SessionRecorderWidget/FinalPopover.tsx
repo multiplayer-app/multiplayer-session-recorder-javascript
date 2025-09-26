@@ -1,20 +1,25 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, TextInput, Alert, ScrollView, Keyboard } from 'react-native'
-import { WidgetTextOverridesConfig } from '../../types'
+import { TextOverridesOptions } from '../../types'
 import { sharedStyles } from './styles'
 import ModalHeader from './ModalHeader'
 
-interface FinalPopoverProps {
-  textOverrides: WidgetTextOverridesConfig
+interface FinalPopoverProps extends React.PropsWithChildren {
+  textOverrides: TextOverridesOptions
   onStopRecording: (comment: string) => void
   onCancelSession: () => void
   onClose: () => void
   isSubmitting: boolean
 }
 
-const FinalPopover: React.FC<FinalPopoverProps> = ({ textOverrides, onStopRecording, onCancelSession, isSubmitting }) => {
+const FinalPopover: React.FC<FinalPopoverProps> = ({
+  textOverrides,
+  onStopRecording,
+  onCancelSession,
+  isSubmitting,
+  children
+}) => {
   const [comment, setComment] = useState('')
-  const inputAccessoryViewID = 'final-popover-comment-accessory'
 
   const handleStopRecording = async () => {
     try {
@@ -33,6 +38,7 @@ const FinalPopover: React.FC<FinalPopoverProps> = ({ textOverrides, onStopRecord
       </ModalHeader>
 
       <ScrollView style={sharedStyles.popoverBody} keyboardShouldPersistTaps='handled' contentInsetAdjustmentBehavior='automatic'>
+        {children}
         <Text style={sharedStyles.title}>{textOverrides.finalTitle}</Text>
         <Text style={sharedStyles.description}>{textOverrides.finalDescription}</Text>
 

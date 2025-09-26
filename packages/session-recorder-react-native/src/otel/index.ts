@@ -49,7 +49,6 @@ export class TracerReactNativeSDK {
     this.exporter = new SessionRecorderBrowserTraceExporter({
       apiKey: options.apiKey,
       url: getExporterEndpoint(options.exporterEndpoint),
-      usePostMessageFallback: options.usePostMessageFallback,
     })
 
     this.tracerProvider = new WebTracerProvider({

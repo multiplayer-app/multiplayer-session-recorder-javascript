@@ -10,9 +10,11 @@ export class NavigationTracker {
   private currentRoute: string | null = null
   private navigationStack: string[] = []
   private navigationStartTime: number = 0
+  private screenRecorder?: any // Reference to screen recorder for force capture
 
-  init(config: RecorderConfig): void {
+  init(config: RecorderConfig, screenRecorder?: any): void {
     this.config = config
+    this.screenRecorder = screenRecorder
   }
 
   setNavigationRef(ref: any): void {
@@ -165,6 +167,9 @@ export class NavigationTracker {
       event.metadata!.friendlyRouteName = friendlyTitle
     }
     this._recordOpenTelemetrySpan(event)
+
+    // Force screen capture on navigation events
+    // this.screenRecorder?.forceCapture(event.timestamp)
   }
 
 

@@ -7,6 +7,8 @@ export type SessionRecorderState = {
   sessionType: SessionType | null
   sessionState: SessionState | null
   isWidgetModalVisible: boolean
+  isOnline: boolean
+  error: string | null
 }
 
 export const sessionRecorderStore: Store<SessionRecorderState> = createStore<SessionRecorderState>({
@@ -14,4 +16,6 @@ export const sessionRecorderStore: Store<SessionRecorderState> = createStore<Ses
   sessionType: null,
   sessionState: null,
   isWidgetModalVisible: false,
+  isOnline: true,
+  error: null,
 })

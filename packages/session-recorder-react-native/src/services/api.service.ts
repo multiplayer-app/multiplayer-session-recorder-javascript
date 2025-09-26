@@ -1,4 +1,4 @@
-import { SessionRecorderOptions, IResourceAttributes, ISessionAttributes } from '../types'
+import { IResourceAttributes, ISessionAttributes, ApiServiceConfig } from '../types'
 
 export interface StartSessionRequest {
   name?: string
@@ -15,7 +15,7 @@ export interface StopSessionRequest {
 }
 
 export class ApiService {
-  private config?: SessionRecorderOptions
+  private config?: ApiServiceConfig
   private baseUrl: string = 'https://api.multiplayer.app'
 
   constructor() {
@@ -23,14 +23,10 @@ export class ApiService {
       apiKey: '',
       apiBaseUrl: '',
       exporterEndpoint: '',
-      version: '',
-      application: '',
-      environment: '',
-    } as SessionRecorderOptions
+    }
   }
 
-  init(config: SessionRecorderOptions): void {
-
+  init(config: ApiServiceConfig): void {
     this.config = {
       ...this.config,
       ...config,
@@ -44,9 +40,19 @@ export class ApiService {
    * Update the API service configuration
    * @param config - Partial configuration to update
    */
-  public updateConfigs(config: Partial<SessionRecorderOptions>) {
+  public updateConfigs(config: Partial<ApiServiceConfig>) {
     if (this.config) {
       this.config = { ...this.config, ...config }
+    }
+  }
+
+  /**
+   * Set the API key
+   * @param apiKey - The API key to set
+   */
+  setApiKey(apiKey: string): void {
+    if (this.config) {
+      this.config.apiKey = apiKey
     }
   }
 

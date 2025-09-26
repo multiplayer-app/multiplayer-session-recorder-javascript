@@ -1,6 +1,7 @@
 
 import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { Observable } from 'lib0/observable'
+import { eventWithTime } from '@rrweb/types'
 
 import { TracerReactNativeSDK } from './otel'
 import { RecorderReactNativeSDK } from './recorder'
@@ -16,11 +17,11 @@ import {
 } from './types'
 import { getFormattedDate, isSessionActive, getNavigatorInfo } from './utils'
 import { setMaxCapturingHttpPayloadSize, setShouldRecordHttpData } from './patch/xhr'
-import { BASE_CONFIG, DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE, getSessionRecorderConfig } from './config'
+import { BASE_CONFIG, getSessionRecorderConfig } from './config'
 
 import { StorageService } from './services/storage.service'
+import { NetworkService } from './services/network.service'
 import { ApiService, StartSessionRequest, StopSessionRequest } from './services/api.service'
-import { eventWithTime } from '@rrweb/types'
 
 
 type SessionRecorderEvents = 'state-change'
@@ -32,6 +33,7 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
   private _tracer = new TracerReactNativeSDK()
   private _recorder = new RecorderReactNativeSDK()
   private _storageService = StorageService.getInstance()
+  private _networkService = NetworkService.getInstance()
   private _startRequestController: AbortController | null = null
 
   // Whether the session recorder is initialized
@@ -135,7 +137,7 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
     try {
       await StorageService.initialize()
       const storedData = await this._storageService.getAllSessionData()
-      if (isSessionActive(storedData.sessionObject, storedData.sessionType === SessionType.CONTINUOUS)) {
+      if (isSessionActive(storedData.sessionObject, storedData.sessionType)) {
         this.session = storedData.sessionObject
         this.sessionId = storedData.sessionId
         this.sessionType = storedData.sessionType || SessionType.PLAIN
@@ -161,29 +163,37 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    */
   public async init(configs: SessionRecorderOptions): Promise<void> {
     if (this._isInitialized) return
-    this._configs = getSessionRecorderConfig({ ...this._configs, ...configs })
     this._isInitialized = true
-    this._checkOperation('init')
+    this._configs = getSessionRecorderConfig({ ...this._configs, ...configs })
+    logger.configure(this._configs.logger)
     await this._loadStoredSessionData()
-
-    setMaxCapturingHttpPayloadSize(this._configs.maxCapturingHttpPayloadSize || DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE)
+    setMaxCapturingHttpPayloadSize(this._configs.maxCapturingHttpPayloadSize)
     setShouldRecordHttpData(!this._configs.captureBody, this._configs.captureHeaders)
 
-
-    try {
-      this._apiService.init(this._configs)
-      this._tracer.init(this._configs)
-    } catch (error) {
-      logger.error('SessionRecorder', 'Failed to initialize API service', error)
-    }
-    if (this._configs.apiKey) {
-      this._recorder.init(this._configs)
-    }
+    this._tracer.init(this._configs)
+    this._recorder.init(this._configs)
+    this._apiService.init(this._configs)
+    await this._networkService.init()
+    this._setupNetworkCallbacks()
 
     if (this.sessionId && (this.sessionState === SessionState.started || this.sessionState === SessionState.paused)) {
       this._start()
     }
+  }
 
+  /**
+   * Setup network state change callbacks
+   */
+  private _setupNetworkCallbacks(): void {
+    this._networkService.addCallback((state) => {
+      if (!state.isConnected && this.sessionState === SessionState.started) {
+        logger.info('SessionRecorder', 'Network went offline - pausing session recording')
+        this.pause()
+      } else if (state.isConnected && this.sessionState === SessionState.paused) {
+        logger.info('SessionRecorder', 'Network came back online - resuming session recording')
+        this.resume()
+      }
+    })
   }
 
   /**
@@ -193,6 +203,13 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    */
   public async start(type: SessionType = SessionType.PLAIN, session?: ISession): Promise<void> {
     this._checkOperation('start')
+
+    // Check if offline - don't start recording if offline
+    if (!this._networkService.isOnline()) {
+      logger.warn('SessionRecorder', 'Cannot start session recording - device is offline')
+      throw new Error('Cannot start session recording while offline')
+    }
+
     // If continuous recording is disabled, force plain mode
     if (type === SessionType.CONTINUOUS && !this._configs?.showContinuousRecording) {
       type = SessionType.PLAIN
@@ -314,14 +331,6 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
   }
 
   /**
-   * Set a custom click handler for the recording button
-   * @param handler - function that will be invoked when the button is clicked
-   */
-  public set recordingButtonClickHandler(handler: () => boolean | void) {
-    // React Native doesn't have HTML elements, so this is a no-op
-  }
-
-  /**
    * @description Check if session should be started/stopped automatically
    * @param {ISession} [sessionPayload]
    * @returns {Promise<void>}
@@ -436,10 +445,10 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
 
   private _setupSessionAndStart(session: ISession, configureExporters: boolean = true): void {
     if (configureExporters && session.tempApiKey) {
-      this._configs!.apiKey = session.tempApiKey
-      this._recorder.init(this._configs!)
-      this._tracer.init(this._configs!)
-      this._apiService.updateConfigs({ apiKey: this._configs!.apiKey })
+      this._configs.apiKey = session.tempApiKey
+      this._tracer.setApiKey(session.tempApiKey)
+      this._recorder.setApiKey(session.tempApiKey)
+      this._apiService.setApiKey(session.tempApiKey)
     }
 
     this._setSession(session)
@@ -569,6 +578,13 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
     if (this._recorder) {
       this._recorder.setNavigationRef(ref)
     }
+  }
+
+  /**
+   * Cleanup resources and unsubscribe from network monitoring
+   */
+  cleanup(): void {
+    this._networkService.cleanup()
   }
 }
 

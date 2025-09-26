@@ -15,9 +15,9 @@ yarn add @multiplayer-app/session-recorder-react-native
 This package requires the following dependencies to be installed in your React Native application:
 
 ```bash
-npm install @react-native-async-storage/async-storage @react-native-community/netinfo react-native-mmkv react-native-svg
+npm install @react-native-async-storage/async-storage @react-native-community/netinfo react-native-svg
 # or
-yarn add @react-native-async-storage/async-storage @react-native-community/netinfo react-native-mmkv react-native-svg
+yarn add @react-native-async-storage/async-storage @react-native-community/netinfo react-native-svg
 ```
 
 **Important**: Native modules like `@react-native-async-storage/async-storage` and `react-native-svg` must be installed directly in your app's `package.json`. React Native autolinking only links native modules that are declared by the app itself, not modules pulled in transitively by libraries. If you don't add them directly, you may see errors like "NativeModule: AsyncStorage is null" or SVGs not rendering.
@@ -26,7 +26,7 @@ yarn add @react-native-async-storage/async-storage @react-native-community/netin
 
 ```bash
 # install native deps in the app
-npm install @react-native-async-storage/async-storage @react-native-community/netinfo react-native-mmkv react-native-svg
+npm install @react-native-async-storage/async-storage @react-native-community/netinfo react-native-svg
 
 # iOS: install pods from your app's ios directory
 cd ios && pod install && cd -
@@ -37,7 +37,7 @@ cd ios && pod install && cd -
 Use Expo's version-aware installer so versions match the SDK:
 
 ```bash
-npx expo install @react-native-async-storage/async-storage @react-native-community/netinfo react-native-mmkv react-native-svg
+npx expo install @react-native-async-storage/async-storage @react-native-community/netinfo react-native-svg
 ```
 
 If you use Expo Router or a managed workflow, no extra autolinking steps are required beyond installing the packages.

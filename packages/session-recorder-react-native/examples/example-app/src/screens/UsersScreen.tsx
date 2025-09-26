@@ -14,6 +14,7 @@ import { Colors } from '../constants/theme';
 import { useColorScheme } from '../hooks/use-color-scheme';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { TabParamList } from '../navigation/RootNavigator';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Props = BottomTabScreenProps<TabParamList, 'Users'>;
 
@@ -150,7 +151,7 @@ export default function UsersScreen({ navigation }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ThemedView style={styles.header}>
         <ThemedText type="title">Users</ThemedText>
         <ThemedText style={styles.subtitle}>
@@ -165,7 +166,7 @@ export default function UsersScreen({ navigation }: Props) {
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

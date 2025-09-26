@@ -14,7 +14,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
   private gestureRecorder: GestureRecorder
   private navigationTracker: NavigationTracker
   private recordedEvents: eventWithTime[] = []
-  private exporter: EventExporter | undefined
+  private exporter: EventExporter
   private sessionId: string | null = null
   private sessionType: SessionType = SessionType.PLAIN
 
@@ -23,17 +23,28 @@ export class RecorderReactNativeSDK implements EventRecorder {
     this.screenRecorder = new ScreenRecorder()
     this.gestureRecorder = new GestureRecorder()
     this.navigationTracker = new NavigationTracker()
+    this.exporter = new EventExporter({
+      socketUrl: '',
+      apiKey: '',
+    })
   }
 
   init(config: RecorderConfig): void {
     this.config = config
-    this.gestureRecorder.init(config, this, this.screenRecorder)
-    this.navigationTracker.init(config)
     this.screenRecorder.init(config, this)
-    this.exporter = new EventExporter({
-      socketUrl: config.apiBaseUrl || '',
-      apiKey: config.apiKey,
-    })
+    this.navigationTracker.init(config, this.screenRecorder)
+    this.gestureRecorder.init(config, this, this.screenRecorder)
+
+    this.exporter.setApiKey(config.apiKey)
+    this.exporter.setSocketUrl(config.apiBaseUrl)
+  }
+
+  setApiKey(apiKey: string): void {
+    this.exporter.setApiKey(apiKey)
+  }
+
+  setSocketUrl(socketUrl: string): void {
+    this.exporter.setSocketUrl(socketUrl)
   }
 
   start(sessionId: string | null, sessionType: SessionType): void {

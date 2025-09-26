@@ -12,7 +12,7 @@ export enum LogLevel {
 
 export interface LoggerConfig {
   level: LogLevel
-  enableConsole: boolean
+  enabled: boolean
   enablePrefix: boolean
   prefix: string
 }
@@ -20,7 +20,7 @@ export interface LoggerConfig {
 class Logger {
   private config: LoggerConfig = {
     level: LogLevel.INFO,
-    enableConsole: true,
+    enabled: true,
     enablePrefix: true,
     prefix: '[SessionRecorder]',
   }
@@ -56,7 +56,7 @@ class Logger {
    * @param enabled - Whether to enable console output
    */
   setConsoleEnabled(enabled: boolean): void {
-    this.config.enableConsole = enabled
+    this.config.enabled = enabled
   }
 
   /**
@@ -86,7 +86,7 @@ class Logger {
    * @returns True if should output
    */
   private shouldLog(level: LogLevel): boolean {
-    return level >= this.config.level && this.config.enableConsole
+    return level >= this.config.level && this.config.enabled
   }
 
   /**
@@ -99,7 +99,6 @@ class Logger {
    */
   private formatMessage(component: string, level: LogLevel, message: string, data?: any): string {
     const prefix = this.getPrefix(component)
-    const timestamp = new Date().toISOString()
     const levelName = LogLevel[level]
 
     let formattedMessage = `${prefix} ${levelName} ${message}`
@@ -177,7 +176,6 @@ class Logger {
     if (!this.shouldLog(LogLevel.INFO)) return
 
     const prefix = this.getPrefix(component)
-    const timestamp = new Date().toISOString()
     const formattedMessage = `${prefix} ✅ ${message}`
 
     let fullMessage = formattedMessage
@@ -199,7 +197,6 @@ class Logger {
     if (!this.shouldLog(LogLevel.ERROR)) return
 
     const prefix = this.getPrefix(component)
-    const timestamp = new Date().toISOString()
     const formattedMessage = `${prefix} ❌ ${message}`
 
     let fullMessage = formattedMessage

@@ -204,7 +204,9 @@ export class GestureRecorder implements EventRecorder {
         this.panMoveCount = 0
         const panSpan = trace
           .getTracer('@opentelemetry/instrumentation-user-interaction')
-          .startSpan('NativeGesture.pan')
+          .startSpan('NativeGesture.pan', {
+            startTime: event.timestamp,
+          })
 
         panSpan.setAttribute('gesture.type', 'pan')
         panSpan.setAttribute('gesture.timestamp', event.timestamp)
@@ -274,6 +276,7 @@ export class GestureRecorder implements EventRecorder {
       const span = trace
         .getTracer('@opentelemetry/instrumentation-user-interaction')
         .startSpan(`NativeGesture.${event.type}`, {
+          startTime: event.timestamp,
           attributes: {
             'gesture.type': event.type,
             'gesture.timestamp': event.timestamp,
@@ -546,7 +549,6 @@ export class GestureRecorder implements EventRecorder {
     this._createMouseInteractionEvent(x, y, MouseInteractions.TouchEnd, timestamp)
 
     // Only force screen capture on touch end (not on every touch event)
-    logger.debug('GestureRecorder', 'Forcing screen capture after touch end')
     this.screenRecorder?.forceCapture(timestamp)
   }
 

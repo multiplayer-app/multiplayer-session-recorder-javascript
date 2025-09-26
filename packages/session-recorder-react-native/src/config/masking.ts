@@ -1,11 +1,11 @@
-import { MaskingConfig } from '../types'
+import { MaskingOptions, SessionRecorderConfigs } from '../types'
 import { DEFAULT_MASKING_CONFIG } from './defaults'
 import { isValidArray, isValidBoolean, isValidFunction } from './validators'
 import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common'
 
 const { mask, sensitiveFields, sensitiveHeaders } = SessionRecorderSdk
 
-export const getMaskingConfig = (masking?: MaskingConfig): MaskingConfig => {
+export const getMaskingConfig = (masking?: MaskingOptions): SessionRecorderConfigs['masking'] => {
   const baseMasking = DEFAULT_MASKING_CONFIG
 
   if (typeof masking !== 'object') {

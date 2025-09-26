@@ -13,6 +13,7 @@ import { Colors } from '../constants/theme';
 import { useColorScheme } from '../hooks/use-color-scheme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'UserPosts'>;
 
@@ -125,7 +126,7 @@ export default function UserPostsScreen({ route, navigation }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ThemedView style={styles.header}>
         {user && (
           <View style={styles.userInfo}>
@@ -147,7 +148,7 @@ export default function UserPostsScreen({ route, navigation }: Props) {
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

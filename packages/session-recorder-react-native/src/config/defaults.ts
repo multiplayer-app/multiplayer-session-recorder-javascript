@@ -4,16 +4,17 @@ import {
   MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
 } from '@multiplayer-app/session-recorder-common'
 import {
-  MaskingConfig,
-  SessionRecorderConfigs, WidgetButtonPlacement, WidgetTextOverridesConfig
+  WidgetButtonPlacement,
+  SessionRecorderConfigs
 } from '../types'
 import {
   OTEL_MP_SAMPLE_TRACE_RATIO,
   DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
 } from './constants'
+import { LogLevel } from '../utils'
 const { mask, sensitiveFields, sensitiveHeaders } = SessionRecorderSdk
 
-export const DEFAULT_MASKING_CONFIG: Required<MaskingConfig> = {
+export const DEFAULT_MASKING_CONFIG: SessionRecorderConfigs['masking'] = {
   isContentMaskingEnabled: true,
   maskBody: mask(sensitiveFields),
   maskHeaders: mask(sensitiveHeaders),
@@ -22,15 +23,15 @@ export const DEFAULT_MASKING_CONFIG: Required<MaskingConfig> = {
   headersToInclude: [],
   headersToExclude: [],
   // Screen masking options
-  maskTextInputs: true,
   maskImages: false,
   maskLabels: false,
   maskButtons: false,
   maskWebViews: false,
+  maskTextInputs: true,
   maskSandboxedViews: false,
 }
 
-export const DEFAULT_WIDGET_TEXT_CONFIG: WidgetTextOverridesConfig = {
+export const DEFAULT_WIDGET_TEXT_CONFIG: SessionRecorderConfigs['widget']['textOverrides'] = {
   initialTitleWithContinuous: 'Encountered an issue?',
   initialTitleWithoutContinuous: 'Encountered an issue?',
   initialDescriptionWithContinuous: 'Record your session so we can see the problem and fix it faster.',
@@ -53,7 +54,7 @@ export const DEFAULT_WIDGET_TEXT_CONFIG: WidgetTextOverridesConfig = {
   submitDialogCancelText: 'Cancel',
 }
 
-export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
+export const BASE_CONFIG: SessionRecorderConfigs = {
   apiKey: '',
 
   version: '',
@@ -68,9 +69,10 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
       visible: true,
       placement: WidgetButtonPlacement.bottomRight,
     },
+    textOverrides: DEFAULT_WIDGET_TEXT_CONFIG,
   },
 
-  usePostMessageFallback: false,
+
   apiBaseUrl: MULTIPLAYER_BASE_API_URL,
   exporterEndpoint: MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
 
@@ -85,9 +87,14 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
   captureBody: true,
   captureHeaders: true,
   masking: DEFAULT_MASKING_CONFIG,
-  widgetTextOverrides: DEFAULT_WIDGET_TEXT_CONFIG,
+
 
   recordScreen: true,
   recordGestures: true,
   recordNavigation: true,
+
+  logger: {
+    enabled: false,
+    level: LogLevel.INFO,
+  },
 }

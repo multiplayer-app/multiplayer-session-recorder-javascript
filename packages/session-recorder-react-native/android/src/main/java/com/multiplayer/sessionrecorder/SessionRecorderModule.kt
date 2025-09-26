@@ -61,27 +61,39 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
         val rootView = activity.window.decorView.rootView
         val window = activity.window
 
-        // Use modern PixelCopy for API 24+ (Android 7.0+), fallback to drawing cache for older
-        // devices
+        // Capture bitmap
         val bitmap =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    captureWithPixelCopy(rootView, window)
-                } else {
-                    captureWithDrawingCache(rootView)
-                }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                captureWithPixelCopy(rootView, window)
+            } else {
+                captureWithDrawingCache(rootView)
+            }
 
         bitmap ?: throw RuntimeException("Failed to capture screen")
 
         // Apply masking
         val maskedBitmap = applyMasking(bitmap, rootView, options)
 
-        // Convert to base64
+        // Apply optional scaling (resolution downsample)
+        val finalBitmap =
+            if (config.scale < 1.0f) resizeBitmap(maskedBitmap, config.scale) else maskedBitmap
+
+        // Convert to base64 with compression
         val output = ByteArrayOutputStream()
         val quality = (config.imageQuality * 100).toInt().coerceIn(1, 100)
-        maskedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)
+        finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)
         val base64 = Base64.encodeToString(output.toByteArray(), Base64.DEFAULT)
 
+        // Clean up memory
+        if (finalBitmap != maskedBitmap) maskedBitmap.recycle()
+
         return base64
+    }
+
+    private fun resizeBitmap(bitmap: Bitmap, scale: Float): Bitmap {
+        val width = (bitmap.width * scale).toInt().coerceAtLeast(1)
+        val height = (bitmap.height * scale).toInt().coerceAtLeast(1)
+        return Bitmap.createScaledBitmap(bitmap, width, height, true)
     }
 
     @SuppressLint("NewApi")
@@ -161,7 +173,10 @@ class SessionRecorderModule(reactContext: ReactApplicationContext) :
                             noCaptureLabel =
                                     if (opts.hasKey("noCaptureLabel"))
                                             opts.getString("noCaptureLabel") ?: "no-capture"
-                                    else config.noCaptureLabel
+                                    else config.noCaptureLabel,
+                            scale =
+                                    if (opts.hasKey("scale")) opts.getDouble("scale").toFloat()
+                                    else config.scale
                     )
         }
     }

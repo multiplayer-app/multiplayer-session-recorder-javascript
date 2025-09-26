@@ -3,6 +3,8 @@ import { NativeModules } from 'react-native'
 export interface MaskingOptions {
   /** Quality of the captured image (0.1 to 1.0, default: 0.3 for smaller file size) */
   quality?: number
+  /** Scale of the captured image (0.1 to 1.0, default: 1.0) */
+  scale?: number
   /** Whether to mask text inputs (UITextField, UITextView, React Native text components) */
   maskTextInputs?: boolean
   /** Whether to mask images (UIImageView, React Native Image components) */

@@ -1,20 +1,21 @@
 import React, { useMemo, useState } from 'react'
 import { View, Text, Pressable, Alert, Switch } from 'react-native'
 import { SessionType } from '@multiplayer-app/session-recorder-common'
-import { WidgetTextOverridesConfig } from '../../types'
+import { TextOverridesOptions } from '../../types'
 import { sharedStyles } from './styles'
 import ModalHeader from './ModalHeader'
 import { CapturingIcon } from './icons'
 
-interface InitialPopoverProps {
-  textOverrides: WidgetTextOverridesConfig
+interface InitialPopoverProps extends React.PropsWithChildren {
   isContinuous: boolean
   showContinuousRecording: boolean
+  textOverrides: TextOverridesOptions
   onStartRecording: (sessionType: SessionType) => void
   onStopRecording: (comment?: string) => void
   onSaveContinuousSession: () => void
   onClose: () => void
   isSubmitting: boolean
+  isOnline: boolean
 }
 
 const InitialPopover: React.FC<InitialPopoverProps> = ({
@@ -23,13 +24,20 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
   showContinuousRecording,
   onStartRecording,
   onStopRecording,
-  onSaveContinuousSession
+  onSaveContinuousSession,
+  isOnline,
+  children
 }) => {
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
   const [continuousRecording, setContinuousRecording] = useState(isContinuous)
 
   const handleStartRecording = async () => {
+    if (!isOnline) {
+      Alert.alert('Offline', 'Cannot start recording while offline. Please check your internet connection.')
+      return
+    }
+
     try {
       setLoading(true)
       await onStartRecording(SessionType.PLAIN)
@@ -80,8 +88,8 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
   return (
     <View style={sharedStyles.popoverContent}>
       <ModalHeader />
-
       <View style={sharedStyles.popoverBody}>
+        {children}
         {showContinuousRecording && (
           <View style={sharedStyles.continuousRecordingSection}>
             <Text style={sharedStyles.continuousRecordingLabel}>{textContent.label}</Text>
@@ -95,7 +103,6 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
             />
           </View>
         )}
-
         {!continuousRecording ? (
           <>
             <Text style={sharedStyles.title}>{textContent.title}</Text>

@@ -326,7 +326,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   header: {
     padding: 20,
@@ -350,8 +349,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   postCard: {
-    margin: 20,
-    padding: 20,
+    padding: 16,
+    margin: 16,
     borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: {
