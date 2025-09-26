@@ -24,6 +24,16 @@ export enum WidgetButtonPlacement {
 }
 
 /**
+ * Enumeration for log levels
+ */
+export enum LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3
+}
+
+/**
  * Main configuration interface for the Session Recorder
  * Contains all configurable options for session recording, tracing, and UI
  */

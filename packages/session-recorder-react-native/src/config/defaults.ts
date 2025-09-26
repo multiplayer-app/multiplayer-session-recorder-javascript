@@ -4,14 +4,15 @@ import {
   MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
 } from '@multiplayer-app/session-recorder-common'
 import {
+  LogLevel,
   WidgetButtonPlacement,
-  SessionRecorderConfigs
+  SessionRecorderConfigs,
 } from '../types'
 import {
   OTEL_MP_SAMPLE_TRACE_RATIO,
   DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
 } from './constants'
-import { LogLevel } from '../utils'
+
 const { mask, sensitiveFields, sensitiveHeaders } = SessionRecorderSdk
 
 export const DEFAULT_MASKING_CONFIG: SessionRecorderConfigs['masking'] = {

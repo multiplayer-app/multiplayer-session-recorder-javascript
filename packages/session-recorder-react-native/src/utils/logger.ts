@@ -3,12 +3,7 @@
  * Provides consistent logging across all components
  */
 
-export enum LogLevel {
-  DEBUG = 0,
-  INFO = 1,
-  WARN = 2,
-  ERROR = 3
-}
+import { LogLevel } from "../types"
 
 export interface LoggerConfig {
   level: LogLevel
