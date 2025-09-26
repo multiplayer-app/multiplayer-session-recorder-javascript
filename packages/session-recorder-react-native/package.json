@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-react-native",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0",
   "description": "Multiplayer Fullstack Session Recorder for React Native",
   "author": {
     "name": "Multiplayer Software, Inc.",
@@ -41,7 +41,8 @@
     "clean": "rimraf dist",
     "prebuild": "node -p \"'export const version = ' + JSON.stringify(require('./package.json').version)\" > src/version.ts",
     "prepublishOnly": "npm run build",
-    "build": "tsc && babel ./dist --out-dir dist --extensions '.js' && ./copy-react-native-dist.sh"
+    "build": "tsc && babel ./dist --out-dir dist --extensions '.js'",
+    "copy:dist": "./copy-react-native-dist.sh"
   },
   "devDependencies": {
     "@babel/cli": "^7.19.3",
