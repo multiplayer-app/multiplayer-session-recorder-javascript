@@ -10,7 +10,7 @@
   <a href="https://multiplayer.app">
     <img src="https://img.shields.io/badge/Visit-multiplayer.app-blue" alt="Visit Multiplayer">
   </a>
-  
+
 </div>
 <div>
   <p align="center">
@@ -43,6 +43,7 @@ The Multiplayer Full Stack Session Recorder is a powerful tool that offers deep 
 - [packages/session-recorder-browser](./packages/session-recorder-browser/): Browser SDK and in‑app widget
 - [packages/session-recorder-node](./packages/session-recorder-node/): Node.js SDK for backend tracing/session control
 - [packages/session-recorder-common](./packages/session-recorder-common/): Shared OpenTelemetry utilities and types
+- [packages/session-recorder-react-native](./packages/session-recorder-react-native/): React Native SDK and in‑app widget
 
 ## License
 
