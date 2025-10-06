@@ -186,7 +186,7 @@ Use the following code below to initialize and run the session recorder.
 Example for Session Recorder initialization relies on [opentelemetry.ts](./examples/cli/src/opentelemetry.ts) file. Copy that file and put next to quick start code.
 
 
-### Initialise
+### Initialize
 
 ```javascript
 // IMPORTANT: set up OpenTelemetry
