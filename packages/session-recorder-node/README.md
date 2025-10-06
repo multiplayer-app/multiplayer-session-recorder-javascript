@@ -206,7 +206,7 @@ SessionRecorder.init({
   apiKey: "MULTIPLAYER_OTLP_KEY", // note: replace with your Multiplayer OTLP key
   traceIdGenerator: idGenerator,
   resourceAttributes: {
-    serviceName: "{YOUR_APPLICATION_NAME}"
+    componentName: "{YOUR_APPLICATION_NAME}",
     version: "{YOUR_APPLICATION_VERSION}",
     environment: "{YOUR_APPLICATION_ENVIRONMENT}",
   }
@@ -270,12 +270,12 @@ await sessionRecorder.stop()
 Also triggering recording of continuous session available from within a service by setting special attribute to span:
 
 ```javascript
-import { trace, context } from '@opentelemetry/api'
+import { trace, context } from "@opentelemetry/api"
 import SessionRecorder from "@multiplayer-app/session-recorder-node"
 
-const activeContext = context.active();
+const activeContext = context.active()
 
-const activeSpan = trace.getSpan(activeContext);
+const activeSpan = trace.getSpan(activeContext)
 
 activeSpan.setAttribute(
   SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE,
@@ -283,7 +283,7 @@ activeSpan.setAttribute(
 )
 activeSpan.setAttribute(
   SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE_REASON,
-  'Some reason'
+  "Some reason"
 )
 
 ```
