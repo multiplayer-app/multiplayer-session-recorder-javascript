@@ -1,10 +1,17 @@
 import { resourceFromAttributes } from '@opentelemetry/resources'
-import { W3CTraceContextPropagator } from '@opentelemetry/core'
-import { WebTracerProvider } from '@opentelemetry/sdk-trace-web'
+import {
+  W3CTraceContextPropagator,
+  W3CBaggagePropagator,
+  CompositePropagator
+} from '@opentelemetry/core'
+import { 
+  WebTracerProvider,
+ } from '@opentelemetry/sdk-trace-web'
 import { BatchSpanProcessor, SpanProcessor } from '@opentelemetry/sdk-trace-base'
 import * as SemanticAttributes from '@opentelemetry/semantic-conventions'
 import { registerInstrumentations } from '@opentelemetry/instrumentation'
 import { getWebAutoInstrumentations } from '@opentelemetry/auto-instrumentations-web'
+import { propagation, Context, TextMapSetter } from '@opentelemetry/api'
 import {
   SessionType,
   ATTR_MULTIPLAYER_SESSION_ID,
@@ -20,6 +27,23 @@ import {
   extractResponseBody,
   getExporterEndpoint,
 } from './helpers'
+
+
+class MultiplayerBaggagePropagator extends W3CBaggagePropagator {
+
+  inject(context: Context, carrier: unknown, setter: TextMapSetter): void {
+    let baggage = propagation.createBaggage({
+      'session.id': { value: '12312312312312' },
+      'session.type': { value: "MANUAL" }
+    })
+
+    super.inject(propagation.setBaggage(context, baggage), carrier, setter)
+    // setter(carrier, 'session.id', newBaggage.getEntry('session.id')?.value)
+    // setter(carrier, 'session.type', newBaggage.getEntry('session.type')?.value)
+  }
+
+}
+
 
 export class TracerBrowserSDK {
   private tracerProvider?: WebTracerProvider
@@ -66,8 +90,12 @@ export class TracerBrowserSDK {
     })
 
     this.tracerProvider.register({
-      // contextManager: new ZoneContextManager(),
-      propagator: new W3CTraceContextPropagator(),
+      propagator: new CompositePropagator({
+        propagators: [
+          new W3CTraceContextPropagator(),
+          new MultiplayerBaggagePropagator(),
+        ],
+      }),
     })
 
     registerInstrumentations({
