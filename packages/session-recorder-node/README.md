@@ -181,10 +181,9 @@ See an additional example below.
 
 ### Quick start
 
-Use the following code below to initialize and run the Session Recorder.
+Use the following code below to initialize and run the session recorder.
 
-Example for Session Recorder initialization relies on [opentelemetry.ts](./examples/cli/src/opentelemetry.ts) file. Copy that file and put next to quick start code.
-
+The example relies on [opentelemetry.ts](./examples/cli/src/opentelemetry.ts). Copy that file and put it next to quick start code.
 
 ### Initialize
 
@@ -215,7 +214,7 @@ SessionRecorder.init({
 
 ### Manual session recording
 
-Below is an example showing how to create a manual session recording. Manual session recordings save all the data received between calling start and stop.
+Below is an example showing how to create a session recordingin `MANUAL` mode. Manual session recordings stream and save all the data between calling `start` and `stop`.
 
 ```javascript
 await sessionRecorder.start(
@@ -236,10 +235,13 @@ await sessionRecorder.stop()
 
 ### Continuous session recording
 
-When recording session in `CONTINUOUS` mode - `start` method called at the beginning, `save` - after the issue happened or weird behaviour detected:
+Below is an example showing how to create a session in `CONTINUOUS` mode. Continuous session recordings **stream** all the data received between calling `start` and `stop` - 
+but only **save** a rolling window data (90 seconds by default) when:
 
-Below is an example showing how to create a continuous session recording. Continuous session recordings stream all the data received between calling start and stop - 
-but only save a rolling window data (90 seconds by default) when: an exception or error occurs; when save is called; or when the auto-save attribute is attached to a span.
+- an exception or error occurs;
+- when `save` is called; or
+- progrmmatically, when the auto-save attribute is attached to a span.
+
 
 ```javascript
 
@@ -267,7 +269,7 @@ await sessionRecorder.save()
 await sessionRecorder.stop()
 ```
 
-Also triggering recording of continuous session available from within a service by setting special attribute to span:
+Continuous session recordings may also be saved from within any service or component involved in a trace by adding the attributes below to a span:
 
 ```javascript
 import { trace, context } from "@opentelemetry/api"
@@ -290,7 +292,3 @@ activeSpan.setAttribute(
 
 
 Replace the placeholders with your application’s version, name, environment, and API key.
-
-## License
-
-MIT — see [LICENSE](./LICENSE).
