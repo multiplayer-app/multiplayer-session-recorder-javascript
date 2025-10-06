@@ -185,6 +185,9 @@ Use the following code below to initialize and run the session recorder.
 
 Example for Session Recorder initialization relies on [opentelemetry.ts](./examples/cli/src/opentelemetry.ts) file. Copy that file and put next to quick start code.
 
+
+### Initialise
+
 ```javascript
 // IMPORTANT: set up OpenTelemetry
 // for an example see ./examples/cli/src/opentelemetry.ts
@@ -208,13 +211,19 @@ SessionRecorder.init({
     environment: "{YOUR_APPLICATION_ENVIRONMENT}",
   }
 })
+```
 
+### Manual session recording
+
+Example for recording session by manually calling a function for start and stop:
+
+```javascript
 await sessionRecorder.start(
-  SessionType.PLAIN,
+  SessionType.MANUAL,
   {
     name: "This is test session",
     sessionAttributes: {
-      accountId: "687e2c0d3ec8ef6053e9dc97",
+      accountId: "1234",
       accountName: "Acme Corporation"
     }
   }
@@ -224,6 +233,58 @@ await sessionRecorder.start(
 
 await sessionRecorder.stop()
 ```
+
+### Continuous session recording
+
+When recording session in `CONTINUOUS` mode - `start` method called at the beginning, `save` - after the issue happened or weird behaviour detected:
+
+```javascript
+
+await sessionRecorder.start(
+  SessionType.CONTINUOUS,
+  {
+    name: "This is test session",
+    sessionAttributes: {
+      accountId: "1234",
+      accountName: "Acme Corporation"
+    }
+  }
+)
+
+// do something here
+
+await sessionRecorder.save()
+
+// do something here
+
+await sessionRecorder.save()
+
+// do something here
+
+await sessionRecorder.stop()
+```
+
+Also triggering recording of continuous session available from within a service by setting special attribute to span:
+
+```javascript
+import { trace, context } from '@opentelemetry/api'
+import SessionRecorder from "@multiplayer-app/session-recorder-node"
+
+const activeContext = context.active();
+
+const activeSpan = trace.getSpan(activeContext);
+
+activeSpan.setAttribute(
+  SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE,
+  true
+)
+activeSpan.setAttribute(
+  SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE_REASON,
+  'Some reason'
+)
+
+```
+
 
 Replace the placeholders with your application’s version, name, environment, and API key.
 
