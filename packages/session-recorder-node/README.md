@@ -181,7 +181,7 @@ See an additional example below.
 
 ### Quick start
 
-Use the following code below to initialize and run the session recorder.
+Use the following code below to initialize and run the Session Recorder.
 
 Example for Session Recorder initialization relies on [opentelemetry.ts](./examples/cli/src/opentelemetry.ts) file. Copy that file and put next to quick start code.
 
@@ -215,7 +215,7 @@ SessionRecorder.init({
 
 ### Manual session recording
 
-Example for recording session by manually calling a function for start and stop:
+Below is an example showing how to create a manual session recording. Manual session recordings save all the data received between calling start and stop.
 
 ```javascript
 await sessionRecorder.start(
@@ -237,6 +237,9 @@ await sessionRecorder.stop()
 ### Continuous session recording
 
 When recording session in `CONTINUOUS` mode - `start` method called at the beginning, `save` - after the issue happened or weird behaviour detected:
+
+Below is an example showing how to create a continuous session recording. Continuous session recordings stream all the data received between calling start and stop - 
+but only save a rolling window data (90 seconds by default) when: an exception or error occurs; when save is called; or when the auto-save attribute is attached to a span.
 
 ```javascript
 
