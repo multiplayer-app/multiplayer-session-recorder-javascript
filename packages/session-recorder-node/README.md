@@ -76,10 +76,10 @@ import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http"
 // set up Multiplayer exporters. Note: GRPC exporters are also available.
 // see: `SessionRecorderGrpcTraceExporter` and `SessionRecorderGrpcLogsExporter`
 const multiplayerTraceExporter = new SessionRecorderHttpTraceExporter({
-  apiKey: "MULTIPLAYER_OTLP_KEY", // note: replace with your Multiplayer OTLP key
+  apiKey: "MULTIPLAYER_API_KEY", // note: replace with your Multiplayer API key
 })
 const multiplayerLogExporter = new SessionRecorderHttpLogsExporter({
-  apiKey: "MULTIPLAYER_OTLP_KEY", // note: replace with your Multiplayer OTLP key
+  apiKey: "MULTIPLAYER_API_KEY", // note: replace with your Multiplayer API key
 })
 
 // Multiplayer exporter wrappers filter out session recording atrtributes before passing to provided exporter
@@ -202,7 +202,7 @@ import {
 } from "@multiplayer-app/session-recorder-node"
 
 SessionRecorder.init({
-  apiKey: "MULTIPLAYER_OTLP_KEY", // note: replace with your Multiplayer OTLP key
+  apiKey: "MULTIPLAYER_API_KEY", // note: replace with your Multiplayer API key
   traceIdGenerator: idGenerator,
   resourceAttributes: {
     componentName: "{YOUR_APPLICATION_NAME}",
