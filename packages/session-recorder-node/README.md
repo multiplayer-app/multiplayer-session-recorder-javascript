@@ -244,7 +244,6 @@ but only **save** a rolling window data (90 seconds by default) when:
 
 
 ```javascript
-
 await sessionRecorder.start(
   SessionType.CONTINUOUS,
   {
