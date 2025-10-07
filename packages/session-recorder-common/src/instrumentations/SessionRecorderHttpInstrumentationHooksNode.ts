@@ -13,11 +13,9 @@ import {
   MULTIPLAYER_MAX_HTTP_REQUEST_RESPONSE_SIZE,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY_ENCODING,
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
-  MULTIPLAYER_TRACE_DOC_PREFIX,
 } from '../constants/constants.node'
 import {
   mask,
-  schemify,
   isGzip,
 } from '../sdk'
 import {
@@ -27,7 +25,6 @@ import {
 
 interface HttpResponseHookOptions {
   maxPayloadSizeBytes?: number
-  schemifyDocSpanPayload?: boolean
   uncompressPayload?: boolean
 
   captureHeaders?: boolean
@@ -48,7 +45,6 @@ interface HttpResponseHookOptions {
 
 interface HttpRequestHookOptions {
   maxPayloadSizeBytes?: number
-  schemifyDocSpanPayload?: boolean
 
   captureHeaders?: boolean
   captureBody?: boolean
@@ -76,7 +72,6 @@ const setDefaultOptions = (
     captureBody: boolean,
     isMaskBodyEnabled: boolean
     isMaskHeadersEnabled: boolean
-    schemifyDocSpanPayload: boolean,
     uncompressPayload: boolean,
     maxPayloadSizeBytes: number
   } => {
@@ -92,9 +87,6 @@ const setDefaultOptions = (
   options.isMaskHeadersEnabled = 'isMaskHeadersEnabled' in options
     ? options.isMaskHeadersEnabled
     : true
-  options.schemifyDocSpanPayload = 'schemifyDocSpanPayload' in options
-    ? options.schemifyDocSpanPayload
-    : false
   options.uncompressPayload = 'uncompressPayload' in options
     ? options.uncompressPayload
     : true
@@ -132,7 +124,6 @@ const setDefaultOptions = (
       captureBody: boolean,
       isMaskBodyEnabled: boolean,
       isMaskHeadersEnabled: boolean,
-      schemifyDocSpanPayload: boolean,
       uncompressPayload: boolean,
       maxPayloadSizeBytes: number
     }
@@ -219,11 +210,6 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
                 && _options.isMaskBodyEnabled
               ) {
                 responseBody = _options.maskBody(responseBody, span)
-              } else if (
-                traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)
-                && _options.schemifyDocSpanPayload
-              ) {
-                responseBody = schemify(responseBody)
               } else if (typeof responseBody !== 'string') {
                 responseBody = JSON.stringify(responseBody)
               }
@@ -345,11 +331,6 @@ export const SessionRecorderHttpInstrumentationHooksNode = {
                 && _options.isMaskBodyEnabled
               ) {
                 requestBody = _options.maskBody(requestBody, span)
-              } else if (
-                traceId.startsWith(MULTIPLAYER_TRACE_DOC_PREFIX)
-                && _options.schemifyDocSpanPayload
-              ) {
-                requestBody = schemify(requestBody)
               } else if (typeof requestBody !== 'string') {
                 requestBody = JSON.stringify(requestBody)
               }

@@ -1,4 +1,8 @@
 export enum SessionType {
   CONTINUOUS = 'CONTINUOUS',
-  PLAIN = 'MANUAL'
+  /**
+   * @deprecated Use MANUAL instead
+   */
+  PLAIN = 'MANUAL',
+  MANUAL = 'MANUAL',
 }

@@ -76,10 +76,10 @@ import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http"
 // set up Multiplayer exporters. Note: GRPC exporters are also available.
 // see: `SessionRecorderGrpcTraceExporter` and `SessionRecorderGrpcLogsExporter`
 const multiplayerTraceExporter = new SessionRecorderHttpTraceExporter({
-  apiKey: "MULTIPLAYER_OTLP_KEY", // note: replace with your Multiplayer OTLP key
+  apiKey: "MULTIPLAYER_API_KEY", // note: replace with your Multiplayer API key
 })
 const multiplayerLogExporter = new SessionRecorderHttpLogsExporter({
-  apiKey: "MULTIPLAYER_OTLP_KEY", // note: replace with your Multiplayer OTLP key
+  apiKey: "MULTIPLAYER_API_KEY", // note: replace with your Multiplayer API key
 })
 
 // Multiplayer exporter wrappers filter out session recording atrtributes before passing to provided exporter
@@ -183,7 +183,9 @@ See an additional example below.
 
 Use the following code below to initialize and run the session recorder.
 
-Example for Session Recorder initialization relies on [opentelemetry.ts](./examples/cli/src/opentelemetry.ts) file. Copy that file and put next to quick start code.
+The example relies on [opentelemetry.ts](./examples/cli/src/opentelemetry.ts). Copy that file and put it next to quick start code.
+
+### Initialize
 
 ```javascript
 // IMPORTANT: set up OpenTelemetry
@@ -200,21 +202,27 @@ import {
 } from "@multiplayer-app/session-recorder-node"
 
 SessionRecorder.init({
-  apiKey: "MULTIPLAYER_OTLP_KEY", // note: replace with your Multiplayer OTLP key
+  apiKey: "MULTIPLAYER_API_KEY", // note: replace with your Multiplayer API key
   traceIdGenerator: idGenerator,
   resourceAttributes: {
-    serviceName: "{YOUR_APPLICATION_NAME}"
+    componentName: "{YOUR_APPLICATION_NAME}",
     version: "{YOUR_APPLICATION_VERSION}",
     environment: "{YOUR_APPLICATION_ENVIRONMENT}",
   }
 })
+```
 
+### Manual session recording
+
+Below is an example showing how to create a session recording in `MANUAL` mode. Manual session recordings stream and save all the data between calling `start` and `stop`.
+
+```javascript
 await sessionRecorder.start(
-  SessionType.PLAIN,
+  SessionType.MANUAL,
   {
     name: "This is test session",
     sessionAttributes: {
-      accountId: "687e2c0d3ec8ef6053e9dc97",
+      accountId: "1234",
       accountName: "Acme Corporation"
     }
   }
@@ -225,8 +233,62 @@ await sessionRecorder.start(
 await sessionRecorder.stop()
 ```
 
+### Continuous session recording
+
+Below is an example showing how to create a session in `CONTINUOUS` mode. Continuous session recordings **stream** all the data received between calling `start` and `stop` - 
+but only **save** a rolling window data (90 seconds by default) when:
+
+- an exception or error occurs;
+- when `save` is called; or
+- progrmmatically, when the auto-save attribute is attached to a span.
+
+
+```javascript
+
+await sessionRecorder.start(
+  SessionType.CONTINUOUS,
+  {
+    name: "This is test session",
+    sessionAttributes: {
+      accountId: "1234",
+      accountName: "Acme Corporation"
+    }
+  }
+)
+
+// do something here
+
+await sessionRecorder.save()
+
+// do something here
+
+await sessionRecorder.save()
+
+// do something here
+
+await sessionRecorder.stop()
+```
+
+Continuous session recordings may also be saved from within any service or component involved in a trace by adding the attributes below to a span:
+
+```javascript
+import { trace, context } from "@opentelemetry/api"
+import SessionRecorder from "@multiplayer-app/session-recorder-node"
+
+const activeContext = context.active()
+
+const activeSpan = trace.getSpan(activeContext)
+
+activeSpan.setAttribute(
+  SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE,
+  true
+)
+activeSpan.setAttribute(
+  SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE_REASON,
+  "Some reason"
+)
+
+```
+
+
 Replace the placeholders with your application’s version, name, environment, and API key.
-
-## License
-
-MIT — see [LICENSE](./LICENSE).
