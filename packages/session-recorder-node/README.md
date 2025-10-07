@@ -214,7 +214,7 @@ SessionRecorder.init({
 
 ### Manual session recording
 
-Below is an example showing how to create a session recordingin `MANUAL` mode. Manual session recordings stream and save all the data between calling `start` and `stop`.
+Below is an example showing how to create a session recording in `MANUAL` mode. Manual session recordings stream and save all the data between calling `start` and `stop`.
 
 ```javascript
 await sessionRecorder.start(
