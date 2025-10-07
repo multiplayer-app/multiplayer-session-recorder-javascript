@@ -50,6 +50,10 @@ yarn add @multiplayer-app/session-recorder-browser @opentelemetry/api
 
 ### Quick start
 
+Use the following code below to initialize and run the session recorder.
+
+### Initialize
+
 ```javascript
 import SessionRecorder from '@multiplayer-app/session-recorder-browser'
 
@@ -71,15 +75,6 @@ SessionRecorder.setSessionAttributes({
   userId: '12345',
   userName: 'John Doe'
 })
-
-// optionally control via API (widget is enabled by default)
-// if you're not using widget (see: `showWidget: true/false`)
-// then you can programatically control the session recorder
-// by using the methods below
-SessionRecorder.start()
-SessionRecorder.pause()
-SessionRecorder.resume()
-SessionRecorder.stop('Finished session') // optional: pass reason for stopping the session
 ```
 
 ### Advanced config
@@ -210,12 +205,79 @@ SessionRecorder.init({
     headersToExclude: ['authorization', 'cookie']
   }
 })
+```
 
+### Manual session recording
+
+Below is an example showing how to create a session recording in `MANUAL` mode. Manual session recordings stream and save all the data between calling `start` and `stop`.
+
+```javascript
 // add any key value pairs which should be associated with a session
 SessionRecorder.setSessionAttributes({
   userId: '12345',
   userName: 'John Doe'
 })
+// optionally control via API (widget is enabled by default)
+// if you're not using widget (see: `showWidget: true/false`)
+// then you can programatically control the session recorder
+// by using the methods below
+SessionRecorder.start()
+SessionRecorder.pause()
+SessionRecorder.resume()
+SessionRecorder.stop('Finished session') // optional: pass reason for stopping the session
+```
+
+### Continuous session recording
+
+Below is an example showing how to create a session in `CONTINUOUS` mode. Continuous session recordings **stream** all the data received between calling `start` and `stop` - 
+but only **save** a rolling window data (90 seconds by default) when:
+
+- an exception or error occurs;
+- when `save` is called; or
+- programmatically, when the auto-save attribute is attached to a span.
+
+```javascript
+// add any key value pairs which should be associated with a session
+SessionRecorder.setSessionAttributes({
+  userId: '12345',
+  userName: 'John Doe'
+})
+// optionally control via API (widget is enabled by default)
+// if you're not using widget (see: `showWidget: true/false`)
+// then you can programatically control the session recorder
+// by using the methods below
+SessionRecorder.start()
+
+// do something here
+
+SessionRecorder.save()
+
+// do something here
+
+SessionRecorder.save()
+
+SessionRecorder.stop('Finished session') // optional: pass reason for stopping the session
+```
+
+Continuous session recordings may also be saved from within any service or component involved in a trace by adding the attributes below to a span:
+
+```javascript
+import { trace, context } from "@opentelemetry/api"
+import SessionRecorder from "@multiplayer-app/session-recorder-node"
+
+const activeContext = context.active()
+
+const activeSpan = trace.getSpan(activeContext)
+
+activeSpan.setAttribute(
+  SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE,
+  true
+)
+activeSpan.setAttribute(
+  SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE_REASON,
+  "Some reason"
+)
+
 ```
 
 ### Framework notes
