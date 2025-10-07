@@ -246,7 +246,7 @@ SessionRecorder.setSessionAttributes({
 // if you're not using widget (see: `showWidget: true/false`)
 // then you can programatically control the session recorder
 // by using the methods below
-SessionRecorder.start()
+SessionRecorder.start(SessionType.CONTINUOUS)
 
 // do something here
 
