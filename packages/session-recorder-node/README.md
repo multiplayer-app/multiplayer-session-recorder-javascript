@@ -240,7 +240,7 @@ but only **save** a rolling window data (90 seconds by default) when:
 
 - an exception or error occurs;
 - when `save` is called; or
-- progrmmatically, when the auto-save attribute is attached to a span.
+- programmatically, when the auto-save attribute is attached to a span.
 
 
 ```javascript
