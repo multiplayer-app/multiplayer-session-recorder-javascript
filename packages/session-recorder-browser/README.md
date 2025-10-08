@@ -80,7 +80,7 @@ SessionRecorder.setSessionAttributes({
 ### Advanced config
 
 ```javascript
-import SessionRecorder from '@multiplayer-app/debugger-browser'
+import SessionRecorder from '@multiplayer-app/session-recorder-browser'
 
 SessionRecorder.init({
   version: '1.0.0', // optional: version of your application
@@ -263,7 +263,7 @@ Continuous session recordings may also be saved from within any service or compo
 
 ```javascript
 import { trace, context } from "@opentelemetry/api"
-import SessionRecorder from "@multiplayer-app/debugger-browser"
+import SessionRecorder from "@multiplayer-app/session-recorder-browser"
 
 const activeContext = context.active()
 
@@ -280,11 +280,109 @@ activeSpan.setAttribute(
 
 ```
 
+## Session Recorder for Next.js
+
+To integrate the MySessionRecorder component into your Next.js application, follow these steps:
+
+- Create a new file (e.g., MySessionRecorder.js or MySessionRecorder.tsx) in your root directory or a components directory.
+
+- Import the component
+
+In the newly created file, add the following code:
+
+```javascript
+'use client' // Mark as Client Component
+import { useEffect } from 'react'
+import SessionRecorder from '@multiplayer-app/session-recorder-browser'
+
+export default function MySessionRecorder() {
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      SessionRecorder.init({
+        version: '{YOUR_APPLICATION_VERSION}',
+        application: '{YOUR_APPLICATION_NAME}',
+        environment: '{YOUR_APPLICATION_ENVIRONMENT}',
+        apiKey: '{YOUR_API_KEY}',
+        recordCanvas: true, // Enable canvas recording
+        masking: {
+          maskAllInputs: true,
+          maskInputOptions: {
+            password: true,
+            email: false,
+            tel: false
+          }
+        }
+      })
+
+      SessionRecorder.setSessionAttributes({
+        userId: '{userId}',
+        userName: '{userName}'
+      })
+    }
+  }, [])
+
+  return null // No UI output needed
+}
+```
+
+Replace the placeholders with the actual information.
+
+Now, you can use the MySessionRecorder component in your application by adding it to your desired page or layout file:
+
+```javascript
+import MySessionRecorder from './MySessionRecorder' // Adjust the path as necessary
+
+export default function MyApp() {
+  return (
+    <>
+      <MySessionRecorder />
+      {/* Other components */}
+    </>
+  )
+}
+```
+
+## Note
+
+If frontend domain doesn't match to backend one, set backend domain to `propagateTraceHeaderCorsUrls` parameter:
+
+```javascript
+import SessionRecorder from '@multiplayer-app/session-recorder-browser'
+
+SessionRecorder.init({
+  version: '{YOUR_APPLICATION_VERSION}',
+  application: '{YOUR_APPLICATION_NAME}',
+  environment: '{YOUR_APPLICATION_ENVIRONMENT}',
+  apiKey: '{YOUR_API_KEY}',
+  propagateTraceHeaderCorsUrls: new RegExp(`https://your.backend.api.domain`, 'i')
+})
+```
+
+If frontend sends api requests to two or more different domains put them to `propagateTraceHeaderCorsUrls` as array:
+
+```javascript
+import SessionRecorder from '@multiplayer-app/session-recorder-browser'
+
+SessionRecorder.init({
+  version: '{YOUR_APPLICATION_VERSION}',
+  application: '{YOUR_APPLICATION_NAME}',
+  environment: '{YOUR_APPLICATION_ENVIRONMENT}',
+  apiKey: '{YOUR_API_KEY}',
+  propagateTraceHeaderCorsUrls: [
+    new RegExp(`https://your.backend.api.domain`, 'i'),
+    new RegExp(`https://another.backend.api.domain`, 'i')
+  ]
+})
+```
+
 ### Framework notes
 
 - Next.js: initialize the browser SDK in a Client Component (see example in the browser README). Ensure it runs only in the browser.
 - CORS: when your frontend calls multiple API domains, set `propagateTraceHeaderCorsUrls` to match them so parent/child spans correlate across services.
+## Documentation
+
+For more details on how the Multiplayer Session Recorder integrates with your backend architecture and system auto-documentation, check out our [official documentation](https://www.multiplayer.app/docs/features/system-auto-documentation/).
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+This library is distributed under the [MIT License](./LICENSE).
