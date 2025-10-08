@@ -263,7 +263,7 @@ Continuous session recordings may also be saved from within any service or compo
 
 ```javascript
 import { trace, context } from "@opentelemetry/api"
-import SessionRecorder from "@multiplayer-app/debugger-browser"
+import SessionRecorder from "@multiplayer-app/session-recorder-browser"
 
 const activeContext = context.active()
 
