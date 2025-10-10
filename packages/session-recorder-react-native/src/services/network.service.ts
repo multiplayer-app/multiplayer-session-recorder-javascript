@@ -20,7 +20,7 @@ if (!isWeb) {
       type: 'unknown',
       isInternetReachable: true
     }),
-    addEventListener: (callback: (state: any) => void) => {
+    addEventListener: (_callback: (state: any) => void) => {
       // Return a no-op function for web
       return () => { }
     }

@@ -10,7 +10,7 @@ import {
   SessionRecorderTraceIdRatioBasedSampler,
   SessionRecorderBrowserTraceExporter,
 } from '@multiplayer-app/session-recorder-common'
-import { TracerReactNativeConfig } from '../types'
+import { type TracerReactNativeConfig } from '../types'
 import { getInstrumentations } from './instrumentations'
 import { getExporterEndpoint } from './helpers'
 
@@ -27,7 +27,7 @@ export class TracerReactNativeSDK {
   private sessionId = ''
   private idGenerator?: SessionRecorderIdGenerator
   private exporter?: any
-  private isInitialized = false
+
 
   constructor() { }
 
@@ -76,7 +76,6 @@ export class TracerReactNativeSDK {
       instrumentations: getInstrumentations(this.config),
     })
 
-    this.isInitialized = true
   }
 
   private _getSpanSessionIdProcessor() {
@@ -131,7 +130,6 @@ export class TracerReactNativeSDK {
 
   // Shutdown (React Native specific)
   shutdown(): Promise<void> {
-    this.isInitialized = false
     return Promise.resolve()
   }
 }

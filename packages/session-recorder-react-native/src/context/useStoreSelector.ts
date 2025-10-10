@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Store } from '../utils/createStore'
+import { type Store } from '../utils/createStore'
 import { shallowEqual } from '../utils/shallowEqual'
 
 export function useStoreSelector<TState extends object, TSlice>(

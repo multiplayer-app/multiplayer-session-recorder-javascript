@@ -6,7 +6,7 @@ import {
 import {
   LogLevel,
   WidgetButtonPlacement,
-  SessionRecorderConfigs,
+  type SessionRecorderConfigs,
 } from '../types'
 import {
   OTEL_MP_SAMPLE_TRACE_RATIO,

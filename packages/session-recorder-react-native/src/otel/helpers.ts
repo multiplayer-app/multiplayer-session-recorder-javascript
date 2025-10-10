@@ -1,4 +1,4 @@
-import { Span } from '@opentelemetry/api'
+import { type Span } from '@opentelemetry/api'
 import {
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
@@ -8,10 +8,9 @@ import {
   ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
 } from '@multiplayer-app/session-recorder-common'
 import { logger } from '../utils'
-import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common'
-import { TracerReactNativeConfig } from '../types'
+import { type TracerReactNativeConfig } from '../types'
 
-const { schemify } = SessionRecorderSdk
+
 
 export interface HttpPayloadData {
   requestBody?: any

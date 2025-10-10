@@ -1,12 +1,14 @@
 import { Dimensions, Platform } from 'react-native'
-import { trace, SpanStatusCode, Span } from '@opentelemetry/api'
+import { trace, SpanStatusCode, type Span } from '@opentelemetry/api'
 import { logger } from '../utils'
-import { GestureEvent, RecorderConfig, EventRecorder } from '../types'
-import { MouseInteractions, eventWithTime, EventType, IncrementalSource } from '@rrweb/types'
+import { type GestureEvent, type RecorderConfig, type EventRecorder } from '../types'
+import { MouseInteractions, type eventWithTime, EventType, IncrementalSource } from '@rrweb/types'
+import { type NativeGestureEvent, SessionRecorderNative, gestureEventEmitter } from '../native'
 // Force TypeScript recompilation
-import GestureRecorderNative, { gestureEventEmitter, GestureEvent as NativeGestureEvent } from '../native/GestureRecorderNative'
+
 
 export class GestureRecorder implements EventRecorder {
+  // @ts-ignore
   private config?: RecorderConfig
   private isRecording = false
   private events: GestureEvent[] = []
@@ -41,7 +43,7 @@ export class GestureRecorder implements EventRecorder {
     }
 
     // Start native gesture recording
-    GestureRecorderNative.startGestureRecording()
+    SessionRecorderNative.startGestureRecording()
       .then(() => {
         logger.info('GestureRecorder', 'Native gesture recording started successfully')
         this._setupGestureEventListener()
@@ -62,7 +64,7 @@ export class GestureRecorder implements EventRecorder {
     }
 
     // Stop native gesture recording
-    GestureRecorderNative.stopGestureRecording()
+    SessionRecorderNative.stopGestureRecording()
       .then(() => {
         logger.info('GestureRecorder', 'Native gesture recording stopped successfully')
       })
@@ -88,8 +90,8 @@ export class GestureRecorder implements EventRecorder {
 
     this.gestureEventListener = gestureEventEmitter.addListener(
       'onGestureDetected',
-      (nativeGesture: NativeGestureEvent) => {
-        this._handleNativeGesture(nativeGesture)
+      (nativeGesture: any) => {
+        this._handleNativeGesture(nativeGesture as NativeGestureEvent)
       }
     )
   }
@@ -564,7 +566,7 @@ export class GestureRecorder implements EventRecorder {
     this.screenRecorder?.forceCapture(timestamp)
   }
 
-  recordTouchCancel(x: number, y: number, target?: string): void {
+  recordTouchCancel(x: number, y: number, _target?: string): void {
     this._createMouseInteractionEvent(x, y, MouseInteractions.TouchCancel)
   }
 
@@ -609,7 +611,7 @@ export class GestureRecorder implements EventRecorder {
     this.recordEvent(incrementalSnapshotEvent)
   }
 
-  private _createMouseMoveEvent(x: number, y: number, target?: string): void {
+  private _createMouseMoveEvent(x: number, y: number, _target?: string): void {
     const incrementalSnapshotEvent: eventWithTime = {
       type: EventType.IncrementalSnapshot,
       data: {

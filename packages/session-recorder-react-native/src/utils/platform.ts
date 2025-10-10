@@ -1,4 +1,4 @@
-import { IResourceAttributes } from '../types'
+import { type IResourceAttributes } from '../types'
 import OptionalConstants from './constants.optional'
 import { Platform, Dimensions, PixelRatio } from 'react-native'
 import { version } from '../version'

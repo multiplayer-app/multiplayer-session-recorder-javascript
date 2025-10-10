@@ -1,4 +1,4 @@
-import { LogLevel, SessionRecorderConfigs, SessionRecorderOptions } from '../types'
+import { LogLevel, type SessionRecorderConfigs, type SessionRecorderOptions } from '../types'
 
 import { BASE_CONFIG } from './defaults'
 import { getMaskingConfig } from './masking'

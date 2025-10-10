@@ -3,7 +3,7 @@ import React
 import WebKit
 
 @objc(SessionRecorderNative)
-class SessionRecorderNative: NSObject {
+class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate, SessionRecorderNativeSpec {
 
   // Configuration options
   private var maskTextInputs: Bool = true
@@ -44,6 +44,7 @@ class SessionRecorderNative: NSObject {
     "SwiftUI.GradientLayer", // Views like LinearGradient, RadialGradient, or AngularGradient
   ].compactMap(NSClassFromString)
 
+  // MARK: - Screen capture APIs
   @objc func captureAndMask(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.main.async {
       guard let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) else {
@@ -115,6 +116,74 @@ class SessionRecorderNative: NSObject {
         reject("ENCODING_FAILED", "Failed to encode image", nil)
       }
     }
+  }
+
+  // MARK: - Gesture recording state
+  private var isRecording = false
+  private var gestureCallback: RCTResponseSenderBlock?
+  private var rootViewController: UIViewController?
+
+  private var tapGestureRecognizer: UITapGestureRecognizer?
+  private var panGestureRecognizer: UIPanGestureRecognizer?
+  private var longPressGestureRecognizer: UILongPressGestureRecognizer?
+  private var pinchGestureRecognizer: UIPinchGestureRecognizer?
+
+  // MARK: - Event Emitter overrides
+  override func supportedEvents() -> [String]! {
+    return ["onGestureDetected"]
+  }
+
+  @objc override static func requiresMainQueueSetup() -> Bool {
+    return true
+  }
+
+  // MARK: - Gesture recording APIs
+  @objc func startGestureRecording(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    DispatchQueue.main.async {
+      guard !self.isRecording else {
+        resolve(nil)
+        return
+      }
+
+      self.setupGestureRecognizers()
+      self.isRecording = true
+      resolve(nil)
+    }
+  }
+
+  @objc func stopGestureRecording(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    DispatchQueue.main.async {
+      guard self.isRecording else {
+        resolve(nil)
+        return
+      }
+
+      self.removeGestureRecognizers()
+      self.isRecording = false
+      resolve(nil)
+    }
+  }
+
+  @objc func isGestureRecordingActive(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    resolve(self.isRecording)
+  }
+
+  @objc func setGestureCallback(_ callback: @escaping RCTResponseSenderBlock) {
+    self.gestureCallback = callback
+  }
+
+  @objc func recordGesture(_ gestureType: String, x: NSNumber, y: NSNumber, target: String?, metadata: NSDictionary?) {
+    let gestureEvent: [String: Any] = [
+      "type": gestureType,
+      "timestamp": Date().timeIntervalSince1970 * 1000,
+      "x": x.doubleValue,
+      "y": y.doubleValue,
+      "target": target ?? "",
+      "metadata": metadata ?? [:]
+    ]
+
+    self.sendEvent(withName: "onGestureDetected", body: gestureEvent)
+    if let cb = gestureCallback { cb([gestureEvent]) }
   }
 
   private func updateConfiguration(from options: NSDictionary) {
@@ -508,6 +577,192 @@ class SessionRecorderNative: NSObject {
       let newImage = UIGraphicsGetImageFromCurrentImageContext()
       UIGraphicsEndImageContext()
       return newImage ?? image
+  }
+
+  // MARK: - Gesture setup and handlers
+  private func setupGestureRecognizers() {
+    guard let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }),
+          let rootViewController = window.rootViewController else {
+      return
+    }
+
+    self.rootViewController = rootViewController
+
+    // Tap
+    tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+    tapGestureRecognizer?.numberOfTapsRequired = 1
+    tapGestureRecognizer?.numberOfTouchesRequired = 1
+    rootViewController.view.addGestureRecognizer(tapGestureRecognizer!)
+
+    // Pan
+    panGestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+    rootViewController.view.addGestureRecognizer(panGestureRecognizer!)
+
+    // Long press
+    longPressGestureRecognizer = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+    longPressGestureRecognizer?.minimumPressDuration = 0.5
+    rootViewController.view.addGestureRecognizer(longPressGestureRecognizer!)
+
+    // Pinch
+    pinchGestureRecognizer = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
+    rootViewController.view.addGestureRecognizer(pinchGestureRecognizer!)
+
+    // Allow simultaneous recognition
+    tapGestureRecognizer?.delegate = self
+    panGestureRecognizer?.delegate = self
+    longPressGestureRecognizer?.delegate = self
+    pinchGestureRecognizer?.delegate = self
+  }
+
+  private func removeGestureRecognizers() {
+    guard let rootViewController = rootViewController else { return }
+
+    if let tapGesture = tapGestureRecognizer { rootViewController.view.removeGestureRecognizer(tapGesture) }
+    if let panGesture = panGestureRecognizer { rootViewController.view.removeGestureRecognizer(panGesture) }
+    if let longPressGesture = longPressGestureRecognizer { rootViewController.view.removeGestureRecognizer(longPressGesture) }
+    if let pinchGesture = pinchGestureRecognizer { rootViewController.view.removeGestureRecognizer(pinchGesture) }
+
+    tapGestureRecognizer = nil
+    panGestureRecognizer = nil
+    longPressGestureRecognizer = nil
+    pinchGestureRecognizer = nil
+    self.rootViewController = nil
+  }
+
+  @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+    guard let view = gesture.view else { return }
+    let location = gesture.location(in: view)
+    let target = GestureTargetFinder.findTargetView(at: location, in: view)
+
+    let gestureEvent: [String: Any] = [
+      "type": "tap",
+      "timestamp": Date().timeIntervalSince1970 * 1000,
+      "x": location.x,
+      "y": location.y,
+      "target": target.identifier,
+      "targetInfo": [
+        "identifier": target.identifier,
+        "label": target.label as Any,
+        "role": target.role as Any,
+        "testId": target.testId as Any,
+        "text": target.text as Any
+      ],
+      "metadata": [
+        "pressure": 1.0
+      ]
+    ]
+
+    self.sendEvent(withName: "onGestureDetected", body: gestureEvent)
+    if let cb = gestureCallback { cb([gestureEvent]) }
+  }
+
+  @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
+    guard let view = gesture.view else { return }
+    let location = gesture.location(in: view)
+    let velocity = gesture.velocity(in: view)
+    let translation = gesture.translation(in: view)
+
+    let target = GestureTargetFinder.findTargetView(at: location, in: view)
+
+    let gestureType: String
+    switch gesture.state {
+    case .began: gestureType = "pan_start"
+    case .changed: gestureType = "pan_move"
+    case .ended, .cancelled: gestureType = "pan_end"
+    default: return
+    }
+
+    let gestureEvent: [String: Any] = [
+      "type": gestureType,
+      "timestamp": Date().timeIntervalSince1970 * 1000,
+      "x": location.x,
+      "y": location.y,
+      "target": target.identifier,
+      "targetInfo": [
+        "identifier": target.identifier,
+        "label": target.label as Any,
+        "role": target.role as Any,
+        "testId": target.testId as Any,
+        "text": target.text as Any
+      ],
+      "metadata": [
+        "velocity": sqrt(velocity.x * velocity.x + velocity.y * velocity.y),
+        "deltaX": translation.x,
+        "deltaY": translation.y
+      ]
+    ]
+
+    self.sendEvent(withName: "onGestureDetected", body: gestureEvent)
+    if let cb = gestureCallback { cb([gestureEvent]) }
+  }
+
+  @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+    guard gesture.state == .began else { return }
+    guard let view = gesture.view else { return }
+    let location = gesture.location(in: view)
+    let target = GestureTargetFinder.findTargetView(at: location, in: view)
+
+    let gestureEvent: [String: Any] = [
+      "type": "long_press",
+      "timestamp": Date().timeIntervalSince1970 * 1000,
+      "x": location.x,
+      "y": location.y,
+      "target": target.identifier,
+      "targetInfo": [
+        "identifier": target.identifier,
+        "label": target.label as Any,
+        "role": target.role as Any,
+        "testId": target.testId as Any,
+        "text": target.text as Any
+      ],
+      "metadata": [
+        "duration": 0.5,
+        "pressure": 1.0
+      ]
+    ]
+
+    self.sendEvent(withName: "onGestureDetected", body: gestureEvent)
+    if let cb = gestureCallback { cb([gestureEvent]) }
+  }
+
+  @objc private func handlePinch(_ gesture: UIPinchGestureRecognizer) {
+    guard let view = gesture.view else { return }
+    let location = gesture.location(in: view)
+    let scale = gesture.scale
+    let velocity = gesture.velocity
+
+    let target = GestureTargetFinder.findTargetView(at: location, in: view)
+
+    let gestureEvent: [String: Any] = [
+      "type": "pinch",
+      "timestamp": Date().timeIntervalSince1970 * 1000,
+      "x": location.x,
+      "y": location.y,
+      "target": target.identifier,
+      "targetInfo": [
+        "identifier": target.identifier,
+        "label": target.label as Any,
+        "role": target.role as Any,
+        "testId": target.testId as Any,
+        "text": target.text as Any
+      ],
+      "metadata": [
+        "scale": scale,
+        "velocity": velocity
+      ]
+    ]
+
+    self.sendEvent(withName: "onGestureDetected", body: gestureEvent)
+    if let cb = gestureCallback { cb([gestureEvent]) }
+  }
+
+  // MARK: - UIGestureRecognizerDelegate
+  func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+    return true
+  }
+
+  func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+    return true
   }
 }
 

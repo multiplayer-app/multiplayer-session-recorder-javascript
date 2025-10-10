@@ -1,4 +1,4 @@
-import { createStore, Store } from '../utils/createStore'
+import { createStore, type Store } from '../utils/createStore'
 import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { SessionState } from '../types'
 

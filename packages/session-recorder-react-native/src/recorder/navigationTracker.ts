@@ -1,4 +1,4 @@
-import { NavigationEvent, RecorderConfig } from '../types'
+import { type NavigationEvent, type RecorderConfig } from '../types'
 import { trace, SpanStatusCode } from '@opentelemetry/api'
 import { logger } from '../utils'
 
@@ -15,6 +15,8 @@ export class NavigationTracker {
   init(config: RecorderConfig, screenRecorder?: any): void {
     this.config = config
     this.screenRecorder = screenRecorder
+    logger.info('NavigationTracker', 'Navigation tracker initialized',
+      { config: this.config, screenRecorder: this.screenRecorder })
   }
 
   setNavigationRef(ref: any): void {
@@ -90,7 +92,7 @@ export class NavigationTracker {
   private _removeNavigationListener(): void {
     try {
       // Remove all listeners
-      this.navigationListeners.forEach((listener, key) => {
+      this.navigationListeners.forEach((listener, _) => {
         if (listener && typeof listener.remove === 'function') {
           listener.remove()
         }

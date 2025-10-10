@@ -1,4 +1,4 @@
-import { SessionRecorderOptions, WidgetButtonPlacement } from "../types"
+import { type SessionRecorderOptions, WidgetButtonPlacement } from "../types"
 import { BASE_CONFIG } from "./defaults"
 import { isValidBoolean, isValidEnum, isValidString } from "./validators"
 
@@ -34,5 +34,5 @@ const getTextOverridesConfig = (config: any, defaultConfig: any) => {
   return Object.keys(defaultConfig).reduce((acc, key) => {
     acc[key] = isValidString(config[key], defaultConfig[key])
     return acc
-  }, {} as Record<string, any>)
+  }, {} as Record<string, unknown>)
 }

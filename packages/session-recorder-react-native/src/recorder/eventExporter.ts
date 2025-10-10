@@ -1,6 +1,6 @@
 import io, { Socket } from 'socket.io-client'
 
-import { ISession } from '../types'
+import { type ISession } from '../types'
 import { logger } from '../utils'
 
 import {
@@ -56,7 +56,7 @@ export class EventExporter {
       this.flushQueue()
     })
 
-    this.socket.on('disconnect', (err: any) => {
+    this.socket.on('disconnect', (_err: any) => {
       this.isConnecting = false
       this.isConnected = false
       logger.info('EventExporter', 'Disconnected from server')
@@ -69,12 +69,12 @@ export class EventExporter {
       logger.error('EventExporter', 'Error connecting to server', err)
     })
 
-    this.socket.on(SESSION_STOPPED_EVENT, (data: any) => {
+    this.socket.on(SESSION_STOPPED_EVENT, (_: any) => {
 
       this.unsubscribeFromSession()
     })
 
-    this.socket.on(SESSION_AUTO_CREATED, (data: any) => {
+    this.socket.on(SESSION_AUTO_CREATED, (_: any) => {
 
     })
   }

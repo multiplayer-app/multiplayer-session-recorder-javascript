@@ -6,7 +6,7 @@ export function shallowEqual<T extends Record<string, any>>(a: T, b: T): boolean
   if (aKeys.length !== bKeys.length) return false
   for (let i = 0; i < aKeys.length; i++) {
     const key = aKeys[i]
-    if (!Object.prototype.hasOwnProperty.call(b, key) || !Object.is(a[key], b[key])) {
+    if (!Object.prototype.hasOwnProperty.call(b, key!) || !Object.is(a[key!], b[key!])) {
       return false
     }
   }

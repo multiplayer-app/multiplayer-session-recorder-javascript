@@ -1,24 +1,30 @@
 {
   "compilerOptions": {
-    "rootDir": "./src",
-    "declaration": true,
+    "rootDir": ".",
+    "paths": {
+      "@multiplayer-app/session-recorder-react-native": ["./src/index"]
+    },
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "customConditions": ["react-native-strict-api"],
     "esModuleInterop": true,
-    "jsx": "react-native",
-    "incremental": false,
+    "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx",
     "lib": ["ESNext"],
-    "module": "ES2015",
+    "module": "ESNext",
     "moduleResolution": "bundler",
-    "noEmitOnError": true,
-    "outDir": "./dist",
-    "skipLibCheck": true,
-    "sourceMap": true,
-    "strict": true,
-    "target": "ES2018",
-    "allowSyntheticDefaultImports": true,
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noImplicitUseStrict": false,
+    "noStrictGenericChecks": false,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "resolveJsonModule": true,
-    "isolatedModules": true
-  },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "dist", "examples"],
-  "files": ["src/index.ts"]
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ESNext",
+    "verbatimModuleSyntax": true
+  }
 }

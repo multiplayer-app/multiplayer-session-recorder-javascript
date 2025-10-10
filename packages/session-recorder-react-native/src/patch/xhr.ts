@@ -29,7 +29,6 @@ export const setShouldRecordHttpData = (shouldRecordBody: boolean, shouldRecordH
 
 function _tryReadXHRBody({
   body,
-  url,
 }: {
   body: any | null | undefined
   url: string | URL | RequestInfo

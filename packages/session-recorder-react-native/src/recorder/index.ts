@@ -5,8 +5,8 @@ import { logger } from '../utils'
 import { ScreenRecorder } from './screenRecorder'
 import { GestureRecorder } from './gestureRecorder'
 import { NavigationTracker } from './navigationTracker'
-import { RecorderConfig, EventRecorder } from '../types'
-import { eventWithTime } from '@rrweb/types'
+import { type RecorderConfig, type EventRecorder } from '../types'
+import { type eventWithTime } from '@rrweb/types'
 export class RecorderReactNativeSDK implements EventRecorder {
   private isRecording = false
   private config?: RecorderConfig

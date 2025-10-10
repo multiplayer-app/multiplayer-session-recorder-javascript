@@ -1,5 +1,5 @@
 import { Dimensions } from 'react-native'
-import { EventType, eventWithTime, NodeType, serializedNodeWithId, IncrementalSource, mutationData } from '@rrweb/types'
+import { EventType, type eventWithTime, NodeType, type serializedNodeWithId, IncrementalSource, type mutationData } from '@rrweb/types'
 import { getAppMetadata } from './platform'
 
 /**

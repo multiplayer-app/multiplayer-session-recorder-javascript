@@ -1,19 +1,19 @@
 
 import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { Observable } from 'lib0/observable'
-import { eventWithTime } from '@rrweb/types'
+import { type eventWithTime } from '@rrweb/types'
 
 import { TracerReactNativeSDK } from './otel'
 import { RecorderReactNativeSDK } from './recorder'
 import { logger } from './utils'
 
 import {
-  ISession,
   SessionState,
-  ISessionRecorder,
-  SessionRecorderConfigs,
-  SessionRecorderOptions,
-  EventRecorder
+  type ISession,
+  type ISessionRecorder,
+  type SessionRecorderConfigs,
+  type SessionRecorderOptions,
+  type EventRecorder
 } from './types'
 import { getFormattedDate, isSessionActive, getNavigatorInfo } from './utils'
 import { setMaxCapturingHttpPayloadSize, setShouldRecordHttpData } from './patch/xhr'
@@ -21,7 +21,7 @@ import { BASE_CONFIG, getSessionRecorderConfig } from './config'
 
 import { StorageService } from './services/storage.service'
 import { NetworkService } from './services/network.service'
-import { ApiService, StartSessionRequest, StopSessionRequest } from './services/api.service'
+import { ApiService, type StartSessionRequest, type StopSessionRequest } from './services/api.service'
 
 
 type SessionRecorderEvents = 'state-change'
@@ -487,7 +487,7 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
       | 'resume'
       | 'save'
       | 'autoStartRemoteContinuousSession',
-    payload?: any,
+    _payload?: any,
   ): void {
     if (!this._isInitialized) {
       throw new Error(

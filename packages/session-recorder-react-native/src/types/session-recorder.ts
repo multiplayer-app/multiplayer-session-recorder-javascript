@@ -1,7 +1,6 @@
-
-import { Span } from '@opentelemetry/api';
+import { type Span } from '@opentelemetry/api';
 import { SessionType } from '@multiplayer-app/session-recorder-common';
-import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
+import { type PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
 import type { ISession } from './session';
 
 

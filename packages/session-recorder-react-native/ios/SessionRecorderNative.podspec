@@ -18,9 +18,11 @@ Pod::Spec.new do |s|
 
   s.dependency "React-Core"
   s.dependency "React"
+  s.dependency "React-Codegen"
 
-  # Ensure proper linking for Expo
+  # Turbo Module support
   s.pod_target_xcconfig = {
-    "HEADER_SEARCH_PATHS" => "\"$(PODS_ROOT)/React-Core/React\""
+    "HEADER_SEARCH_PATHS" => "\"$(PODS_ROOT)/React-Core/React\"",
+    "DEFINES_MODULE" => "YES"
   }
 end

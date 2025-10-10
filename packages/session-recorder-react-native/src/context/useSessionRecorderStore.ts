@@ -1,7 +1,7 @@
 import { SessionType } from "@multiplayer-app/session-recorder-common"
 import { SessionState } from "../types"
 import { useStoreSelector } from "./useStoreSelector"
-import { SessionRecorderState, sessionRecorderStore } from "./SessionRecorderStore"
+import { type SessionRecorderState, sessionRecorderStore } from "./SessionRecorderStore"
 
 export function useSessionRecorderStore<TSlice>(
   selector: (s: SessionRecorderState) => TSlice,

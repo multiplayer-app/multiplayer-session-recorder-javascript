@@ -1,5 +1,5 @@
-import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/instrumentation-xml-http-request/build/src/types';
-import { MaskingOptions, SessionRecorderOptions } from './session-recorder';
+import { type PropagateTraceHeaderCorsUrls } from '@opentelemetry/instrumentation-xml-http-request/build/src/types';
+import { type MaskingOptions, type SessionRecorderOptions } from './session-recorder';
 
 
 /**

@@ -1,6 +1,6 @@
 import { Platform } from 'react-native'
 import { SessionType } from '@multiplayer-app/session-recorder-common'
-import { ISession, SessionState } from '../types'
+import { type ISession, type SessionState } from '../types'
 import { logger } from '../utils'
 
 // Safe import for AsyncStorage with web fallback
@@ -16,10 +16,10 @@ if (!isWeb) {
 } else {
   // Web fallback using localStorage
   AsyncStorage = {
-    getItem: (key: string) => Promise.resolve(null), // Simplified for web
-    setItem: (key: string, value: string) => Promise.resolve(undefined),
-    removeItem: (key: string) => Promise.resolve(undefined),
-    multiRemove: (keys: string[]) => Promise.resolve(undefined),
+    getItem: (_key: string) => Promise.resolve(null), // Simplified for web
+    setItem: (_key: string, _value: string) => Promise.resolve(undefined),
+    removeItem: (_key: string) => Promise.resolve(undefined),
+    multiRemove: (_keys: string[]) => Promise.resolve(undefined),
   }
 }
 
@@ -48,7 +48,7 @@ export class StorageService {
 
   private static cacheInitialized = false
   private static instance: StorageService | null = null
-  private static positionSaveTimeout: NodeJS.Timeout | null = null
+  private static positionSaveTimeout: any | null = null
 
   private constructor() {
     // Private constructor for singleton
@@ -91,7 +91,7 @@ export class StorageService {
   saveSessionId(sessionId: string): void {
     try {
       StorageService.cache.sessionId = sessionId
-      AsyncStorage.setItem(StorageService.SESSION_ID_KEY, sessionId).catch((error: any) => {
+      AsyncStorage.setItem(StorageService.SESSION_ID_KEY, sessionId).catch((_error: any) => {
         // Failed to persist session ID - silently continue
       })
     } catch (error) {
@@ -107,7 +107,7 @@ export class StorageService {
   saveSessionType(sessionType: SessionType): void {
     try {
       StorageService.cache.sessionType = sessionType
-      AsyncStorage.setItem(StorageService.SESSION_TYPE_KEY, sessionType).catch((error: any) => {
+      AsyncStorage.setItem(StorageService.SESSION_TYPE_KEY, sessionType).catch((_error: any) => {
         // Failed to persist session type - silently continue
       })
     } catch (error) {
@@ -124,7 +124,7 @@ export class StorageService {
     try {
       StorageService.cache.sessionState = state
 
-      AsyncStorage.setItem(StorageService.SESSION_STATE_KEY, state).catch((error: any) => {
+      AsyncStorage.setItem(StorageService.SESSION_STATE_KEY, state).catch((_error: any) => {
         // Failed to persist session state - silently continue
       })
     } catch (error) {
@@ -140,7 +140,7 @@ export class StorageService {
   saveSessionObject(session: ISession): void {
     try {
       StorageService.cache.sessionObject = session
-      AsyncStorage.setItem(StorageService.SESSION_OBJECT_KEY, JSON.stringify(session)).catch((error: any) => {
+      AsyncStorage.setItem(StorageService.SESSION_OBJECT_KEY, JSON.stringify(session)).catch((_error: any) => {
         // Failed to persist session object - silently continue
       })
     } catch (error) {
@@ -170,7 +170,7 @@ export class StorageService {
         StorageService.SESSION_TYPE_KEY,
         StorageService.SESSION_STATE_KEY,
         StorageService.SESSION_OBJECT_KEY,
-      ]).catch((error: any) => {
+      ]).catch((_error: any) => {
         // Failed to clear session data from storage - silently continue
       })
     } catch (error) {

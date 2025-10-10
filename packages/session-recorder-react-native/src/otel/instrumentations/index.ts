@@ -3,7 +3,7 @@ import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xm
 
 import { logger } from '../../utils'
 import { OTEL_IGNORE_URLS } from '../../config'
-import { TracerReactNativeConfig } from '../../types'
+import { type TracerReactNativeConfig } from '../../types'
 import { extractResponseBody, headersToObject, processHttpPayload } from '../helpers'
 
 export function getInstrumentations(config: TracerReactNativeConfig) {

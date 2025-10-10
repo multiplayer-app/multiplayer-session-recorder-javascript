@@ -1,4 +1,4 @@
-import { IResourceAttributes, ISessionAttributes, ApiServiceConfig } from '../types'
+import { type IResourceAttributes, type ISessionAttributes, type ApiServiceConfig } from '../types'
 
 export interface StartSessionRequest {
   name?: string

@@ -1,5 +1,5 @@
-import { ScreenEvent, RecorderConfig, EventRecorder } from '../types'
-import { eventWithTime } from '@rrweb/types'
+import { type ScreenEvent, type RecorderConfig, type EventRecorder } from '../types'
+import { type eventWithTime } from '@rrweb/types'
 import { trace, SpanStatusCode } from '@opentelemetry/api'
 import { Dimensions, Platform } from 'react-native'
 import {
@@ -9,7 +9,7 @@ import {
   generateScreenHash,
   logger,
 } from '../utils'
-import { screenMaskingService, ScreenMaskingConfig } from '../services/screenMaskingService'
+import { screenMaskingService, type ScreenMaskingConfig } from '../services/screenMaskingService'
 import { captureRef } from 'react-native-view-shot'
 const isWeb = Platform.OS === 'web'
 
@@ -25,7 +25,6 @@ export class ScreenRecorder implements EventRecorder {
   private captureScale: number = 0.66
   private captureFormat: 'png' | 'jpg' = 'jpg'
   private screenDimensions: { width: number; height: number } | null = null
-  private currentScreen: string | null = null
   private eventRecorder?: EventRecorder
   private nodeIdCounter: number = 1
   private viewShotRef: any = null
@@ -308,7 +307,7 @@ export class ScreenRecorder implements EventRecorder {
     return generateScreenHash(base64Image, this.hashSampleSize)
   }
 
-  private _sendEvent(event: ScreenEvent): void {
+  private _sendEvent(_event: ScreenEvent): void {
     // Screen event recorded
     // Send event to backend or store locally
   }
@@ -357,7 +356,7 @@ export class ScreenRecorder implements EventRecorder {
 
   async captureSpecificElement(
     elementRef: any,
-    options?: {
+    _options?: {
       format?: 'png' | 'jpg' | 'webp'
       quality?: number
     },

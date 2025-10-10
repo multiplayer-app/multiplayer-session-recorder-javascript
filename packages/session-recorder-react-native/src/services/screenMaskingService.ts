@@ -1,4 +1,4 @@
-import SessionRecorderNative, { MaskingOptions } from '../native/SessionRecorderNative'
+import SessionRecorderNative, { type MaskingOptions } from '../native/SessionRecorderNative'
 import { logger } from '../utils'
 
 

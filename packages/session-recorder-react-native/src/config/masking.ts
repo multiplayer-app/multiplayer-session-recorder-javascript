@@ -1,4 +1,4 @@
-import { MaskingOptions, SessionRecorderConfigs } from '../types'
+import { type MaskingOptions, type SessionRecorderConfigs } from '../types'
 import { DEFAULT_MASKING_CONFIG } from './defaults'
 import { isValidArray, isValidBoolean, isValidFunction } from './validators'
 import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common'
