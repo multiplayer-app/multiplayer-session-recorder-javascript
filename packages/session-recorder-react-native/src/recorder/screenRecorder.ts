@@ -1,148 +1,159 @@
-import { type ScreenEvent, type RecorderConfig, type EventRecorder } from '../types'
-import { type eventWithTime } from '@rrweb/types'
-import { trace, SpanStatusCode } from '@opentelemetry/api'
-import { Dimensions, Platform } from 'react-native'
+import {
+  type ScreenEvent,
+  type RecorderConfig,
+  type EventRecorder,
+} from '../types';
+import { type eventWithTime } from '@rrweb/types';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { Dimensions, Platform } from 'react-native';
 import {
   createRecordingMetaEvent,
   createFullSnapshotEvent,
   createIncrementalSnapshotWithImageUpdate as createIncrementalSnapshotUtil,
   generateScreenHash,
   logger,
-} from '../utils'
-import { screenMaskingService, type ScreenMaskingConfig } from '../services/screenMaskingService'
-import { captureRef } from 'react-native-view-shot'
-const isWeb = Platform.OS === 'web'
-
+} from '../utils';
+import {
+  screenMaskingService,
+  type ScreenMaskingConfig,
+} from '../services/screenMaskingService';
+import { captureRef } from 'react-native-view-shot';
+const isWeb = Platform.OS === 'web';
 
 export class ScreenRecorder implements EventRecorder {
-  private config?: RecorderConfig
-  private isRecording = false
-  private events: ScreenEvent[] = []
-  private captureInterval?: NodeJS.Timeout
-  private captureCount: number = 0
-  private maxCaptures: number = 100 // Limit captures to prevent memory issues
-  private captureQuality: number = 0.2
-  private captureScale: number = 0.66
-  private captureFormat: 'png' | 'jpg' = 'jpg'
-  private screenDimensions: { width: number; height: number } | null = null
-  private eventRecorder?: EventRecorder
-  private nodeIdCounter: number = 1
-  private viewShotRef: any = null
-  private lastScreenCapture: string | null = null
-  private lastScreenHash: string | null = null
-  private enableChangeDetection: boolean = true
-  private hashSampleSize: number = 100
-  private currentImageNodeId: number | null = null
-  private maskingConfig?: ScreenMaskingConfig
+  private config?: RecorderConfig;
+  private isRecording = false;
+  private events: ScreenEvent[] = [];
+  private captureInterval?: any;
+  private captureCount: number = 0;
+  private maxCaptures: number = 100; // Limit captures to prevent memory issues
+  private captureQuality: number = 0.2;
+  private captureScale: number = 0.66;
+  private captureFormat: 'png' | 'jpg' = 'jpg';
+  private screenDimensions: { width: number; height: number } | null = null;
+  private eventRecorder?: EventRecorder;
+  private nodeIdCounter: number = 1;
+  private viewShotRef: any = null;
+  private lastScreenCapture: string | null = null;
+  private lastScreenHash: string | null = null;
+  private enableChangeDetection: boolean = true;
+  private hashSampleSize: number = 100;
+  private currentImageNodeId: number | null = null;
+  private maskingConfig?: ScreenMaskingConfig;
 
   init(config: RecorderConfig, eventRecorder?: EventRecorder): void {
-    this.config = config
-    this.eventRecorder = eventRecorder
-    this._getScreenDimensions()
+    this.config = config;
+    this.eventRecorder = eventRecorder;
+    this._getScreenDimensions();
 
     // Initialize masking configuration
     this.maskingConfig = {
       enabled: true,
       ...this.config.masking,
-    }
+    };
 
     // Update the masking service configuration
-    screenMaskingService.updateConfig(this.maskingConfig)
+    screenMaskingService.updateConfig(this.maskingConfig);
   }
 
   start(): void {
-    this.isRecording = true
-    this.events = []
-    this.captureCount = 0
-    this.lastScreenCapture = null
-    this.lastScreenHash = null
-    this.currentImageNodeId = null // Reset image node ID for new session
-    logger.info('ScreenRecorder', 'Screen recording started')
+    this.isRecording = true;
+    this.events = [];
+    this.captureCount = 0;
+    this.lastScreenCapture = null;
+    this.lastScreenHash = null;
+    this.currentImageNodeId = null; // Reset image node ID for new session
+    logger.info('ScreenRecorder', 'Screen recording started');
     // Emit screen recording started meta event
 
-    this.recordEvent(createRecordingMetaEvent())
+    this.recordEvent(createRecordingMetaEvent());
 
-    this._startPeriodicCapture()
+    this._startPeriodicCapture();
 
     // Capture initial screen immediately
-    this._captureScreen()
+    this._captureScreen();
 
     // Screen recording started
   }
 
   stop(): void {
-    this.isRecording = false
-    this._stopPeriodicCapture()
+    this.isRecording = false;
+    this._stopPeriodicCapture();
     // Screen recording stopped
   }
 
   pause(): void {
-    this.isRecording = false
-    this._stopPeriodicCapture()
+    this.isRecording = false;
+    this._stopPeriodicCapture();
   }
 
   resume(): void {
-    this.isRecording = true
+    this.isRecording = true;
     // this._startPeriodicCapture()
   }
 
   private _getScreenDimensions(): void {
     try {
-      this.screenDimensions = Dimensions.get('window')
+      this.screenDimensions = Dimensions.get('window');
     } catch (error) {
       // Failed to get screen dimensions - silently continue
-      this.screenDimensions = { width: 375, height: 667 } // Default fallback
+      this.screenDimensions = { width: 375, height: 667 }; // Default fallback
     }
   }
 
   private _startPeriodicCapture(): void {
     if (this.captureInterval) {
-      clearInterval(this.captureInterval)
+      clearInterval(this.captureInterval);
     }
 
     // Capture screen every 5 seconds (reduced frequency)
     this.captureInterval = setInterval(() => {
-      this._captureScreen()
-    }, 5000)
+      this._captureScreen();
+    }, 5000);
   }
 
   private _stopPeriodicCapture(): void {
     if (this.captureInterval) {
-      clearInterval(this.captureInterval)
-      this.captureInterval = undefined
+      clearInterval(this.captureInterval);
+      this.captureInterval = undefined;
     }
   }
 
   private async _captureScreen(timestamp?: number): Promise<void> {
-    if (!this.isRecording || this.captureCount >= this.maxCaptures) return
+    if (!this.isRecording || this.captureCount >= this.maxCaptures) return;
 
     try {
-      const base64Image = await this._captureScreenBase64()
+      const base64Image = await this._captureScreenBase64();
 
       if (base64Image) {
         // Check if screen has changed by comparing with previous capture
-        const hasChanged = this.enableChangeDetection ? this._hasScreenChanged(base64Image) : true
+        const hasChanged = this.enableChangeDetection
+          ? this._hasScreenChanged(base64Image)
+          : true;
 
         if (hasChanged) {
           // Use incremental snapshot if we have an existing image node, otherwise create full snapshot
           if (this.currentImageNodeId !== null && this.lastScreenCapture) {
-            const success = this.updateScreenWithIncrementalSnapshot(base64Image, timestamp)
+            const success = this.updateScreenWithIncrementalSnapshot(
+              base64Image,
+              timestamp
+            );
             if (!success) {
               // Fallback to full snapshot if incremental update fails
-              this._createAndEmitFullSnapshotEvent(base64Image, timestamp)
+              this._createAndEmitFullSnapshotEvent(base64Image, timestamp);
             }
           } else {
             // First capture or no existing image node - create full snapshot
-            this._createAndEmitFullSnapshotEvent(base64Image, timestamp)
+            this._createAndEmitFullSnapshotEvent(base64Image, timestamp);
           }
 
-          this.lastScreenCapture = base64Image
-          this.lastScreenHash = this._generateScreenHash(base64Image)
-          this.captureCount++
+          this.lastScreenCapture = base64Image;
+          this.lastScreenHash = this._generateScreenHash(base64Image);
+          this.captureCount++;
         }
       }
     } catch (error) {
-      this._recordScreenCaptureError(error as Error)
+      this._recordScreenCaptureError(error as Error);
     }
   }
 
@@ -150,35 +161,47 @@ export class ScreenRecorder implements EventRecorder {
     try {
       // Check if we're on web platform
       if (isWeb) {
-        logger.warn('ScreenRecorder', 'Screen capture not available on web platform')
-        return null
+        logger.warn(
+          'ScreenRecorder',
+          'Screen capture not available on web platform'
+        );
+        return null;
       }
 
       // Try native masking first if available
       if (screenMaskingService.isScreenMaskingAvailable()) {
-        logger.info('ScreenRecorder', 'Using native masking for screen capture')
+        logger.info(
+          'ScreenRecorder',
+          'Using native masking for screen capture'
+        );
         const maskedImage = await screenMaskingService.captureMaskedScreen({
           quality: this.captureQuality,
           scale: this.captureScale,
-        })
+        });
 
         if (maskedImage) {
-          return maskedImage
+          return maskedImage;
         }
 
-        logger.warn('ScreenRecorder', 'Native masking failed, falling back to view-shot')
+        logger.warn(
+          'ScreenRecorder',
+          'Native masking failed, falling back to view-shot'
+        );
       }
 
       // Fallback to react-native-view-shot
       if (!this.viewShotRef) {
-        logger.warn('ScreenRecorder', 'ViewShot ref not available for screen capture')
-        return null
+        logger.warn(
+          'ScreenRecorder',
+          'ViewShot ref not available for screen capture'
+        );
+        return null;
       }
 
       // Check if captureRef is available
       if (!captureRef) {
-        logger.warn('ScreenRecorder', 'react-native-view-shot not available')
-        return null
+        logger.warn('ScreenRecorder', 'react-native-view-shot not available');
+        return null;
       }
 
       // Capture the screen using react-native-view-shot
@@ -186,21 +209,28 @@ export class ScreenRecorder implements EventRecorder {
         format: this.captureFormat,
         quality: this.captureQuality,
         result: 'base64',
-      })
+      });
 
-      return result
+      return result;
     } catch (error) {
-      logger.error('ScreenRecorder', 'Failed to capture screen. Make sure react-native-view-shot is properly installed and linked:', error)
-      return null
+      logger.error(
+        'ScreenRecorder',
+        'Failed to capture screen. Make sure react-native-view-shot is properly installed and linked:',
+        error
+      );
+      return null;
     }
   }
 
-  private _createAndEmitFullSnapshotEvent(base64Image: string, timestamp?: number): void {
-    if (!this.screenDimensions) return
+  private _createAndEmitFullSnapshotEvent(
+    base64Image: string,
+    timestamp?: number
+  ): void {
+    if (!this.screenDimensions) return;
 
     // Use the new createFullSnapshot method
-    const fullSnapshotEvent = this.createFullSnapshot(base64Image, timestamp)
-    this.recordEvent(fullSnapshotEvent)
+    const fullSnapshotEvent = this.createFullSnapshot(base64Image, timestamp);
+    this.recordEvent(fullSnapshotEvent);
   }
 
   /**
@@ -211,11 +241,11 @@ export class ScreenRecorder implements EventRecorder {
    */
   createFullSnapshot(base64Image: string, timestamp?: number): eventWithTime {
     if (!this.screenDimensions) {
-      throw new Error('Screen dimensions not available')
+      throw new Error('Screen dimensions not available');
     }
 
-    const { width, height } = this.screenDimensions
-    this.nodeIdCounter = 1
+    const { width, height } = this.screenDimensions;
+    this.nodeIdCounter = 1;
 
     // Use utility function to create full snapshot event
     const fullSnapshotEvent = createFullSnapshotEvent(
@@ -224,14 +254,14 @@ export class ScreenRecorder implements EventRecorder {
       height,
       this.captureFormat,
       { current: this.nodeIdCounter },
-      timestamp,
-    )
+      timestamp
+    );
 
     // Store the image node ID for future incremental updates
     // The image node ID is the first node created (after the document)
-    this.currentImageNodeId = 0 // First element node is the image
+    this.currentImageNodeId = 0; // First element node is the image
 
-    return fullSnapshotEvent
+    return fullSnapshotEvent;
   }
 
   /**
@@ -241,14 +271,17 @@ export class ScreenRecorder implements EventRecorder {
    * @param timestamp - Optional timestamp to use for the event
    * @returns Incremental snapshot event with mutation data
    */
-  createIncrementalSnapshotWithImageUpdate(base64Image: string, captureFormat?: string, timestamp?: number): eventWithTime {
+  createIncrementalSnapshotWithImageUpdate(
+    base64Image: string,
+    captureFormat?: string,
+    timestamp?: number
+  ): eventWithTime {
     return createIncrementalSnapshotUtil(
       base64Image,
       captureFormat || this.captureFormat,
-      timestamp,
-    )
+      timestamp
+    );
   }
-
 
   /**
    * Update the screen with a new image using incremental snapshot
@@ -256,15 +289,25 @@ export class ScreenRecorder implements EventRecorder {
    * @param timestamp - Optional timestamp to use for the event
    * @returns true if update was successful, false otherwise
    */
-  updateScreenWithIncrementalSnapshot(base64Image: string, timestamp?: number): boolean {
+  updateScreenWithIncrementalSnapshot(
+    base64Image: string,
+    timestamp?: number
+  ): boolean {
     if (this.currentImageNodeId === null) {
-      logger.warn('ScreenRecorder', 'No image node ID available for incremental update')
-      return false
+      logger.warn(
+        'ScreenRecorder',
+        'No image node ID available for incremental update'
+      );
+      return false;
     }
 
-    const incrementalEvent = this.createIncrementalSnapshotWithImageUpdate(base64Image, 'jpg', timestamp)
-    this.recordEvent(incrementalEvent)
-    return true
+    const incrementalEvent = this.createIncrementalSnapshotWithImageUpdate(
+      base64Image,
+      'jpg',
+      timestamp
+    );
+    this.recordEvent(incrementalEvent);
+    return true;
   }
 
   /**
@@ -272,10 +315,10 @@ export class ScreenRecorder implements EventRecorder {
    * @param base64Image - Base64 encoded image data
    */
   forceFullSnapshot(base64Image: string): void {
-    this._createAndEmitFullSnapshotEvent(base64Image)
-    this.lastScreenCapture = base64Image
-    this.lastScreenHash = this._generateScreenHash(base64Image)
-    this.captureCount++
+    this._createAndEmitFullSnapshotEvent(base64Image);
+    this.lastScreenCapture = base64Image;
+    this.lastScreenHash = this._generateScreenHash(base64Image);
+    this.captureCount++;
   }
 
   /**
@@ -286,14 +329,14 @@ export class ScreenRecorder implements EventRecorder {
   private _hasScreenChanged(currentBase64: string): boolean {
     // If this is the first capture, consider it changed
     if (!this.lastScreenCapture) {
-      return true
+      return true;
     }
 
     // Generate hash for current capture
-    const currentHash = this._generateScreenHash(currentBase64)
+    const currentHash = this._generateScreenHash(currentBase64);
 
     // Compare with previous hash
-    return currentHash !== this.lastScreenHash
+    return currentHash !== this.lastScreenHash;
   }
 
   /**
@@ -304,7 +347,7 @@ export class ScreenRecorder implements EventRecorder {
    * @returns Hash string for comparison
    */
   private _generateScreenHash(base64Image: string): string {
-    return generateScreenHash(base64Image, this.hashSampleSize)
+    return generateScreenHash(base64Image, this.hashSampleSize);
   }
 
   private _sendEvent(_event: ScreenEvent): void {
@@ -320,16 +363,16 @@ export class ScreenRecorder implements EventRecorder {
           'screen.timestamp': event.timestamp,
           'screen.platform': 'react-native',
         },
-      })
+      });
 
       if (event.metadata) {
         Object.entries(event.metadata).forEach(([key, value]) => {
-          span.setAttribute(`screen.metadata.${key}`, String(value))
-        })
+          span.setAttribute(`screen.metadata.${key}`, String(value));
+        });
       }
 
-      span.setStatus({ code: SpanStatusCode.OK })
-      span.end()
+      span.setStatus({ code: SpanStatusCode.OK });
+      span.end();
     } catch (error) {
       // Failed to record OpenTelemetry span for screen - silently continue
     }
@@ -344,11 +387,11 @@ export class ScreenRecorder implements EventRecorder {
           'screen.error.message': error.message,
           'screen.timestamp': Date.now(),
         },
-      })
+      });
 
-      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
-      span.recordException(error)
-      span.end()
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      span.recordException(error);
+      span.end();
     } catch (spanError) {
       // Failed to record error span - silently continue
     }
@@ -357,45 +400,48 @@ export class ScreenRecorder implements EventRecorder {
   async captureSpecificElement(
     elementRef: any,
     _options?: {
-      format?: 'png' | 'jpg' | 'webp'
-      quality?: number
-    },
+      format?: 'png' | 'jpg' | 'webp';
+      quality?: number;
+    }
   ): Promise<string | null> {
     try {
       if (isWeb || !captureRef) {
-        logger.warn('ScreenRecorder', 'Element capture not available on web platform')
-        return null
+        logger.warn(
+          'ScreenRecorder',
+          'Element capture not available on web platform'
+        );
+        return null;
       }
-      return await captureRef(elementRef)
+      return await captureRef(elementRef);
     } catch (error) {
       // Failed to capture specific element - silently continue
-      return null
+      return null;
     }
   }
 
   // Configuration methods
   setCaptureInterval(intervalMs: number): void {
     if (this.captureInterval) {
-      clearInterval(this.captureInterval)
+      clearInterval(this.captureInterval);
     }
 
     if (this.isRecording) {
       this.captureInterval = setInterval(() => {
-        this._captureScreen()
-      }, intervalMs)
+        this._captureScreen();
+      }, intervalMs);
     }
   }
 
   setCaptureQuality(quality: number): void {
-    this.captureQuality = Math.max(0.1, Math.min(1.0, quality))
+    this.captureQuality = Math.max(0.1, Math.min(1.0, quality));
   }
 
   setCaptureFormat(format: 'png' | 'jpg'): void {
-    this.captureFormat = format
+    this.captureFormat = format;
   }
 
   setMaxCaptures(max: number): void {
-    this.maxCaptures = Math.max(1, max)
+    this.maxCaptures = Math.max(1, max);
   }
 
   /**
@@ -403,7 +449,7 @@ export class ScreenRecorder implements EventRecorder {
    * @param enabled - Whether to enable change detection
    */
   setChangeDetection(enabled: boolean): void {
-    this.enableChangeDetection = enabled
+    this.enableChangeDetection = enabled;
   }
 
   /**
@@ -411,7 +457,7 @@ export class ScreenRecorder implements EventRecorder {
    * @param size - Number of characters to sample from each part of the image
    */
   setHashSampleSize(size: number): void {
-    this.hashSampleSize = Math.max(10, Math.min(1000, size))
+    this.hashSampleSize = Math.max(10, Math.min(1000, size));
   }
 
   // Performance monitoring
@@ -426,14 +472,14 @@ export class ScreenRecorder implements EventRecorder {
         performance: 'monitoring',
         captureCount: this.captureCount,
       },
-    }
+    };
 
-    this.events.push(event)
-    this._sendEvent(event)
-    this._recordOpenTelemetrySpan(event)
-    this.events.push(event)
-    this._sendEvent(event)
-    this._recordOpenTelemetrySpan(event)
+    this.events.push(event);
+    this._sendEvent(event);
+    this._recordOpenTelemetrySpan(event);
+    this.events.push(event);
+    this._sendEvent(event);
+    this._recordOpenTelemetrySpan(event);
   }
 
   // Error tracking
@@ -449,25 +495,25 @@ export class ScreenRecorder implements EventRecorder {
         screenName,
         captureCount: this.captureCount,
       },
-    }
+    };
 
-    this.events.push(event)
-    this._sendEvent(event)
-    this._recordOpenTelemetrySpan(event)
-    this.events.push(event)
-    this._sendEvent(event)
-    this._recordScreenCaptureError(error)
+    this.events.push(event);
+    this._sendEvent(event);
+    this._recordOpenTelemetrySpan(event);
+    this.events.push(event);
+    this._sendEvent(event);
+    this._recordScreenCaptureError(error);
   }
 
   // Get recorded events
   getEvents(): ScreenEvent[] {
-    return [...this.events]
+    return [...this.events];
   }
 
   // Clear events
   clearEvents(): void {
-    this.events = []
-    this.captureCount = 0
+    this.events = [];
+    this.captureCount = 0;
   }
 
   // Get screen capture statistics
@@ -477,25 +523,30 @@ export class ScreenRecorder implements EventRecorder {
       totalEvents: this.events.length,
       averageCaptureTime: 0,
       successRate: 0,
-    }
+    };
 
     if (this.events.length > 0) {
-      const captureTimes = this.events.map((event) => event.metadata?.captureTime || 0).filter((time) => time > 0)
+      const captureTimes = this.events
+        .map((event) => event.metadata?.captureTime || 0)
+        .filter((time) => time > 0);
 
       if (captureTimes.length > 0) {
-        stats.averageCaptureTime = captureTimes.reduce((a, b) => a + b, 0) / captureTimes.length
+        stats.averageCaptureTime =
+          captureTimes.reduce((a, b) => a + b, 0) / captureTimes.length;
       }
 
-      const successfulCaptures = this.events.filter((event) => event.dataUrl).length
-      stats.successRate = (successfulCaptures / this.events.length) * 100
+      const successfulCaptures = this.events.filter(
+        (event) => event.dataUrl
+      ).length;
+      stats.successRate = (successfulCaptures / this.events.length) * 100;
     }
 
-    return stats
+    return stats;
   }
 
   // Get recording status
   isRecordingEnabled(): boolean {
-    return this.isRecording
+    return this.isRecording;
   }
 
   // Get current configuration
@@ -506,13 +557,13 @@ export class ScreenRecorder implements EventRecorder {
       captureFormat: this.captureFormat,
       maxCaptures: this.maxCaptures,
       screenDimensions: this.screenDimensions,
-    }
+    };
   }
 
   // Shutdown
   shutdown(): void {
-    this.stop()
-    this.clearEvents()
+    this.stop();
+    this.clearEvents();
     // Screen recorder shutdown
   }
 
@@ -521,7 +572,7 @@ export class ScreenRecorder implements EventRecorder {
    * @param ref - React Native View ref for screen capture
    */
   setViewShotRef(ref: any): void {
-    this.viewShotRef = ref
+    this.viewShotRef = ref;
   }
 
   /**
@@ -531,10 +582,10 @@ export class ScreenRecorder implements EventRecorder {
    */
   forceCapture(timestamp?: number): void {
     if (!this.isRecording) {
-      return
+      return;
     }
 
-    this._captureScreen(timestamp)
+    this._captureScreen(timestamp);
   }
 
   /**
@@ -543,7 +594,7 @@ export class ScreenRecorder implements EventRecorder {
    */
   recordEvent(event: any): void {
     if (this.eventRecorder) {
-      this.eventRecorder.recordEvent(event)
+      this.eventRecorder.recordEvent(event);
     }
   }
 }

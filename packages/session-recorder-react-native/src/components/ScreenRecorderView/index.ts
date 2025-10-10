@@ -1,1 +1,1 @@
-export * from "./ScreenRecorderView";
+export * from './ScreenRecorderView';

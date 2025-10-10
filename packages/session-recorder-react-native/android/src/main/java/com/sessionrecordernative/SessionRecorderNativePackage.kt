@@ -1,4 +1,4 @@
-package com.multiplayer.sessionrecordernative
+package com.sessionrecordernative
 
 import com.facebook.react.BaseReactPackage
 import com.facebook.react.bridge.NativeModule
@@ -10,7 +10,7 @@ import java.util.HashMap
 class SessionRecorderNativePackage : BaseReactPackage() {
   override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
     return if (name == SessionRecorderNativeModule.NAME) {
-      SessionRecorderNativeModule(reactContext)
+      SessionRecorderNativeModule(reactContext) as NativeModule
     } else {
       null
     }
@@ -25,7 +25,7 @@ class SessionRecorderNativePackage : BaseReactPackage() {
         false,  // canOverrideExistingModule
         false,  // needsEagerInit
         false,  // isCxxModule
-        true // isTurboModule
+        false // isTurboModule
       )
       moduleInfos
     }

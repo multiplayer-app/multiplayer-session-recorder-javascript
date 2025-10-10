@@ -1,12 +1,13 @@
 {
   "name": "@multiplayer-app/session-recorder-react-native",
-  "version": "1.0.1-beta.3",
+  "version": "1.0.1-beta.9",
   "description": "Multiplayer Fullstack Session Recorder for React Native",
   "author": {
     "name": "Multiplayer Software, Inc.",
     "url": "https://www.multiplayer.app"
   },
   "license": "MIT",
+  "homepage": "https://github.com/multiplayer-app/multiplayer-session-recorder-javascript",
   "bugs": {
     "url": "https://github.com/multiplayer-app/multiplayer-session-recorder-javascript/issues"
   },
@@ -187,7 +188,7 @@
     "type": "modules",
     "jsSrcsDir": "src",
     "android": {
-      "javaPackageName": "com.multiplayer.sessionrecordernative"
+      "javaPackageName": "com.sessionrecordernative"
     }
   },
   "create-react-native-library": {

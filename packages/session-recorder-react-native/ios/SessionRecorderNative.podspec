@@ -14,15 +14,9 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/multiplayer-app/multiplayer-session-recorder-javascript.git", :tag => "#{s.version}" }
 
   s.source_files = "ios/**/*.{h,m,mm,swift}"
+  s.swift_version = "5.0"
   s.requires_arc = true
 
   s.dependency "React-Core"
   s.dependency "React"
-  s.dependency "React-Codegen"
-
-  # Turbo Module support
-  s.pod_target_xcconfig = {
-    "HEADER_SEARCH_PATHS" => "\"$(PODS_ROOT)/React-Core/React\"",
-    "DEFINES_MODULE" => "YES"
-  }
 end

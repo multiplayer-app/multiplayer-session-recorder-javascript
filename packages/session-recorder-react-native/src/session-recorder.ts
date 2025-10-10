@@ -1,11 +1,10 @@
+import { SessionType } from '@multiplayer-app/session-recorder-common';
+import { Observable } from 'lib0/observable';
+import { type eventWithTime } from '@rrweb/types';
 
-import { SessionType } from '@multiplayer-app/session-recorder-common'
-import { Observable } from 'lib0/observable'
-import { type eventWithTime } from '@rrweb/types'
-
-import { TracerReactNativeSDK } from './otel'
-import { RecorderReactNativeSDK } from './recorder'
-import { logger } from './utils'
+import { TracerReactNativeSDK } from './otel';
+import { RecorderReactNativeSDK } from './recorder';
+import { logger } from './utils';
 
 import {
   SessionState,
@@ -13,147 +12,162 @@ import {
   type ISessionRecorder,
   type SessionRecorderConfigs,
   type SessionRecorderOptions,
-  type EventRecorder
-} from './types'
-import { getFormattedDate, isSessionActive, getNavigatorInfo } from './utils'
-import { setMaxCapturingHttpPayloadSize, setShouldRecordHttpData } from './patch/xhr'
-import { BASE_CONFIG, getSessionRecorderConfig } from './config'
+  type EventRecorder,
+} from './types';
+import { getFormattedDate, isSessionActive, getNavigatorInfo } from './utils';
+import {
+  setMaxCapturingHttpPayloadSize,
+  setShouldRecordHttpData,
+} from './patch/xhr';
+import { BASE_CONFIG, getSessionRecorderConfig } from './config';
 
-import { StorageService } from './services/storage.service'
-import { NetworkService } from './services/network.service'
-import { ApiService, type StartSessionRequest, type StopSessionRequest } from './services/api.service'
+import { StorageService } from './services/storage.service';
+import { NetworkService } from './services/network.service';
+import {
+  ApiService,
+  type StartSessionRequest,
+  type StopSessionRequest,
+} from './services/api.service';
 
+type SessionRecorderEvents = 'state-change';
 
-type SessionRecorderEvents = 'state-change'
-
-class SessionRecorder extends Observable<SessionRecorderEvents> implements ISessionRecorder, EventRecorder {
-
-  private _configs: SessionRecorderConfigs
-  private _apiService = new ApiService()
-  private _tracer = new TracerReactNativeSDK()
-  private _recorder = new RecorderReactNativeSDK()
-  private _storageService = StorageService.getInstance()
-  private _networkService = NetworkService.getInstance()
-  private _startRequestController: AbortController | null = null
+class SessionRecorder
+  extends Observable<SessionRecorderEvents>
+  implements ISessionRecorder, EventRecorder
+{
+  private _configs: SessionRecorderConfigs;
+  private _apiService = new ApiService();
+  private _tracer = new TracerReactNativeSDK();
+  private _recorder = new RecorderReactNativeSDK();
+  private _storageService = StorageService.getInstance();
+  private _networkService = NetworkService.getInstance();
+  private _startRequestController: AbortController | null = null;
 
   // Whether the session recorder is initialized
-  private _isInitialized = false
+  private _isInitialized = false;
   get isInitialized(): boolean {
-    return this._isInitialized
+    return this._isInitialized;
   }
   set isInitialized(isInitialized: boolean) {
-    this._isInitialized = isInitialized
+    this._isInitialized = isInitialized;
   }
 
   // Session ID and state are stored in AsyncStorage
-  private _sessionId: string | null = null
+  private _sessionId: string | null = null;
   get sessionId(): string | null {
-    return this._sessionId
+    return this._sessionId;
   }
   set sessionId(sessionId: string | null) {
-    this._sessionId = sessionId
+    this._sessionId = sessionId;
     if (sessionId) {
-      this._storageService.saveSessionId(sessionId)
+      this._storageService.saveSessionId(sessionId);
     }
   }
 
-  private _sessionType: SessionType = SessionType.PLAIN
+  private _sessionType: SessionType = SessionType.PLAIN;
   get sessionType(): SessionType {
-    return this._sessionType
+    return this._sessionType;
   }
   set sessionType(sessionType: SessionType) {
-    this._sessionType = sessionType
-    this._storageService.saveSessionType(sessionType)
+    this._sessionType = sessionType;
+    this._storageService.saveSessionType(sessionType);
   }
 
   get continuousRecording(): boolean {
-    return this.sessionType === SessionType.CONTINUOUS
+    return this.sessionType === SessionType.CONTINUOUS;
   }
 
-  private _sessionState: SessionState | null = null
+  private _sessionState: SessionState | null = null;
   get sessionState(): SessionState | null {
-    return this._sessionState || SessionState.stopped
+    return this._sessionState || SessionState.stopped;
   }
   set sessionState(state: SessionState | null) {
-    this._sessionState = state
-    this.emit('state-change', [state || SessionState.stopped, this.sessionType])
+    this._sessionState = state;
+    this.emit('state-change', [
+      state || SessionState.stopped,
+      this.sessionType,
+    ]);
     if (state) {
-      this._storageService.saveSessionState(state)
+      this._storageService.saveSessionState(state);
     }
   }
 
-  private _session: ISession | null = null
+  private _session: ISession | null = null;
   get session(): ISession | null {
-    return this._session
+    return this._session;
   }
   set session(session: ISession | null) {
-    this._session = session
+    this._session = session;
     if (session) {
-      this._storageService.saveSessionObject(session)
+      this._storageService.saveSessionObject(session);
     }
   }
 
-  private _sessionAttributes: Record<string, any> | null = null
+  private _sessionAttributes: Record<string, any> | null = null;
   get sessionAttributes(): Record<string, any> {
-    return this._sessionAttributes || {}
+    return this._sessionAttributes || {};
   }
   set sessionAttributes(attributes: Record<string, any> | null) {
-    this._sessionAttributes = attributes
+    this._sessionAttributes = attributes;
   }
 
   /**
    * Error message getter and setter
    */
   public get error(): string {
-    return this._error || ''
+    return this._error || '';
   }
 
   public set error(v: string) {
-    this._error = v
+    this._error = v;
   }
-  private _error: string = ''
+  private _error: string = '';
 
   /**
    * React Native doesn't have HTML elements, so we return null
    */
   public get sessionWidgetButtonElement(): any {
-    return null
+    return null;
   }
 
   public get config(): SessionRecorderConfigs {
-    return this._configs
+    return this._configs;
   }
   /**
    * Initialize debugger with default or custom configurations
    */
   constructor() {
-    super()
-    this._configs = BASE_CONFIG
+    super();
+    this._configs = BASE_CONFIG;
     // Initialize with stored session data if available
-    StorageService.initialize()
+    StorageService.initialize();
   }
 
   private async _loadStoredSessionData(): Promise<void> {
     try {
-      await StorageService.initialize()
-      const storedData = await this._storageService.getAllSessionData()
+      await StorageService.initialize();
+      const storedData = await this._storageService.getAllSessionData();
       if (isSessionActive(storedData.sessionObject, storedData.sessionType)) {
-        this.session = storedData.sessionObject
-        this.sessionId = storedData.sessionId
-        this.sessionType = storedData.sessionType || SessionType.PLAIN
-        this.sessionState = storedData.sessionState
+        this.session = storedData.sessionObject;
+        this.sessionId = storedData.sessionId;
+        this.sessionType = storedData.sessionType || SessionType.PLAIN;
+        this.sessionState = storedData.sessionState;
       } else {
-        this.session = null
-        this.sessionId = null
-        this.sessionState = null
-        this.sessionType = SessionType.PLAIN
+        this.session = null;
+        this.sessionId = null;
+        this.sessionState = null;
+        this.sessionType = SessionType.PLAIN;
       }
     } catch (error) {
-      logger.error('SessionRecorder', 'Failed to load stored session data', error)
-      this.session = null
-      this.sessionId = null
-      this.sessionState = null
-      this.sessionType = SessionType.PLAIN
+      logger.error(
+        'SessionRecorder',
+        'Failed to load stored session data',
+        error
+      );
+      this.session = null;
+      this.sessionId = null;
+      this.sessionState = null;
+      this.sessionType = SessionType.PLAIN;
     }
   }
 
@@ -162,22 +176,29 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    * @param configs - custom configurations for session debugger
    */
   public async init(configs: SessionRecorderOptions): Promise<void> {
-    if (this._isInitialized) return
-    this._isInitialized = true
-    this._configs = getSessionRecorderConfig({ ...this._configs, ...configs })
-    logger.configure(this._configs.logger)
-    await this._loadStoredSessionData()
-    setMaxCapturingHttpPayloadSize(this._configs.maxCapturingHttpPayloadSize)
-    setShouldRecordHttpData(!this._configs.captureBody, this._configs.captureHeaders)
+    if (this._isInitialized) return;
+    this._isInitialized = true;
+    this._configs = getSessionRecorderConfig({ ...this._configs, ...configs });
+    logger.configure(this._configs.logger);
+    await this._loadStoredSessionData();
+    setMaxCapturingHttpPayloadSize(this._configs.maxCapturingHttpPayloadSize);
+    setShouldRecordHttpData(
+      !this._configs.captureBody,
+      this._configs.captureHeaders
+    );
 
-    this._tracer.init(this._configs)
-    this._recorder.init(this._configs)
-    this._apiService.init(this._configs)
-    await this._networkService.init()
-    this._setupNetworkCallbacks()
+    this._tracer.init(this._configs);
+    this._recorder.init(this._configs);
+    this._apiService.init(this._configs);
+    await this._networkService.init();
+    this._setupNetworkCallbacks();
 
-    if (this.sessionId && (this.sessionState === SessionState.started || this.sessionState === SessionState.paused)) {
-      this._start()
+    if (
+      this.sessionId &&
+      (this.sessionState === SessionState.started ||
+        this.sessionState === SessionState.paused)
+    ) {
+      this._start();
     }
   }
 
@@ -187,13 +208,22 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
   private _setupNetworkCallbacks(): void {
     this._networkService.addCallback((state) => {
       if (!state.isConnected && this.sessionState === SessionState.started) {
-        logger.info('SessionRecorder', 'Network went offline - pausing session recording')
-        this.pause()
-      } else if (state.isConnected && this.sessionState === SessionState.paused) {
-        logger.info('SessionRecorder', 'Network came back online - resuming session recording')
-        this.resume()
+        logger.info(
+          'SessionRecorder',
+          'Network went offline - pausing session recording'
+        );
+        this.pause();
+      } else if (
+        state.isConnected &&
+        this.sessionState === SessionState.paused
+      ) {
+        logger.info(
+          'SessionRecorder',
+          'Network came back online - resuming session recording'
+        );
+        this.resume();
       }
-    })
+    });
   }
 
   /**
@@ -201,26 +231,35 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    * @param type - the type of session to start
    * @param session - the session to start
    */
-  public async start(type: SessionType = SessionType.PLAIN, session?: ISession): Promise<void> {
-    this._checkOperation('start')
+  public async start(
+    type: SessionType = SessionType.PLAIN,
+    session?: ISession
+  ): Promise<void> {
+    this._checkOperation('start');
 
     // Check if offline - don't start recording if offline
     if (!this._networkService.isOnline()) {
-      logger.warn('SessionRecorder', 'Cannot start session recording - device is offline')
-      throw new Error('Cannot start session recording while offline')
+      logger.warn(
+        'SessionRecorder',
+        'Cannot start session recording - device is offline'
+      );
+      throw new Error('Cannot start session recording while offline');
     }
 
     // If continuous recording is disabled, force plain mode
-    if (type === SessionType.CONTINUOUS && !this._configs?.showContinuousRecording) {
-      type = SessionType.PLAIN
+    if (
+      type === SessionType.CONTINUOUS &&
+      !this._configs?.showContinuousRecording
+    ) {
+      type = SessionType.PLAIN;
     }
-    logger.info('SessionRecorder', 'Starting session with type:', type)
-    this.sessionType = type
-    this._startRequestController = new AbortController()
+    logger.info('SessionRecorder', 'Starting session with type:', type);
+    this.sessionType = type;
+    this._startRequestController = new AbortController();
     if (session) {
-      this._setupSessionAndStart(session, true)
+      this._setupSessionAndStart(session, true);
     } else {
-      await this._createSessionAndStart()
+      await this._createSessionAndStart();
     }
   }
 
@@ -230,21 +269,21 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    */
   public async stop(comment?: string): Promise<void> {
     try {
-      this._checkOperation('stop')
-      this._stop()
+      this._checkOperation('stop');
+      this._stop();
       if (this.continuousRecording) {
-        await this._apiService.stopContinuousDebugSession(this.sessionId!)
-        this.sessionType = SessionType.PLAIN
+        await this._apiService.stopContinuousDebugSession(this.sessionId!);
+        this.sessionType = SessionType.PLAIN;
       } else {
         const request: StopSessionRequest = {
           sessionAttributes: { comment },
           stoppedAt: Date.now(),
-        }
-        await this._apiService.stopSession(this.sessionId!, request)
+        };
+        await this._apiService.stopSession(this.sessionId!, request);
       }
-      this._clearSession()
+      this._clearSession();
     } catch (error: any) {
-      this.error = error.message
+      this.error = error.message;
     }
   }
 
@@ -253,10 +292,10 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    */
   public async pause(): Promise<void> {
     try {
-      this._checkOperation('pause')
-      this._pause()
+      this._checkOperation('pause');
+      this._pause();
     } catch (error: any) {
-      this.error = error.message
+      this.error = error.message;
     }
   }
 
@@ -265,10 +304,10 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    */
   public async resume(): Promise<void> {
     try {
-      this._checkOperation('resume')
-      this._resume()
+      this._checkOperation('resume');
+      this._resume();
     } catch (error: any) {
-      this.error = error.message
+      this.error = error.message;
     }
   }
 
@@ -277,17 +316,17 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    */
   public async cancel(): Promise<void> {
     try {
-      this._checkOperation('cancel')
-      this._stop()
+      this._checkOperation('cancel');
+      this._stop();
       if (this.continuousRecording) {
-        await this._apiService.stopContinuousDebugSession(this.sessionId!)
-        this.sessionType = SessionType.PLAIN
+        await this._apiService.stopContinuousDebugSession(this.sessionId!);
+        this.sessionType = SessionType.PLAIN;
       } else {
-        await this._apiService.cancelSession(this.sessionId!)
+        await this._apiService.cancelSession(this.sessionId!);
       }
-      this._clearSession()
+      this._clearSession();
     } catch (error: any) {
-      this.error = error.message
+      this.error = error.message;
     }
   }
 
@@ -296,9 +335,12 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    */
   public async save(): Promise<any> {
     try {
-      this._checkOperation('save')
-      if (!this.continuousRecording || !this._configs?.showContinuousRecording) {
-        return
+      this._checkOperation('save');
+      if (
+        !this.continuousRecording ||
+        !this._configs?.showContinuousRecording
+      ) {
+        return;
       }
 
       const res = await this._apiService.saveContinuousDebugSession(
@@ -309,16 +351,16 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
           stoppedAt: Date.now(),
           name: this.sessionAttributes.userName
             ? `${this.sessionAttributes.userName}'s session on ${getFormattedDate(
-              Date.now(),
-              { month: 'short', day: 'numeric' },
-            )}`
+                Date.now(),
+                { month: 'short', day: 'numeric' }
+              )}`
             : `Session on ${getFormattedDate(Date.now())}`,
-        },
-      )
+        }
+      );
 
-      return res
+      return res;
     } catch (error: any) {
-      this.error = error.message
+      this.error = error.message;
     }
   }
 
@@ -327,7 +369,7 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    * @param attributes - the attributes to set
    */
   public setSessionAttributes(attributes: Record<string, any>): void {
-    this._sessionAttributes = attributes
+    this._sessionAttributes = attributes;
   }
 
   /**
@@ -336,11 +378,11 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    * @returns {Promise<void>}
    */
   public async checkRemoteContinuousSession(
-    sessionPayload?: Omit<ISession, '_id' | 'shortId'>,
+    sessionPayload?: Omit<ISession, '_id' | 'shortId'>
   ): Promise<void> {
-    this._checkOperation('autoStartRemoteContinuousSession')
+    this._checkOperation('autoStartRemoteContinuousSession');
     if (!this._configs?.showContinuousRecording) {
-      return
+      return;
     }
     const payload = {
       sessionAttributes: {
@@ -351,17 +393,17 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
         ...getNavigatorInfo(),
         ...(sessionPayload?.resourceAttributes || {}),
       },
-    }
+    };
 
-    const { state } = await this._apiService.checkRemoteSession(payload)
+    const { state } = await this._apiService.checkRemoteSession(payload);
 
     if (state == 'START') {
       if (this.sessionState !== SessionState.started) {
-        await this.start(SessionType.CONTINUOUS)
+        await this.start(SessionType.CONTINUOUS);
       }
     } else if (state == 'STOP') {
       if (this.sessionState !== SessionState.stopped) {
-        await this.stop()
+        await this.stop();
       }
     }
   }
@@ -370,7 +412,7 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    * Create a new session and start it
    */
   private async _createSessionAndStart(): Promise<void> {
-    const signal = this._startRequestController?.signal
+    const signal = this._startRequestController?.signal;
     try {
       const payload = {
         sessionAttributes: this.sessionAttributes,
@@ -378,25 +420,26 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
         name: this.sessionAttributes.userName
           ? `${this.sessionAttributes.userName}'s session on ${getFormattedDate(Date.now(), { month: 'short', day: 'numeric' })}`
           : `Session on ${getFormattedDate(Date.now())}`,
-      }
-      const request: StartSessionRequest = !this.continuousRecording ?
-        payload : { debugSessionData: payload }
+      };
+      const request: StartSessionRequest = !this.continuousRecording
+        ? payload
+        : { debugSessionData: payload };
 
       const session = this.continuousRecording
         ? await this._apiService.startContinuousDebugSession(request, signal)
-        : await this._apiService.startSession(request, signal)
+        : await this._apiService.startSession(request, signal);
 
       if (session) {
         session.sessionType = this.continuousRecording
           ? SessionType.CONTINUOUS
-          : SessionType.PLAIN
-        this._setupSessionAndStart(session, false)
+          : SessionType.PLAIN;
+        this._setupSessionAndStart(session, false);
       }
     } catch (error: any) {
-      this.error = error.message
-      logger.error('SessionRecorder', 'Error creating session:', error.message)
+      this.error = error.message;
+      logger.error('SessionRecorder', 'Error creating session:', error.message);
       if (this.continuousRecording) {
-        this.sessionType = SessionType.PLAIN
+        this.sessionType = SessionType.PLAIN;
       }
     }
   }
@@ -405,12 +448,12 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    * Start tracing and recording for the session
    */
   private _start(): void {
-    this.sessionState = SessionState.started
-    this.sessionType = this.sessionType
+    this.sessionState = SessionState.started;
+    this.sessionType = this.sessionType;
 
     if (this.sessionId) {
-      this._tracer.start(this.sessionId, this.sessionType)
-      this._recorder.start(this.sessionId, this.sessionType)
+      this._tracer.start(this.sessionId, this.sessionType);
+      this._recorder.start(this.sessionId, this.sessionType);
     }
   }
 
@@ -418,18 +461,18 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    * Stop tracing and recording for the session
    */
   private _stop(): void {
-    this.sessionState = SessionState.stopped
-    this._tracer.shutdown()
-    this._recorder.stop()
+    this.sessionState = SessionState.stopped;
+    this._tracer.shutdown();
+    this._recorder.stop();
   }
 
   /**
    * Pause the session tracing and recording
    */
   private _pause(): void {
-    this._tracer.shutdown()
-    this._recorder.stop()
-    this.sessionState = SessionState.paused
+    this._tracer.shutdown();
+    this._recorder.stop();
+    this.sessionState = SessionState.paused;
   }
 
   /**
@@ -437,40 +480,44 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    */
   private _resume(): void {
     if (this.sessionId) {
-      this._tracer.setSessionId(this.sessionId, this.sessionType)
-      this._recorder.start(this.sessionId, this.sessionType)
+      this._tracer.setSessionId(this.sessionId, this.sessionType);
+      this._recorder.start(this.sessionId, this.sessionType);
     }
-    this.sessionState = SessionState.started
+    this.sessionState = SessionState.started;
   }
 
-  private _setupSessionAndStart(session: ISession, configureExporters: boolean = true): void {
+  private _setupSessionAndStart(
+    session: ISession,
+    configureExporters: boolean = true
+  ): void {
     if (configureExporters && session.tempApiKey) {
-      this._configs.apiKey = session.tempApiKey
-      this._tracer.setApiKey(session.tempApiKey)
-      this._recorder.setApiKey(session.tempApiKey)
-      this._apiService.setApiKey(session.tempApiKey)
+      this._configs.apiKey = session.tempApiKey;
+      this._tracer.setApiKey(session.tempApiKey);
+      this._recorder.setApiKey(session.tempApiKey);
+      this._apiService.setApiKey(session.tempApiKey);
     }
 
-    this._setSession(session)
-    this._start()
+    this._setSession(session);
+    this._start();
   }
 
   /**
    * Set the session ID in storage
    * @param sessionId - the session ID to set or clear
    */
-  private _setSession(
-    session: ISession,
-  ): void {
-    this.session = { ...session, createdAt: session.createdAt || new Date().toISOString() }
-    this.sessionId = session?.shortId || session?._id
+  private _setSession(session: ISession): void {
+    this.session = {
+      ...session,
+      createdAt: session.createdAt || new Date().toISOString(),
+    };
+    this.sessionId = session?.shortId || session?._id;
   }
 
   private _clearSession(): void {
-    this.session = null
-    this.sessionId = null
-    this.sessionState = SessionState.stopped
-    this._storageService.clearSessionData()
+    this.session = null;
+    this.sessionId = null;
+    this.sessionState = SessionState.stopped;
+    this._storageService.clearSessionData();
   }
 
   /**
@@ -487,62 +534,71 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
       | 'resume'
       | 'save'
       | 'autoStartRemoteContinuousSession',
-    _payload?: any,
+    _payload?: any
   ): void {
     if (!this._isInitialized) {
       throw new Error(
-        'Configuration not initialized. Call init() before performing any actions.',
-      )
+        'Configuration not initialized. Call init() before performing any actions.'
+      );
     }
     switch (action) {
       case 'start':
         if (this.sessionState === SessionState.started) {
-          throw new Error('Session is already started.')
+          throw new Error('Session is already started.');
         }
-        break
+        break;
       case 'stop':
-        if (this.sessionState !== SessionState.paused && this.sessionState !== SessionState.started) {
-          throw new Error('Cannot stop. Session is not currently started.')
+        if (
+          this.sessionState !== SessionState.paused &&
+          this.sessionState !== SessionState.started
+        ) {
+          throw new Error('Cannot stop. Session is not currently started.');
         }
-        break
+        break;
       case 'cancel':
         if (this.sessionState === SessionState.stopped) {
-          throw new Error('Cannot cancel. Session has already been stopped.')
+          throw new Error('Cannot cancel. Session has already been stopped.');
         }
-        break
+        break;
       case 'pause':
         if (this.sessionState !== SessionState.started) {
-          throw new Error('Cannot pause. Session is not running.')
+          throw new Error('Cannot pause. Session is not running.');
         }
-        break
+        break;
       case 'resume':
         if (this.sessionState !== SessionState.paused) {
-          throw new Error('Cannot resume. Session is not paused.')
+          throw new Error('Cannot resume. Session is not paused.');
         }
-        break
+        break;
       case 'save':
         if (!this.continuousRecording) {
-          throw new Error('Cannot save continuous recording session. Continuous recording is not enabled.')
+          throw new Error(
+            'Cannot save continuous recording session. Continuous recording is not enabled.'
+          );
         }
         if (this.sessionState !== SessionState.started) {
-          throw new Error('Cannot save continuous recording session. Session is not started.')
+          throw new Error(
+            'Cannot save continuous recording session. Session is not started.'
+          );
         }
-        break
+        break;
       case 'autoStartRemoteContinuousSession':
         if (this.sessionState !== SessionState.stopped) {
-          throw new Error('Cannot start remote continuous session. Session is not stopped.')
+          throw new Error(
+            'Cannot start remote continuous session. Session is not stopped.'
+          );
         }
-        break
+        break;
     }
   }
   // Session attributes
   setSessionAttribute(key: string, value: any): void {
     if (this._session) {
       if (!this._session.sessionAttributes) {
-        this._session.sessionAttributes = {}
+        this._session.sessionAttributes = {};
       }
-      this._session.sessionAttributes[key] = value
-      this._session.updatedAt = new Date().toISOString()
+      this._session.sessionAttributes[key] = value;
+      this._session.updatedAt = new Date().toISOString();
     }
   }
 
@@ -553,11 +609,11 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    */
   recordEvent(event: eventWithTime): void {
     if (!this._isInitialized || this.sessionState !== SessionState.started) {
-      return
+      return;
     }
 
     // Forward the event to the recorder SDK
-    this._recorder.recordEvent(event)
+    this._recorder.recordEvent(event);
   }
 
   /**
@@ -566,7 +622,7 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    */
   setViewShotRef(ref: any): void {
     if (this._recorder) {
-      this._recorder.setViewShotRef(ref)
+      this._recorder.setViewShotRef(ref);
     }
   }
 
@@ -576,7 +632,7 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    */
   setNavigationRef(ref: any): void {
     if (this._recorder) {
-      this._recorder.setNavigationRef(ref)
+      this._recorder.setNavigationRef(ref);
     }
   }
 
@@ -584,8 +640,8 @@ class SessionRecorder extends Observable<SessionRecorderEvents> implements ISess
    * Cleanup resources and unsubscribe from network monitoring
    */
   cleanup(): void {
-    this._networkService.cleanup()
+    this._networkService.cleanup();
   }
 }
 
-export default new SessionRecorder()
+export default new SessionRecorder();

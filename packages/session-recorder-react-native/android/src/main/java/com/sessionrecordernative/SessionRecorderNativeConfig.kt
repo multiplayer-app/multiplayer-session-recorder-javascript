@@ -1,4 +1,4 @@
-package com.multiplayer.sessionrecordernative
+package com.sessionrecordernative
 
 /**
  * Configuration class for Session Recorder masking behavior

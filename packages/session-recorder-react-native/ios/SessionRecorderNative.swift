@@ -3,7 +3,7 @@ import React
 import WebKit
 
 @objc(SessionRecorderNative)
-class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate, SessionRecorderNativeSpec {
+class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
 
   // Configuration options
   private var maskTextInputs: Bool = true

@@ -3,7 +3,6 @@ import { SessionType } from '@multiplayer-app/session-recorder-common';
 import { type PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
 import type { ISession } from './session';
 
-
 // WidgetButtonPlacement moved to configs.ts
 
 export enum SessionState {
@@ -29,7 +28,7 @@ export enum LogLevel {
   DEBUG = 0,
   INFO = 1,
   WARN = 2,
-  ERROR = 3
+  ERROR = 3,
 }
 
 /**
@@ -40,40 +39,40 @@ export interface SessionRecorderOptions {
   /**
    * The API key used to authenticate with the session debugger service.
    */
-  apiKey: string
+  apiKey: string;
 
   /**
    * The version of the application using the session debugger.
    */
-  version: string
+  version: string;
 
   /**
    * The name of the application being debugged.
    */
-  application: string
+  application: string;
 
   /**
    * The environment where the application is running (e.g., 'production', 'staging').
    */
-  environment: string
+  environment: string;
 
   /**
    * (Optional) OTLP collector endpoint.
    */
-  exporterEndpoint?: string
+  exporterEndpoint?: string;
 
   /**
    * (Optional) Base URL for the API calls.
    * This allows customization of the API endpoint for sending session data.
    */
-  apiBaseUrl?: string
+  apiBaseUrl?: string;
 
   /**
    * (Optional) An array of URLs or regular expressions that should be ignored by the session debugger.
    * Any URL that partially matches any regex in this array will not be traced.
    * Additionally, URLs that exactly match any string in the array will also be ignored.
    */
-  ignoreUrls?: Array<string | RegExp>
+  ignoreUrls?: Array<string | RegExp>;
 
   /**
    * (Optional) Enables the continuous recording feature and UI.
@@ -81,7 +80,7 @@ export interface SessionRecorderOptions {
    * session are ignored.
    * @default true
    */
-  showContinuousRecording?: boolean
+  showContinuousRecording?: boolean;
 
   /**
    * Optional widget configuration
@@ -89,75 +88,74 @@ export interface SessionRecorderOptions {
   widget?: {
     /** Enables/disables the widget entirely
      * @default true
-    */
-    enabled?: boolean
+     */
+    enabled?: boolean;
     /** Floating button config
      * @default visible: true, placement: 'bottom-right'
-    */
+     */
     button?: {
-      visible?: boolean
-      placement?: WidgetButtonPlacement
-    },
+      visible?: boolean;
+      placement?: WidgetButtonPlacement;
+    };
 
     /**
      * (Optional) Configuration for customizable UI text and labels
      * @default See PopoverTextConfig defaults
      */
-    textOverrides?: TextOverridesOptions
-  }
+    textOverrides?: TextOverridesOptions;
+  };
 
   /**
    * (Optional) Trace ID Ratio for sampling
    * @default 0.15
    */
-  sampleTraceRatio?: number
+  sampleTraceRatio?: number;
 
   /**
    * (Optional) URLs or regex patterns for CORS trace header propagation
    */
-  propagateTraceHeaderCorsUrls?: PropagateTraceHeaderCorsUrls
+  propagateTraceHeaderCorsUrls?: PropagateTraceHeaderCorsUrls;
 
   /**
    * (Optional) If true, schematizes document span payload
    * @default true
    */
-  schemifyDocSpanPayload?: boolean
+  schemifyDocSpanPayload?: boolean;
 
   /**
    * (Optional) Maximum size for capturing HTTP payload
    * @default 100000
    */
-  maxCapturingHttpPayloadSize?: number
+  maxCapturingHttpPayloadSize?: number;
 
   /** If true, captures body in traces
    *  @default true
-  */
-  captureBody?: boolean
+   */
+  captureBody?: boolean;
   /** If true, captures headers in traces
    *  @default true
-  */
-  captureHeaders?: boolean
+   */
+  captureHeaders?: boolean;
   /**
    * (Optional) Configuration for masking sensitive data in session recordings
    * @default { maskAllInputs: true, isContentMaskingEnabled: true }
    */
-  masking?: MaskingOptions
+  masking?: MaskingOptions;
   /** Whether to record gestures */
-  recordGestures?: boolean
+  recordGestures?: boolean;
   /** Whether to record navigation */
-  recordNavigation?: boolean
+  recordNavigation?: boolean;
   /** Whether to record screen */
-  recordScreen?: boolean
+  recordScreen?: boolean;
   /**
    * (Optional) Logger configuration overrides
    * Allows setting log level, console enabling, and prefix customizations
    */
   logger?: {
-    level?: number
-    enabled?: boolean
-  }
+    level?: number;
+    enabled?: boolean;
+  };
 }
-
 
 /**
  * Interface for customizable widget text configuration
@@ -165,45 +163,45 @@ export interface SessionRecorderOptions {
  */
 export interface TextOverridesOptions {
   /** Title for the initial popover when continuous recording is enabled */
-  initialTitleWithContinuous?: string
+  initialTitleWithContinuous?: string;
   /** Title for the initial popover when continuous recording is disabled */
-  initialTitleWithoutContinuous?: string
+  initialTitleWithoutContinuous?: string;
   /** Description for the initial popover when continuous recording is enabled */
-  initialDescriptionWithContinuous?: string
+  initialDescriptionWithContinuous?: string;
   /** Description for the initial popover when continuous recording is disabled */
-  initialDescriptionWithoutContinuous?: string
+  initialDescriptionWithoutContinuous?: string;
   /** Label for the continuous recording toggle */
-  continuousRecordingLabel?: string
+  continuousRecordingLabel?: string;
   /** Text for the start recording button */
-  startRecordingButtonText?: string
+  startRecordingButtonText?: string;
   /** Title for the final popover */
-  finalTitle?: string
+  finalTitle?: string;
   /** Description for the final popover */
-  finalDescription?: string
+  finalDescription?: string;
   /** Placeholder text for the comment textarea */
-  commentPlaceholder?: string
+  commentPlaceholder?: string;
   /** Text for the save button in final popover */
-  saveButtonText?: string
+  saveButtonText?: string;
   /** Text for the cancel button in final popover */
-  cancelButtonText?: string
+  cancelButtonText?: string;
   /** Title for the continuous recording overlay */
-  continuousOverlayTitle?: string
+  continuousOverlayTitle?: string;
   /** Description for the continuous recording overlay */
-  continuousOverlayDescription?: string
+  continuousOverlayDescription?: string;
   /** Text for the save last snapshot button */
-  saveLastSnapshotButtonText?: string
+  saveLastSnapshotButtonText?: string;
   /** Title for the submit session dialog */
-  submitDialogTitle?: string
+  submitDialogTitle?: string;
   /** Subtitle for the submit session dialog */
-  submitDialogSubtitle?: string
+  submitDialogSubtitle?: string;
   /** Label for the comment field in submit dialog */
-  submitDialogCommentLabel?: string
+  submitDialogCommentLabel?: string;
   /** Placeholder for the comment field in submit dialog */
-  submitDialogCommentPlaceholder?: string
+  submitDialogCommentPlaceholder?: string;
   /** Text for the submit button in dialog */
-  submitDialogSubmitText?: string
+  submitDialogSubmitText?: string;
   /** Text for the cancel button in dialog */
-  submitDialogCancelText?: string
+  submitDialogCancelText?: string;
 }
 
 /**
@@ -213,35 +211,35 @@ export interface TextOverridesOptions {
 export interface MaskingOptions {
   // Span masking
   /** If true, enables masking for debug span payload in traces */
-  isContentMaskingEnabled?: boolean
+  isContentMaskingEnabled?: boolean;
   /** Custom function for masking body in traces */
-  maskBody?: (payload: any, span: Span) => any
+  maskBody?: (payload: any, span: Span) => any;
   /** Custom function for masking headers in traces */
-  maskHeaders?: (headers: any, span: any) => any
+  maskHeaders?: (headers: any, span: any) => any;
 
   /** List of body fields to mask in traces */
-  maskBodyFieldsList?: string[]
+  maskBodyFieldsList?: string[];
   /** List of headers to mask in traces */
-  maskHeadersList?: string[]
+  maskHeadersList?: string[];
 
   /** List of headers to include in traces (if specified, only these headers will be captured) */
-  headersToInclude?: string[]
+  headersToInclude?: string[];
   /** List of headers to exclude from traces */
-  headersToExclude?: string[]
+  headersToExclude?: string[];
 
   // Screen masking options
   /** Whether to mask text inputs (UITextField, UITextView, React Native text components) */
-  maskTextInputs?: boolean
+  maskTextInputs?: boolean;
   /** Whether to mask images (UIImageView, React Native Image components) */
-  maskImages?: boolean
+  maskImages?: boolean;
   /** Whether to mask buttons (UIButton) */
-  maskButtons?: boolean
+  maskButtons?: boolean;
   /** Whether to mask labels (UILabel) */
-  maskLabels?: boolean
+  maskLabels?: boolean;
   /** Whether to mask web views (WKWebView) */
-  maskWebViews?: boolean
+  maskWebViews?: boolean;
   /** Whether to mask sandboxed views (system views that don't belong to current process) */
-  maskSandboxedViews?: boolean
+  maskSandboxedViews?: boolean;
 }
 /**
  * Main interface for the Session Recorder
@@ -251,104 +249,101 @@ export interface ISessionRecorder {
   /**
    * The current session ID
    */
-  readonly sessionId: string | null
+  readonly sessionId: string | null;
 
   /**
    * Whether continuous recording is enabled
    */
-  readonly continuousRecording: boolean
+  readonly continuousRecording: boolean;
 
   /**
    * The current debug session object
    */
-  readonly session: ISession | null
+  readonly session: ISession | null;
 
   /**
    * The type of session (plain or continuous)
    */
-  readonly sessionType: SessionType
+  readonly sessionType: SessionType;
 
   /**
    * The current state of the session
    */
-  readonly sessionState: SessionState | null
-
+  readonly sessionState: SessionState | null;
 
   /**
    * Session attributes for additional context
    */
-  readonly sessionAttributes: Record<string, any>
+  readonly sessionAttributes: Record<string, any>;
 
   /**
    * Current error message
    */
-  error: string
+  error: string;
 
   /**
    * The HTML button element for the session widget's recorder button
    */
-  readonly sessionWidgetButtonElement: HTMLButtonElement
+  readonly sessionWidgetButtonElement: HTMLButtonElement;
 
   /**
    * Initialize the session debugger with custom configurations
    * @param configs - custom configurations for session debugger
    */
-  init(configs: SessionRecorderOptions): void
+  init(configs: SessionRecorderOptions): void;
 
   /**
    * Save the continuous recording session
    * @returns Promise that resolves to the save response
    */
-  save(): Promise<any>
+  save(): Promise<any>;
 
   /**
    * Start a new session
    * @param type - the type of session to start
    * @param session - optional existing session to start
    */
-  start(type?: SessionType, session?: ISession): void
+  start(type?: SessionType, session?: ISession): void;
 
   /**
    * Stop the current session with an optional comment
    * @param comment - user-provided comment to include in session feedback metadata
    */
-  stop(comment?: string): Promise<void>
+  stop(comment?: string): Promise<void>;
 
   /**
    * Cancel the current session
    */
-  cancel(): Promise<void>
+  cancel(): Promise<void>;
 
   /**
    * Pause the current session
    */
-  pause(): Promise<void>
+  pause(): Promise<void>;
 
   /**
    * Resume the current session
    */
-  resume(): Promise<void>
+  resume(): Promise<void>;
 
   /**
    * Set the session metadata
    * @param attributes - the attributes to set
    */
-  setSessionAttributes(attributes: Record<string, any>): void
+  setSessionAttributes(attributes: Record<string, any>): void;
 }
-
-
 
 /**
  * Interface representing screen capture events
  * Contains metadata about screen recordings
  */
 export interface ScreenEvent {
-  screenName: string
-  timestamp: number
-  params?: Record<string, any>
-  type?: string
-  metadata?: Record<string, any>
-  dataUrl?: string
+  screenName: string;
+  timestamp: number;
+  params?: Record<string, any>;
+  type?: string;
+  metadata?: Record<string, any>;
+  dataUrl?: string;
 }
 
 /**
@@ -356,21 +351,21 @@ export interface ScreenEvent {
  * Contains information about user interactions with the screen
  */
 export interface GestureEvent {
-  type: string
-  timestamp: number
-  x?: number
-  y?: number
-  direction?: string
-  target?: string
-  coordinates?: { x: number; y: number }
+  type: string;
+  timestamp: number;
+  x?: number;
+  y?: number;
+  direction?: string;
+  target?: string;
+  coordinates?: { x: number; y: number };
   targetInfo?: {
-    identifier: string
-    label?: string
-    role?: string
-    testId?: string
-    text?: string
-  }
-  metadata?: Record<string, any>
+    identifier: string;
+    label?: string;
+    role?: string;
+    testId?: string;
+    text?: string;
+  };
+  metadata?: Record<string, any>;
 }
 
 /**
@@ -378,9 +373,9 @@ export interface GestureEvent {
  * Contains information about screen/route changes
  */
 export interface NavigationEvent {
-  type: string
-  timestamp: number
-  routeName?: string
-  params?: Record<string, any>
-  metadata?: Record<string, any>
+  type: string;
+  timestamp: number;
+  routeName?: string;
+  params?: Record<string, any>;
+  metadata?: Record<string, any>;
 }

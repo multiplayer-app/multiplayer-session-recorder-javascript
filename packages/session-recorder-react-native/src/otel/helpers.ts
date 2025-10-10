@@ -1,4 +1,4 @@
-import { type Span } from '@opentelemetry/api'
+import { type Span } from '@opentelemetry/api';
 import {
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
@@ -6,24 +6,22 @@ import {
   ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
-} from '@multiplayer-app/session-recorder-common'
-import { logger } from '../utils'
-import { type TracerReactNativeConfig } from '../types'
-
-
+} from '@multiplayer-app/session-recorder-common';
+import { logger } from '../utils';
+import { type TracerReactNativeConfig } from '../types';
 
 export interface HttpPayloadData {
-  requestBody?: any
-  responseBody?: any
-  requestHeaders?: Record<string, string>
-  responseHeaders?: Record<string, string>
+  requestBody?: any;
+  responseBody?: any;
+  requestHeaders?: Record<string, string>;
+  responseHeaders?: Record<string, string>;
 }
 
 export interface ProcessedHttpPayload {
-  requestBody?: string
-  responseBody?: string
-  requestHeaders?: string
-  responseHeaders?: string
+  requestBody?: string;
+  responseBody?: string;
+  requestHeaders?: string;
+  responseHeaders?: string;
 }
 
 /**
@@ -33,7 +31,7 @@ export function shouldProcessTrace(traceId: string): boolean {
   return (
     traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
     traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
-  )
+  );
 }
 
 /**
@@ -42,22 +40,22 @@ export function shouldProcessTrace(traceId: string): boolean {
 export function processBody(
   payload: HttpPayloadData,
   config: TracerReactNativeConfig,
-  span: Span,
+  span: Span
 ): { requestBody?: string; responseBody?: string } {
-  const { captureBody, masking } = config
-  const traceId = span.spanContext().traceId
+  const { captureBody, masking } = config;
+  const traceId = span.spanContext().traceId;
 
   if (!captureBody) {
-    return {}
+    return {};
   }
 
-  let { requestBody, responseBody } = payload
+  let { requestBody, responseBody } = payload;
 
   if (requestBody !== undefined && requestBody !== null) {
-    requestBody = JSON.parse(JSON.stringify(requestBody))
+    requestBody = JSON.parse(JSON.stringify(requestBody));
   }
   if (responseBody !== undefined && responseBody !== null) {
-    responseBody = JSON.parse(JSON.stringify(responseBody))
+    responseBody = JSON.parse(JSON.stringify(responseBody));
   }
 
   // Apply masking for debug traces
@@ -66,24 +64,24 @@ export function processBody(
     traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
   ) {
     if (masking.isContentMaskingEnabled) {
-      requestBody = requestBody && masking.maskBody?.(requestBody, span)
-      responseBody = responseBody && masking.maskBody?.(responseBody, span)
+      requestBody = requestBody && masking.maskBody?.(requestBody, span);
+      responseBody = responseBody && masking.maskBody?.(responseBody, span);
     }
   }
 
   // Convert to string if needed
   if (typeof requestBody !== 'string') {
-    requestBody = JSON.stringify(requestBody)
+    requestBody = JSON.stringify(requestBody);
   }
 
   if (typeof responseBody !== 'string') {
-    responseBody = JSON.stringify(responseBody)
+    responseBody = JSON.stringify(responseBody);
   }
 
   return {
     requestBody: requestBody?.length ? requestBody : undefined,
     responseBody: responseBody?.length ? responseBody : undefined,
-  }
+  };
 }
 
 /**
@@ -92,71 +90,74 @@ export function processBody(
 export function processHeaders(
   payload: HttpPayloadData,
   config: TracerReactNativeConfig,
-  span: Span,
+  span: Span
 ): { requestHeaders?: string; responseHeaders?: string } {
-  const { captureHeaders, masking } = config
+  const { captureHeaders, masking } = config;
 
   if (!captureHeaders) {
-    return {}
+    return {};
   }
 
-  let { requestHeaders = {}, responseHeaders = {} } = payload
+  let { requestHeaders = {}, responseHeaders = {} } = payload;
 
   // Handle header filtering
-  if (
-    !masking.headersToInclude?.length &&
-    !masking.headersToExclude?.length
-  ) {
+  if (!masking.headersToInclude?.length && !masking.headersToExclude?.length) {
     // Add null checks to prevent JSON.parse error when headers is undefined
     if (requestHeaders !== undefined && requestHeaders !== null) {
-      requestHeaders = JSON.parse(JSON.stringify(requestHeaders))
+      requestHeaders = JSON.parse(JSON.stringify(requestHeaders));
     }
     if (responseHeaders !== undefined && responseHeaders !== null) {
-      responseHeaders = JSON.parse(JSON.stringify(responseHeaders))
+      responseHeaders = JSON.parse(JSON.stringify(responseHeaders));
     }
   } else {
     if (masking.headersToInclude) {
-      const _requestHeaders: Record<string, string> = {}
-      const _responseHeaders: Record<string, string> = {}
+      const _requestHeaders: Record<string, string> = {};
+      const _responseHeaders: Record<string, string> = {};
 
       for (const headerName of masking.headersToInclude) {
         if (requestHeaders[headerName]) {
-          _requestHeaders[headerName] = requestHeaders[headerName]
+          _requestHeaders[headerName] = requestHeaders[headerName];
         }
         if (responseHeaders[headerName]) {
-          _responseHeaders[headerName] = responseHeaders[headerName]
+          _responseHeaders[headerName] = responseHeaders[headerName];
         }
       }
 
-      requestHeaders = _requestHeaders
-      responseHeaders = _responseHeaders
+      requestHeaders = _requestHeaders;
+      responseHeaders = _responseHeaders;
     }
 
     if (masking.headersToExclude?.length) {
       for (const headerName of masking.headersToExclude) {
-        delete requestHeaders[headerName]
-        delete responseHeaders[headerName]
+        delete requestHeaders[headerName];
+        delete responseHeaders[headerName];
       }
     }
   }
 
   // Apply masking
-  const maskedRequestHeaders = masking.maskHeaders?.(requestHeaders, span) || requestHeaders
-  const maskedResponseHeaders = masking.maskHeaders?.(responseHeaders, span) || responseHeaders
+  const maskedRequestHeaders =
+    masking.maskHeaders?.(requestHeaders, span) || requestHeaders;
+  const maskedResponseHeaders =
+    masking.maskHeaders?.(responseHeaders, span) || responseHeaders;
 
   // Convert to string
-  const requestHeadersStr = typeof maskedRequestHeaders === 'string'
-    ? maskedRequestHeaders
-    : JSON.stringify(maskedRequestHeaders)
+  const requestHeadersStr =
+    typeof maskedRequestHeaders === 'string'
+      ? maskedRequestHeaders
+      : JSON.stringify(maskedRequestHeaders);
 
-  const responseHeadersStr = typeof maskedResponseHeaders === 'string'
-    ? maskedResponseHeaders
-    : JSON.stringify(maskedResponseHeaders)
+  const responseHeadersStr =
+    typeof maskedResponseHeaders === 'string'
+      ? maskedResponseHeaders
+      : JSON.stringify(maskedResponseHeaders);
 
   return {
     requestHeaders: requestHeadersStr?.length ? requestHeadersStr : undefined,
-    responseHeaders: responseHeadersStr?.length ? responseHeadersStr : undefined,
-  }
+    responseHeaders: responseHeadersStr?.length
+      ? responseHeadersStr
+      : undefined,
+  };
 }
 
 /**
@@ -165,110 +166,125 @@ export function processHeaders(
 export function processHttpPayload(
   payload: HttpPayloadData,
   config: TracerReactNativeConfig,
-  span: Span,
+  span: Span
 ): void {
-  const traceId = span.spanContext().traceId
+  const traceId = span.spanContext().traceId;
 
   if (!shouldProcessTrace(traceId)) {
-    return
+    return;
   }
 
-  const { requestBody, responseBody } = processBody(payload, config, span)
-  const { requestHeaders, responseHeaders } = processHeaders(payload, config, span)
+  const { requestBody, responseBody } = processBody(payload, config, span);
+  const { requestHeaders, responseHeaders } = processHeaders(
+    payload,
+    config,
+    span
+  );
 
   // Set span attributes
   if (requestBody) {
-    span.setAttribute(ATTR_MULTIPLAYER_HTTP_REQUEST_BODY, requestBody)
+    span.setAttribute(ATTR_MULTIPLAYER_HTTP_REQUEST_BODY, requestBody);
   }
 
   if (responseBody) {
-    span.setAttribute(ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY, responseBody)
+    span.setAttribute(ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY, responseBody);
   }
 
   if (requestHeaders) {
-    span.setAttribute(ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS, requestHeaders)
+    span.setAttribute(ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS, requestHeaders);
   }
 
   if (responseHeaders) {
-    span.setAttribute(ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS, responseHeaders)
+    span.setAttribute(ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS, responseHeaders);
   }
 }
 
 /**
  * Converts Headers object to plain object
  */
-export function headersToObject(headers: Headers | Record<string, string> | Record<string, string | string[]> | string[][] | undefined): Record<string, string> {
-  const result: Record<string, string> = {}
+export function headersToObject(
+  headers:
+    | Headers
+    | Record<string, string>
+    | Record<string, string | string[]>
+    | string[][]
+    | undefined
+): Record<string, string> {
+  const result: Record<string, string> = {};
 
   if (!headers) {
-    return result
+    return result;
   }
 
   if (headers instanceof Headers) {
     headers.forEach((value: string, key: string) => {
-      result[key] = value
-    })
+      result[key] = value;
+    });
   } else if (Array.isArray(headers)) {
     // Handle array of [key, value] pairs
     for (const [key, value] of headers) {
       if (typeof key === 'string' && typeof value === 'string') {
-        result[key] = value
+        result[key] = value;
       }
     }
   } else if (typeof headers === 'object' && !Array.isArray(headers)) {
     for (const [key, value] of Object.entries(headers)) {
       if (typeof key === 'string' && typeof value === 'string') {
-        result[key] = value
+        result[key] = value;
       }
     }
   }
 
-  return result
+  return result;
 }
 
 /**
  * Extracts response body as string from Response object
  */
-export async function extractResponseBody(response: Response): Promise<string | null> {
+export async function extractResponseBody(
+  response: Response
+): Promise<string | null> {
   if (!response.body) {
-    return null
+    return null;
   }
 
   try {
     if (response.body instanceof ReadableStream) {
       // Check if response body is already consumed
       if (response.bodyUsed) {
-        return null
+        return null;
       }
 
-      const responseClone = response.clone()
-      return responseClone.text()
+      const responseClone = response.clone();
+      return responseClone.text();
     } else {
-      return JSON.stringify(response.body)
+      return JSON.stringify(response.body);
     }
   } catch (error) {
     // If cloning fails (body already consumed), return null
-    // eslint-disable-next-line no-console
-    logger.warn('DEBUGGER_LIB', 'Failed to extract response body', error)
-    return null
+
+    logger.warn('DEBUGGER_LIB', 'Failed to extract response body', error);
+    return null;
   }
 }
 
 export const getExporterEndpoint = (exporterEndpoint: string): string => {
-  const hasPath = exporterEndpoint && (() => {
-    try {
-      const url = new URL(exporterEndpoint)
-      return url.pathname !== '/' && url.pathname !== ''
-    } catch {
-      return false
-    }
-  })()
+  const hasPath =
+    exporterEndpoint &&
+    (() => {
+      try {
+        const url = new URL(exporterEndpoint);
+        return url.pathname !== '/' && url.pathname !== '';
+      } catch {
+        return false;
+      }
+    })();
 
   if (hasPath) {
-    return exporterEndpoint
+    return exporterEndpoint;
   }
 
-  const trimmedExporterEndpoint = new URL(exporterEndpoint).origin
+  const trimmedExporterEndpoint = new URL(exporterEndpoint).origin;
 
-  return `${trimmedExporterEndpoint}/v1/traces`
-}
+  return `${trimmedExporterEndpoint}/v1/traces`;
+};

@@ -1,2 +1,2 @@
-export * from './ScreenRecorderView'
-export * from './SessionRecorderWidget'
+export * from './ScreenRecorderView';
+export * from './SessionRecorderWidget';

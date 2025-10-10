@@ -1,10 +1,10 @@
-package com.multiplayer.sessionrecordernative.util
+package com.sessionrecordernative.util
 
 import android.graphics.PointF
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
-import com.multiplayer.sessionrecordernative.model.TargetInfo
+import com.sessionrecordernative.model.TargetInfo
 
 object ViewUtils {
   fun findTargetView(point: PointF, rootView: ViewGroup?): TargetInfo {

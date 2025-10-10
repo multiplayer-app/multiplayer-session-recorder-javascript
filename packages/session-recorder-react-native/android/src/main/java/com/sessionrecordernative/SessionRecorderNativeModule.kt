@@ -1,4 +1,4 @@
-package com.multiplayer.sessionrecordernative
+package com.sessionrecordernative
 
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -15,7 +15,8 @@ import android.webkit.WebView
 import android.widget.*
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
-import com.multiplayer.sessionrecordernative.util.ViewUtils
+import com.facebook.react.bridge.ReactContextBaseJavaModule
+import com.sessionrecordernative.util.ViewUtils
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -24,7 +25,7 @@ import com.facebook.react.module.annotations.ReactModule
 
 @ReactModule(name = SessionRecorderNativeModule.NAME)
 class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
-        SessionRecorderNativeModuleSpec() {
+        ReactContextBaseJavaModule(reactContext) {
 
     override fun getName(): String {
         return NAME
@@ -37,7 +38,7 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
     private val reactContext: ReactApplicationContext = reactContext
 
     // Configuration object for masking behavior
-    private var config: SessionRecorderConfig = SessionRecorderNativeConfig()
+    private var config: SessionRecorderNativeConfig = SessionRecorderNativeConfig()
 
     // Gesture recording state
     private var isRecording = false
@@ -210,7 +211,7 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
 
     private fun handleTouchDown(
             event: android.view.MotionEvent,
-            target: com.multiplayer.sessionrecordernative.model.TargetInfo
+            target: com.sessionrecordernative.model.TargetInfo
     ) {
         val dp = getScreenDpPoint(event)
         initialTouchTime = System.currentTimeMillis()
@@ -233,7 +234,7 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
 
     private fun handleTouchMove(
             event: android.view.MotionEvent,
-            target: com.multiplayer.sessionrecordernative.model.TargetInfo
+            target: com.sessionrecordernative.model.TargetInfo
     ) {
         val dp = getScreenDpPoint(event)
         val deltaX = dp.x - initialTouchX
@@ -256,7 +257,7 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
 
     private fun handleTouchUp(
             event: android.view.MotionEvent,
-            target: com.multiplayer.sessionrecordernative.model.TargetInfo
+            target: com.sessionrecordernative.model.TargetInfo
     ) {
         val dp = getScreenDpPoint(event)
         val touchDuration = System.currentTimeMillis() - initialTouchTime
@@ -282,7 +283,7 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
 
     private fun handleTouchCancel(
             event: android.view.MotionEvent,
-            target: com.multiplayer.sessionrecordernative.model.TargetInfo
+            target: com.sessionrecordernative.model.TargetInfo
     ) {
         // Cancel long press
         longPressRunnable?.let { handler?.removeCallbacks(it) }
@@ -308,7 +309,7 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
             gestureType: String,
             x: Float,
             y: Float,
-            target: com.multiplayer.sessionrecordernative.model.TargetInfo,
+            target: com.sessionrecordernative.model.TargetInfo,
             metadata: WritableMap
     ) {
         val targetInfo =

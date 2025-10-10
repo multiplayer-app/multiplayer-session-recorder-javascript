@@ -1,4 +1,4 @@
-package com.multiplayer.sessionrecordernative.model
+package com.sessionrecordernative.model
 
 data class TargetInfo(
         val identifier: String,
