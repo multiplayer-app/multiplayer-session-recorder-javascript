@@ -25,7 +25,7 @@ import com.facebook.react.module.annotations.ReactModule
 
 @ReactModule(name = SessionRecorderNativeModule.NAME)
 class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
-        ReactContextBaseJavaModule(reactContext) {
+  ReactContextBaseJavaModule(reactContext) {
 
     override fun getName(): String {
         return NAME
@@ -43,7 +43,6 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
     // Gesture recording state
     private var isRecording = false
     private var rootView: ViewGroup? = null
-    private var gestureCallback: Callback? = null
     private var originalWindowCallback: android.view.Window.Callback? = null
     private var initialTouchTime = 0L
     private var initialTouchX = 0f
@@ -127,11 +126,6 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
     }
 
     @ReactMethod
-    fun setGestureCallback(callback: Callback) {
-        this.gestureCallback = callback
-    }
-
-    @ReactMethod
     fun recordGesture(
             gestureType: String,
             x: Double,
@@ -150,7 +144,6 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
                 }
 
         sendEvent("onGestureDetected", gestureEvent)
-        gestureCallback?.invoke(gestureEvent)
     }
 
     private fun setupGestureListener(activity: Activity) {
@@ -333,7 +326,6 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
                 }
 
         sendEvent("onGestureDetected", gestureEvent)
-        gestureCallback?.invoke(gestureEvent)
     }
 
     private fun createTapMetadata(): WritableMap {

@@ -10,7 +10,7 @@ import java.util.HashMap
 class SessionRecorderNativePackage : BaseReactPackage() {
   override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
     return if (name == SessionRecorderNativeModule.NAME) {
-      SessionRecorderNativeModule(reactContext) as NativeModule
+      SessionRecorderNativeModule(reactContext)
     } else {
       null
     }

@@ -17,7 +17,6 @@ RCT_EXTERN_METHOD(stopGestureRecording:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(isGestureRecordingActive:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(setGestureCallback:(RCTResponseSenderBlock)callback)
 RCT_EXTERN_METHOD(recordGesture:(NSString *)gestureType
                   x:(nonnull NSNumber *)x
                   y:(nonnull NSNumber *)y

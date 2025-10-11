@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-react-native",
-  "version": "1.0.1-beta.9",
+  "version": "1.0.1-beta.14",
   "description": "Multiplayer Fullstack Session Recorder for React Native",
   "author": {
     "name": "Multiplayer Software, Inc.",
@@ -17,6 +17,15 @@
   },
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
+  "react-native": "./lib/module/index.js",
+  "android": {
+    "package": "com.sessionrecordernative",
+    "sourceDir": "./android",
+    "packageImportPath": "import com.sessionrecordernative.SessionRecorderNativePackage;"
+  },
+  "ios": {
+    "podspecPath": "./SessionRecorderNative.podspec"
+  },
   "exports": {
     ".": {
       "source": "./src/index.ts",
@@ -48,9 +57,9 @@
     "test": "jest",
     "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
     "prepare": "bob build",
-    "release": "release-it --only-version"
+    "release": "release-it --only-version",
+    "copy": "./copy.sh"
   },
   "keywords": [
     "multiplayer",
@@ -126,6 +135,9 @@
     "react-native-safe-area-context": "*",
     "react-native-svg": "*"
   },
+  "workspaces": [
+    "example"
+  ],
   "packageManager": "yarn@3.6.1",
   "jest": {
     "preset": "react-native",
@@ -184,7 +196,7 @@
     ]
   },
   "codegenConfig": {
-    "name": "SessionRecorderNativeSpec",
+    "name": "NativeSessionRecorderModule",
     "type": "modules",
     "jsSrcsDir": "src",
     "android": {
@@ -192,8 +204,16 @@
     }
   },
   "create-react-native-library": {
-    "languages": "kotlin-objc",
+    "languages": "kotlin-swift",
     "type": "turbo-module",
     "version": "0.54.5"
+  },
+  "expo": {
+    "name": "@multiplayer-app/session-recorder-react-native",
+    "slug": "session-recorder-react-native",
+    "platforms": [
+      "ios",
+      "android"
+    ]
   }
 }

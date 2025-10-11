@@ -120,7 +120,6 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
 
   // MARK: - Gesture recording state
   private var isRecording = false
-  private var gestureCallback: RCTResponseSenderBlock?
   private var rootViewController: UIViewController?
 
   private var tapGestureRecognizer: UITapGestureRecognizer?
@@ -168,10 +167,6 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
     resolve(self.isRecording)
   }
 
-  @objc func setGestureCallback(_ callback: @escaping RCTResponseSenderBlock) {
-    self.gestureCallback = callback
-  }
-
   @objc func recordGesture(_ gestureType: String, x: NSNumber, y: NSNumber, target: String?, metadata: NSDictionary?) {
     let gestureEvent: [String: Any] = [
       "type": gestureType,
@@ -183,7 +178,6 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
     ]
 
     self.sendEvent(withName: "onGestureDetected", body: gestureEvent)
-    if let cb = gestureCallback { cb([gestureEvent]) }
   }
 
   private func updateConfiguration(from options: NSDictionary) {
@@ -653,7 +647,6 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
     ]
 
     self.sendEvent(withName: "onGestureDetected", body: gestureEvent)
-    if let cb = gestureCallback { cb([gestureEvent]) }
   }
 
   @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
@@ -693,7 +686,6 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
     ]
 
     self.sendEvent(withName: "onGestureDetected", body: gestureEvent)
-    if let cb = gestureCallback { cb([gestureEvent]) }
   }
 
   @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
@@ -722,7 +714,6 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
     ]
 
     self.sendEvent(withName: "onGestureDetected", body: gestureEvent)
-    if let cb = gestureCallback { cb([gestureEvent]) }
   }
 
   @objc private func handlePinch(_ gesture: UIPinchGestureRecognizer) {
@@ -753,7 +744,6 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
     ]
 
     self.sendEvent(withName: "onGestureDetected", body: gestureEvent)
-    if let cb = gestureCallback { cb([gestureEvent]) }
   }
 
   // MARK: - UIGestureRecognizerDelegate
@@ -812,9 +802,6 @@ extension UIView {
   }
 
   func isNoCapture() -> Bool {
-    // Check for common patterns that indicate sensitive content
-
-
     // Check accessibility label for sensitive keywords
     if let accessibilityLabel = accessibilityLabel?.lowercased() {
       let sensitiveKeywords = ["password", "secret", "private", "sensitive", "confidential"]

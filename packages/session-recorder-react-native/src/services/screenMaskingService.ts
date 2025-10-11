@@ -1,6 +1,4 @@
-import SessionRecorderNative, {
-  type MaskingOptions,
-} from '../SessionRecorderNativeSpec';
+import SessionRecorderNative, { type MaskingOptions } from '../native/SessionRecorderNative';
 import { logger } from '../utils';
 
 export interface ScreenMaskingConfig {

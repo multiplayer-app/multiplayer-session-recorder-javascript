@@ -1,5 +1,5 @@
 import { Platform, NativeEventEmitter } from 'react-native';
-import SessionRecorderNative, { type MaskingOptions, type Spec } from '../SessionRecorderNativeSpec';
+import SessionRecorderNative, { type MaskingOptions, type Spec } from '../NativeSessionRecorderModule';
 
 
 // Check if we're on web platform
@@ -57,18 +57,6 @@ const SafeSessionRecorderNative: Spec = {
     return SessionRecorderNative.isGestureRecordingActive();
   },
 
-  setGestureCallback(callback: (event: any) => void): void {
-    if (isWeb || !SessionRecorderNative) {
-      throw new Error('SessionRecorderNative is not available on web platform');
-    }
-    // Native side will also invoke callback if provided; also subscribe to events here
-    try {
-      SessionRecorderNative.setGestureCallback(callback as any);
-    } catch { }
-    eventEmitter?.removeAllListeners('onGestureDetected');
-    eventEmitter?.addListener('onGestureDetected', callback);
-  },
-
   recordGesture(gestureType: string, x: number, y: number, target?: string, metadata?: any): void {
     if (isWeb || !SessionRecorderNative) {
       throw new Error('SessionRecorderNative is not available on web platform');
@@ -114,7 +102,17 @@ export interface NativeGestureEvent {
   };
 }
 
+// Helper function to set gesture callback using event emitter pattern
+export function setGestureCallback(callback: (event: NativeGestureEvent) => void): void {
+  if (isWeb || !SessionRecorderNative) {
+    throw new Error('SessionRecorderNative is not available on web platform');
+  }
+  eventEmitter?.removeAllListeners('onGestureDetected');
+  eventEmitter?.addListener('onGestureDetected', callback as any);
+}
+
 export default SafeSessionRecorderNative;
 
 // Export event emitter for gesture events to maintain previous API
 export const gestureEventEmitter = eventEmitter;
+export type { MaskingOptions };

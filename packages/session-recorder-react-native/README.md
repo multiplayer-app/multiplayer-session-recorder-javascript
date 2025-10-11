@@ -55,6 +55,65 @@ npx expo install @react-native-async-storage/async-storage @react-native-communi
 
 If you use Expo Router or a managed workflow, no extra autolinking steps are required beyond installing the packages.
 
+### Expo Autolinking Support
+
+This package includes full Expo autolinking support with the following configuration files:
+
+- ✅ `expo-module.config.json` - Defines supported platforms and module names
+- ✅ `react-native.config.js` - Configures React Native CLI autolinking
+- ✅ Proper TurboModule registration for both iOS and Android
+
+The module will be automatically detected and linked when you install it in your Expo project.
+
+#### Expo Go vs Development Builds
+
+**Important**: This package uses native modules that require custom native code. While autolinking is configured, you may encounter issues with **Expo Go** due to its limitations with custom native modules.
+
+**If autolinking doesn't work with Expo Go**, try using development builds instead:
+
+```bash
+# For iOS
+npx expo run:ios
+
+# For Android
+npx expo run:android
+```
+
+Development builds include your custom native modules and provide the full native functionality needed for session recording.
+
+#### Troubleshooting Expo Autolinking
+
+If you encounter issues with module autolinking in Expo:
+
+1. **Check Expo SDK compatibility**: Ensure you're using a compatible Expo SDK version
+2. **Clear cache**: Run `npx expo start -c` to clear the Expo cache
+3. **Use development builds**: Switch from Expo Go to development builds as shown above
+4. **Verify configuration**: Ensure the autolinking configuration files are present in your `node_modules/@multiplayer-app/session-recorder-react-native/` directory
+
+#### Expo Configuration
+
+For Expo applications, the package automatically detects the Expo environment:
+
+```javascript
+import SessionRecorder from '@multiplayer-app/session-recorder-react-native';
+
+SessionRecorder.init({
+  application: 'my-expo-app',
+  version: '1.0.0',
+  environment: 'production',
+  apiKey: 'YOUR_MULTIPLAYER_API_KEY',
+  recordGestures: true,
+  recordNavigation: true,
+  recordScreen: true,
+});
+```
+
+The package will automatically:
+
+- Detect Expo environment using `expo-constants`
+- Add Expo-specific attributes to traces
+- Optimize performance for Expo runtime
+
 #### Why direct install is required
 
 - Autolinking scans only the app's `package.json`
@@ -809,7 +868,27 @@ SessionRecorder.init(config);
 - Ensure `expo-constants` is installed: `npx expo install expo-constants`
 - Check that you're using the correct Expo SDK version
 
-#### 6. Build Issues
+#### 6. TurboModule Not Found (Expo Go)
+
+If you see this error in Expo Go:
+
+```
+TurboModuleRegistry.getEnforcing(...): 'SessionRecorderNative' could not be found
+```
+
+**Solution**: Switch to development builds instead of Expo Go:
+
+```bash
+# For iOS
+npx expo run:ios
+
+# For Android
+npx expo run:android
+```
+
+Expo Go has limitations with custom native modules. Development builds include your custom native code and will resolve this issue.
+
+#### 7. Build Issues
 
 - **iOS**: Run `cd ios && pod install` after installing dependencies
 - **Android**: Run `cd android && ./gradlew clean`

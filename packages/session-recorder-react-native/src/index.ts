@@ -4,8 +4,6 @@ export * from '@multiplayer-app/session-recorder-common';
 export * from './context/SessionRecorderContext';
 export * from './context/useSessionRecorderStore';
 
-// Export TurboModule spec for codegen
-export * from './SessionRecorderNativeSpec';
 
 // Export the class for type checking
 export { SessionRecorder };
