@@ -16,7 +16,7 @@ export class SessionRecorder {
   private _shortSessionId: string | boolean = false
 
   private _traceIdGenerator: SessionRecorderIdGenerator | undefined
-  private _sessionType: SessionType = SessionType.PLAIN
+  private _sessionType: SessionType = SessionType.MANUAL
   private _sessionState: 'STARTED' | 'STOPPED' | 'PAUSED' = 'STOPPED'
   private _apiService = new ApiService()
   private _sessionShortIdGenerator = SessionRecorderSdk.getIdGenerator(MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH)
@@ -201,7 +201,7 @@ export class SessionRecorder {
         throw new Error('Session should be active or paused')
       }
 
-      if (this._sessionType !== SessionType.PLAIN) {
+      if (this._sessionType !== SessionType.MANUAL) {
         throw new Error('Invalid session type')
       }
 
@@ -240,7 +240,7 @@ export class SessionRecorder {
 
       if (this._sessionType === SessionType.CONTINUOUS) {
         await this._apiService.stopContinuousSession(this._shortSessionId)
-      } else if (this._sessionType === SessionType.PLAIN) {
+      } else if (this._sessionType === SessionType.MANUAL) {
         await this._apiService.cancelSession(this._shortSessionId)
       }
     } catch (e) {

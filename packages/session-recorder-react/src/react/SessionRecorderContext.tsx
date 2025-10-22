@@ -52,7 +52,7 @@ export const SessionRecorderProvider: React.FC<SessionRecorderProviderProps> = (
     }
   }, [])
 
-  const startSession = useCallback((sessionType: SessionType = SessionType.PLAIN) => {
+  const startSession = useCallback((sessionType: SessionType = SessionType.MANUAL) => {
     return SessionRecorder.start(sessionType)
   }, [])
 

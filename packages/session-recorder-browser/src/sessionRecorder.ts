@@ -71,7 +71,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     setStoredItem(SESSION_ID_PROP_NAME, sessionId)
   }
 
-  private _sessionType: SessionType = SessionType.PLAIN
+  private _sessionType: SessionType = SessionType.MANUAL
   get sessionType(): SessionType {
     return this._sessionType
   }
@@ -158,7 +158,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       this.session = null
       this.sessionId = null
       this.sessionState = null
-      this.sessionType = SessionType.PLAIN
+      this.sessionType = SessionType.MANUAL
     }
 
     this._configs = {
@@ -266,11 +266,11 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    * @param type - the type of session to start
    * @param session - the session to start
    */
-  public start(type: SessionType = SessionType.PLAIN, session?: ISession): void {
+  public start(type: SessionType = SessionType.MANUAL, session?: ISession): void {
     this._checkOperation('start')
     // If continuous recording is disabled, force plain mode
     if (type === SessionType.CONTINUOUS && !this._configs.showContinuousRecording) {
-      type = SessionType.PLAIN
+      type = SessionType.MANUAL
     }
     this.sessionType = type
     this._startRequestController = new AbortController()
@@ -290,7 +290,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       this._stop()
       if (this.continuousRecording) {
         await this._apiService.stopContinuousDebugSession(this.sessionId!)
-        this.sessionType = SessionType.PLAIN
+        this.sessionType = SessionType.MANUAL
       } else {
         const request: StopSessionRequest = {
           sessionAttributes: { comment },
@@ -337,7 +337,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       this._stop()
       if (this.continuousRecording) {
         await this._apiService.stopContinuousDebugSession(this.sessionId!)
-        this.sessionType = SessionType.PLAIN
+        this.sessionType = SessionType.MANUAL
       } else {
         await this._apiService.cancelSession(this.sessionId!)
       }
@@ -410,7 +410,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     this._sessionWidget.on('toggle', (state: boolean, comment?: string) => {
       this.error = ''
       if (state) {
-        this.start(SessionType.PLAIN)
+        this.start(SessionType.MANUAL)
       } else {
         this.stop(comment?.trim())
       }
@@ -500,13 +500,13 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       if (session) {
         session.sessionType = this.continuousRecording
           ? SessionType.CONTINUOUS
-          : SessionType.PLAIN
+          : SessionType.MANUAL
         this._setupSessionAndStart(session, false)
       }
     } catch (error: any) {
       this.error = error.message
       if (this.continuousRecording) {
-        this.sessionType = SessionType.PLAIN
+        this.sessionType = SessionType.MANUAL
       }
     }
   }

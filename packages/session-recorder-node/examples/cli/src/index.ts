@@ -22,7 +22,7 @@ const main = async () => {
   })
 
   await sessionRecorder.start(
-    SessionType.PLAIN,
+    SessionType.MANUAL,
     {
       name: 'Test nodejs cli app debug session',
       resourceAttributes: {

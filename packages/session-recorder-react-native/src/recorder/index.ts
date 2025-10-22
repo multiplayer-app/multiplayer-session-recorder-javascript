@@ -16,7 +16,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
   private recordedEvents: eventWithTime[] = [];
   private exporter: EventExporter;
   private sessionId: string | null = null;
-  private sessionType: SessionType = SessionType.PLAIN;
+  private sessionType: SessionType = SessionType.MANUAL;
 
   constructor() {
     this.screenRecorder = new ScreenRecorder();

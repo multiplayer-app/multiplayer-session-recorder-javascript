@@ -76,7 +76,7 @@ export const SessionRecorderProvider: React.FC<
   }, []);
 
   const startSession = useCallback(
-    (sessionType: SessionType = SessionType.PLAIN) => {
+    (sessionType: SessionType = SessionType.MANUAL) => {
       return sessionRecorder.start(sessionType);
     },
     []

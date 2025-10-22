@@ -25,11 +25,11 @@ export class TracerReactNativeSDK {
   private idGenerator?: SessionRecorderIdGenerator;
   private exporter?: any;
 
-  constructor() {}
+  constructor() { }
 
   private _setSessionId(
     sessionId: string,
-    sessionType: SessionType = SessionType.PLAIN
+    sessionType: SessionType = SessionType.MANUAL
   ) {
     this.sessionId = sessionId;
     this.idGenerator?.setSessionId(sessionId, sessionType);
@@ -85,7 +85,7 @@ export class TracerReactNativeSDK {
         span.setAttribute('platform', 'react-native');
         span.setAttribute('timestamp', Date.now());
       },
-      onEnd: () => {},
+      onEnd: () => { },
       shutdown: () => Promise.resolve(),
       forceFlush: () => Promise.resolve(),
     };

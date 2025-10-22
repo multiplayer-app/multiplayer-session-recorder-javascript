@@ -17,7 +17,7 @@ export function setupListeners(sessionRecorder: SessionRecorder): void {
   })
 
   messagingService.on('start', (payload) => {
-    sessionRecorder.start(SessionType.PLAIN, payload)
+    sessionRecorder.start(SessionType.MANUAL, payload)
   })
 
   messagingService.on('end', (payload) => {

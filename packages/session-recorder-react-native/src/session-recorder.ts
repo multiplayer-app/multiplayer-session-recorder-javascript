@@ -63,7 +63,7 @@ class SessionRecorder
     }
   }
 
-  private _sessionType: SessionType = SessionType.PLAIN;
+  private _sessionType: SessionType = SessionType.MANUAL;
   get sessionType(): SessionType {
     return this._sessionType;
   }
@@ -149,13 +149,13 @@ class SessionRecorder
       if (isSessionActive(storedData.sessionObject, storedData.sessionType)) {
         this.session = storedData.sessionObject;
         this.sessionId = storedData.sessionId;
-        this.sessionType = storedData.sessionType || SessionType.PLAIN;
+        this.sessionType = storedData.sessionType || SessionType.MANUAL;
         this.sessionState = storedData.sessionState;
       } else {
         this.session = null;
         this.sessionId = null;
         this.sessionState = null;
-        this.sessionType = SessionType.PLAIN;
+        this.sessionType = SessionType.MANUAL;
       }
     } catch (error) {
       logger.error(
@@ -166,7 +166,7 @@ class SessionRecorder
       this.session = null;
       this.sessionId = null;
       this.sessionState = null;
-      this.sessionType = SessionType.PLAIN;
+      this.sessionType = SessionType.MANUAL;
     }
   }
 
@@ -232,7 +232,7 @@ class SessionRecorder
    * @param session - the session to start
    */
   public async start(
-    type: SessionType = SessionType.PLAIN,
+    type: SessionType = SessionType.MANUAL,
     session?: ISession
   ): Promise<void> {
     this._checkOperation('start');
@@ -251,7 +251,7 @@ class SessionRecorder
       type === SessionType.CONTINUOUS &&
       !this._configs?.showContinuousRecording
     ) {
-      type = SessionType.PLAIN;
+      type = SessionType.MANUAL;
     }
     logger.info('SessionRecorder', 'Starting session with type:', type);
     this.sessionType = type;
@@ -273,7 +273,7 @@ class SessionRecorder
       this._stop();
       if (this.continuousRecording) {
         await this._apiService.stopContinuousDebugSession(this.sessionId!);
-        this.sessionType = SessionType.PLAIN;
+        this.sessionType = SessionType.MANUAL;
       } else {
         const request: StopSessionRequest = {
           sessionAttributes: { comment },
@@ -320,7 +320,7 @@ class SessionRecorder
       this._stop();
       if (this.continuousRecording) {
         await this._apiService.stopContinuousDebugSession(this.sessionId!);
-        this.sessionType = SessionType.PLAIN;
+        this.sessionType = SessionType.MANUAL;
       } else {
         await this._apiService.cancelSession(this.sessionId!);
       }
@@ -432,14 +432,14 @@ class SessionRecorder
       if (session) {
         session.sessionType = this.continuousRecording
           ? SessionType.CONTINUOUS
-          : SessionType.PLAIN;
+          : SessionType.MANUAL;
         this._setupSessionAndStart(session, false);
       }
     } catch (error: any) {
       this.error = error.message;
       logger.error('SessionRecorder', 'Error creating session:', error.message);
       if (this.continuousRecording) {
-        this.sessionType = SessionType.PLAIN;
+        this.sessionType = SessionType.MANUAL;
       }
     }
   }

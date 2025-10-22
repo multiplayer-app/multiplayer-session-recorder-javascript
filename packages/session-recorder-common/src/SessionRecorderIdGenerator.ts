@@ -16,7 +16,7 @@ export class SessionRecorderIdGenerator implements IdGenerator {
     this.generateLongId = getIdGenerator(16)
     this.generateShortId = getIdGenerator(8)
     this.sessionShortId = ''
-    this.sessionType = SessionType.PLAIN
+    this.sessionType = SessionType.MANUAL
   }
 
   generateTraceId(): string {
@@ -48,7 +48,7 @@ export class SessionRecorderIdGenerator implements IdGenerator {
 
   setSessionId(
     sessionShortId: string,
-    sessionType: SessionType = SessionType.PLAIN,
+    sessionType: SessionType = SessionType.MANUAL,
   ) {
     this.sessionShortId = sessionShortId
     this.sessionType = sessionType

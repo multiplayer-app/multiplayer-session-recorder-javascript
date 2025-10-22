@@ -36,7 +36,7 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
   const handleStartRecording = async () => {
     try {
       setLoading(true);
-      await onStartRecording(SessionType.PLAIN);
+      await onStartRecording(SessionType.MANUAL);
     } catch (error) {
       logger.error('InitialPopover', 'Failed to start recording', error);
     } finally {
