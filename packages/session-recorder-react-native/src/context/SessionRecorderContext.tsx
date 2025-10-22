@@ -64,9 +64,14 @@ export const SessionRecorderProvider: React.FC<
     ) => {
       sessionRecorderStore.setState({ sessionState, sessionType });
     };
+    const onInit = () => {
+      sessionRecorderStore.setState({ isInitialized: true });
+    };
     sessionRecorder.on('state-change', onStateChange);
+    sessionRecorder.on('init', onInit);
     return () => {
       sessionRecorder.off('state-change', onStateChange);
+      sessionRecorder.off('init', onInit);
     };
   }, []);
 

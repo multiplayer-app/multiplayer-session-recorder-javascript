@@ -29,12 +29,11 @@ import {
   type StopSessionRequest,
 } from './services/api.service';
 
-type SessionRecorderEvents = 'state-change';
+type SessionRecorderEvents = 'state-change' | 'init';
 
 class SessionRecorder
   extends Observable<SessionRecorderEvents>
-  implements ISessionRecorder, EventRecorder
-{
+  implements ISessionRecorder, EventRecorder {
   private _configs: SessionRecorderConfigs;
   private _apiService = new ApiService();
   private _tracer = new TracerReactNativeSDK();
@@ -200,6 +199,7 @@ class SessionRecorder
     ) {
       this._start();
     }
+    this.emit('init', []);
   }
 
   /**
@@ -351,9 +351,9 @@ class SessionRecorder
           stoppedAt: Date.now(),
           name: this.sessionAttributes.userName
             ? `${this.sessionAttributes.userName}'s session on ${getFormattedDate(
-                Date.now(),
-                { month: 'short', day: 'numeric' }
-              )}`
+              Date.now(),
+              { month: 'short', day: 'numeric' }
+            )}`
             : `Session on ${getFormattedDate(Date.now())}`,
         }
       );
