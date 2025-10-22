@@ -2,11 +2,13 @@ module.exports = {
   dependency: {
     platforms: {
       android: {
-        sourceDir: './android'
+        sourceDir: './android',
+        packageImportPath:
+          'import com.sessionrecordernative.SessionRecorderNativePackage;',
       },
       ios: {
-        podspecPath: './ios/SessionRecorderNative.podspec'
-      }
-    }
-  }
-}
+        podspecPath: './SessionRecorderNative.podspec',
+      },
+    },
+  },
+};

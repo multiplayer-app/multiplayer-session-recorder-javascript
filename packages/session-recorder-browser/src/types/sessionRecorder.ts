@@ -1,5 +1,6 @@
 
 import { SessionType } from '@multiplayer-app/session-recorder-common'
+import { Span } from '@opentelemetry/api'
 import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web'
 import type {
   MaskTextFn,
@@ -8,7 +9,7 @@ import type {
 } from 'rrweb-snapshot'
 import type { maskTextClass } from '@rrweb/types'
 import { LogData } from '@rrweb/rrweb-plugin-console-record'
-import { Span } from '@opentelemetry/api'
+import { Observable } from 'lib0/observable'
 import type { ISession } from './session'
 
 export enum WidgetButtonPlacement {
@@ -320,7 +321,9 @@ export enum SessionState {
   stopped = '0',
 }
 
-export interface ISessionRecorder {
+export type SessionRecorderEvents = 'state-change' | 'init' | 'error'
+
+export interface ISessionRecorder extends Observable<SessionRecorderEvents> {
   /**
    * The current session ID
    */

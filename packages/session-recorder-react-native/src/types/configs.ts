@@ -1,24 +1,29 @@
-import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/instrumentation-xml-http-request/build/src/types';
-import { MaskingOptions, SessionRecorderOptions } from './session-recorder';
-
+import { type PropagateTraceHeaderCorsUrls } from '@opentelemetry/instrumentation-xml-http-request/build/src/types';
+import {
+  type MaskingOptions,
+  type SessionRecorderOptions,
+} from './session-recorder';
 
 /**
  * Utility type that makes all properties required recursively
  * Removes optional modifiers and undefined types from nested objects
  */
-export type DeepRequired<T> =
-  T extends Function ? T :
-  T extends ReadonlyArray<infer U> ? Array<DeepRequired<NonNullable<U>>> :
-  T extends Array<infer U> ? Array<DeepRequired<NonNullable<U>>> :
-  T extends object ? { -readonly [K in keyof T]-?: DeepRequired<NonNullable<T[K]>> } :
-  NonNullable<T>;
+export type DeepRequired<T> = T extends Function
+  ? T
+  : T extends ReadonlyArray<infer U>
+    ? Array<DeepRequired<NonNullable<U>>>
+    : T extends Array<infer U>
+      ? Array<DeepRequired<NonNullable<U>>>
+      : T extends object
+        ? { -readonly [K in keyof T]-?: DeepRequired<NonNullable<T[K]>> }
+        : NonNullable<T>;
 
 /**
  * Fully resolved configuration interface
  * All optional properties from SessionRecorderOptions are now required
  */
-export interface SessionRecorderConfigs extends DeepRequired<SessionRecorderOptions> { }
-
+export interface SessionRecorderConfigs
+  extends DeepRequired<SessionRecorderOptions> {}
 
 /**
  * Base configuration interface with common properties
@@ -26,18 +31,27 @@ export interface SessionRecorderConfigs extends DeepRequired<SessionRecorderOpti
  */
 export interface BaseConfig {
   /** API key for authentication */
-  apiKey: string
+  apiKey: string;
   /** Base URL for the API calls */
-  apiBaseUrl: string
+  apiBaseUrl: string;
   /** OTLP collector endpoint for traces */
-  exporterEndpoint: string
+  exporterEndpoint: string;
 }
 
 /**
  * Type for masking configuration used by the Tracer
  * Contains only trace-related masking options
  */
-export type TracerReactNativeMasking = Pick<MaskingOptions, 'isContentMaskingEnabled' | 'maskBody' | 'maskHeaders' | 'maskBodyFieldsList' | 'maskHeadersList' | 'headersToInclude' | 'headersToExclude'>
+export type TracerReactNativeMasking = Pick<
+  MaskingOptions,
+  | 'isContentMaskingEnabled'
+  | 'maskBody'
+  | 'maskHeaders'
+  | 'maskBodyFieldsList'
+  | 'maskHeadersList'
+  | 'headersToInclude'
+  | 'headersToExclude'
+>;
 
 /**
  * Configuration interface for the Tracer class
@@ -45,34 +59,42 @@ export type TracerReactNativeMasking = Pick<MaskingOptions, 'isContentMaskingEna
  */
 export interface TracerReactNativeConfig extends BaseConfig {
   /** Application name */
-  application: string
+  application: string;
   /** Application version */
-  version: string
+  version: string;
   /** Environment (e.g., 'production', 'staging') */
-  environment: string
+  environment: string;
   /** URLs to ignore during tracing */
-  ignoreUrls: Array<string | RegExp>
+  ignoreUrls: Array<string | RegExp>;
   /** Trace ID ratio for sampling */
-  sampleTraceRatio: number
+  sampleTraceRatio: number;
   /** URLs for CORS trace header propagation */
-  propagateTraceHeaderCorsUrls: PropagateTraceHeaderCorsUrls
+  propagateTraceHeaderCorsUrls: PropagateTraceHeaderCorsUrls;
   /** Whether to schematize document span payload */
-  schemifyDocSpanPayload: boolean
+  schemifyDocSpanPayload: boolean;
   /** Maximum size for capturing HTTP payload */
-  maxCapturingHttpPayloadSize: number
+  maxCapturingHttpPayloadSize: number;
   /** If true, captures body in traces */
-  captureBody: boolean
+  captureBody: boolean;
   /** If true, captures headers in traces */
-  captureHeaders: boolean
+  captureHeaders: boolean;
   /** Configuration for masking sensitive data in session recordings */
-  masking: TracerReactNativeMasking
+  masking: TracerReactNativeMasking;
 }
 
 /**
  * Type for masking configuration used by the Recorder
  * Contains only screen recording masking options
  */
-export type RecorderMaskingConfig = Pick<MaskingOptions, 'maskTextInputs' | 'maskImages' | 'maskButtons' | 'maskLabels' | 'maskWebViews' | 'maskSandboxedViews'>
+export type RecorderMaskingConfig = Pick<
+  MaskingOptions,
+  | 'maskTextInputs'
+  | 'maskImages'
+  | 'maskButtons'
+  | 'maskLabels'
+  | 'maskWebViews'
+  | 'maskSandboxedViews'
+>;
 
 /**
  * Configuration interface for the Recorder class
@@ -80,17 +102,17 @@ export type RecorderMaskingConfig = Pick<MaskingOptions, 'maskTextInputs' | 'mas
  */
 export interface RecorderConfig extends BaseConfig {
   /** Whether to record gestures */
-  recordGestures?: boolean
+  recordGestures?: boolean;
   /** Whether to record navigation */
-  recordNavigation?: boolean
+  recordNavigation?: boolean;
   /** Whether to record screen */
-  recordScreen?: boolean
+  recordScreen?: boolean;
   /** Configuration for masking sensitive data in screen recordings */
-  masking?: RecorderMaskingConfig
+  masking?: RecorderMaskingConfig;
 }
 
 /**
  * Configuration interface for the ApiService class
  * Contains settings for API communication
  */
-export interface ApiServiceConfig extends BaseConfig { }
+export interface ApiServiceConfig extends BaseConfig {}

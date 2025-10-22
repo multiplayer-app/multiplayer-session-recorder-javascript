@@ -33,7 +33,7 @@ export class TracerBrowserSDK {
 
   private setSessionId(
     sessionId: string,
-    sessionType: SessionType = SessionType.PLAIN,
+    sessionType: SessionType = SessionType.MANUAL,
   ) {
     this.sessionId = sessionId
     this.idGenerator.setSessionId(sessionId, sessionType)

@@ -1,2 +1,5 @@
-export { default as SessionRecorderNative } from './SessionRecorderNative'
-export { default as GestureRecorderNative, gestureEventEmitter } from './GestureRecorderNative'
+export {
+  default as SessionRecorderNative,
+  gestureEventEmitter,
+  type NativeGestureEvent,
+} from './SessionRecorderNative';

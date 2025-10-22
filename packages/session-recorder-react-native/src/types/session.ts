@@ -1,61 +1,61 @@
-import { SessionType } from '@multiplayer-app/session-recorder-common'
+import { SessionType } from '@multiplayer-app/session-recorder-common';
 
 export interface IResourceAttributes {
-  browserInfo?: string,
-  cookiesEnabled?: string,
-  deviceInfo?: string,
-  hardwareConcurrency?: number,
-  osInfo?: string,
-  pixelRatio?: number,
-  screenSize?: string,
-  packageVersion?: string,
-  [key: string]: any
+  browserInfo?: string;
+  cookiesEnabled?: string;
+  deviceInfo?: string;
+  hardwareConcurrency?: number;
+  osInfo?: string;
+  pixelRatio?: number;
+  screenSize?: string;
+  packageVersion?: string;
+  [key: string]: any;
 }
 
 export interface ISessionAttributes {
-  userEmail?: string
-  userId?: string,
-  userName?: string,
-  accountId?: string,
-  accountName?: string,
-  [key: string]: any
+  userEmail?: string;
+  userId?: string;
+  userName?: string;
+  accountId?: string;
+  accountName?: string;
+  [key: string]: any;
 }
 
 export interface ISessionView {
-  _id: string
-  name: string
-  components?: string[]
+  _id: string;
+  name: string;
+  components?: string[];
 }
 
 export interface ISession {
-  _id: string
-  shortId: string
-  workspace: string
-  project: string
-  continuousDebugSession?: string
-  creationType: SessionType
-  name: string
-  startedAt: string | Date
-  stoppedAt: string | Date
-  durationInSeconds?: number
-  createdAt: string | Date
-  updatedAt: string | Date
-  tags: any[]
+  _id: string;
+  shortId: string;
+  workspace: string;
+  project: string;
+  continuousDebugSession?: string;
+  creationType: SessionType;
+  name: string;
+  startedAt: string | Date;
+  stoppedAt: string | Date;
+  durationInSeconds?: number;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  tags: any[];
 
-  resourceAttributes?: IResourceAttributes
-  sessionAttributes?: ISessionAttributes
-  views: ISessionView[]
-  starred: boolean
-  starredItems: string[]
+  resourceAttributes?: IResourceAttributes;
+  sessionAttributes?: ISessionAttributes;
+  views: ISessionView[];
+  starred: boolean;
+  starredItems: string[];
   s3Files: {
-    _id?: string
-    bucket: string
-    key: string
-    dataType: DebugSessionDataType
-    url?: string
-  }[]
-  finishedS3Transfer?: boolean
-  tempApiKey?: string
+    _id?: string;
+    bucket: string;
+    key: string;
+    dataType: DebugSessionDataType;
+    url?: string;
+  }[];
+  finishedS3Transfer?: boolean;
+  tempApiKey?: string;
 }
 
 export enum DebugSessionDataType {

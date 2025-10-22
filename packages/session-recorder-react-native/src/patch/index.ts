@@ -1,1 +1,1 @@
-import './xhr'
+import './xhr';

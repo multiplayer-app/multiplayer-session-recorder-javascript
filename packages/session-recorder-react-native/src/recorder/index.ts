@@ -1,89 +1,87 @@
-import { SessionType } from '@multiplayer-app/session-recorder-common'
+import { SessionType } from '@multiplayer-app/session-recorder-common';
 // import { pack } from '@rrweb/packer' // Removed to avoid blob creation issues in Hermes
-import { EventExporter } from './eventExporter'
-import { logger } from '../utils'
-import { ScreenRecorder } from './screenRecorder'
-import { GestureRecorder } from './gestureRecorder'
-import { NavigationTracker } from './navigationTracker'
-import { RecorderConfig, EventRecorder } from '../types'
-import { eventWithTime } from '@rrweb/types'
+import { EventExporter } from './eventExporter';
+import { logger } from '../utils';
+import { ScreenRecorder } from './screenRecorder';
+import { GestureRecorder } from './gestureRecorder';
+import { NavigationTracker } from './navigationTracker';
+import { type RecorderConfig, type EventRecorder } from '../types';
+import { type eventWithTime } from '@rrweb/types';
 export class RecorderReactNativeSDK implements EventRecorder {
-  private isRecording = false
-  private config?: RecorderConfig
-  private screenRecorder: ScreenRecorder
-  private gestureRecorder: GestureRecorder
-  private navigationTracker: NavigationTracker
-  private recordedEvents: eventWithTime[] = []
-  private exporter: EventExporter
-  private sessionId: string | null = null
-  private sessionType: SessionType = SessionType.PLAIN
-
+  private isRecording = false;
+  private config?: RecorderConfig;
+  private screenRecorder: ScreenRecorder;
+  private gestureRecorder: GestureRecorder;
+  private navigationTracker: NavigationTracker;
+  private recordedEvents: eventWithTime[] = [];
+  private exporter: EventExporter;
+  private sessionId: string | null = null;
+  private sessionType: SessionType = SessionType.MANUAL;
 
   constructor() {
-    this.screenRecorder = new ScreenRecorder()
-    this.gestureRecorder = new GestureRecorder()
-    this.navigationTracker = new NavigationTracker()
+    this.screenRecorder = new ScreenRecorder();
+    this.gestureRecorder = new GestureRecorder();
+    this.navigationTracker = new NavigationTracker();
     this.exporter = new EventExporter({
       socketUrl: '',
       apiKey: '',
-    })
+    });
   }
 
   init(config: RecorderConfig): void {
-    this.config = config
-    this.screenRecorder.init(config, this)
-    this.navigationTracker.init(config, this.screenRecorder)
-    this.gestureRecorder.init(config, this, this.screenRecorder)
+    this.config = config;
+    this.screenRecorder.init(config, this);
+    this.navigationTracker.init(config, this.screenRecorder);
+    this.gestureRecorder.init(config, this, this.screenRecorder);
 
-    this.exporter.setApiKey(config.apiKey)
-    this.exporter.setSocketUrl(config.apiBaseUrl)
+    this.exporter.setApiKey(config.apiKey);
+    this.exporter.setSocketUrl(config.apiBaseUrl);
   }
 
   setApiKey(apiKey: string): void {
-    this.exporter.setApiKey(apiKey)
+    this.exporter.setApiKey(apiKey);
   }
 
   setSocketUrl(socketUrl: string): void {
-    this.exporter.setSocketUrl(socketUrl)
+    this.exporter.setSocketUrl(socketUrl);
   }
 
   start(sessionId: string | null, sessionType: SessionType): void {
     if (!this.config) {
-      throw new Error('Configuration not initialized. Call init() before start().')
+      throw new Error(
+        'Configuration not initialized. Call init() before start().'
+      );
     }
 
-    this.sessionId = sessionId
-    this.sessionType = sessionType
-    this.isRecording = true
+    this.sessionId = sessionId;
+    this.sessionType = sessionType;
+    this.isRecording = true;
 
     // Emit recording started meta event
 
     if (this.config.recordScreen) {
-      this.screenRecorder.start()
+      this.screenRecorder.start();
     }
 
     if (this.config.recordGestures) {
-      this.gestureRecorder.start()
+      this.gestureRecorder.start();
     }
 
     if (this.config.recordNavigation) {
-      this.navigationTracker.start()
+      this.navigationTracker.start();
     }
-
-
   }
 
   stop(): void {
-    this.isRecording = false
-    this.gestureRecorder.stop()
-    this.navigationTracker.stop()
-    this.screenRecorder.stop()
-    this.exporter?.close()
+    this.isRecording = false;
+    this.gestureRecorder.stop();
+    this.navigationTracker.stop();
+    this.screenRecorder.stop();
+    this.exporter?.close();
   }
 
-
   setNavigationRef(ref: any): void {
-    this.navigationTracker.setNavigationRef(ref)
+    this.navigationTracker.setNavigationRef(ref);
   }
 
   /**
@@ -91,7 +89,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
    * @param ref - React Native View ref for screen capture
    */
   setViewShotRef(ref: any): void {
-    this.screenRecorder.setViewShotRef(ref)
+    this.screenRecorder.setViewShotRef(ref);
   }
 
   /**
@@ -100,11 +98,11 @@ export class RecorderReactNativeSDK implements EventRecorder {
    */
   recordEvent(event: eventWithTime): void {
     if (!this.isRecording) {
-      return
+      return;
     }
 
     if (this.exporter) {
-      logger.debug('RecorderReactNativeSDK', 'Sending to exporter', event)
+      logger.debug('RecorderReactNativeSDK', 'Sending to exporter', event);
       // Skip packing to avoid blob creation issues in Hermes
       // const packedEvent = pack(event)
       this.exporter.send({
@@ -113,7 +111,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
         timestamp: event.timestamp,
         debugSessionId: this.sessionId,
         debugSessionType: this.sessionType,
-      })
+      });
     }
   }
 
@@ -124,12 +122,17 @@ export class RecorderReactNativeSDK implements EventRecorder {
    * @param target - Target element identifier
    * @param pressure - Touch pressure
    */
-  recordTouchStart(x: number, y: number, target?: string, pressure?: number): void {
+  recordTouchStart(
+    x: number,
+    y: number,
+    target?: string,
+    pressure?: number
+  ): void {
     if (!this.isRecording) {
-      return
+      return;
     }
 
-    this.gestureRecorder.recordTouchStart(x, y, target, pressure)
+    this.gestureRecorder.recordTouchStart(x, y, target, pressure);
   }
 
   /**
@@ -139,12 +142,17 @@ export class RecorderReactNativeSDK implements EventRecorder {
    * @param target - Target element identifier
    * @param pressure - Touch pressure
    */
-  recordTouchMove(x: number, y: number, target?: string, pressure?: number): void {
+  recordTouchMove(
+    x: number,
+    y: number,
+    target?: string,
+    pressure?: number
+  ): void {
     if (!this.isRecording) {
-      return
+      return;
     }
 
-    this.gestureRecorder.recordTouchMove(x, y, target, pressure)
+    this.gestureRecorder.recordTouchMove(x, y, target, pressure);
   }
 
   /**
@@ -154,12 +162,17 @@ export class RecorderReactNativeSDK implements EventRecorder {
    * @param target - Target element identifier
    * @param pressure - Touch pressure
    */
-  recordTouchEnd(x: number, y: number, target?: string, pressure?: number): void {
+  recordTouchEnd(
+    x: number,
+    y: number,
+    target?: string,
+    pressure?: number
+  ): void {
     if (!this.isRecording) {
-      return
+      return;
     }
 
-    this.gestureRecorder.recordTouchEnd(x, y, target, pressure)
+    this.gestureRecorder.recordTouchEnd(x, y, target, pressure);
   }
 
   /**
@@ -167,14 +180,14 @@ export class RecorderReactNativeSDK implements EventRecorder {
    * @returns Array of recorded rrweb events
    */
   getRecordedEvents(): eventWithTime[] {
-    return [...this.recordedEvents]
+    return [...this.recordedEvents];
   }
 
   /**
    * Clear all recorded events
    */
   clearRecordedEvents(): void {
-    this.recordedEvents = []
+    this.recordedEvents = [];
   }
 
   /**
@@ -185,6 +198,6 @@ export class RecorderReactNativeSDK implements EventRecorder {
     return {
       totalEvents: this.recordedEvents.length,
       isRecording: this.isRecording,
-    }
+    };
   }
 }

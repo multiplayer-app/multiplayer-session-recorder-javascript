@@ -55,6 +55,65 @@ npx expo install @react-native-async-storage/async-storage @react-native-communi
 
 If you use Expo Router or a managed workflow, no extra autolinking steps are required beyond installing the packages.
 
+### Expo Autolinking Support
+
+This package includes full Expo autolinking support with the following configuration files:
+
+- ✅ `expo-module.config.json` - Defines supported platforms and module names
+- ✅ `react-native.config.js` - Configures React Native CLI autolinking
+- ✅ Proper TurboModule registration for both iOS and Android
+
+The module will be automatically detected and linked when you install it in your Expo project.
+
+#### Expo Go vs Development Builds
+
+**Important**: This package uses native modules that require custom native code. While autolinking is configured, you may encounter issues with **Expo Go** due to its limitations with custom native modules.
+
+**If autolinking doesn't work with Expo Go**, try using development builds instead:
+
+```bash
+# For iOS
+npx expo run:ios
+
+# For Android
+npx expo run:android
+```
+
+Development builds include your custom native modules and provide the full native functionality needed for session recording.
+
+#### Troubleshooting Expo Autolinking
+
+If you encounter issues with module autolinking in Expo:
+
+1. **Check Expo SDK compatibility**: Ensure you're using a compatible Expo SDK version
+2. **Clear cache**: Run `npx expo start -c` to clear the Expo cache
+3. **Use development builds**: Switch from Expo Go to development builds as shown above
+4. **Verify configuration**: Ensure the autolinking configuration files are present in your `node_modules/@multiplayer-app/session-recorder-react-native/` directory
+
+#### Expo Configuration
+
+For Expo applications, the package automatically detects the Expo environment:
+
+```javascript
+import SessionRecorder from '@multiplayer-app/session-recorder-react-native';
+
+SessionRecorder.init({
+  application: 'my-expo-app',
+  version: '1.0.0',
+  environment: 'production',
+  apiKey: 'YOUR_MULTIPLAYER_API_KEY',
+  recordGestures: true,
+  recordNavigation: true,
+  recordScreen: true,
+});
+```
+
+The package will automatically:
+
+- Detect Expo environment using `expo-constants`
+- Add Expo-specific attributes to traces
+- Optimize performance for Expo runtime
+
 #### Why direct install is required
 
 - Autolinking scans only the app's `package.json`
@@ -92,43 +151,51 @@ If you encounter:
 #### For Basic React Native Apps (App.tsx)
 
 ```javascript
-import React from 'react'
-import { SessionRecorderProvider, SessionRecorder } from '@multiplayer-app/session-recorder-react-native'
+import React from 'react';
+import {
+  SessionRecorderProvider,
+  SessionRecorder,
+} from '@multiplayer-app/session-recorder-react-native';
 
 // Initialize with minimal required options
 SessionRecorder.init({
   application: 'my-react-native-app',
   version: '1.0.0',
   environment: 'production',
-  apiKey: 'YOUR_MULTIPLAYER_API_KEY'
-})
+  apiKey: 'YOUR_MULTIPLAYER_API_KEY',
+});
 
 export default function App() {
-  return <SessionRecorderProvider>{/* Your app content */}</SessionRecorderProvider>
+  return (
+    <SessionRecorderProvider>{/* Your app content */}</SessionRecorderProvider>
+  );
 }
 ```
 
 #### For Expo Apps (\_layout.tsx)
 
 ```javascript
-import React from 'react'
-import { Stack } from 'expo-router'
-import { SessionRecorderProvider, SessionRecorder } from '@multiplayer-app/session-recorder-react-native'
+import React from 'react';
+import { Stack } from 'expo-router';
+import {
+  SessionRecorderProvider,
+  SessionRecorder,
+} from '@multiplayer-app/session-recorder-react-native';
 
 // Initialize with minimal required options
 SessionRecorder.init({
   application: 'my-expo-app',
   version: '1.0.0',
   environment: 'production',
-  apiKey: 'YOUR_MULTIPLAYER_API_KEY'
-})
+  apiKey: 'YOUR_MULTIPLAYER_API_KEY',
+});
 
 export default function RootLayout() {
   return (
     <SessionRecorderProvider>
       <Stack />
     </SessionRecorderProvider>
-  )
+  );
 }
 ```
 
@@ -144,8 +211,11 @@ This minimal setup will:
 #### For Basic React Native Apps (App.tsx)
 
 ```javascript
-import React from 'react'
-import { SessionRecorderProvider, SessionRecorder } from '@multiplayer-app/session-recorder-react-native'
+import React from 'react';
+import {
+  SessionRecorderProvider,
+  SessionRecorder,
+} from '@multiplayer-app/session-recorder-react-native';
 
 SessionRecorder.init({
   application: 'my-react-native-app',
@@ -154,20 +224,25 @@ SessionRecorder.init({
   apiKey: 'YOUR_MULTIPLAYER_API_KEY',
   recordGestures: true, // default is true
   recordNavigation: true, // default is true
-  recordScreen: true // default is true
-})
+  recordScreen: true, // default is true
+});
 
 export default function App() {
-  return <SessionRecorderProvider>{/* Your app content */}</SessionRecorderProvider>
+  return (
+    <SessionRecorderProvider>{/* Your app content */}</SessionRecorderProvider>
+  );
 }
 ```
 
 #### For Expo Apps (\_layout.tsx)
 
 ```javascript
-import React from 'react'
-import { Stack } from 'expo-router'
-import { SessionRecorderProvider, SessionRecorder } from '@multiplayer-app/session-recorder-react-native'
+import React from 'react';
+import { Stack } from 'expo-router';
+import {
+  SessionRecorderProvider,
+  SessionRecorder,
+} from '@multiplayer-app/session-recorder-react-native';
 
 SessionRecorder.init({
   application: 'my-expo-app',
@@ -176,15 +251,15 @@ SessionRecorder.init({
   apiKey: 'YOUR_MULTIPLAYER_API_KEY',
   recordGestures: true, // default is true
   recordNavigation: true, // default is true
-  recordScreen: true // default is true
-})
+  recordScreen: true, // default is true
+});
 
 export default function RootLayout() {
   return (
     <SessionRecorderProvider>
       <Stack />
     </SessionRecorderProvider>
-  )
+  );
 }
 ```
 
@@ -193,11 +268,14 @@ export default function RootLayout() {
 Here's a complete example showing how to integrate the session recorder in your React Native app:
 
 ```javascript
-import React, { useEffect, useRef } from 'react'
-import { NavigationContainer } from '@react-navigation/native'
-import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { SessionRecorderProvider, SessionRecorder } from '@multiplayer-app/session-recorder-react-native'
-import { AppNavigator } from './navigation/AppNavigator'
+import React, { useEffect, useRef } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  SessionRecorderProvider,
+  SessionRecorder,
+} from '@multiplayer-app/session-recorder-react-native';
+import { AppNavigator } from './navigation/AppNavigator';
 
 // Initialize session recorder
 SessionRecorder.init({
@@ -207,20 +285,20 @@ SessionRecorder.init({
   apiKey: 'YOUR_MULTIPLAYER_API_KEY',
   recordGestures: true,
   recordNavigation: true,
-  recordScreen: false // Enable after adding permissions
-})
+  recordScreen: false, // Enable after adding permissions
+});
 
 export default function App() {
-  const navigationRef = useRef(null)
+  const navigationRef = useRef(null);
 
   useEffect(() => {
     // Set session attributes for better debugging context
     SessionRecorder.setSessionAttributes({
       userId: 'user123',
       userType: 'premium',
-      appVersion: '1.0.0'
-    })
-  }, [])
+      appVersion: '1.0.0',
+    });
+  }, []);
 
   return (
     <SessionRecorderProvider>
@@ -228,14 +306,14 @@ export default function App() {
         <NavigationContainer
           ref={navigationRef}
           onReady={() => {
-            SessionRecorder.setNavigationRef(navigationRef.current)
+            SessionRecorder.setNavigationRef(navigationRef.current);
           }}
         >
           <AppNavigator />
         </NavigationContainer>
       </SafeAreaProvider>
     </SessionRecorderProvider>
-  )
+  );
 }
 ```
 
@@ -244,7 +322,7 @@ export default function App() {
 For Expo applications, the package automatically detects the Expo environment:
 
 ```javascript
-import SessionRecorder from '@multiplayer-app/session-recorder-react-native'
+import SessionRecorder from '@multiplayer-app/session-recorder-react-native';
 
 SessionRecorder.init({
   application: 'my-expo-app',
@@ -253,8 +331,8 @@ SessionRecorder.init({
   apiKey: 'YOUR_MULTIPLAYER_API_KEY',
   recordGestures: true,
   recordNavigation: true,
-  recordScreen: true
-})
+  recordScreen: true,
+});
 ```
 
 The package will automatically:
@@ -270,26 +348,29 @@ The package will automatically:
 Expo Router already manages the NavigationContainer. Don't add your own.
 
 ```tsx
-import { useEffect } from 'react'
-import { Stack, useNavigationContainerRef } from 'expo-router'
-import { SessionRecorderProvider, SessionRecorder } from '@multiplayer-app/session-recorder-react-native'
+import { useEffect } from 'react';
+import { Stack, useNavigationContainerRef } from 'expo-router';
+import {
+  SessionRecorderProvider,
+  SessionRecorder,
+} from '@multiplayer-app/session-recorder-react-native';
 
 export default function RootLayout() {
-  const navigationRef = useNavigationContainerRef()
+  const navigationRef = useNavigationContainerRef();
 
   useEffect(() => {
     const unsub = navigationRef.addListener?.('state', () => {
-      SessionRecorder.setNavigationRef(navigationRef)
-      unsub?.()
-    })
-    return unsub
-  }, [navigationRef])
+      SessionRecorder.setNavigationRef(navigationRef);
+      unsub?.();
+    });
+    return unsub;
+  }, [navigationRef]);
 
   return (
     <SessionRecorderProvider>
       <Stack />
     </SessionRecorderProvider>
-  )
+  );
 }
 ```
 
@@ -298,25 +379,28 @@ export default function RootLayout() {
 If you own the `NavigationContainer`, set the ref in `onReady`:
 
 ```tsx
-import { NavigationContainer } from '@react-navigation/native'
-import { useRef } from 'react'
-import { SessionRecorderProvider, SessionRecorder } from '@multiplayer-app/session-recorder-react-native'
+import { NavigationContainer } from '@react-navigation/native';
+import { useRef } from 'react';
+import {
+  SessionRecorderProvider,
+  SessionRecorder,
+} from '@multiplayer-app/session-recorder-react-native';
 
 export default function App() {
-  const navigationRef = useRef<any>(null)
+  const navigationRef = useRef<any>(null);
 
   return (
     <SessionRecorderProvider>
       <NavigationContainer
         ref={navigationRef}
         onReady={() => {
-          SessionRecorder.setNavigationRef(navigationRef.current)
+          SessionRecorder.setNavigationRef(navigationRef.current);
         }}
       >
         {/* Your navigation stack */}
       </NavigationContainer>
     </SessionRecorderProvider>
-  )
+  );
 }
 ```
 
@@ -324,26 +408,26 @@ export default function App() {
 
 ```javascript
 // Start a new recording session
-SessionRecorder.start()
+SessionRecorder.start();
 
 // Pause current recording
-SessionRecorder.pause()
+SessionRecorder.pause();
 
 // Resume paused recording
-SessionRecorder.resume()
+SessionRecorder.resume();
 
 // Stop recording with optional reason
-SessionRecorder.stop('Session completed')
+SessionRecorder.stop('Session completed');
 
 // Save continuous recording (for continuous mode)
-SessionRecorder.save()
+SessionRecorder.save();
 
 // Set session attributes for better context
 SessionRecorder.setSessionAttributes({
   userId: 'user123',
   feature: 'checkout',
-  version: '2.1.0'
-})
+  version: '2.1.0',
+});
 ```
 
 ## Session Provider & Hooks
@@ -363,10 +447,10 @@ SessionRecorder.init({
   widget: {
     enabled: true,
     button: {
-      visible: false // Hide the floating button
-    }
-  }
-})
+      visible: false, // Hide the floating button
+    },
+  },
+});
 ```
 
 ### Programmatic Widget Control
@@ -374,56 +458,67 @@ SessionRecorder.init({
 Use the `useSessionRecorder` hook to control the widget modal programmatically:
 
 ```javascript
-import React from 'react'
-import { View, Button } from 'react-native'
-import { useSessionRecorder } from '@multiplayer-app/session-recorder-react-native'
+import React from 'react';
+import { View, Button } from 'react-native';
+import { useSessionRecorder } from '@multiplayer-app/session-recorder-react-native';
 
 function MyComponent() {
-  const { openWidgetModal, closeWidgetModal } = useSessionRecorder()
+  const { openWidgetModal, closeWidgetModal } = useSessionRecorder();
 
   return (
     <View>
-      <Button title='Open Session Recorder' onPress={openWidgetModal} />
-      <Button title='Close Session Recorder' onPress={closeWidgetModal} />
+      <Button title="Open Session Recorder" onPress={openWidgetModal} />
+      <Button title="Close Session Recorder" onPress={closeWidgetModal} />
     </View>
-  )
+  );
 }
 ```
 
 ### Session Control with Hooks
 
 ```javascript
-import React from 'react'
-import { View, Button } from 'react-native'
-import { useSessionRecorder } from '@multiplayer-app/session-recorder-react-native'
+import React from 'react';
+import { View, Button } from 'react-native';
+import { useSessionRecorder } from '@multiplayer-app/session-recorder-react-native';
 
 function SessionControls() {
-  const { startSession, stopSession, pauseSession, resumeSession, saveSession } = useSessionRecorder()
+  const {
+    startSession,
+    stopSession,
+    pauseSession,
+    resumeSession,
+    saveSession,
+  } = useSessionRecorder();
 
   return (
     <View>
-      <Button title='Start Session' onPress={() => startSession()} />
-      <Button title='Pause Session' onPress={() => pauseSession()} />
-      <Button title='Resume Session' onPress={() => resumeSession()} />
-      <Button title='Stop Session' onPress={() => stopSession('User completed')} />
-      <Button title='Save Session' onPress={() => saveSession()} />
+      <Button title="Start Session" onPress={() => startSession()} />
+      <Button title="Pause Session" onPress={() => pauseSession()} />
+      <Button title="Resume Session" onPress={() => resumeSession()} />
+      <Button
+        title="Stop Session"
+        onPress={() => stopSession('User completed')}
+      />
+      <Button title="Save Session" onPress={() => saveSession()} />
     </View>
-  )
+  );
 }
 ```
 
 ### Session State with Hooks
 
 ```javascript
-import React from 'react'
-import { View, Text } from 'react-native'
-import { useSessionRecorderStore } from '@multiplayer-app/session-recorder-react-native'
+import React from 'react';
+import { View, Text } from 'react-native';
+import { useSessionRecorderStore } from '@multiplayer-app/session-recorder-react-native';
 
 function SessionStatus() {
-  const sessionType = useSessionRecorderStore((s) => s.sessionType)
-  const isWidgetModalVisible = useSessionRecorderStore((s) => s.isWidgetModalVisible)
-  const sessionState = useSessionRecorderStore((s) => s.sessionState)
-  const isOnline = useSessionRecorderStore((s) => s.isOnline)
+  const sessionType = useSessionRecorderStore((s) => s.sessionType);
+  const isWidgetModalVisible = useSessionRecorderStore(
+    (s) => s.isWidgetModalVisible
+  );
+  const sessionState = useSessionRecorderStore((s) => s.sessionState);
+  const isOnline = useSessionRecorderStore((s) => s.isOnline);
 
   return (
     <View>
@@ -432,56 +527,58 @@ function SessionStatus() {
       <Text>Widget Visible: {isWidgetModalVisible ? 'Yes' : 'No'}</Text>
       <Text>Online: {isOnline ? 'Yes' : 'No'}</Text>
     </View>
-  )
+  );
 }
 ```
 
 ### Complete Example with Custom UI
 
 ```javascript
-import React, { useEffect } from 'react'
-import { View, Button, Text, Alert } from 'react-native'
+import React, { useEffect } from 'react';
+import { View, Button, Text, Alert } from 'react-native';
 import {
   SessionRecorderProvider,
   useSessionRecorder,
-  useSessionRecorderStore
-} from '@multiplayer-app/session-recorder-react-native'
+  useSessionRecorderStore,
+} from '@multiplayer-app/session-recorder-react-native';
 
 function SessionRecorderUI() {
-  const { startSession, stopSession, openWidgetModal } = useSessionRecorder()
-  const { sessionState, isWidgetModalVisible } = useSessionRecorderStore((state) => ({
-    sessionState: state.sessionState,
-    isWidgetModalVisible: state.isWidgetModalVisible
-  }))
+  const { startSession, stopSession, openWidgetModal } = useSessionRecorder();
+  const { sessionState, isWidgetModalVisible } = useSessionRecorderStore(
+    (state) => ({
+      sessionState: state.sessionState,
+      isWidgetModalVisible: state.isWidgetModalVisible,
+    })
+  );
 
   const handleStartRecording = async () => {
     try {
-      await startSession()
-      Alert.alert('Success', 'Session recording started')
+      await startSession();
+      Alert.alert('Success', 'Session recording started');
     } catch (error) {
-      Alert.alert('Error', 'Failed to start recording')
+      Alert.alert('Error', 'Failed to start recording');
     }
-  }
+  };
 
   const handleStopRecording = async () => {
     try {
-      await stopSession('User manually stopped')
-      Alert.alert('Success', 'Session recording stopped')
+      await stopSession('User manually stopped');
+      Alert.alert('Success', 'Session recording stopped');
     } catch (error) {
-      Alert.alert('Error', 'Failed to stop recording')
+      Alert.alert('Error', 'Failed to stop recording');
     }
-  }
+  };
 
   return (
     <View style={{ padding: 20 }}>
       <Text>Session State: {sessionState}</Text>
       <Text>Widget Modal: {isWidgetModalVisible ? 'Open' : 'Closed'}</Text>
 
-      <Button title='Start Recording' onPress={handleStartRecording} />
-      <Button title='Stop Recording' onPress={handleStopRecording} />
-      <Button title='Open Widget' onPress={openWidgetModal} />
+      <Button title="Start Recording" onPress={handleStartRecording} />
+      <Button title="Stop Recording" onPress={handleStopRecording} />
+      <Button title="Open Widget" onPress={openWidgetModal} />
     </View>
-  )
+  );
 }
 
 export default function App() {
@@ -489,7 +586,7 @@ export default function App() {
     <SessionRecorderProvider>
       <SessionRecorderUI />
     </SessionRecorderProvider>
-  )
+  );
 }
 ```
 
@@ -537,7 +634,11 @@ To get the most useful target information in your traces, follow these practices
 #### 1. Use Accessibility Labels
 
 ```jsx
-<TouchableOpacity accessibilityLabel='Submit user registration form' accessibilityRole='button' onPress={handleSubmit}>
+<TouchableOpacity
+  accessibilityLabel="Submit user registration form"
+  accessibilityRole="button"
+  onPress={handleSubmit}
+>
   <Text>Submit</Text>
 </TouchableOpacity>
 ```
@@ -545,7 +646,11 @@ To get the most useful target information in your traces, follow these practices
 #### 2. Add Test IDs for Testing Context
 
 ```jsx
-<TouchableOpacity testID='registration-submit-btn' accessibilityLabel='Submit registration' onPress={handleSubmit}>
+<TouchableOpacity
+  testID="registration-submit-btn"
+  accessibilityLabel="Submit registration"
+  onPress={handleSubmit}
+>
   <Text>Submit</Text>
 </TouchableOpacity>
 ```
@@ -663,9 +768,12 @@ SessionRecorder.init({
   // NOTE: if frontend domain doesn't match to backend one, set backend domain to `propagateTraceHeaderCorsUrls` parameter
   propagateTraceHeaderCorsUrls: [
     new RegExp('https://your.backend.api.domain', 'i'), // can be regex or string
-    new RegExp('https://another.backend.api.domain', 'i')
+    new RegExp('https://another.backend.api.domain', 'i'),
   ],
-  ignoreUrls: [/https:\/\/analytics\.example\.com/, /https:\/\/crashlytics\.com/],
+  ignoreUrls: [
+    /https:\/\/analytics\.example\.com/,
+    /https:\/\/crashlytics\.com/,
+  ],
   captureBody: true,
   captureHeaders: true,
   maxCapturingHttpPayloadSize: 100000,
@@ -677,7 +785,7 @@ SessionRecorder.init({
     maskBodyFieldsList: ['password', 'token', 'secret', 'creditCard'],
     maskTextInputs: true,
     maskImages: false,
-    maskButtons: false
+    maskButtons: false,
   },
 
   // Session widget configuration
@@ -685,19 +793,22 @@ SessionRecorder.init({
     enabled: true,
     button: {
       visible: true,
-      placement: 'bottomRight' // or 'bottomLeft'
-    }
+      placement: 'bottomRight', // or 'bottomLeft'
+    },
   },
 
   // Continuous recording
-  showContinuousRecording: true
-})
+  showContinuousRecording: true,
+});
 ```
 
 ### Environment-Specific Configuration
 
 ```javascript
-import { SessionRecorder, LogLevel } from '@multiplayer-app/session-recorder-react-native'
+import {
+  SessionRecorder,
+  LogLevel,
+} from '@multiplayer-app/session-recorder-react-native';
 
 const config = {
   application: 'my-app',
@@ -708,12 +819,12 @@ const config = {
   ...(__DEV__ && {
     logger: {
       enabled: true,
-      level: LogLevel.DEBUG
-    }
-  })
-}
+      level: LogLevel.DEBUG,
+    },
+  }),
+};
 
-SessionRecorder.init(config)
+SessionRecorder.init(config);
 ```
 
 ## Troubleshooting
@@ -757,7 +868,27 @@ SessionRecorder.init(config)
 - Ensure `expo-constants` is installed: `npx expo install expo-constants`
 - Check that you're using the correct Expo SDK version
 
-#### 6. Build Issues
+#### 6. TurboModule Not Found (Expo Go)
+
+If you see this error in Expo Go:
+
+```
+TurboModuleRegistry.getEnforcing(...): 'SessionRecorderNative' could not be found
+```
+
+**Solution**: Switch to development builds instead of Expo Go:
+
+```bash
+# For iOS
+npx expo run:ios
+
+# For Android
+npx expo run:android
+```
+
+Expo Go has limitations with custom native modules. Development builds include your custom native code and will resolve this issue.
+
+#### 7. Build Issues
 
 - **iOS**: Run `cd ios && pod install` after installing dependencies
 - **Android**: Run `cd android && ./gradlew clean`
@@ -768,15 +899,18 @@ SessionRecorder.init(config)
 Enable debug logging to troubleshoot issues:
 
 ```javascript
-import { SessionRecorder, LogLevel } from '@multiplayer-app/session-recorder-react-native'
+import {
+  SessionRecorder,
+  LogLevel,
+} from '@multiplayer-app/session-recorder-react-native';
 
 SessionRecorder.init({
   // ... other config
   logger: {
     enabled: true,
-    level: LogLevel.DEBUG
-  }
-})
+    level: LogLevel.DEBUG,
+  },
+});
 ```
 
 ## Examples
@@ -814,38 +948,44 @@ Both examples include:
 ```typescript
 interface SessionRecorderOptions {
   // Required
-  apiKey: string
-  application: string
-  version: string
-  environment: string
+  apiKey: string;
+  application: string;
+  version: string;
+  environment: string;
 
   // Optional
-  exporterEndpoint?: string
-  apiBaseUrl?: string
-  recordGestures?: boolean
-  recordNavigation?: boolean
-  recordScreen?: boolean
-  sampleTraceRatio?: number
-  captureBody?: boolean
-  captureHeaders?: boolean
-  maxCapturingHttpPayloadSize?: number
-  masking?: MaskingOptions
-  ignoreUrls?: Array<string | RegExp>
-  propagateTraceHeaderCorsUrls?: PropagateTraceHeaderCorsUrls
-  showContinuousRecording?: boolean
-  schemifyDocSpanPayload?: boolean
-  widget?: WidgetConfig
+  exporterEndpoint?: string;
+  apiBaseUrl?: string;
+  recordGestures?: boolean;
+  recordNavigation?: boolean;
+  recordScreen?: boolean;
+  sampleTraceRatio?: number;
+  captureBody?: boolean;
+  captureHeaders?: boolean;
+  maxCapturingHttpPayloadSize?: number;
+  masking?: MaskingOptions;
+  ignoreUrls?: Array<string | RegExp>;
+  propagateTraceHeaderCorsUrls?: PropagateTraceHeaderCorsUrls;
+  showContinuousRecording?: boolean;
+  schemifyDocSpanPayload?: boolean;
+  widget?: WidgetConfig;
   logger?: {
-    level?: number
-    enabled?: boolean
-  }
+    level?: number;
+    enabled?: boolean;
+  };
 }
 ```
 
 ## Contributing
 
-Please read our contributing guidelines before submitting pull requests.
+- [Development workflow](CONTRIBUTING.md#development-workflow)
+- [Sending a pull request](CONTRIBUTING.md#sending-a-pull-request)
+- [Code of conduct](CODE_OF_CONDUCT.md)
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT
+
+---
+
+Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)

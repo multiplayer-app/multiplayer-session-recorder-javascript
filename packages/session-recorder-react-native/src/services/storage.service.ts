@@ -1,42 +1,43 @@
-import { Platform } from 'react-native'
-import { SessionType } from '@multiplayer-app/session-recorder-common'
-import { ISession, SessionState } from '../types'
-import { logger } from '../utils'
+import { Platform } from 'react-native';
+import { SessionType } from '@multiplayer-app/session-recorder-common';
+import { type ISession, type SessionState } from '../types';
+import { logger } from '../utils';
 
 // Safe import for AsyncStorage with web fallback
-let AsyncStorage: any = null
-const isWeb = Platform.OS === 'web'
+let AsyncStorage: any = null;
+const isWeb = Platform.OS === 'web';
 
 if (!isWeb) {
   try {
-    AsyncStorage = require('@react-native-async-storage/async-storage').default
+    AsyncStorage = require('@react-native-async-storage/async-storage').default;
   } catch (error) {
-    console.warn('AsyncStorage not available:', error)
+    console.warn('AsyncStorage not available:', error);
   }
 } else {
   // Web fallback using localStorage
   AsyncStorage = {
-    getItem: (key: string) => Promise.resolve(null), // Simplified for web
-    setItem: (key: string, value: string) => Promise.resolve(undefined),
-    removeItem: (key: string) => Promise.resolve(undefined),
-    multiRemove: (keys: string[]) => Promise.resolve(undefined),
-  }
+    getItem: (_key: string) => Promise.resolve(null), // Simplified for web
+    setItem: (_key: string, _value: string) => Promise.resolve(undefined),
+    removeItem: (_key: string) => Promise.resolve(undefined),
+    multiRemove: (_keys: string[]) => Promise.resolve(undefined),
+  };
 }
 
 interface CacheData {
-  sessionId: string | null
-  sessionType: SessionType | null
-  sessionState: SessionState | null
-  sessionObject: ISession | null
-  floatingButtonPosition: { x: number; y: number } | null
+  sessionId: string | null;
+  sessionType: SessionType | null;
+  sessionState: SessionState | null;
+  sessionObject: ISession | null;
+  floatingButtonPosition: { x: number; y: number } | null;
 }
 
 export class StorageService {
-  private static readonly SESSION_ID_KEY = 'session_id'
-  private static readonly SESSION_TYPE_KEY = 'session_type'
-  private static readonly SESSION_STATE_KEY = 'session_state'
-  private static readonly SESSION_OBJECT_KEY = 'session_object'
-  private static readonly FLOATING_BUTTON_POSITION_KEY = 'floating_button_position'
+  private static readonly SESSION_ID_KEY = 'session_id';
+  private static readonly SESSION_TYPE_KEY = 'session_type';
+  private static readonly SESSION_STATE_KEY = 'session_state';
+  private static readonly SESSION_OBJECT_KEY = 'session_object';
+  private static readonly FLOATING_BUTTON_POSITION_KEY =
+    'floating_button_position';
 
   private static cache: CacheData = {
     sessionId: null,
@@ -44,11 +45,11 @@ export class StorageService {
     sessionState: null,
     sessionObject: null,
     floatingButtonPosition: null,
-  }
+  };
 
-  private static cacheInitialized = false
-  private static instance: StorageService | null = null
-  private static positionSaveTimeout: NodeJS.Timeout | null = null
+  private static cacheInitialized = false;
+  private static instance: StorageService | null = null;
+  private static positionSaveTimeout: any | null = null;
 
   private constructor() {
     // Private constructor for singleton
@@ -56,101 +57,118 @@ export class StorageService {
 
   static getInstance(): StorageService {
     if (!StorageService.instance) {
-      StorageService.instance = new StorageService()
-      StorageService.initialize()
+      StorageService.instance = new StorageService();
+      StorageService.initialize();
     }
-    return StorageService.instance
+    return StorageService.instance;
   }
 
   private static async initializeCache(): Promise<void> {
-    if (StorageService.cacheInitialized) return
+    if (StorageService.cacheInitialized) return;
 
     try {
-      const [sessionId, sessionType, sessionState, sessionObject, floatingButtonPosition] = await Promise.all([
+      const [
+        sessionId,
+        sessionType,
+        sessionState,
+        sessionObject,
+        floatingButtonPosition,
+      ] = await Promise.all([
         AsyncStorage.getItem(StorageService.SESSION_ID_KEY),
         AsyncStorage.getItem(StorageService.SESSION_TYPE_KEY),
         AsyncStorage.getItem(StorageService.SESSION_STATE_KEY),
         AsyncStorage.getItem(StorageService.SESSION_OBJECT_KEY),
         AsyncStorage.getItem(StorageService.FLOATING_BUTTON_POSITION_KEY),
-      ])
+      ]);
 
       StorageService.cache = {
         sessionId,
         sessionType: sessionType as SessionType | null,
         sessionState: sessionState as SessionState | null,
         sessionObject: sessionObject ? JSON.parse(sessionObject) : null,
-        floatingButtonPosition: floatingButtonPosition ? JSON.parse(floatingButtonPosition) : null,
-      }
-      StorageService.cacheInitialized = true
+        floatingButtonPosition: floatingButtonPosition
+          ? JSON.parse(floatingButtonPosition)
+          : null,
+      };
+      StorageService.cacheInitialized = true;
     } catch (error) {
       // Failed to initialize cache - silently continue
-      StorageService.cacheInitialized = true // Mark as initialized to prevent retries
+      StorageService.cacheInitialized = true; // Mark as initialized to prevent retries
     }
   }
 
   saveSessionId(sessionId: string): void {
     try {
-      StorageService.cache.sessionId = sessionId
-      AsyncStorage.setItem(StorageService.SESSION_ID_KEY, sessionId).catch((error: any) => {
-        // Failed to persist session ID - silently continue
-      })
+      StorageService.cache.sessionId = sessionId;
+      AsyncStorage.setItem(StorageService.SESSION_ID_KEY, sessionId).catch(
+        (_error: any) => {
+          // Failed to persist session ID - silently continue
+        }
+      );
     } catch (error) {
       // Failed to save session ID - silently continue
-      throw error
+      throw error;
     }
   }
 
   getSessionId(): string | null {
-    return StorageService.cache.sessionId
+    return StorageService.cache.sessionId;
   }
 
   saveSessionType(sessionType: SessionType): void {
     try {
-      StorageService.cache.sessionType = sessionType
-      AsyncStorage.setItem(StorageService.SESSION_TYPE_KEY, sessionType).catch((error: any) => {
-        // Failed to persist session type - silently continue
-      })
+      StorageService.cache.sessionType = sessionType;
+      AsyncStorage.setItem(StorageService.SESSION_TYPE_KEY, sessionType).catch(
+        (_error: any) => {
+          // Failed to persist session type - silently continue
+        }
+      );
     } catch (error) {
       // Failed to save session type - silently continue
-      throw error
+      throw error;
     }
   }
 
   getSessionType(): SessionType | null {
-    return StorageService.cache.sessionType
+    return StorageService.cache.sessionType;
   }
 
   saveSessionState(state: SessionState): void {
     try {
-      StorageService.cache.sessionState = state
+      StorageService.cache.sessionState = state;
 
-      AsyncStorage.setItem(StorageService.SESSION_STATE_KEY, state).catch((error: any) => {
-        // Failed to persist session state - silently continue
-      })
+      AsyncStorage.setItem(StorageService.SESSION_STATE_KEY, state).catch(
+        (_error: any) => {
+          // Failed to persist session state - silently continue
+        }
+      );
     } catch (error) {
       // Failed to save session state - silently continue
-      throw error
+      throw error;
     }
   }
 
   getSessionState(): SessionState | null {
-    return StorageService.cache.sessionState
+    return StorageService.cache.sessionState;
   }
 
   saveSessionObject(session: ISession): void {
     try {
-      StorageService.cache.sessionObject = session
-      AsyncStorage.setItem(StorageService.SESSION_OBJECT_KEY, JSON.stringify(session)).catch((error: any) => {
+      StorageService.cache.sessionObject = session;
+      AsyncStorage.setItem(
+        StorageService.SESSION_OBJECT_KEY,
+        JSON.stringify(session)
+      ).catch((_error: any) => {
         // Failed to persist session object - silently continue
-      })
+      });
     } catch (error) {
       // Failed to save session object - silently continue
-      throw error
+      throw error;
     }
   }
 
   getSessionObject(): ISession | null {
-    return StorageService.cache.sessionObject
+    return StorageService.cache.sessionObject;
   }
 
   clearSessionData(): void {
@@ -162,7 +180,7 @@ export class StorageService {
         sessionType: null,
         sessionState: null,
         sessionObject: null,
-      }
+      };
 
       // Clear persistent storage asynchronously
       AsyncStorage.multiRemove([
@@ -170,12 +188,12 @@ export class StorageService {
         StorageService.SESSION_TYPE_KEY,
         StorageService.SESSION_STATE_KEY,
         StorageService.SESSION_OBJECT_KEY,
-      ]).catch((error: any) => {
+      ]).catch((_error: any) => {
         // Failed to clear session data from storage - silently continue
-      })
+      });
     } catch (error) {
       // Failed to clear session data - silently continue
-      throw error
+      throw error;
     }
   }
 
@@ -185,35 +203,46 @@ export class StorageService {
       sessionType: StorageService.cache.sessionType,
       sessionState: StorageService.cache.sessionState,
       sessionObject: StorageService.cache.sessionObject,
-    }
+    };
   }
 
   saveFloatingButtonPosition(position: { x: number; y: number }): void {
     try {
-      StorageService.cache.floatingButtonPosition = position
+      StorageService.cache.floatingButtonPosition = position;
 
       // Debounce AsyncStorage writes to avoid excessive I/O
       if (StorageService.positionSaveTimeout) {
-        clearTimeout(StorageService.positionSaveTimeout)
+        clearTimeout(StorageService.positionSaveTimeout);
       }
 
       StorageService.positionSaveTimeout = setTimeout(() => {
-        AsyncStorage.setItem(StorageService.FLOATING_BUTTON_POSITION_KEY, JSON.stringify(position)).catch((error: any) => {
-          logger.error('StorageService', 'Failed to persist floating button position', error)
-        })
-      }, 100) // 100ms debounce
+        AsyncStorage.setItem(
+          StorageService.FLOATING_BUTTON_POSITION_KEY,
+          JSON.stringify(position)
+        ).catch((error: any) => {
+          logger.error(
+            'StorageService',
+            'Failed to persist floating button position',
+            error
+          );
+        });
+      }, 100); // 100ms debounce
     } catch (error) {
-      logger.error('StorageService', 'Failed to save floating button position', error)
-      throw error
+      logger.error(
+        'StorageService',
+        'Failed to save floating button position',
+        error
+      );
+      throw error;
     }
   }
 
   getFloatingButtonPosition(): { x: number; y: number } | null {
-    return StorageService.cache.floatingButtonPosition
+    return StorageService.cache.floatingButtonPosition;
   }
 
   // Initialize cache on first use - call this method when the service is first used
   static async initialize(): Promise<void> {
-    await StorageService.initializeCache()
+    await StorageService.initializeCache();
   }
 }

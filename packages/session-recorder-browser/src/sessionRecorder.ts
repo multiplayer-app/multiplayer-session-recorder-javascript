@@ -13,6 +13,7 @@ import {
   ISession,
   SessionRecorderOptions,
   SessionRecorderConfigs,
+  SessionRecorderEvents,
 } from './types'
 
 import {
@@ -43,9 +44,12 @@ import './index.scss'
 import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { ContinuousRecordingSaveButtonState } from './sessionWidget/buttonStateConfigs'
 import { ISessionRecorder } from './types'
+import { Observable } from 'lib0/observable'
 
-export class SessionRecorder implements ISessionRecorder {
-  private _isInitialized = false
+
+
+export class SessionRecorder extends Observable<SessionRecorderEvents> implements ISessionRecorder {
+
   private _configs: SessionRecorderConfigs
   private _apiService = new ApiService()
   private _tracer = new TracerBrowserSDK()
@@ -53,6 +57,10 @@ export class SessionRecorder implements ISessionRecorder {
   private _sessionWidget = new SessionWidget()
   private _startRequestController: AbortController | null = null
 
+  private _isInitialized = false
+  get isInitialized(): boolean {
+    return this._isInitialized
+  }
   // Session ID and state are stored in localStorage
   private _sessionId: string | null = null
   get sessionId(): string | null {
@@ -63,7 +71,7 @@ export class SessionRecorder implements ISessionRecorder {
     setStoredItem(SESSION_ID_PROP_NAME, sessionId)
   }
 
-  private _sessionType: SessionType = SessionType.PLAIN
+  private _sessionType: SessionType = SessionType.MANUAL
   get sessionType(): SessionType {
     return this._sessionType
   }
@@ -89,6 +97,8 @@ export class SessionRecorder implements ISessionRecorder {
     this._sessionWidget.updateState(this._sessionState, this.continuousRecording)
     messagingService.sendMessage('state-change', this._sessionState)
     setStoredItem(SESSION_STATE_PROP_NAME, state)
+    // Emit observable event to support React wrapper
+    this.emit('state-change', [this._sessionState || SessionState.stopped, this.sessionType])
   }
 
   private _session: ISession | null = null
@@ -132,6 +142,7 @@ export class SessionRecorder implements ISessionRecorder {
    * Initialize debugger with default or custom configurations
    */
   constructor() {
+    super()
     const sessionLocal = getStoredItem(SESSION_PROP_NAME, true)
     const sessionIdLocal = getStoredItem(SESSION_ID_PROP_NAME)
     const sessionStateLocal = getStoredItem(SESSION_STATE_PROP_NAME)
@@ -147,7 +158,7 @@ export class SessionRecorder implements ISessionRecorder {
       this.session = null
       this.sessionId = null
       this.sessionState = null
-      this.sessionType = SessionType.PLAIN
+      this.sessionType = SessionType.MANUAL
     }
 
     this._configs = {
@@ -187,6 +198,8 @@ export class SessionRecorder implements ISessionRecorder {
     this._registerSessionLimitReach()
     this._registerSessionAutoCreation()
     messagingService.sendMessage('state-change', this.sessionState)
+    // Emit init observable event
+    this.emit('init', [])
   }
 
 
@@ -253,11 +266,11 @@ export class SessionRecorder implements ISessionRecorder {
    * @param type - the type of session to start
    * @param session - the session to start
    */
-  public start(type: SessionType = SessionType.PLAIN, session?: ISession): void {
+  public start(type: SessionType = SessionType.MANUAL, session?: ISession): void {
     this._checkOperation('start')
     // If continuous recording is disabled, force plain mode
     if (type === SessionType.CONTINUOUS && !this._configs.showContinuousRecording) {
-      type = SessionType.PLAIN
+      type = SessionType.MANUAL
     }
     this.sessionType = type
     this._startRequestController = new AbortController()
@@ -277,7 +290,7 @@ export class SessionRecorder implements ISessionRecorder {
       this._stop()
       if (this.continuousRecording) {
         await this._apiService.stopContinuousDebugSession(this.sessionId!)
-        this.sessionType = SessionType.PLAIN
+        this.sessionType = SessionType.MANUAL
       } else {
         const request: StopSessionRequest = {
           sessionAttributes: { comment },
@@ -324,7 +337,7 @@ export class SessionRecorder implements ISessionRecorder {
       this._stop()
       if (this.continuousRecording) {
         await this._apiService.stopContinuousDebugSession(this.sessionId!)
-        this.sessionType = SessionType.PLAIN
+        this.sessionType = SessionType.MANUAL
       } else {
         await this._apiService.cancelSession(this.sessionId!)
       }
@@ -397,7 +410,7 @@ export class SessionRecorder implements ISessionRecorder {
     this._sessionWidget.on('toggle', (state: boolean, comment?: string) => {
       this.error = ''
       if (state) {
-        this.start(SessionType.PLAIN)
+        this.start(SessionType.MANUAL)
       } else {
         this.stop(comment?.trim())
       }
@@ -487,13 +500,13 @@ export class SessionRecorder implements ISessionRecorder {
       if (session) {
         session.sessionType = this.continuousRecording
           ? SessionType.CONTINUOUS
-          : SessionType.PLAIN
+          : SessionType.MANUAL
         this._setupSessionAndStart(session, false)
       }
     } catch (error: any) {
       this.error = error.message
       if (this.continuousRecording) {
-        this.sessionType = SessionType.PLAIN
+        this.sessionType = SessionType.MANUAL
       }
     }
   }

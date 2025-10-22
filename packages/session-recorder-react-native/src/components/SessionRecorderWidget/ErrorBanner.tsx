@@ -1,9 +1,9 @@
-import React from 'react'
-import { View, Text, Pressable, StyleSheet } from 'react-native'
+import React from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 
 interface ErrorBannerProps {
-  error: string
-  onDismiss: () => void
+  error: string;
+  onDismiss: () => void;
 }
 
 const ErrorBanner: React.FC<ErrorBannerProps> = ({ error, onDismiss }) => {
@@ -16,8 +16,8 @@ const ErrorBanner: React.FC<ErrorBannerProps> = ({ error, onDismiss }) => {
         </Pressable>
       </View>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -26,18 +26,18 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginHorizontal: 16,
     marginTop: 8,
-    borderRadius: 8
+    borderRadius: 8,
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
   },
   errorText: {
     color: 'white',
     fontSize: 14,
     flex: 1,
-    marginRight: 8
+    marginRight: 8,
   },
   dismissButton: {
     padding: 4,
@@ -46,13 +46,13 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
   dismissText: {
     color: 'white',
     fontSize: 12,
-    fontWeight: 'bold'
-  }
-})
+    fontWeight: 'bold',
+  },
+});
 
-export default ErrorBanner
+export default ErrorBanner;

@@ -1,10 +1,10 @@
-import { StyleSheet } from 'react-native'
+import { StyleSheet } from 'react-native';
 
 export const sharedStyles = StyleSheet.create({
   // Popover styles
   popoverContent: {
     flex: 1,
-    paddingHorizontal: 0
+    paddingHorizontal: 0,
   },
   popoverHeader: {
     flexDirection: 'column',
@@ -14,7 +14,7 @@ export const sharedStyles = StyleSheet.create({
     borderTopRightRadius: 20,
     backgroundColor: '#f4f9ff',
     shadowColor: '#f4f9ff',
-    shadowOffset: { width: 0, height: 5, },
+    shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 1,
     shadowRadius: 5,
     elevation: 10,
@@ -34,7 +34,6 @@ export const sharedStyles = StyleSheet.create({
     alignItems: 'flex-start',
   },
 
-
   cancelButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -51,7 +50,7 @@ export const sharedStyles = StyleSheet.create({
   cancelButtonText: {
     color: '#374151',
     fontSize: 14,
-    fontWeight: '500'
+    fontWeight: '500',
   },
   popoverBody: {
     flex: 1,
@@ -62,27 +61,27 @@ export const sharedStyles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#2d3748',
-    marginBottom: 12
+    marginBottom: 12,
   },
   description: {
     fontSize: 14,
     color: '#718096',
-    marginBottom: 16
+    marginBottom: 16,
   },
   popoverFooter: {
     marginTop: 'auto',
-    paddingTop: 16
+    paddingTop: 16,
   },
   actionButton: {
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   actionButtonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '500'
+    fontWeight: '500',
   },
 
   // Continuous recording styles
@@ -107,7 +106,7 @@ export const sharedStyles = StyleSheet.create({
   continuousRecordingLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#374151'
+    color: '#374151',
   },
 
   continuousOverlay: {
@@ -140,7 +139,7 @@ export const sharedStyles = StyleSheet.create({
   continuousOverlayDescription: {
     fontSize: 14,
     color: '#718096',
-    lineHeight: 20
+    lineHeight: 20,
   },
 
   // Comment input styles
@@ -153,17 +152,17 @@ export const sharedStyles = StyleSheet.create({
     color: '#374151',
     backgroundColor: '#F9FAFB',
     marginBottom: 24,
-    minHeight: 80
+    minHeight: 80,
   },
 
   // Button color variants
   startButton: {
-    backgroundColor: '#473cfb'
+    backgroundColor: '#473cfb',
   },
   stopButton: {
-    backgroundColor: '#473cfb'
+    backgroundColor: '#473cfb',
   },
   saveButton: {
-    backgroundColor: '#473cfb'
-  }
-})
+    backgroundColor: '#473cfb',
+  },
+});

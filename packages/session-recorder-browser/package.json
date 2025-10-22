@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-browser",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "description": "Multiplayer Fullstack Session Recorder for Browser",
   "author": {
     "name": "Multiplayer Software, Inc.",

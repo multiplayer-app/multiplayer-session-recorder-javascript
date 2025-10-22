@@ -1,4 +1,4 @@
-import { Span } from '@opentelemetry/api'
+
 import {
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
@@ -8,6 +8,7 @@ import {
   ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS
 } from '@multiplayer-app/session-recorder-common'
 import { TracerBrowserConfig } from '../types'
+import { type Span } from '@opentelemetry/api'
 
 
 
