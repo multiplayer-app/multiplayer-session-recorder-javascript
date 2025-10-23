@@ -18,7 +18,7 @@ export class RecorderBrowserSDK {
   private stopFn?: () => void
   private config?: RecorderConfig
   private exporter: RrwebEventExporter | undefined
-  private restartTimeout: NodeJS.Timeout | null = null
+  private restartInterval: NodeJS.Timeout | null = null
 
   private _startedAt: string = ''
   public get startedAt(): string {
@@ -63,7 +63,7 @@ export class RecorderBrowserSDK {
         'Configuration not initialized. Call init() before start().',
       )
     }
-    const restartTimeout = sessionType === SessionType.CONTINUOUS ? CONTINUOUS_DEBUGGING_TIMEOUT : 0
+    const restartInterval = sessionType === SessionType.CONTINUOUS ? CONTINUOUS_DEBUGGING_TIMEOUT : 0
     this.startedAt = new Date().toISOString()
 
     // Build masking configuration
@@ -129,11 +129,10 @@ export class RecorderBrowserSDK {
 
     // It will sent full snapshot again but it will fix missing first snapshot issue
     record.takeFullSnapshot()
-
-    if (restartTimeout > 0) {
-      this.restartTimeout = setTimeout(() => {
+    if (restartInterval > 0) {
+      this.restartInterval = setInterval(() => {
         record.takeFullSnapshot()
-      }, restartTimeout)
+      }, restartInterval)
     }
   }
 
@@ -147,10 +146,10 @@ export class RecorderBrowserSDK {
   /**
    * Clears the restart timeout.
    */
-  clearRestartTimeout(): void {
-    if (this.restartTimeout) {
-      clearTimeout(this.restartTimeout)
-      this.restartTimeout = null
+  clearRestartInterval(): void {
+    if (this.restartInterval) {
+      clearInterval(this.restartInterval)
+      this.restartInterval = null
     }
   }
 
@@ -160,7 +159,7 @@ export class RecorderBrowserSDK {
   stop(): void {
     this.stopFn?.()
     this.exporter?.close()
-    this.clearRestartTimeout()
+    this.clearRestartInterval()
   }
 
   subscribeToSession(session: ISession): void {
