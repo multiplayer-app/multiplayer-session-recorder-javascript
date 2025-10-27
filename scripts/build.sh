@@ -3,9 +3,9 @@
 # Exit on any error
 set -e
 
-echo "🧹 Cleaning dist folders..."
-find packages -name 'dist' -type d -exec rm -rf {} + 2>/dev/null || true
-find packages -name 'tsconfig.tsbuildinfo' -type f -delete 2>/dev/null || true
+# echo "🧹 Cleaning dist folders..."
+# find packages -name 'dist' -type d -exec rm -rf {} + 2>/dev/null || true
+# find packages -name 'tsconfig.tsbuildinfo' -type f -delete 2>/dev/null || true
 
 echo "📦 Building packages..."
 
@@ -19,9 +19,9 @@ cd packages/session-recorder-browser
 npm run build
 cd ../..
 
-echo "  ⚛️  Building session-recorder-react..."
-cd packages/session-recorder-react
-npm run build
+echo "  📱 Building session-recorder-react-native..."
+cd packages/session-recorder-react-native
+npm run prepare
 cd ../..
 
 echo "  🖥️  Building session-recorder-node..."

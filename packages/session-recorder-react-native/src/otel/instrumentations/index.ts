@@ -30,15 +30,32 @@ export function getInstrumentations(config: TracerReactNativeConfig) {
               return;
             }
 
-            const requestBody = request.body;
-            const requestHeaders = headersToObject(request.headers);
-            const responseHeaders = headersToObject(
-              response instanceof Response ? response.headers : undefined
-            );
+            // Try to get data from our fetch wrapper first
+            // @ts-ignore
+            const networkRequest = response?.networkRequest
 
-            let responseBody: string | null = null;
-            if (response instanceof Response && response.body) {
-              responseBody = await extractResponseBody(response);
+            let requestBody: any = null
+            let responseBody: string | null = null
+            let requestHeaders: Record<string, string> = {}
+            let responseHeaders: Record<string, string> = {}
+
+            if (networkRequest) {
+              // Use data captured by our fetch wrapper
+              requestBody = networkRequest.requestBody
+              responseBody = networkRequest.responseBody
+              requestHeaders = networkRequest.requestHeaders || {}
+              responseHeaders = networkRequest.responseHeaders || {}
+            } else {
+              // Fallback to original OpenTelemetry approach
+              requestBody = request.body
+              requestHeaders = headersToObject(request.headers)
+              responseHeaders = headersToObject(
+                response instanceof Response ? response.headers : undefined
+              )
+
+              if (response instanceof Response && response.body) {
+                responseBody = await extractResponseBody(response)
+              }
             }
 
             const payload = {
@@ -77,13 +94,18 @@ export function getInstrumentations(config: TracerReactNativeConfig) {
             }
 
             // @ts-ignore
-            const requestBody = xhr.networkRequest.requestBody;
-            // @ts-ignore
-            const responseBody = xhr.networkRequest.responseBody;
-            // @ts-ignore
-            const requestHeaders = xhr.networkRequest.requestHeaders || {};
-            // @ts-ignore
-            const responseHeaders = xhr.networkRequest.responseHeaders || {};
+            const networkRequest = xhr.networkRequest
+            let requestBody: any = null
+            let responseBody: string | null = null
+            let requestHeaders: Record<string, string> = {}
+            let responseHeaders: Record<string, string> = {}
+
+            if (networkRequest) {
+              requestBody = networkRequest.requestBody
+              responseBody = networkRequest.responseBody
+              requestHeaders = networkRequest.requestHeaders || {}
+              responseHeaders = networkRequest.responseHeaders || {}
+            }
 
             const payload = {
               requestBody,

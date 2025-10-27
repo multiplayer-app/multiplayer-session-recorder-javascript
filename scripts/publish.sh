@@ -27,7 +27,7 @@ cd ../..
 
 echo "  📱 Publishing session-recorder-react-native..."
 cd packages/session-recorder-react-native
-npm publish --tag alpha
+npm publish
 cd ../..
 
 echo "✅ All packages published successfully!"
