@@ -5,7 +5,7 @@ import {
   ATTR_MULTIPLAYER_HTTP_REQUEST_BODY,
   ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
-  ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS
+  ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
 } from '@multiplayer-app/session-recorder-common'
 import { TracerBrowserConfig } from '../types'
 import { type Span } from '@opentelemetry/api'

@@ -28,6 +28,7 @@ function _tryReadFetchBody({
   body,
   url,
 }: {
+  // eslint-disable-next-line
   body: BodyInit | null | undefined
   url: string | URL | RequestInfo
 }): string | null {
@@ -101,7 +102,8 @@ const originalFetch = window.fetch
 // Override fetch
 window.fetch = async function (
   input: RequestInfo | URL,
-  init?: RequestInit
+  // eslint-disable-next-line
+  init?: RequestInit,
 ): Promise<Response> {
   const networkRequest: {
     requestHeaders?: Record<string, string>,
@@ -120,7 +122,7 @@ window.fetch = async function (
   if (shouldRecordBody && request.body) {
     const requestBody = _tryReadFetchBody({
       body: request.body,
-      url: request.url
+      url: request.url,
     })
 
     if (
