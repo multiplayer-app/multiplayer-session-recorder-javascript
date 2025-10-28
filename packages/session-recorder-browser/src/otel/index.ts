@@ -33,7 +33,7 @@ export class TracerBrowserSDK {
 
   private setSessionId(
     sessionId: string,
-    sessionType: SessionType = SessionType.MANUAL,
+    sessionType: SessionType = SessionType.PLAIN,
   ) {
     this.sessionId = sessionId
     this.idGenerator.setSessionId(sessionId, sessionType)
@@ -107,7 +107,7 @@ export class TracerBrowserSDK {
                 processHttpPayload(payload, this.config, span)
               } catch (error) {
                 // eslint-disable-next-line
-                console.error('[DEBUGGER_LIB] Failed to capture xml-http payload', error)
+                console.error('[MULTIPLAYER_SESSION_RECORDER] Failed to capture xml-http payload', error)
               }
             },
           },
@@ -163,7 +163,7 @@ export class TracerBrowserSDK {
                 processHttpPayload(payload, this.config, span)
               } catch (error) {
                 // eslint-disable-next-line
-                console.error('[DEBUGGER_LIB] Failed to capture fetch payload', error)
+                console.error('[MULTIPLAYER_SESSION_RECORDER] Failed to capture fetch payload', error)
               }
             },
           },

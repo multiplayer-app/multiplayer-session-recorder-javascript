@@ -1,4 +1,5 @@
 import { SessionType } from '@multiplayer-app/session-recorder-common'
+import { UserType } from './client-type.enum'
 
 export interface IResourceAttributes {
   browserInfo?: string,
@@ -13,12 +14,23 @@ export interface IResourceAttributes {
 }
 
 export interface ISessionAttributes {
-  userEmail?: string
-  userId?: string,
-  userName?: string,
-  accountId?: string,
-  accountName?: string,
   [key: string]: any
+}
+
+export interface IUserAttributes {
+  type: UserType
+  id?: string
+  name?: string
+  groupId?: string
+  groupName?: string
+  userEmail?: string
+  userId?: string
+  userName?: string
+  accountId?: string
+  accountName?: string
+  orgId?: string
+  orgName?: string
+  tags?: string[]
 }
 
 export interface ISessionView {
@@ -44,6 +56,9 @@ export interface ISession {
 
   resourceAttributes?: IResourceAttributes
   sessionAttributes?: ISessionAttributes
+
+  userAttributes?: IUserAttributes
+
   views: ISessionView[]
   starred: boolean
   starredItems: string[]

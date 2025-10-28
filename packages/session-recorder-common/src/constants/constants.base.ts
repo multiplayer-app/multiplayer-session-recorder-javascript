@@ -81,4 +81,6 @@ export const ATTR_MULTIPLAYER_MESSAGING_MESSAGE_BODY_ENCODING = 'multiplayer.mes
 
 export const ATTR_MULTIPLAYER_SESSION_RECORDER_VERSION = 'multiplayer.session-recorder.version'
 
+export const ATTR_MULTIPLAYER_ISSUE_CUSTOM_HASH = 'multiplayer.issue.custom-hash'
+
 export const MASK_PLACEHOLDER = '***MASKED***'
