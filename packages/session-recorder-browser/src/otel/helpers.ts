@@ -5,7 +5,7 @@ import {
   ATTR_MULTIPLAYER_HTTP_REQUEST_BODY,
   ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
-  ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS
+  ATTR_MULTIPLAYER_HTTP_RESPONSE_HEADERS,
 } from '@multiplayer-app/session-recorder-common'
 import { TracerBrowserConfig } from '../types'
 import { type Span } from '@opentelemetry/api'
@@ -249,7 +249,7 @@ export async function extractResponseBody(response: Response): Promise<string | 
   } catch (error) {
     // If cloning fails (body already consumed), return null
     // eslint-disable-next-line no-console
-    console.warn('[DEBUGGER_LIB] Failed to extract response body:', error)
+    console.warn('[MULTIPLAYER_SESSION_RECORDER] Failed to extract response body:', error)
     return null
   }
 }

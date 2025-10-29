@@ -41,7 +41,7 @@ export const isString = function (x: unknown): x is string {
 }
 
 export const isEmptyString = function (x: unknown): boolean {
-  return isString(x) && x.trim().length === 0
+  return isString(x) && x.trim()?.length === 0
 }
 
 export const isNull = function (x: unknown): x is null {

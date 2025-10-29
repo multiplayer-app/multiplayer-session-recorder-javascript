@@ -72,6 +72,6 @@ export const getNavigatorInfo = (): IResourceAttributes => {
     // System type identifier (previously in system tags)
     systemType: 'web',
     // Platform identifier (previously in system tags)
-    platform: osInfo
+    platform: osInfo,
   }
 }
