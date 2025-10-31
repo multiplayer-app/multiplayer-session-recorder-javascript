@@ -19,11 +19,6 @@ cd packages/session-recorder-browser
 npm run build
 cd ../..
 
-echo "  📱 Building session-recorder-react-native..."
-cd packages/session-recorder-react-native
-npm run prepare
-cd ../..
-
 echo "  🖥️  Building session-recorder-node..."
 cd packages/session-recorder-node
 npm run build

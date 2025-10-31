@@ -23,18 +23,14 @@ import {
   SESSION_ID_PROP_NAME,
   SESSION_TYPE_PROP_NAME,
   SESSION_STATE_PROP_NAME,
-  SESSION_CONTINUOUS_DEBUGGING_PROP_NAME,
   DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
   getSessionRecorderConfig,
   SESSION_AUTO_CREATED,
   SESSION_STOPPED_EVENT,
-  SESSION_STARTED_EVENT,
+  SESSION_STARTED_EVENT
 } from './config'
 
-import {
-  setShouldRecordHttpData,
-  setMaxCapturingHttpPayloadSize,
-} from './patch/xhr'
+import { setShouldRecordHttpData, setMaxCapturingHttpPayloadSize, } from './patch'
 import { recorderEventBus } from './eventBus'
 import { SessionWidget } from './sessionWidget'
 import messagingService from './services/messaging.service'
@@ -147,9 +143,8 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     const sessionIdLocal = getStoredItem(SESSION_ID_PROP_NAME)
     const sessionStateLocal = getStoredItem(SESSION_STATE_PROP_NAME)
     const sessionTypeLocal = getStoredItem(SESSION_TYPE_PROP_NAME)
-    const continuousRecordingLocal = getStoredItem(SESSION_CONTINUOUS_DEBUGGING_PROP_NAME, true)
 
-    if (isSessionActive(sessionLocal, continuousRecordingLocal)) {
+    if (isSessionActive(sessionLocal, sessionTypeLocal)) {
       this.session = sessionLocal
       this.sessionId = sessionIdLocal
       this.sessionType = sessionTypeLocal

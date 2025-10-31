@@ -16,9 +16,9 @@ import {
 } from './types';
 import { getFormattedDate, isSessionActive, getNavigatorInfo } from './utils';
 import {
-  setMaxCapturingHttpPayloadSize,
   setShouldRecordHttpData,
-} from './patch/xhr';
+  setMaxCapturingHttpPayloadSize,
+} from './patch';
 import { BASE_CONFIG, getSessionRecorderConfig } from './config';
 
 import { StorageService } from './services/storage.service';

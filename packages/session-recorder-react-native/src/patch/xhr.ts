@@ -1,30 +1,7 @@
-import { Platform } from 'react-native';
-import { isFormData, isNullish, isObject, isString } from '../utils/type-utils';
+import { configs } from './configs';
 import { formDataToQuery } from '../utils/request-utils';
-import { DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE } from '../config';
+import { isFormData, isNullish, isObject, isString } from '../utils/type-utils';
 
-// Check if we're on web platform
-const isWeb = Platform.OS === 'web';
-
-let recordRequestHeaders = true;
-let recordResponseHeaders = true;
-let shouldRecordBody = true;
-let maxCapturingHttpPayloadSize = DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE;
-
-export const setMaxCapturingHttpPayloadSize = (
-  _maxCapturingHttpPayloadSize: number
-) => {
-  maxCapturingHttpPayloadSize = _maxCapturingHttpPayloadSize;
-};
-
-export const setShouldRecordHttpData = (
-  shouldRecordBody: boolean,
-  shouldRecordHeaders: boolean
-) => {
-  recordRequestHeaders = shouldRecordHeaders;
-  recordResponseHeaders = shouldRecordHeaders;
-  shouldRecordBody = shouldRecordBody;
-};
 
 function _tryReadXHRBody({
   body,
@@ -56,7 +33,7 @@ function _tryReadXHRBody({
 }
 
 // Only patch XMLHttpRequest if not on web platform or if XMLHttpRequest is available
-if (!isWeb && typeof XMLHttpRequest !== 'undefined') {
+if (typeof XMLHttpRequest !== 'undefined') {
   (function (xhr) {
     const originalOpen = XMLHttpRequest.prototype.open;
 
@@ -82,18 +59,18 @@ if (!isWeb && typeof XMLHttpRequest !== 'undefined') {
         requestHeaders[header] = value;
         return originalSetRequestHeader(header, value);
       };
-      if (recordRequestHeaders) {
+      if (configs.recordRequestHeaders) {
         networkRequest.requestHeaders = requestHeaders;
       }
 
       const originalSend = xhr.send.bind(xhr);
       xhr.send = (body) => {
-        if (shouldRecordBody) {
+        if (configs.shouldRecordBody) {
           const requestBody = _tryReadXHRBody({ body, url });
 
           if (
             requestBody?.length &&
-            requestBody.length <= maxCapturingHttpPayloadSize
+            requestBody.length <= configs.maxCapturingHttpPayloadSize
           ) {
             networkRequest.requestBody = requestBody;
           }
@@ -122,15 +99,15 @@ if (!isWeb && typeof XMLHttpRequest !== 'undefined') {
             responseHeaders[header] = value;
           }
         });
-        if (recordResponseHeaders) {
+        if (configs.recordResponseHeaders) {
           networkRequest.responseHeaders = responseHeaders;
         }
-        if (shouldRecordBody) {
+        if (configs.shouldRecordBody) {
           const responseBody = _tryReadXHRBody({ body: xhr.response, url });
 
           if (
             responseBody?.length &&
-            responseBody.length <= maxCapturingHttpPayloadSize
+            responseBody.length <= configs.maxCapturingHttpPayloadSize
           ) {
             networkRequest.responseBody = responseBody;
           }
@@ -143,6 +120,6 @@ if (!isWeb && typeof XMLHttpRequest !== 'undefined') {
       originalOpen.call(xhr, method, url as string, async, username, password);
     };
   })(XMLHttpRequest.prototype);
-} else if (isWeb) {
-  console.info('XHR patch: Skipping XMLHttpRequest patching on web platform');
+} else {
+  console.info('XHR patch: XMLHttpRequest patching not available');
 }

@@ -5,8 +5,6 @@ export const SESSION_ID_PROP_NAME = 'multiplayer-session-id'
 
 export const SESSION_SHORT_ID_PROP_NAME = 'multiplayer-session-short-id'
 
-export const SESSION_CONTINUOUS_DEBUGGING_PROP_NAME = 'multiplayer-session-continuous-debugging'
-
 export const SESSION_STATE_PROP_NAME = 'multiplayer-session-state'
 
 export const SESSION_TYPE_PROP_NAME = 'multiplayer-session-type'

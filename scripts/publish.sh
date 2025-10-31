@@ -25,9 +25,5 @@ cd packages/session-recorder-node
 npm publish
 cd ../..
 
-echo "  📱 Publishing session-recorder-react-native..."
-cd packages/session-recorder-react-native
-npm publish
-cd ../..
 
 echo "✅ All packages published successfully!"

@@ -25,11 +25,5 @@ npm version patch --no-git-tag-version --ignore-scripts
 sed -i '' "s/\"@multiplayer-app\/session-recorder-common\": \"[^\"]*\"/\"@multiplayer-app\/session-recorder-common\": \"$COMMON_VERSION\"/" package.json
 cd ../..
 
-echo "  📱 Versioning session-recorder-react-native..."
-cd packages/session-recorder-react-native
-npm version patch --no-git-tag-version --ignore-scripts
-# Update dependencies
-sed -i '' "s/\"@multiplayer-app\/session-recorder-common\": \"[^\"]*\"/\"@multiplayer-app\/session-recorder-common\": \"$COMMON_VERSION\"/" package.json
-cd ../..
 
 echo "✅ All packages versioned and dependencies updated successfully!"
