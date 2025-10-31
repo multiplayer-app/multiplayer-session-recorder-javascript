@@ -6,23 +6,9 @@ import {
   isString,
 } from '../utils/type-utils'
 import { formDataToQuery } from '../utils/request-utils'
-import { DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE } from '../config'
+import { configs } from './configs'
 
-let recordRequestHeaders = true
-let recordResponseHeaders = true
-const shouldRecordBody = true
-let maxCapturingHttpPayloadSize = DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE
 
-export const setMaxCapturingHttpPayloadSize = (_maxCapturingHttpPayloadSize: number) => {
-  maxCapturingHttpPayloadSize = _maxCapturingHttpPayloadSize
-}
-
-export const setShouldRecordHttpData = (shouldRecordBody: boolean, shouldRecordHeaders: boolean) => {
-  recordRequestHeaders = shouldRecordHeaders
-  recordResponseHeaders = shouldRecordHeaders
-  // eslint-disable-next-line
-  shouldRecordBody = shouldRecordBody
-}
 
 function _tryReadFetchBody({
   body,
@@ -115,11 +101,11 @@ window.fetch = async function (
   // Capture request data
   const request = new Request(input, init)
 
-  if (recordRequestHeaders) {
+  if (configs.recordRequestHeaders) {
     networkRequest.requestHeaders = _headersToObject(request.headers)
   }
 
-  if (shouldRecordBody && request.body) {
+  if (configs.shouldRecordBody && request.body) {
     const requestBody = _tryReadFetchBody({
       body: request.body,
       url: request.url,
@@ -127,7 +113,7 @@ window.fetch = async function (
 
     if (
       requestBody?.length &&
-      new Blob([requestBody]).size <= maxCapturingHttpPayloadSize
+      new Blob([requestBody]).size <= configs.maxCapturingHttpPayloadSize
     ) {
       networkRequest.requestBody = requestBody
     }
@@ -138,16 +124,16 @@ window.fetch = async function (
     const response = await originalFetch(input, init)
 
     // Capture response data
-    if (recordResponseHeaders) {
+    if (configs.recordResponseHeaders) {
       networkRequest.responseHeaders = _headersToObject(response.headers)
     }
 
-    if (shouldRecordBody) {
+    if (configs.shouldRecordBody) {
       const responseBody = await _tryReadResponseBody(response)
 
       if (
         responseBody?.length &&
-        new Blob([responseBody]).size <= maxCapturingHttpPayloadSize
+        new Blob([responseBody]).size <= configs.maxCapturingHttpPayloadSize
       ) {
         networkRequest.responseBody = responseBody
       }

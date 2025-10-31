@@ -5,27 +5,7 @@ import {
   isString,
 } from '../utils/type-utils'
 import { formDataToQuery } from '../utils/request-utils'
-import { DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE } from '../config'
-
-let recordRequestHeaders = true
-let recordResponseHeaders = true
-let shouldRecordBody = true
-let maxCapturingHttpPayloadSize = DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE
-
-export const setMaxCapturingHttpPayloadSize = (
-  _maxCapturingHttpPayloadSize: number
-) => {
-  maxCapturingHttpPayloadSize = _maxCapturingHttpPayloadSize
-}
-
-export const setShouldRecordHttpData = (
-  shouldRecordBody: boolean,
-  shouldRecordHeaders: boolean
-) => {
-  recordRequestHeaders = shouldRecordHeaders
-  recordResponseHeaders = shouldRecordHeaders
-  shouldRecordBody = shouldRecordBody
-}
+import { configs } from './configs'
 
 function _tryReadFetchBody({
   body,
@@ -70,8 +50,8 @@ if (typeof fetch !== 'undefined' && typeof global !== 'undefined') {
 
   // Override fetch with safer implementation
   global.fetch = async function (
-    input: RequestInfo | URL,
-    init?: RequestInit
+    input: any,
+    init?: any
   ): Promise<Response> {
     const networkRequest: {
       requestHeaders?: Record<string, string>
@@ -82,9 +62,9 @@ if (typeof fetch !== 'undefined' && typeof global !== 'undefined') {
 
     try {
       // Capture request data safely
-      const request = new Request(input as RequestInfo, init)
+      const request = new Request(input, init)
 
-      if (recordRequestHeaders) {
+      if (configs.recordRequestHeaders) {
         try {
           networkRequest.requestHeaders = _headersToObject(request.headers)
         } catch (error) {
@@ -92,7 +72,7 @@ if (typeof fetch !== 'undefined' && typeof global !== 'undefined') {
         }
       }
 
-      if (shouldRecordBody && request.body) {
+      if (configs.shouldRecordBody && request.body) {
         try {
           const requestBody = _tryReadFetchBody({
             body: request.body,
@@ -100,7 +80,7 @@ if (typeof fetch !== 'undefined' && typeof global !== 'undefined') {
 
           if (
             requestBody?.length &&
-            requestBody.length <= maxCapturingHttpPayloadSize
+            requestBody.length <= configs.maxCapturingHttpPayloadSize
           ) {
             networkRequest.requestBody = requestBody
           }
@@ -113,7 +93,7 @@ if (typeof fetch !== 'undefined' && typeof global !== 'undefined') {
       const response = await originalFetch(input, init)
 
       // Capture response data safely
-      if (recordResponseHeaders) {
+      if (configs.recordResponseHeaders) {
         try {
           networkRequest.responseHeaders = _headersToObject(response.headers)
         } catch (error) {
@@ -121,7 +101,7 @@ if (typeof fetch !== 'undefined' && typeof global !== 'undefined') {
         }
       }
 
-      if (shouldRecordBody) {
+      if (configs.shouldRecordBody) {
         try {
           // Try to capture response body without cloning first
           let responseBody: string | null = null
@@ -151,7 +131,7 @@ if (typeof fetch !== 'undefined' && typeof global !== 'undefined') {
 
           if (
             responseBody?.length &&
-            responseBody.length <= maxCapturingHttpPayloadSize
+            responseBody.length <= configs.maxCapturingHttpPayloadSize
           ) {
             networkRequest.responseBody = responseBody
           }
