@@ -146,10 +146,12 @@ window.fetch = async function (
     return response
   } catch (error) {
     // Even if the fetch fails, we can still capture the request data
+    // Attach captured request data to the thrown error for downstream handling
     // @ts-ignore
-    const errorResponse = new Response(null, { status: 0, statusText: 'Network Error' })
-    // @ts-ignore
-    errorResponse.networkRequest = networkRequest
+    if (error && typeof error === 'object') {
+      // @ts-ignore
+      error.networkRequest = networkRequest
+    }
     throw error
   }
 }

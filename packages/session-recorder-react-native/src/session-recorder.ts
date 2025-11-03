@@ -182,7 +182,7 @@ class SessionRecorder
     await this._loadStoredSessionData();
     setMaxCapturingHttpPayloadSize(this._configs.maxCapturingHttpPayloadSize);
     setShouldRecordHttpData(
-      !this._configs.captureBody,
+      this._configs.captureBody,
       this._configs.captureHeaders
     );
 
