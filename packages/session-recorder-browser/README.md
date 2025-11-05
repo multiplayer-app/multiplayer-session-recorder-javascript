@@ -67,7 +67,7 @@ SessionRecorder.init({
   // e.g. if you serve your website from www.example.com
   // and your backend domain is at api.example.com set value as shown below:
   // format: string|RegExp|Array
-  // propagateTraceHeaderCorsUrls: [new RegExp('https://api.example.com', 'i')],
+  propagateTraceHeaderCorsUrls: [new RegExp('https://api.example.com', 'i')],
 })
 
 // add any key value pairs which should be associated with a session
@@ -229,7 +229,7 @@ SessionRecorder.stop('Finished session') // optional: pass reason for stopping t
 
 ### Continuous session recording
 
-Below is an example showing how to create a session in `CONTINUOUS` mode. Continuous session recordings **stream** all the data received between calling `start` and `stop` - 
+Below is an example showing how to create a session in `CONTINUOUS` mode. Continuous session recordings **stream** all the data received between calling `start` and `stop` -
 but only **save** a rolling window data (90 seconds by default) when:
 
 - an exception or error occurs;
@@ -262,22 +262,15 @@ SessionRecorder.stop('Finished session') // optional: pass reason for stopping t
 Continuous session recordings may also be saved from within any service or component involved in a trace by adding the attributes below to a span:
 
 ```javascript
-import { trace, context } from "@opentelemetry/api"
-import SessionRecorder from "@multiplayer-app/session-recorder-browser"
+import { trace, context } from '@opentelemetry/api'
+import SessionRecorder from '@multiplayer-app/session-recorder-browser'
 
 const activeContext = context.active()
 
 const activeSpan = trace.getSpan(activeContext)
 
-activeSpan.setAttribute(
-  SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE,
-  true
-)
-activeSpan.setAttribute(
-  SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE_REASON,
-  "Some reason"
-)
-
+activeSpan.setAttribute(SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE, true)
+activeSpan.setAttribute(SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE_REASON, 'Some reason')
 ```
 
 ## Session Recorder for Next.js
@@ -379,6 +372,7 @@ SessionRecorder.init({
 
 - Next.js: initialize the browser SDK in a Client Component (see example in the browser README). Ensure it runs only in the browser.
 - CORS: when your frontend calls multiple API domains, set `propagateTraceHeaderCorsUrls` to match them so parent/child spans correlate across services.
+
 ## Documentation
 
 For more details on how the Multiplayer Session Recorder integrates with your backend architecture and system auto-documentation, check out our [official documentation](https://www.multiplayer.app/docs/features/system-auto-documentation/).

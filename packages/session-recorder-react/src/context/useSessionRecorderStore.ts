@@ -1,10 +1,10 @@
-import { SessionType } from '@multiplayer-app/session-recorder-common';
-import { SessionState } from '../types';
-import { useStoreSelector } from './useStoreSelector';
+import { SessionState, SessionType } from '@multiplayer-app/session-recorder-browser';
+
 import {
   type SessionRecorderState,
   sessionRecorderStore,
 } from './SessionRecorderStore';
+import { useStoreSelector } from './useStoreSelector';
 
 /**
  * Select a derived slice from the shared Session Recorder store.
@@ -44,11 +44,4 @@ export function useSessionType() {
  */
 export function useIsInitialized() {
   return useSessionRecorderStore<boolean>((s) => s.isInitialized);
-}
-
-/**
- * Read the current widget modal visibility.
- */
-export function useWidgetModalVisible() {
-  return useSessionRecorderStore<boolean>((s) => s.isWidgetModalVisible);
 }

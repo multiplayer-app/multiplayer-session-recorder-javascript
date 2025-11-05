@@ -11,6 +11,7 @@ import type { maskTextClass } from '@rrweb/types'
 import { LogData } from '@rrweb/rrweb-plugin-console-record'
 import { Observable } from 'lib0/observable'
 import type { ISession } from './session'
+import type { NavigationRecorderPublicApi } from '../navigation'
 
 export enum WidgetButtonPlacement {
   topLeft = 'top-left',
@@ -89,6 +90,12 @@ export interface SessionRecorderOptions {
    * @default recordCanvas = false
    */
   recordCanvas?: boolean
+
+  /**
+   * (Optional) If true, records navigation changes via tracing spans.
+   * @default recordNavigation = true
+   */
+  recordNavigation?: boolean
 
   /**
    * (Optional) Trace ID Ratio for sampling
@@ -364,6 +371,11 @@ export interface ISessionRecorder extends Observable<SessionRecorderEvents> {
    * The HTML button element for the session widget's recorder button
    */
   readonly sessionWidgetButtonElement: HTMLButtonElement
+
+  /**
+   * Provides access to navigation recording helpers
+   */
+  readonly navigation: NavigationRecorderPublicApi
 
   /**
    * Initialize the session debugger with custom configurations

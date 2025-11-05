@@ -41,6 +41,7 @@ import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { ContinuousRecordingSaveButtonState } from './sessionWidget/buttonStateConfigs'
 import { ISessionRecorder } from './types'
 import { Observable } from 'lib0/observable'
+import { NavigationRecorder, NavigationRecorderPublicApi } from './navigation'
 
 
 
@@ -51,7 +52,12 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   private _tracer = new TracerBrowserSDK()
   private _recorder = new RecorderBrowserSDK()
   private _sessionWidget = new SessionWidget()
+  private _navigationRecorder = new NavigationRecorder()
   private _startRequestController: AbortController | null = null
+
+  public get navigation(): NavigationRecorderPublicApi {
+    return this._navigationRecorder.api
+  }
 
   private _isInitialized = false
   get isInitialized(): boolean {
@@ -114,14 +120,17 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     this._sessionAttributes = attributes
   }
   /**
-   * Error message getter and setter to reflect on the session widget
+   * Error message getter and setter
    */
+  private _error: string = ''
   public get error(): string {
-    return this._sessionWidget.error
+    return this._error
   }
 
   public set error(v: string) {
+    this._error = v
     this._sessionWidget.error = v
+    this.emit('error', [v])
   }
 
   /**
@@ -180,6 +189,12 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     this._tracer.init(this._configs)
     this._apiService.init(this._configs)
     this._sessionWidget.init(this._configs)
+    this._navigationRecorder.init({
+      enabled: this._configs.recordNavigation,
+      application: this._configs.application,
+      environment: this._configs.environment,
+      version: this._configs.version,
+    })
 
     if (this._configs.apiKey) {
       this._recorder.init(this._configs)
@@ -194,7 +209,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     this._registerSessionAutoCreation()
     messagingService.sendMessage('state-change', this.sessionState)
     // Emit init observable event
-    this.emit('init', [])
+    this.emit('init', [this])
   }
 
 
@@ -515,6 +530,8 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
 
     this._tracer.start(this.sessionId, this.sessionType)
     this._recorder.start(this.sessionId, this.sessionType)
+    this._navigationRecorder.start({ sessionId: this.sessionId, sessionType: this.sessionType, })
+
     if (this.session) {
       recorderEventBus.emit(SESSION_STARTED_EVENT, this.session)
       this._recorder.subscribeToSession(this.session)
@@ -529,6 +546,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     this.sessionState = SessionState.stopped
     this._tracer.stop()
     this._recorder.stop()
+    this._navigationRecorder.stop()
   }
 
   /**
@@ -537,6 +555,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   private _pause(): void {
     this._tracer.stop()
     this._recorder.stop()
+    this._navigationRecorder.pause()
     this.sessionState = SessionState.paused
   }
 
@@ -546,6 +565,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   private _resume(): void {
     this._tracer.start(this.sessionId, this.sessionType)
     this._recorder.start(this.sessionId, this.sessionType)
+    this._navigationRecorder.resume()
     this.sessionState = SessionState.started
   }
 

@@ -14,7 +14,7 @@ export type Store<T> = {
   subscribe: (listener: Listener<T>) => () => void
 }
 
-function createStore<T extends object>(initialState: T): Store<T> {
+export function createStore<T extends object>(initialState: T): Store<T> {
   let state = initialState
   const listeners = new Set<Listener<T>>()
 
@@ -35,11 +35,3 @@ function createStore<T extends object>(initialState: T): Store<T> {
 
   return { getState, setState, subscribe }
 }
-
-export const sessionRecorderStore: Store<SessionRecorderState> = createStore<SessionRecorderState>({
-  isInitialized: false,
-  sessionType: null,
-  sessionState: null,
-  isOnline: true,
-  error: null,
-})

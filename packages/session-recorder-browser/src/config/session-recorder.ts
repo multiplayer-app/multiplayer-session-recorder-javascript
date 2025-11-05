@@ -56,6 +56,7 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     showWidget: isValidBoolean(c.showWidget, BASE_CONFIG.showWidget),
     showContinuousRecording: isValidBoolean(c.showContinuousRecording, BASE_CONFIG.showContinuousRecording),
     recordCanvas: isValidBoolean(c.recordCanvas, BASE_CONFIG.recordCanvas),
+    recordNavigation: isValidBoolean(c.recordNavigation, BASE_CONFIG.recordNavigation),
     widgetButtonPlacement: isValidEnum<WidgetButtonPlacement>(c.widgetButtonPlacement, BASE_CONFIG.widgetButtonPlacement, Object.values(WidgetButtonPlacement) as WidgetButtonPlacement[]),
     ignoreUrls: isValidArray(c.ignoreUrls, BASE_CONFIG.ignoreUrls),
     sampleTraceRatio: isValidNumber(c.sampleTraceRatio, BASE_CONFIG.sampleTraceRatio),
