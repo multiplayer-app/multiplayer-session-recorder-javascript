@@ -13,8 +13,8 @@ const baseConfig = {
   resolve: {
     extensions: ['.ts', '.js'],
     alias: {
-      '@src': resolve(__dirname, 'src'),
-    },
+      '@src': resolve(__dirname, 'src')
+    }
   },
   module: {
     rules: [
@@ -22,47 +22,40 @@ const baseConfig = {
         test: /\.ts$/,
         use: {
           loader: 'ts-loader',
-          options: {},
+          options: {}
         },
-        exclude: /node_modules/,
+        exclude: /node_modules/
       },
       {
         test: /\.scss$/,
-        use: [
-          isProduction ? MiniCssExtractPlugin.loader : 'style-loader',
-          'css-loader',
-          'sass-loader',
-        ],
+        use: [isProduction ? MiniCssExtractPlugin.loader : 'style-loader', 'css-loader', 'sass-loader']
       },
       {
         test: /\.css$/,
-        use: [isProduction ? MiniCssExtractPlugin.loader : 'style-loader', 'css-loader'],
-      },
-    ],
+        use: [isProduction ? MiniCssExtractPlugin.loader : 'style-loader', 'css-loader']
+      }
+    ]
   },
   optimization: {
-    minimizer: [
-      new TerserPlugin(),
-      ...(isProduction ? [new CssMinimizerPlugin()] : []),
-    ],
+    minimizer: [...(isProduction ? [new CssMinimizerPlugin()] : [])],
     minimize: true,
-    usedExports: true,
+    usedExports: true
   },
   plugins: [
     ...(isProduction
       ? [
-        new MiniCssExtractPlugin({
-          filename: '[name].[contenthash].css',
-        }),
-      ]
+          new MiniCssExtractPlugin({
+            filename: '[name].[contenthash].css'
+          })
+        ]
       : []),
     new webpack.DefinePlugin({
       'process.env.MULTIPLAYER_MAX_HTTP_REQUEST_RESPONSE_SIZE': JSON.stringify(''),
-      'PACKAGE_VERSION': JSON.stringify(packageJson.version),
-    }),
+      PACKAGE_VERSION: JSON.stringify(packageJson.version)
+    })
   ],
   devtool: isProduction ? false : 'source-map',
-  mode: isProduction ? 'production' : 'development',
+  mode: isProduction ? 'production' : 'development'
 }
 
 const externalBundle = {
@@ -70,11 +63,15 @@ const externalBundle = {
   output: {
     filename: 'index.js',
     path: resolve(__dirname, 'dist'),
+    module: true,
     library: {
       name: 'SessionRecorder',
-      type: 'umd',
+      type: 'umd'
     },
-    globalObject: 'this',
+    globalObject: 'this'
+  },
+  experiments: {
+    outputModule: true
   },
   externals: {
     // '@opentelemetry/auto-instrumentations-web': '@opentelemetry/auto-instrumentations-web',
@@ -90,9 +87,9 @@ const externalBundle = {
   plugins: [
     ...baseConfig.plugins,
     new CleanWebpackPlugin({
-      cleanOnceBeforeBuildPatterns: ['index.js', '*.css'],
-    }),
-  ],
+      cleanOnceBeforeBuildPatterns: ['index.js', '*.css']
+    })
+  ]
 }
 
 const browserBundle = {
@@ -106,9 +103,9 @@ const browserBundle = {
     path: resolve(__dirname, 'dist/browser'),
     library: {
       type: 'umd',
-      name: 'SessionRecorder',
+      name: 'SessionRecorder'
     },
-    globalObject: 'this',
+    globalObject: 'this'
   },
   externals: [],
   resolve: {
@@ -126,15 +123,15 @@ const browserBundle = {
       https: false,
       zlib: false,
       url: false,
-      timers: false,
-    },
+      timers: false
+    }
   },
   plugins: [
     ...baseConfig.plugins,
     new CleanWebpackPlugin({
-      cleanOnceBeforeBuildPatterns: ['index.js', '*.css'],
-    }),
-  ],
+      cleanOnceBeforeBuildPatterns: ['index.js', '*.css']
+    })
+  ]
 }
 
 const exportersBundle = {
@@ -144,11 +141,14 @@ const exportersBundle = {
   output: {
     filename: 'index.js',
     path: resolve(__dirname, 'dist/exporters'),
+    module: true,
     library: {
-      type: 'umd',
-      name: 'MultiplayerExporters',
+      type: 'module'
     },
-    globalObject: 'this',
+    globalObject: 'this'
+  },
+  experiments: {
+    outputModule: true
   },
   externals: [],
   resolve: {
@@ -166,15 +166,15 @@ const exportersBundle = {
       https: false,
       zlib: false,
       url: false,
-      timers: false,
-    },
+      timers: false
+    }
   },
   plugins: [
     ...baseConfig.plugins,
     new CleanWebpackPlugin({
-      cleanOnceBeforeBuildPatterns: ['exporters.js', '*.css'],
-    }),
-  ],
+      cleanOnceBeforeBuildPatterns: ['exporters.js', '*.css']
+    })
+  ]
 }
 
 module.exports = [externalBundle, browserBundle, exportersBundle]
