@@ -2,6 +2,9 @@ import './patch'
 import { setupListeners } from './listeners'
 import { recorderEventBus } from './eventBus'
 import { SessionRecorder } from './sessionRecorder'
+
+export * from './types'
+export * from './navigation'
 export * from '@multiplayer-app/session-recorder-common'
 
 const SessionRecorderInstance = new SessionRecorder()
@@ -13,6 +16,6 @@ if (typeof window !== 'undefined') {
   setupListeners(SessionRecorderInstance)
 }
 
-export default SessionRecorderInstance
-
 export { recorderEventBus }
+
+export default SessionRecorderInstance

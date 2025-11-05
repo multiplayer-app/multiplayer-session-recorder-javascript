@@ -1,9 +1,10 @@
-import SessionRecorderBrowser, { recorderEventBus } from '@multiplayer-app/session-recorder-browser'
-export * from '@multiplayer-app/session-recorder-common'
+import SessionRecorderBrowser from '@multiplayer-app/session-recorder-browser';
 
-export { recorderEventBus }
-export { SessionRecorderProvider, useSessionRecorder } from './react/SessionRecorderContext'
-export { useSessionRecorderStore, sessionRecorderStore } from './react/useSessionRecorderStore'
-export { useNavigationRecorder } from './react/navigation'
+export * from '@multiplayer-app/session-recorder-browser';
+export * from './context/SessionRecorderContext';
+export * from './context/useSessionRecorderStore';
+
+export { useNavigationRecorder } from './navigation'
+export type { UseNavigationRecorderOptions } from './navigation'
 
 export default SessionRecorderBrowser

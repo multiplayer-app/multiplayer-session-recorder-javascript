@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useCallback, type PropsWithChildren } from 'react'
-import SessionRecorder from '@multiplayer-app/session-recorder-browser'
-import { SessionType } from '@multiplayer-app/session-recorder-common'
-import { useSessionRecorderStore, sessionRecorderStore } from './useSessionRecorderStore'
+import SessionRecorder, { SessionState, SessionType } from '@multiplayer-app/session-recorder-browser'
+import { sessionRecorderStore } from './SessionRecorderStore'
 
 type SessionRecorderOptions = any
 
@@ -22,8 +21,6 @@ export interface SessionRecorderProviderProps extends PropsWithChildren {
 }
 
 export const SessionRecorderProvider: React.FC<SessionRecorderProviderProps> = ({ children, options }) => {
-  const isInitialized = useSessionRecorderStore((s) => s.isInitialized)
-
   useEffect(() => {
     if (options) {
       SessionRecorder.init(options)
@@ -37,8 +34,8 @@ export const SessionRecorderProvider: React.FC<SessionRecorderProviderProps> = (
       sessionType: SessionRecorder.sessionType
     })
 
-    const onStateChange = (state: any) => {
-      sessionRecorderStore.setState({ sessionState: state })
+    const onStateChange = (sessionState: SessionState) => {
+      sessionRecorderStore.setState({ sessionState })
     }
     const onInit = () => {
       sessionRecorderStore.setState({ isInitialized: true })
