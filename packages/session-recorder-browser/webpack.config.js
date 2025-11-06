@@ -1,7 +1,6 @@
 const { resolve } = require('path')
 const webpack = require('webpack')
 const { CleanWebpackPlugin } = require('clean-webpack-plugin')
-const TerserPlugin = require('terser-webpack-plugin')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin')
 const packageJson = require('./package.json')
@@ -58,17 +57,16 @@ const baseConfig = {
   mode: isProduction ? 'production' : 'development'
 }
 
-const externalBundle = {
+const esmBundle = {
   ...baseConfig,
   output: {
     filename: 'index.js',
     path: resolve(__dirname, 'dist'),
     module: true,
     library: {
-      name: 'SessionRecorder',
-      type: 'umd'
+      type: 'module'
     },
-    globalObject: 'this'
+    chunkFormat: 'module'
   },
   experiments: {
     outputModule: true
@@ -88,6 +86,36 @@ const externalBundle = {
     ...baseConfig.plugins,
     new CleanWebpackPlugin({
       cleanOnceBeforeBuildPatterns: ['index.js', '*.css']
+    })
+  ]
+}
+
+const umdBundle = {
+  ...baseConfig,
+  output: {
+    filename: 'index.umd.js',
+    path: resolve(__dirname, 'dist'),
+    library: {
+      name: 'SessionRecorder',
+      type: 'umd'
+    },
+    globalObject: 'this'
+  },
+  externals: {
+    // '@opentelemetry/auto-instrumentations-web': '@opentelemetry/auto-instrumentations-web',
+    // '@opentelemetry/context-zone': '@opentelemetry/context-zone',
+    // '@opentelemetry/core': '@opentelemetry/core',
+    // '@opentelemetry/exporter-trace-otlp-http': '@opentelemetry/exporter-trace-otlp-http',
+    // '@opentelemetry/instrumentation': '@opentelemetry/instrumentation',
+    // '@opentelemetry/resources': '@opentelemetry/resources',
+    // '@opentelemetry/sdk-trace-web': '@opentelemetry/sdk-trace-web',
+    // '@opentelemetry/semantic-conventions': '@opentelemetry/semantic-conventions',
+    // 'socket.io-client': 'socket.io-client',
+  },
+  plugins: [
+    ...baseConfig.plugins,
+    new CleanWebpackPlugin({
+      cleanOnceBeforeBuildPatterns: ['index.umd.js', '*.css']
     })
   ]
 }
@@ -177,4 +205,4 @@ const exportersBundle = {
   ]
 }
 
-module.exports = [externalBundle, browserBundle, exportersBundle]
+module.exports = [esmBundle, umdBundle, browserBundle, exportersBundle]
