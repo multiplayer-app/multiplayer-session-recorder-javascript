@@ -51,18 +51,18 @@ To get full‑stack session recording working, set up one of our backend SDKs/CL
 
 ## Quick start
 
-1. Wrap your application with the `SessionRecorderProvider`.
-2. Pass the same configuration you would supply to the browser SDK.
+1. Recommended: Call `SessionRecorder.init(options)` before you mount your React app to avoid losing any data.
+2. Wrap your application with the `SessionRecorderProvider`.
 3. Start or stop sessions using the widget or the provided hooks.
 
-### Minimal setup with manual initialization
+### Minimal setup with manual initialization (Recommended)
 
 ```tsx
 // src/main.tsx or src/index.tsx app root
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import { SessionRecorderProvider } from '@multiplayer-app/session-recorder-react'
+import SessionRecorder, { SessionRecorderProvider } from '@multiplayer-app/session-recorder-react'
 
 const sessionRecorderConfig = {
   version: '1.0.0',
@@ -77,8 +77,8 @@ const sessionRecorderConfig = {
   propagateTraceHeaderCorsUrls: [new RegExp('https://api.example.com', 'i')]
 }
 
-// Initialize the session recorder manually
-SessionRecorderProvider.init(sessionRecorderConfig)
+// Initialize the session recorder before mounting (Recommended)
+SessionRecorder.init(sessionRecorderConfig)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <SessionRecorderProvider>
@@ -87,30 +87,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 ```
 
-### Minimal setup with provider initialization
-
-```tsx
-// src/main.tsx or src/index.tsx app root
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
-import { SessionRecorderProvider } from '@multiplayer-app/session-recorder-react'
-
-const sessionRecorderConfig = {
-  version: '1.0.0',
-  environment: 'production',
-  application: 'my-react-app',
-  apiKey: 'YOUR_MULTIPLAYER_API_KEY'
-}
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <SessionRecorderProvider options={sessionRecorderConfig}>
-    <App />
-  </SessionRecorderProvider>
-)
-```
-
-Behind the scenes, the provider initializes the shared Browser SDK (if you pass the configuration as options to the provider) — or you can initialize it manually as shown in the example above. It then sets up listeners and exposes helper APIs through React context and selectors.
+Behind the scenes, the provider sets up listeners and exposes helper APIs through React context and selectors.
 
 ### Set session attributes to provide context for the session
 
@@ -140,16 +117,19 @@ const MyComponent = () => {
 If you prefer not to render our floating widget, disable it and rely purely on the imperative hooks. Use the context hook when you need imperative control (for example, to bind to buttons or QA tooling) as shown in the example below:
 
 ```tsx
-// Provider configuration
-<SessionRecorderProvider
-  options={{
-    application: 'my-react-app',
-    version: '1.0.0',
-    environment: 'production',
-    apiKey: 'YOUR_MULTIPLAYER_API_KEY',
-    showWidget: false // hide the built-in widget
-  }}
->
+import SessionRecorder, { SessionRecorderProvider } from '@multiplayer-app/session-recorder-react'
+
+// Initialize without the built‑in widget
+SessionRecorder.init({
+  application: 'my-react-app',
+  version: '1.0.0',
+  environment: 'production',
+  apiKey: 'YOUR_MULTIPLAYER_API_KEY',
+  showWidget: false // hide the built-in widget
+})
+
+// Wrap your app with the provider to enable hooks/context
+<SessionRecorderProvider>
   <App />
 </SessionRecorderProvider>
 ```
@@ -279,7 +259,7 @@ export function NavigationTrackerLegacy() {
 
 ## Configuration reference
 
-The `options` prop passed to `SessionRecorderProvider` is forwarded to the underlying browser SDK. Refer to the [browser README](../session-recorder-browser/README.md#initialize) for the full option list, including:
+The options passed to `SessionRecorder.init(...)` are forwarded to the underlying browser SDK. Refer to the [browser README](../session-recorder-browser/README.md#initialize) for the full option list, including:
 
 - `application`, `version`, `environment`, `apiKey`
 - `showWidget`, `showContinuousRecording`
@@ -300,27 +280,24 @@ Any time `recordNavigation` is enabled, the browser SDK will emit OpenTelemetry 
 
 An official Next.js-specific wrapper is coming soon. Until then, you can use this package safely in Next.js by:
 
-1. Initializing in a Client Component
+1. Initializing in a Client Component (Recommended)
 
 ```tsx
 'use client'
 import React from 'react'
-import { SessionRecorderProvider } from '@multiplayer-app/session-recorder-react'
+import SessionRecorder, { SessionRecorderProvider } from '@multiplayer-app/session-recorder-react'
+
+// Initialize before mount to avoid losing any data
+SessionRecorder.init({
+  application: 'my-next-app',
+  version: '1.0.0',
+  environment: 'production',
+  apiKey: 'YOUR_MULTIPLAYER_API_KEY',
+  showWidget: true
+})
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  return (
-    <SessionRecorderProvider
-      options={{
-        application: 'my-next-app',
-        version: '1.0.0',
-        environment: 'production',
-        apiKey: 'YOUR_MULTIPLAYER_API_KEY',
-        showWidget: true
-      }}
-    >
-      {children}
-    </SessionRecorderProvider>
-  )
+  return <SessionRecorderProvider>{children}</SessionRecorderProvider>
 }
 ```
 
@@ -377,7 +354,7 @@ All hooks and helpers ship with TypeScript types. To extend the navigation metad
 ## Troubleshooting
 
 - Ensure the provider wraps your entire component tree so context hooks resolve.
-- Confirm `SessionRecorder.init` runs only once. The provider handles this automatically if you pass the configuration as options to the provider; do not call it manually elsewhere.
+- Confirm `SessionRecorder.init` runs only once and before your app mounts.
 - Ensure the session recorder required options are passed and the API key is valid.
 - For SSR environments, guard any direct `document` or `window` usage behind `typeof window !== 'undefined'` checks (the helper hooks already do this).
 

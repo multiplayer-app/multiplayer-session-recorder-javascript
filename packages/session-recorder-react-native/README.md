@@ -48,6 +48,8 @@ npm install @multiplayer-app/session-recorder-react-native
 yarn add @multiplayer-app/session-recorder-react-native
 ```
 
+**Recommended**: Initialize with `SessionRecorder.init(options)` before you mount your React Native app to avoid losing any data (similar to Sentry's guidance).
+
 ### Required Dependencies
 
 This package requires the following dependencies to be installed in your React Native application:
