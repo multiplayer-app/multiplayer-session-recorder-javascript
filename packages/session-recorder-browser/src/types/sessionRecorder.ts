@@ -148,6 +148,11 @@ export interface SessionRecorderOptions {
    */
   widgetTextOverrides?: WidgetTextOverridesConfig
 
+  /**
+   * @description 
+   * 
+   */
+  useWebsocket?: boolean
 }
 
 /**

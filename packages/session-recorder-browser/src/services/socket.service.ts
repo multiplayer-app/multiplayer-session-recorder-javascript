@@ -1,6 +1,9 @@
 import io, { Socket } from 'socket.io-client'
 
-import { ISession } from '../types'
+import {
+  ISession,
+  IUserAttributes,
+} from '../types'
 import { recorderEventBus } from '../eventBus'
 import messagingService from '../services/messaging.service'
 import {
@@ -9,11 +12,14 @@ import {
   SESSION_STOPPED_EVENT,
   SESSION_SUBSCRIBE_EVENT,
   SESSION_UNSUBSCRIBE_EVENT,
+  SOCKET_SET_USER_EVENT,
+  REMOTE_SESSION_RECORDING_START,
+  REMOTE_SESSION_RECORDING_STOP
 } from '../config'
 
 const MAX_RECONNECTION_ATTEMPTS = 2
 
-export class RrwebEventExporter {
+export class SocketService {
   private socket: Socket | null = null
   private queue: any[] = []
   private isConnecting: boolean = false
@@ -22,8 +28,15 @@ export class RrwebEventExporter {
   private attempts: number = 0
   private sessionId: string | null = null
 
-  constructor(private options: { socketUrl: string, apiKey: string, usePostMessageFallback?: boolean }) {
-
+  constructor(private options: {
+    socketUrl: string,
+    apiKey: string,
+    usePostMessageFallback?: boolean,
+    keepAlive?: boolean,
+  }) {
+    if (this.options.keepAlive) {
+      this.init()
+    }
   }
 
   private init(): void {
@@ -72,6 +85,14 @@ export class RrwebEventExporter {
 
     this.socket.on(SESSION_AUTO_CREATED, (data: any) => {
       recorderEventBus.emit(SESSION_AUTO_CREATED, data)
+    })
+
+    this.socket.on(REMOTE_SESSION_RECORDING_START, (data: any) => {
+      recorderEventBus.emit(REMOTE_SESSION_RECORDING_START, data)
+    })
+
+    this.socket.on(REMOTE_SESSION_RECORDING_STOP, (data: any) => {
+      recorderEventBus.emit(REMOTE_SESSION_RECORDING_STOP, data)
     })
   }
 
@@ -130,12 +151,32 @@ export class RrwebEventExporter {
       sessionType: session.creationType,
     }
     if (this.usePostMessage) {
-      this.sendViaPostMessage({ type: SESSION_SUBSCRIBE_EVENT, ...payload })
+      this.sendViaPostMessage({
+        type: SESSION_SUBSCRIBE_EVENT,
+        ...payload
+      })
     } else if (this.socket?.connected) {
       this.socket.emit(SESSION_SUBSCRIBE_EVENT, payload)
     } else {
-      this.queue.push({ data: payload, name: SESSION_SUBSCRIBE_EVENT })
+      this.queue.push({
+        data: payload,
+        name: SESSION_SUBSCRIBE_EVENT
+      })
       this.init()
+    }
+  }
+
+  public setUser(userAttributes: IUserAttributes | null): void {
+    if (this.usePostMessage) {
+      this.sendViaPostMessage({
+        type: SOCKET_SET_USER_EVENT,
+        data: userAttributes
+      })
+    } else if (this.socket?.connected) {
+      this.socket.emit(
+        SOCKET_SET_USER_EVENT,
+        userAttributes
+      )
     }
   }
 
@@ -154,4 +195,18 @@ export class RrwebEventExporter {
       }, 500)
     }
   }
+}
+
+export let socketService: SocketService | null = null
+
+export const createSocketService = (options: {
+  socketUrl: string,
+  apiKey: string,
+  usePostMessageFallback?: boolean,
+  keepAlive?: boolean,
+}): SocketService => {
+  if (!socketService) {
+    socketService = new SocketService(options)
+  }
+  return socketService
 }

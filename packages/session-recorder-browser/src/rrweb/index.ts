@@ -8,16 +8,14 @@ import { getRecordConsolePlugin, LogData } from '@rrweb/rrweb-plugin-console-rec
 
 import { isConsoleEvent } from '../utils'
 import { CONTINUOUS_DEBUGGING_TIMEOUT } from '../config'
-import { ISession, RecorderConfig } from '../types'
+import { ISession, SessionRecorderConfigs } from '../types'
 
 
-import { RrwebEventExporter } from './exporter'
-
+import { socketService } from '../services/socket.service'
 
 export class RecorderBrowserSDK {
   private stopFn?: () => void
-  private config?: RecorderConfig
-  private exporter: RrwebEventExporter | undefined
+  private config?: SessionRecorderConfigs
   private restartInterval: NodeJS.Timeout | null = null
 
   private _startedAt: string = ''
@@ -44,13 +42,8 @@ export class RecorderBrowserSDK {
    * Initializes the recorder SDK with configuration settings.
    * @param config - Configuration settings for the session debugger.
    */
-  init(config: RecorderConfig): void {
+  init(config: SessionRecorderConfigs): void {
     this.config = config
-    this.exporter = new RrwebEventExporter({
-      apiKey: config.apiKey,
-      socketUrl: config.apiBaseUrl || '',
-      usePostMessageFallback: Boolean(config.usePostMessageFallback),
-    })
   }
 
   /**
@@ -105,7 +98,7 @@ export class RecorderBrowserSDK {
     this.stopFn = record({
       ...options,
       emit: async (event: eventWithTime) => {
-        if (this.exporter) {
+        if (socketService) {
 
           if (typeof maskingConfig.maskConsoleEvent === 'function' && isConsoleEvent(event)) {
             const { data } = event as pluginEvent<LogData>
@@ -115,7 +108,7 @@ export class RecorderBrowserSDK {
 
           const packedEvent = pack(event)
           this.stoppedAt = new Date(event.timestamp).toISOString()
-          this.exporter.send({
+          socketService.send({
             event: packedEvent,
             eventType: event.type,
             timestamp: event.timestamp,
@@ -158,11 +151,13 @@ export class RecorderBrowserSDK {
    */
   stop(): void {
     this.stopFn?.()
-    this.exporter?.close()
+    if (!this.config?.useWebsocket) {
+      socketService?.close()
+    }
     this.clearRestartInterval()
   }
 
   subscribeToSession(session: ISession): void {
-    this.exporter?.subscribeToSession(session)
+    socketService?.subscribeToSession(session)
   }
 }

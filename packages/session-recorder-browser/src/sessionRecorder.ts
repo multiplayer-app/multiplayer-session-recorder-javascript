@@ -14,7 +14,12 @@ import {
   SessionRecorderOptions,
   SessionRecorderConfigs,
   SessionRecorderEvents,
+  IUserAttributes,
 } from './types'
+import { 
+  createSocketService,
+  socketService,
+ } from './services/socket.service'
 
 import {
   BASE_CONFIG,
@@ -27,7 +32,9 @@ import {
   getSessionRecorderConfig,
   SESSION_AUTO_CREATED,
   SESSION_STOPPED_EVENT,
-  SESSION_STARTED_EVENT
+  SESSION_STARTED_EVENT,
+  REMOTE_SESSION_RECORDING_START,
+  REMOTE_SESSION_RECORDING_STOP
 } from './config'
 
 import { setShouldRecordHttpData, setMaxCapturingHttpPayloadSize, } from './patch'
@@ -53,6 +60,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   private _recorder = new RecorderBrowserSDK()
   private _sessionWidget = new SessionWidget()
   private _navigationRecorder = new NavigationRecorder()
+  private _userAttributes: IUserAttributes | null = null
   private _startRequestController: AbortController | null = null
 
   public get navigation(): NavigationRecorderPublicApi {
@@ -143,6 +151,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   public get sessionWidgetButtonElement(): HTMLButtonElement | null {
     return this._sessionWidget.recorderButton
   }
+
   /**
    * Initialize debugger with default or custom configurations
    */
@@ -173,7 +182,6 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     }
   }
 
-
   /**
    * Initialize the session debugger
    * @param configs - custom configurations for session debugger
@@ -201,22 +209,36 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       version: this._configs.version,
     })
 
+    createSocketService({
+      apiKey: this._configs.apiKey,
+      socketUrl: this._configs.apiBaseUrl || '',
+      usePostMessageFallback: Boolean(this._configs.usePostMessageFallback),
+      keepAlive: Boolean(this._configs.useWebsocket),
+    })
+
     if (this._configs.apiKey) {
       this._recorder.init(this._configs)
     }
 
-    if (this.sessionId && (this.sessionState === SessionState.started || this.sessionState === SessionState.paused)) {
+    if (
+      this.sessionId
+      && (
+        this.sessionState === SessionState.started
+        || this.sessionState === SessionState.paused
+      )
+    ) {
       this._start()
     }
 
     this._registerWidgetEvents()
     this._registerSessionLimitReach()
     this._registerSessionAutoCreation()
+    this._registerRemoteSessionRecordingStart()
+    this._registerRemoteSessionRecordingStop()
     messagingService.sendMessage('state-change', this.sessionState)
     // Emit init observable event
     this.emit('init', [this])
   }
-
 
   /**
    * Save the continuous recording session
@@ -295,6 +317,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       this._createSessionAndStart()
     }
   }
+
   /**
    * Stop the current session with an optional comment
    * @param comment - user-provided comment to include in session session attributes
@@ -319,6 +342,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       this.error = error.message
     }
   }
+
   /**
    * Pause the current session
    */
@@ -376,7 +400,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    *                  The function receives the click event as its parameter and
    *                  should return `false` to prevent the default button action,
    *                  or `true` (or nothing) to allow it.
-  */
+   */
   public set recordingButtonClickHandler(handler: () => boolean | void) {
     this._sessionWidget.buttonClickExternalHandler = handler
   }
@@ -547,6 +571,20 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     })
   }
 
+  private _registerRemoteSessionRecordingStart() {
+    recorderEventBus.on(REMOTE_SESSION_RECORDING_START, (payload) => {
+      console.log('REMOTE_SESSION_RECORDING_START', payload)
+      this.start()
+    })
+  }
+
+  private _registerRemoteSessionRecordingStop() {
+    recorderEventBus.on(REMOTE_SESSION_RECORDING_STOP, (payload) => { 
+      console.log('REMOTE_SESSION_RECORDING_STOP', payload)
+      this.stop()
+    })
+  }
+
   /**
    * Create a new session and start it
    */
@@ -556,6 +594,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       const payload = {
         sessionAttributes: this.sessionAttributes,
         resourceAttributes: getNavigatorInfo(),
+        userAttributes: this._userAttributes,
         name: this.sessionAttributes.userName
           ? `${this.sessionAttributes.userName}'s session on ${getFormattedDate(Date.now(), { month: 'short', day: 'numeric' })}`
           : `Session on ${getFormattedDate(Date.now())}`,
@@ -739,5 +778,11 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     } catch (_e) {
       return { errorInfo: String(errorInfo) }
     }
+  }
+
+  public setUser(userAttributes: IUserAttributes | null): void {
+    this._userAttributes = userAttributes
+
+    socketService?.setUser(this._userAttributes)
   }
 }

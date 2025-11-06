@@ -69,5 +69,6 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     masking: getMaskingConfig(c.masking),
     widgetTextOverrides: getWidgetTextOverridesConfig(c.widgetTextOverrides, BASE_CONFIG.widgetTextOverrides),
 
+    useWebsocket: isValidBoolean(c.useWebsocket, BASE_CONFIG.useWebsocket ?? false),
   }
 }
