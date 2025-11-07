@@ -230,32 +230,39 @@ export class TracerBrowserSDK {
    * If there is an active span, the exception will be recorded on it.
    * Otherwise, a short-lived span will be created to hold the exception event.
    */
-  captureException(error: Error): void {
+  captureException(error: Error, errorInfo?: Record<string, any>): void {
     if (!error) return
 
-    // Try to record on the currently active span first
-    const activeSpan = trace.getSpan(context.active())
-    if (activeSpan) {
-      try {
-        SessionRecorderSdk.captureException(error)
-        return
-      } catch (_e) {
-        // fallthrough to creating a dedicated span
-      }
-    }
-
+    // Prefer attaching to the active span to keep correlation intact
     try {
-      const tracer = trace.getTracer('session-recorder')
-      const span = tracer.startSpan('exception')
+      const activeSpan = trace.getSpan(context.active())
+      if (activeSpan) {
+        // Standard OTEL exception event + span status
+        SessionRecorderSdk.captureException(error)
+        activeSpan.addEvent('exception', {
+          'exception.type': error.name || 'Error',
+          'exception.message': error.message,
+          'exception.stacktrace': error.stack || '',
+          ...(errorInfo || {}),
+        })
+        return
+      }
+    } catch (_ignored) { }
+
+    // Fallback: create a short-lived span to hold the exception details
+    try {
+      const tracer = trace.getTracer('exception')
+      const span = tracer.startSpan(error.name || 'Error')
       span.recordException(error)
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
+      span.addEvent('exception', {
+        'exception.type': error.name || 'Error',
+        'exception.message': error.message,
+        'exception.stacktrace': error.stack || '',
+        ...(errorInfo || {}),
+      })
       span.end()
-    } catch (_err) {
-      // eslint-disable-next-line no-console
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('[MULTIPLAYER_SESSION_RECORDER] Failed to capture exception', _err)
-      }
-    }
+    } catch (_ignored) { }
   }
 
   private _getSpanSessionIdProcessor(): SpanProcessor {

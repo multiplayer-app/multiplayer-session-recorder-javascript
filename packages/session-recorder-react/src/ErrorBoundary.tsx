@@ -19,9 +19,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, State> {
     return { hasError: true }
   }
 
-  componentDidCatch(error: unknown): void {
+  componentDidCatch(error: unknown, errorInfo: React.ErrorInfo): void {
     try {
-      SessionRecorder.captureException(error as any)
+      SessionRecorder.captureException(error, errorInfo)
     } catch (_e) {
       // no-op
     }

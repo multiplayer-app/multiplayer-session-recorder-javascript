@@ -145,10 +145,11 @@ class SessionRecorder
   /**
    * Capture an exception manually and send it as an error trace.
    */
-  public captureException(error: unknown): void {
+  public captureException(error: unknown, errorInfo?: Record<string, any>): void {
     try {
-      const normalized = this._normalizeError(error);
-      this._tracer.captureException(normalized);
+      const normalizedError = this._normalizeError(error);
+      const normalizedErrorInfo = this._normalizeErrorInfo(errorInfo);
+      this._tracer.captureException(normalizedError, normalizedErrorInfo);
     } catch (e: any) {
       this.error = e?.message || 'Failed to capture exception';
     }
@@ -655,6 +656,11 @@ class SessionRecorder
     this._networkService.cleanup();
   }
 
+  /**
+   * Normalize an error to an Error object
+   * @param error - the error to normalize
+   * @returns the normalized error
+   */
   private _normalizeError(error: unknown): Error {
     if (error instanceof Error) return error;
     if (typeof error === 'string') return new Error(error);
@@ -662,6 +668,21 @@ class SessionRecorder
       return new Error(JSON.stringify(error));
     } catch (_e) {
       return new Error(String(error));
+    }
+  }
+
+
+  /**
+   * Normalize an error info object to a Record<string, any>
+   * @param errorInfo - the error info to normalize
+   * @returns the normalized error info
+   */
+  private _normalizeErrorInfo(errorInfo?: Record<string, any>): Record<string, any> {
+    if (!errorInfo) return {}
+    try {
+      return JSON.parse(JSON.stringify(errorInfo))
+    } catch (_e) {
+      return { errorInfo: String(errorInfo) }
     }
   }
 }

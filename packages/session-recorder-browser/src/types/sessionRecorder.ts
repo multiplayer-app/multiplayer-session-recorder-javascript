@@ -432,7 +432,7 @@ export interface ISessionRecorder extends Observable<SessionRecorderEvents> {
   /**
    * Capture an exception and send it as an error trace
    */
-  captureException(error: unknown): void
+  captureException(error: unknown, errorInfo?: Record<string, any>): void
 }
 
 export type Breaker = {}

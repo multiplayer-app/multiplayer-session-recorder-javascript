@@ -335,7 +335,7 @@ export interface ISessionRecorder {
   /**
    * Capture an exception and send it as an error trace
    */
-  captureException(error: unknown): void;
+  captureException(error: unknown, errorInfo?: Record<string, any>): void;
 }
 
 /**
