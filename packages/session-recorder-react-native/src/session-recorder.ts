@@ -142,6 +142,18 @@ class SessionRecorder
     StorageService.initialize();
   }
 
+  /**
+   * Capture an exception manually and send it as an error trace.
+   */
+  public captureException(error: unknown): void {
+    try {
+      const normalized = this._normalizeError(error);
+      this._tracer.captureException(normalized);
+    } catch (e: any) {
+      this.error = e?.message || 'Failed to capture exception';
+    }
+  }
+
   private async _loadStoredSessionData(): Promise<void> {
     try {
       await StorageService.initialize();
@@ -641,6 +653,16 @@ class SessionRecorder
    */
   cleanup(): void {
     this._networkService.cleanup();
+  }
+
+  private _normalizeError(error: unknown): Error {
+    if (error instanceof Error) return error;
+    if (typeof error === 'string') return new Error(error);
+    try {
+      return new Error(JSON.stringify(error));
+    } catch (_e) {
+      return new Error(String(error));
+    }
   }
 }
 

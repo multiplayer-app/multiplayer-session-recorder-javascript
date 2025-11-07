@@ -460,6 +460,44 @@ SessionRecorder.setSessionAttributes({
 });
 ```
 
+## Capturing exceptions
+
+The React Native SDK automatically captures uncaught exceptions via the global error handler and converts them into error traces with standard exception attributes (`exception.type`, `exception.message`, `exception.stacktrace`).
+
+You can also report errors manually:
+
+```ts
+import SessionRecorder from '@multiplayer-app/session-recorder-react-native';
+
+try {
+  // risky code
+} catch (err) {
+  SessionRecorder.captureException(err); // Error | unknown | string
+}
+
+// Arbitrary messages are supported as well
+SessionRecorder.captureException('Payment form validation failed');
+```
+
+In Continuous mode, captured exceptions mark the current trace as ERROR and auto‑save the rolling session window so you can replay what led to the failure.
+
+### Error boundary for React Native
+
+This package exports a simple `ErrorBoundary` component that reports render errors and shows a fallback UI.
+
+```tsx
+import React from 'react';
+import { ErrorBoundary } from '@multiplayer-app/session-recorder-react-native';
+
+export function AppWithBoundary() {
+  return (
+    <ErrorBoundary fallback={<></>}>
+      <App />
+    </ErrorBoundary>
+  );
+}
+```
+
 ## Session Provider & Hooks
 
 ### Disable Widget Button
@@ -970,6 +1008,7 @@ Both examples include:
 | `pause()`                     | Pause current recording         | -                        |
 | `resume()`                    | Resume paused recording         | -                        |
 | `save()`                      | Save continuous recording       | -                        |
+| `captureException(error)`     | Report exception as error trace | `unknown`                |
 | `setNavigationRef(ref)`       | Set navigation reference        | `NavigationContainerRef` |
 | `setSessionAttributes(attrs)` | Set session metadata            | `Record<string, any>`    |
 

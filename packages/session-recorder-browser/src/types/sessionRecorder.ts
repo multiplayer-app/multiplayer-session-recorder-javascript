@@ -428,6 +428,11 @@ export interface ISessionRecorder extends Observable<SessionRecorderEvents> {
    * @param handler - function that will be invoked when the button is clicked
    */
   set recordingButtonClickHandler(handler: () => boolean | void)
+
+  /**
+   * Capture an exception and send it as an error trace
+   */
+  captureException(error: unknown): void
 }
 
 export type Breaker = {}

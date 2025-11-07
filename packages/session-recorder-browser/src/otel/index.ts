@@ -12,6 +12,8 @@ import {
   SessionRecorderBrowserTraceExporter,
   SessionRecorderTraceIdRatioBasedSampler,
 } from '@multiplayer-app/session-recorder-common'
+import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common'
+import { trace, SpanStatusCode, context } from '@opentelemetry/api'
 import { TracerBrowserConfig } from '../types'
 import { OTEL_IGNORE_URLS } from '../config'
 import {
@@ -28,6 +30,7 @@ export class TracerBrowserSDK {
   private sessionId = ''
   private idGenerator
   private exporter?: SessionRecorderBrowserTraceExporter
+  private globalErrorListenersRegistered = false
 
   constructor() { }
 
@@ -185,6 +188,8 @@ export class TracerBrowserSDK {
         }),
       ],
     })
+
+    this._registerGlobalErrorListeners()
   }
 
   start(
@@ -220,6 +225,39 @@ export class TracerBrowserSDK {
     this.exporter.setApiKey(apiKey)
   }
 
+  /**
+   * Capture an exception as an error span/event.
+   * If there is an active span, the exception will be recorded on it.
+   * Otherwise, a short-lived span will be created to hold the exception event.
+   */
+  captureException(error: Error): void {
+    if (!error) return
+
+    // Try to record on the currently active span first
+    const activeSpan = trace.getSpan(context.active())
+    if (activeSpan) {
+      try {
+        SessionRecorderSdk.captureException(error)
+        return
+      } catch (_e) {
+        // fallthrough to creating a dedicated span
+      }
+    }
+
+    try {
+      const tracer = trace.getTracer('session-recorder')
+      const span = tracer.startSpan('exception')
+      span.recordException(error)
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
+      span.end()
+    } catch (_err) {
+      // eslint-disable-next-line no-console
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[MULTIPLAYER_SESSION_RECORDER] Failed to capture exception', _err)
+      }
+    }
+  }
+
   private _getSpanSessionIdProcessor(): SpanProcessor {
     return {
       forceFlush: () => Promise.resolve(),
@@ -231,5 +269,31 @@ export class TracerBrowserSDK {
         }
       },
     }
+  }
+
+  private _registerGlobalErrorListeners(): void {
+    if (this.globalErrorListenersRegistered) return
+
+    if (typeof window === 'undefined') return
+
+    const errorHandler = (event: ErrorEvent) => {
+      const err = event?.error instanceof Error
+        ? event.error
+        : new Error(event?.message || 'Script error')
+      this.captureException(err)
+    }
+
+    const rejectionHandler = (event: PromiseRejectionEvent) => {
+      const reason = (event && 'reason' in event) ? (event as any).reason : undefined
+      const err = reason instanceof Error
+        ? reason
+        : new Error(typeof reason === 'string' ? reason : 'Unhandled promise rejection')
+      this.captureException(err)
+    }
+
+    window.addEventListener('error', errorHandler)
+    window.addEventListener('unhandledrejection', rejectionHandler as any)
+
+    this.globalErrorListenersRegistered = true
   }
 }

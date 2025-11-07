@@ -270,6 +270,74 @@ The options passed to `SessionRecorder.init(...)` are forwarded to the underlyin
 
 Any time `recordNavigation` is enabled, the browser SDK will emit OpenTelemetry navigation spans and keep an in-memory stack of visited routes. You can access the navigation helpers through `SessionRecorder.navigation` if you need to introspect from React components.
 
+## Capturing exceptions in React apps
+
+The browser SDK auto‑captures uncaught errors and unhandled promise rejections. In React apps you’ll typically also want an Error Boundary to catch render errors and report them. This package ships a ready‑to‑use boundary and also shows how to wire React 18/19 root error callbacks.
+
+### Using the built‑in error boundary
+
+```tsx
+import React from 'react'
+import { ErrorBoundary } from '@multiplayer-app/session-recorder-react'
+
+export function AppWithBoundary() {
+  return (
+    <ErrorBoundary fallback={<div>Something went wrong</div>}>
+      <App />
+    </ErrorBoundary>
+  )
+}
+```
+
+The boundary calls `SessionRecorder.captureException(error)` internally and renders the provided `fallback` on error.
+
+### Custom boundary (if you need full control)
+
+```tsx
+import React from 'react'
+import SessionRecorder from '@multiplayer-app/session-recorder-react'
+
+class MyErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  state = { hasError: false }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error: unknown) {
+    SessionRecorder.captureException(error as any)
+  }
+  render() {
+    return this.state.hasError ? <h1>Oops.</h1> : this.props.children
+  }
+}
+```
+
+### React 18/19 root error hooks
+
+React surfaces recoverable runtime errors via the root option `onRecoverableError`. You can forward these to the session recorder as well. This works in React 18 and React 19.
+
+```tsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import SessionRecorder from '@multiplayer-app/session-recorder-react'
+import App from './App'
+
+SessionRecorder.init({
+  /* ... your config ... */
+})
+
+ReactDOM.createRoot(document.getElementById('root')!, {
+  onRecoverableError(error) {
+    SessionRecorder.captureException(error as any)
+  }
+}).render(<App />)
+```
+
+Notes:
+
+- Uncaught errors and unhandled rejections are captured automatically by the browser SDK.
+- Error Boundary + `onRecoverableError` covers both render and runtime recoverable errors.
+- In Continuous mode, any captured exception marks the trace as ERROR and auto‑saves the rolling session window.
+
 ## Next.js integration tips
 
 - Initialize the provider in a Client Component (for example `app/providers.tsx`) because the browser SDK requires `window`.

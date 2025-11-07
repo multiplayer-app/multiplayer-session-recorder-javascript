@@ -13,6 +13,8 @@ import {
 import { type TracerReactNativeConfig } from '../types';
 import { getInstrumentations } from './instrumentations';
 import { getExporterEndpoint } from './helpers';
+import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common';
+import { trace, SpanStatusCode, context } from '@opentelemetry/api';
 
 import { getPlatformAttributes } from '../utils/platform';
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
@@ -24,6 +26,7 @@ export class TracerReactNativeSDK {
   private sessionId = '';
   private idGenerator?: SessionRecorderIdGenerator;
   private exporter?: any;
+  private globalErrorHandlerRegistered = false;
 
   constructor() { }
 
@@ -73,6 +76,8 @@ export class TracerReactNativeSDK {
       tracerProvider: this.tracerProvider,
       instrumentations: getInstrumentations(this.config),
     });
+
+    this._registerGlobalErrorHandlers();
   }
 
   private _getSpanSessionIdProcessor() {
@@ -128,5 +133,56 @@ export class TracerReactNativeSDK {
   // Shutdown (React Native specific)
   shutdown(): Promise<void> {
     return Promise.resolve();
+  }
+
+  /**
+   * Capture an exception as an error span/event.
+   * If there is an active span, the exception will be recorded on it.
+   * Otherwise, a short-lived span will be created to hold the exception event.
+   */
+  captureException(error: Error): void {
+    if (!error) return;
+
+    const activeSpan = trace.getSpan(context.active());
+    if (activeSpan) {
+      try {
+        SessionRecorderSdk.captureException(error);
+        return;
+      } catch (_e) {
+        // fallthrough
+      }
+    }
+
+    try {
+      const tracer = trace.getTracer('session-recorder');
+      const span = tracer.startSpan('exception');
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      span.end();
+    } catch (_err) {
+      // no-op
+    }
+  }
+
+  private _registerGlobalErrorHandlers(): void {
+    if (this.globalErrorHandlerRegistered) return;
+
+    // React Native global error handler
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ErrorUtilsRef: any = (global as any).ErrorUtils;
+    if (ErrorUtilsRef && typeof ErrorUtilsRef.setGlobalHandler === 'function') {
+      const previous = ErrorUtilsRef.getGlobalHandler?.();
+      ErrorUtilsRef.setGlobalHandler((error: any, isFatal?: boolean) => {
+        try {
+          const err = error instanceof Error ? error : new Error(String(error?.message || error));
+          this.captureException(err);
+        } finally {
+          if (typeof previous === 'function') {
+            try { previous(error, isFatal); } catch (_e) { /* ignore */ }
+          }
+        }
+      });
+      this.globalErrorHandlerRegistered = true;
+    }
   }
 }

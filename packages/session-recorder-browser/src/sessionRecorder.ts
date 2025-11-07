@@ -377,6 +377,18 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   }
 
   /**
+   * Capture an exception manually and send it as an error trace.
+   */
+  public captureException(error: unknown): void {
+    try {
+      const normalizedError = this._normalizeError(error)
+      this._tracer.captureException(normalizedError)
+    } catch (e: any) {
+      this.error = e?.message || 'Failed to capture exception'
+    }
+  }
+
+  /**
    * @description Check if session should be started/stopped automatically
    * @param {ISession} [sessionPayload]
    * @returns {Promise<void>}
@@ -658,6 +670,16 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
           throw new Error('Cannot start remote continuous session. Session is not stopped.')
         }
         break
+    }
+  }
+
+  private _normalizeError(error: unknown): Error {
+    if (error instanceof Error) return error
+    if (typeof error === 'string') return new Error(error)
+    try {
+      return new Error(JSON.stringify(error))
+    } catch (_e) {
+      return new Error(String(error))
     }
   }
 }

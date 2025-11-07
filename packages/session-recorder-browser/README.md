@@ -259,6 +259,32 @@ SessionRecorder.save()
 SessionRecorder.stop('Finished session') // optional: pass reason for stopping the session
 ```
 
+### Capture exceptions
+
+The browser SDK captures uncaught errors and unhandled promise rejections automatically and turns them into error traces that are linked to your session.
+
+For each error span we record:
+
+- status set to `ERROR`
+- standard exception attributes: `exception.type`, `exception.message`, `exception.stacktrace`
+
+Manual reporting (e.g. inside try/catch or library boundaries):
+
+```javascript
+import SessionRecorder from '@multiplayer-app/session-recorder-browser'
+
+try {
+  // code that may throw
+} catch (err) {
+  SessionRecorder.captureException(err) // Error | unknown | string
+}
+
+// You can also send arbitrary reasons
+SessionRecorder.captureException('Payment form validation failed')
+```
+
+When running in `CONTINUOUS` mode, any captured exception automatically marks the current trace as an error and auto‑saves the rolling window so you can replay the seconds leading up to the failure.
+
 Continuous session recordings may also be saved from within any service or component involved in a trace by adding the attributes below to a span:
 
 ```javascript

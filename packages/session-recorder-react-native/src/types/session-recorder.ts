@@ -331,6 +331,11 @@ export interface ISessionRecorder {
    * @param attributes - the attributes to set
    */
   setSessionAttributes(attributes: Record<string, any>): void;
+
+  /**
+   * Capture an exception and send it as an error trace
+   */
+  captureException(error: unknown): void;
 }
 
 /**
