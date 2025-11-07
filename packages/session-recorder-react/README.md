@@ -302,8 +302,8 @@ class MyErrorBoundary extends React.Component<{ children: React.ReactNode }, { h
   static getDerivedStateFromError() {
     return { hasError: true }
   }
-  componentDidCatch(error: unknown) {
-    SessionRecorder.captureException(error as any)
+  componentDidCatch(error: unknown, errorInfo?: Record<string, any>) {
+    SessionRecorder.captureException(error as any, errorInfo)
   }
   render() {
     return this.state.hasError ? <h1>Oops.</h1> : this.props.children
@@ -313,7 +313,7 @@ class MyErrorBoundary extends React.Component<{ children: React.ReactNode }, { h
 
 ### React 18/19 root error hooks
 
-React surfaces recoverable runtime errors via the root option `onRecoverableError`. You can forward these to the session recorder as well. This works in React 18 and React 19.
+React 19 adds `onUncaughtError` and `onCaughtError` to `createRoot` options (along with `onRecoverableError` that exists in 18/19). You can wire all three to `SessionRecorder.captureException` similar to Sentry’s handler:
 
 ```tsx
 import React from 'react'
@@ -325,18 +325,31 @@ SessionRecorder.init({
   /* ... your config ... */
 })
 
-ReactDOM.createRoot(document.getElementById('root')!, {
+const container = document.getElementById('root')!
+
+const root = ReactDOM.createRoot(container, {
+  // React 19: thrown and not caught by an Error Boundary
+  onUncaughtError(error, errorInfo) {
+    SessionRecorder.captureException(error, { componentStack: errorInfo?.componentStack })
+  },
+  // React 19: caught by an Error Boundary
+  onCaughtError(error, errorInfo) {
+    SessionRecorder.captureException(error, { componentStack: errorInfo?.componentStack })
+  },
+  // React 18/19: recoverable runtime errors
   onRecoverableError(error) {
-    SessionRecorder.captureException(error as any)
+    SessionRecorder.captureException(error)
   }
-}).render(<App />)
+})
+
+root.render(<App />)
 ```
 
 Notes:
 
-- Uncaught errors and unhandled rejections are captured automatically by the browser SDK.
-- Error Boundary + `onRecoverableError` covers both render and runtime recoverable errors.
-- In Continuous mode, any captured exception marks the trace as ERROR and auto‑saves the rolling session window.
+- Uncaught errors and unhandled promise rejections are captured automatically by the SDK.
+- Error Boundary + root callbacks give the richest context (component stack via `errorInfo.componentStack`).
+- In Continuous mode, captured exceptions set span status ERROR and auto‑save the rolling session window.
 
 ## Next.js integration tips
 

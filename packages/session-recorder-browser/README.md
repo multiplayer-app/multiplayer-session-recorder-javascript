@@ -221,10 +221,37 @@ SessionRecorder.setSessionAttributes({
 // if you're not using widget (see: `showWidget: true/false`)
 // then you can programatically control the session recorder
 // by using the methods below
-SessionRecorder.start()
-SessionRecorder.pause()
-SessionRecorder.resume()
-SessionRecorder.stop('Finished session') // optional: pass reason for stopping the session
+
+// Option A: fire-and-forget (simple)
+// SessionRecorder.start()
+// ... later ...
+// SessionRecorder.stop('Finished session')
+
+// Option B: wire up your own UI controls
+const startButton = document.getElementById('start')
+const pauseButton = document.getElementById('pause')
+const resumeButton = document.getElementById('resume')
+const stopButton = document.getElementById('stop')
+
+startButton?.addEventListener('click', () => {
+  SessionRecorder.start()
+})
+
+startContinuousButton?.addEventListener('click', () => {
+  SessionRecorder.start(SessionType.CONTINUOUS)
+})
+
+pauseButton?.addEventListener('click', () => {
+  SessionRecorder.pause()
+})
+
+resumeButton?.addEventListener('click', () => {
+  SessionRecorder.resume()
+})
+
+stopButton?.addEventListener('click', () => {
+  SessionRecorder.stop('Finished session') // optional reason
+})
 ```
 
 ### Continuous session recording
@@ -246,17 +273,28 @@ SessionRecorder.setSessionAttributes({
 // if you're not using widget (see: `showWidget: true/false`)
 // then you can programatically control the session recorder
 // by using the methods below
-SessionRecorder.start(SessionType.CONTINUOUS)
+// Option A: fire-and-forget (simple)
+// SessionRecorder.start(SessionType.CONTINUOUS)
+// ... later ...
+// SessionRecorder.save()
+// ... later ...
+// SessionRecorder.stop('Finished session')
+// Option B: wire up your own UI controls
+const startContinuousButton = document.getElementById('start-continuous')
+const saveButton = document.getElementById('save')
+const stopButton = document.getElementById('stop')
 
-// do something here
+startContinuousButton?.addEventListener('click', () => {
+  SessionRecorder.start(SessionType.CONTINUOUS)
+})
 
-SessionRecorder.save()
+saveButton?.addEventListener('click', () => {
+  SessionRecorder.save()
+})
 
-// do something here
-
-SessionRecorder.save()
-
-SessionRecorder.stop('Finished session') // optional: pass reason for stopping the session
+stopButton?.addEventListener('click', () => {
+  SessionRecorder.stop('Finished session') // optional reason
+})
 ```
 
 ### Capture exceptions
