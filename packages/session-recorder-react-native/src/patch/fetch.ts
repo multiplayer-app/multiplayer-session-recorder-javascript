@@ -35,11 +35,67 @@ function _tryReadFetchBody({
   return `[Fetch] Cannot read body of type ${Object.prototype.toString.call(body)}`
 }
 
+async function _tryReadResponseBody(response: Response): Promise<string | null> {
+  try {
+    // Clone the response to avoid consuming the original stream.
+    const clonedResponse = response.clone()
+
+    const contentType = response.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      const json = await clonedResponse.json()
+      return JSON.stringify(json)
+    } else if (contentType.includes('text/')) {
+      return await clonedResponse.text()
+    } else {
+      // For other content types, try text first, fallback to arrayBuffer
+      try {
+        return await clonedResponse.text()
+      } catch {
+        try {
+          const arrayBuffer = await clonedResponse.arrayBuffer()
+          return `[Fetch] Binary data (${arrayBuffer.byteLength} bytes)`
+        } catch {
+          return '[Fetch] Unable to read response body'
+        }
+      }
+    }
+  } catch (error) {
+    return `[Fetch] Error reading response body: ${error instanceof Error ? error.message : 'Unknown error'}`
+  }
+}
+
 function _headersToObject(headers: Headers): Record<string, string> {
   const result: Record<string, string> = {}
   headers.forEach((value, key) => {
     result[key] = value
   })
+  return result
+}
+
+// Convert HeadersInit to a plain object without needing to construct a Request
+function _headersInitToObject(headersInit?: any): Record<string, string> {
+  if (!headersInit) return {}
+
+  // Headers instance
+  if (typeof Headers !== 'undefined' && headersInit instanceof Headers) {
+    return _headersToObject(headersInit)
+  }
+
+  const result: Record<string, string> = {}
+
+  // Array of tuples
+  if (Array.isArray(headersInit)) {
+    for (const [key, value] of headersInit) {
+      result[String(key).toLowerCase()] = String(value)
+    }
+    return result
+  }
+
+  // Record<string, string>
+  for (const [key, value] of Object.entries(headersInit as Record<string, string>)) {
+    result[String(key).toLowerCase()] = String(value)
+  }
+
   return result
 }
 
@@ -60,83 +116,70 @@ if (typeof fetch !== 'undefined' && typeof global !== 'undefined') {
       responseBody?: string
     } = {}
 
+    // Capture request data
+    const inputIsRequest = typeof Request !== 'undefined' && input instanceof Request
+    const safeToConstructRequest = !inputIsRequest || !(input as Request).bodyUsed
+
+    // Only construct a new Request when it's safe (i.e., body not already used)
+    let requestForMetadata: Request | null = null
+    if (safeToConstructRequest) {
+      try {
+        requestForMetadata = new Request(input as RequestInfo, init)
+      } catch {
+        requestForMetadata = null
+      }
+    }
+
+    if (configs.recordRequestHeaders) {
+      if (requestForMetadata) {
+        networkRequest.requestHeaders = _headersToObject(requestForMetadata.headers)
+      } else if (inputIsRequest) {
+        networkRequest.requestHeaders = _headersToObject((input as Request).headers)
+      } else {
+        networkRequest.requestHeaders = _headersInitToObject(init?.headers)
+      }
+    }
+
+    if (configs.shouldRecordBody) {
+      const candidateBody: any | null | undefined = requestForMetadata
+        ? (requestForMetadata as any).body as any
+        : (inputIsRequest ? (init as any)?.body : (init as any)?.body)
+
+      if (!isNullish(candidateBody)) {
+        const requestBody = _tryReadFetchBody({
+          body: candidateBody,
+        })
+
+        if (
+          requestBody?.length &&
+          (typeof Blob !== 'undefined'
+            ? new Blob([requestBody]).size <= configs.maxCapturingHttpPayloadSize
+            : requestBody.length <= configs.maxCapturingHttpPayloadSize)
+        ) {
+          networkRequest.requestBody = requestBody
+        }
+      }
+    }
+
     try {
-      // Capture request data safely
-      const request = new Request(input, init)
-
-      if (configs.recordRequestHeaders) {
-        try {
-          networkRequest.requestHeaders = _headersToObject(request.headers)
-        } catch (error) {
-          console.warn('[Fetch Patch] Failed to capture request headers:', error)
-        }
-      }
-
-      if (configs.shouldRecordBody && request.body) {
-        try {
-          const requestBody = _tryReadFetchBody({
-            body: request.body,
-          })
-
-          if (
-            requestBody?.length &&
-            requestBody.length <= configs.maxCapturingHttpPayloadSize
-          ) {
-            networkRequest.requestBody = requestBody
-          }
-        } catch (error) {
-          console.warn('[Fetch Patch] Failed to capture request body:', error)
-        }
-      }
-
       // Make the actual fetch request
       const response = await originalFetch(input, init)
 
-      // Capture response data safely
+      // Capture response data
       if (configs.recordResponseHeaders) {
-        try {
-          networkRequest.responseHeaders = _headersToObject(response.headers)
-        } catch (error) {
-          console.warn('[Fetch Patch] Failed to capture response headers:', error)
-        }
+        networkRequest.responseHeaders = _headersToObject(response.headers)
       }
 
       if (configs.shouldRecordBody) {
-        try {
-          // Try to capture response body without cloning first
-          let responseBody: string | null = null
+        const responseBody = await _tryReadResponseBody(response)
 
-          // Check if response body is available and not consumed
-          if (response.body && !response.bodyUsed) {
-            try {
-              // Try cloning first (might fail in React Native)
-              const clonedResponse = response.clone()
-              responseBody = await clonedResponse.text()
-            } catch (cloneError) {
-              // If cloning fails, try to read from original response
-              // This is risky but we'll catch the error
-              try {
-                responseBody = await response.text()
-                // If we get here, we consumed the body, so we need to recreate the response
-                // This is a limitation - we can't both capture and preserve the body
-                console.warn('[Fetch Patch] Response body consumed for capture - user code may not be able to read it')
-              } catch (readError) {
-                console.warn('[Fetch Patch] Failed to read response body:', readError)
-                responseBody = '[Fetch] Unable to read response body'
-              }
-            }
-          } else if (response.bodyUsed) {
-            responseBody = '[Fetch] Response body already consumed'
-          }
-
-          if (
-            responseBody?.length &&
-            responseBody.length <= configs.maxCapturingHttpPayloadSize
-          ) {
-            networkRequest.responseBody = responseBody
-          }
-        } catch (error) {
-          console.warn('[Fetch Patch] Failed to capture response body:', error)
+        if (
+          responseBody?.length &&
+          (typeof Blob !== 'undefined'
+            ? new Blob([responseBody]).size <= configs.maxCapturingHttpPayloadSize
+            : responseBody.length <= configs.maxCapturingHttpPayloadSize)
+        ) {
+          networkRequest.responseBody = responseBody
         }
       }
 
@@ -146,8 +189,13 @@ if (typeof fetch !== 'undefined' && typeof global !== 'undefined') {
 
       return response
     } catch (error) {
-      // Don't interfere with the original error - just log and rethrow
-      console.warn('[Fetch Patch] Fetch failed:', error)
+      // Even if the fetch fails, we can still capture the request data
+      // Attach captured request data to the thrown error for downstream handling
+      // @ts-ignore
+      if (error && typeof error === 'object') {
+        // @ts-ignore
+        error.networkRequest = networkRequest
+      }
       throw error
     }
   }

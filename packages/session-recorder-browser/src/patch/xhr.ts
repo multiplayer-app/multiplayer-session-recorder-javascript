@@ -43,88 +43,110 @@ function _tryReadXHRBody({
   return `[XHR] Cannot read body of type ${toString.call(body)}`
 }
 
-(function (xhr) {
-  const originalOpen = XMLHttpRequest.prototype.open
+function _isWithinPayloadLimit(payload: string): boolean {
+  try {
+    if (typeof Blob !== 'undefined') {
+      return new Blob([payload]).size <= configs.maxCapturingHttpPayloadSize
+    }
+  } catch {
+    // ignore and fallback to string length
+  }
+  return payload.length <= configs.maxCapturingHttpPayloadSize
+}
 
-  xhr.open = function (
-    method: string,
-    url: string | URL,
-    async = true,
-    username?: string | null,
-    password?: string | null,
-  ) {
-    const xhr = this as XMLHttpRequest
-    const networkRequest: {
-      requestHeaders?: any,
-      requestBody?: any,
-      responseHeaders?: any,
-      responseBody?: any,
-    } = {}
-
-
+// Only patch XHR in environments where it exists (avoid SSR/Node)
+if (typeof XMLHttpRequest !== 'undefined') {
+  (function (xhr) {
+    // Idempotency guard: avoid double-patching
     // @ts-ignore
-    const requestHeaders: Headers = {}
-    const originalSetRequestHeader = xhr.setRequestHeader.bind(xhr)
-    xhr.setRequestHeader = (header: string, value: string) => {
-      requestHeaders[header] = value
-      return originalSetRequestHeader(header, value)
+    if ((xhr as any).__mp_session_recorder_patched__) {
+      return
     }
-    if (configs.recordRequestHeaders) {
-      networkRequest.requestHeaders = requestHeaders
-    }
+    // @ts-ignore
+    ; (xhr as any).__mp_session_recorder_patched__ = true
 
-    const originalSend = xhr.send.bind(xhr)
-    xhr.send = (body) => {
-      if (configs.shouldRecordBody) {
-        const requestBody = _tryReadXHRBody({ body, url })
+    const originalOpen = xhr.open
 
-        if (
-          requestBody?.length
-          && new Blob([requestBody]).size <= configs.maxCapturingHttpPayloadSize
-        ) {
-          networkRequest.requestBody = requestBody
-        }
-      }
-      return originalSend(body)
-    }
-
-    xhr.addEventListener('readystatechange', () => {
-      if (xhr.readyState !== xhr.DONE) {
-        return
-      }
+    xhr.open = function (
+      method: string,
+      url: string | URL,
+      async = true,
+      username?: string | null,
+      password?: string | null,
+    ) {
+      const xhr = this as XMLHttpRequest
+      const networkRequest: {
+        requestHeaders?: any,
+        requestBody?: any,
+        responseHeaders?: any,
+        responseBody?: any,
+      } = {}
 
 
       // @ts-ignore
-      const responseHeaders: Headers = {}
-      const rawHeaders = xhr.getAllResponseHeaders()
-      const headers = rawHeaders.trim().split(/[\r\n]+/)
-      headers.forEach((line) => {
-        const parts = line.split(': ')
-        const header = parts.shift()
-        const value = parts.join(': ')
-        if (header) {
-          responseHeaders[header] = value
+      const requestHeaders: Headers = {}
+      const originalSetRequestHeader = xhr.setRequestHeader.bind(xhr)
+      xhr.setRequestHeader = (header: string, value: string) => {
+        requestHeaders[header] = value
+        return originalSetRequestHeader(header, value)
+      }
+      if (configs.recordRequestHeaders) {
+        networkRequest.requestHeaders = requestHeaders
+      }
+
+      const originalSend = xhr.send.bind(xhr)
+      xhr.send = (body) => {
+        if (configs.shouldRecordBody) {
+          const requestBody = _tryReadXHRBody({ body, url })
+
+          if (
+            requestBody?.length
+            && _isWithinPayloadLimit(requestBody)
+          ) {
+            networkRequest.requestBody = requestBody
+          }
+        }
+        return originalSend(body)
+      }
+
+      xhr.addEventListener('readystatechange', () => {
+        if (xhr.readyState !== xhr.DONE) {
+          return
+        }
+
+
+        // @ts-ignore
+        const responseHeaders: Headers = {}
+        const rawHeaders = xhr.getAllResponseHeaders()
+        const headers = rawHeaders.trim().split(/[\r\n]+/)
+        headers.forEach((line) => {
+          const parts = line.split(': ')
+          const header = parts.shift()
+          const value = parts.join(': ')
+          if (header) {
+            responseHeaders[header] = value
+          }
+        })
+        if (configs.recordResponseHeaders) {
+          networkRequest.responseHeaders = responseHeaders
+        }
+        if (configs.shouldRecordBody) {
+          const responseBody = _tryReadXHRBody({ body: xhr.response, url })
+
+          if (
+            responseBody?.length
+            && _isWithinPayloadLimit(responseBody)
+          ) {
+            networkRequest.responseBody = responseBody
+          }
         }
       })
-      if (configs.recordResponseHeaders) {
-        networkRequest.responseHeaders = responseHeaders
-      }
-      if (configs.shouldRecordBody) {
-        const responseBody = _tryReadXHRBody({ body: xhr.response, url })
-
-        if (
-          responseBody?.length
-          && new Blob([responseBody]).size <= configs.maxCapturingHttpPayloadSize
-        ) {
-          networkRequest.responseBody = responseBody
-        }
-      }
-    })
 
 
-    // @ts-ignore
-    xhr.networkRequest = networkRequest
+      // @ts-ignore
+      xhr.networkRequest = networkRequest
 
-    originalOpen.call(xhr, method, url as string, async, username, password)
-  }
-})(XMLHttpRequest.prototype)
+      originalOpen.call(xhr, method, url as string, async, username, password)
+    }
+  })(XMLHttpRequest.prototype)
+}

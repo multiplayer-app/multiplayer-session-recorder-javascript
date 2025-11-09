@@ -357,32 +357,121 @@ Notes:
 - In the App Router, render the `SessionRecorderProvider` at the top of `app/layout.tsx` and add the `NavigationTracker` component inside your root layout so every route change is captured.
 - If your frontend calls APIs on different origins, set `propagateTraceHeaderCorsUrls` so backend traces correlate correctly.
 
-### Next.js support (coming soon) and temporary solution
+### Next.js 15.3+ (App Router) — instrumentation-client.ts
+
+Next.js 15.3+ adds client-side instrumentation via `src/instrumentation-client.ts`, which runs before hydration. Initialize the recorder at top-level and optionally export `onRouterTransitionStart` for navigation tracking. See the official docs: [instrumentation-client.ts](https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation-client).
+
+1. Create `src/instrumentation-client.ts`:
+
+```ts
+import SessionRecorder from '@multiplayer-app/session-recorder-react'
+
+// Initialize as early as possible (before hydration)
+try {
+  SessionRecorder.init({
+    application: 'my-next-app',
+    version: '1.0.0',
+    environment: process.env.NEXT_PUBLIC_ENVIRONMENT ?? 'production',
+    apiKey: process.env.NEXT_PUBLIC_MULTIPLAYER_API_KEY!,
+    showWidget: true,
+    // If your APIs are on different origins, add them so OTLP headers are propagated
+    // format: string | RegExp | Array
+    propagateTraceHeaderCorsUrls: [new RegExp('https://api.example.com', 'i')]
+  })
+} catch (error) {
+  // Keep instrumentation resilient
+  console.warn('[SessionRecorder] init failed in instrumentation-client:', error)
+}
+
+// Optional: Next.js will call this when navigation begins
+export function onRouterTransitionStart(url: string, navigationType: 'push' | 'replace' | 'traverse') {
+  try {
+    SessionRecorder.navigation.record({
+      path: url || '/',
+      navigationType,
+      framework: 'nextjs',
+      source: 'instrumentation-client'
+    })
+  } catch (error) {
+    console.warn('[SessionRecorder] navigation record failed:', error)
+  }
+}
+```
+
+Notes:
+
+- Use `NEXT_PUBLIC_` environment variables for values needed on the client (e.g. `NEXT_PUBLIC_MULTIPLAYER_API_KEY`).
+- `instrumentation-client.ts` ensures initialization happens before your UI mounts; the provider is still required to wire React context and hooks.
+- You can rely on `onRouterTransitionStart` for navigation tracking in Next.js 15.3+.
+
+### Next.js < 15.3
 
 An official Next.js-specific wrapper is coming soon. Until then, you can use this package safely in Next.js by:
 
-1. Initializing in a Client Component (Recommended)
+1. Initializing in a Client Component (client-only with dynamic imports)
 
 ```tsx
 'use client'
-import React from 'react'
-import SessionRecorder, { SessionRecorderProvider } from '@multiplayer-app/session-recorder-react'
+import React, { useEffect } from 'react'
+import dynamic from 'next/dynamic'
 
-// Initialize before mount to avoid losing any data
-SessionRecorder.init({
-  application: 'my-next-app',
-  version: '1.0.0',
-  environment: 'production',
-  apiKey: 'YOUR_MULTIPLAYER_API_KEY',
-  showWidget: true
-})
+const SessionRecorderProvider = dynamic(
+  () => import('@multiplayer-app/session-recorder-react').then((m) => m.SessionRecorderProvider),
+  { ssr: false }
+)
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    let isMounted = true
+    const initSessionRecorder = async () => {
+      try {
+        const { default: SessionRecorder } = await import('@multiplayer-app/session-recorder-react')
+        if (!isMounted) return
+        SessionRecorder.init({
+          application: 'my-next-app',
+          version: '1.0.0',
+          environment: process.env.NEXT_PUBLIC_ENVIRONMENT ?? 'production',
+          apiKey: process.env.NEXT_PUBLIC_MULTIPLAYER_API_KEY!,
+          showWidget: true,
+          // If your APIs are on different origins, add them so OTLP headers are propagated
+          // format: string | RegExp | Array
+          propagateTraceHeaderCorsUrls: [new RegExp('https://api.example.com', 'i')]
+        })
+      } catch (error) {
+        console.error('Failed to initialize session recorder', error)
+      }
+    }
+    initSessionRecorder()
+    return () => {
+      isMounted = false
+    }
+  }, [])
   return <SessionRecorderProvider>{children}</SessionRecorderProvider>
 }
 ```
 
-2. Tracking navigation (App Router)
+2. Wire it in `src/app/layout.tsx`
+
+```tsx
+import React from 'react'
+import dynamic from 'next/dynamic'
+
+// Render provider client-only as a belt-and-suspenders against SSR
+const Providers = dynamic(() => import('./providers').then((m) => m.Providers), { ssr: false })
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang='en'>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  )
+}
+```
+
+3. Tracking navigation (App Router)
 
 ```tsx
 'use client'
@@ -407,7 +496,7 @@ export function NavigationTracker() {
 }
 ```
 
-3. Tracking navigation (Pages Router, older)
+4. Tracking navigation (Pages Router, older)
 
 ```tsx
 'use client'
@@ -425,6 +514,27 @@ export function NavigationTrackerLegacy() {
   })
 
   return null
+}
+```
+
+### Important: Client Components only (Next.js)
+
+When using this package in Next.js App Router, ensure any code that uses Session Recorder hooks or APIs runs in a Client Component.
+
+- Hooks and selectors such as `useSessionRecorder`, `useSessionRecordingState`, `useIsInitialized`, and `useNavigationRecorder` must be called from files that start with `'use client'`.
+- Any direct usage of `SessionRecorder.*` that touches the browser SDK must also run on the client.
+- Render `SessionRecorderProvider` from a Client Component.
+
+#### Example: Reading session state in a Client Component
+
+```tsx
+'use client'
+import React from 'react'
+import { useSessionRecordingState, SessionState } from '@multiplayer-app/session-recorder-react'
+
+export default function SessionStatus() {
+  const state = useSessionRecordingState()
+  return <span>Session state: {state ?? SessionState.stopped}</span>
 }
 ```
 

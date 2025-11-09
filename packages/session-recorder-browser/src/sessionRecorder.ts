@@ -138,9 +138,9 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    *
    * This element is used to control the start/stop recording functionality in the session widget UI.
    *
-   * @returns {HTMLButtonElement} The recorder button element from the session widget.
+   * @returns {HTMLButtonElement | null} The recorder button element from the session widget.
    */
-  public get sessionWidgetButtonElement(): HTMLButtonElement {
+  public get sessionWidgetButtonElement(): HTMLButtonElement | null {
     return this._sessionWidget.recorderButton
   }
   /**
@@ -148,10 +148,12 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    */
   constructor() {
     super()
-    const sessionLocal = getStoredItem(SESSION_PROP_NAME, true)
-    const sessionIdLocal = getStoredItem(SESSION_ID_PROP_NAME)
-    const sessionStateLocal = getStoredItem(SESSION_STATE_PROP_NAME)
-    const sessionTypeLocal = getStoredItem(SESSION_TYPE_PROP_NAME)
+    // Safety: avoid accessing storage in SSR/non-browser environments
+    const isBrowser = typeof window !== 'undefined'
+    const sessionLocal = isBrowser ? getStoredItem(SESSION_PROP_NAME, true) : null
+    const sessionIdLocal = isBrowser ? getStoredItem(SESSION_ID_PROP_NAME) : null
+    const sessionStateLocal = isBrowser ? getStoredItem(SESSION_STATE_PROP_NAME) : null
+    const sessionTypeLocal = isBrowser ? getStoredItem(SESSION_TYPE_PROP_NAME) : null
 
     if (isSessionActive(sessionLocal, sessionTypeLocal)) {
       this.session = sessionLocal
@@ -177,6 +179,9 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    * @param configs - custom configurations for session debugger
    */
   public init(configs: SessionRecorderOptions): void {
+    if (typeof window === 'undefined') {
+      return
+    }
     this._configs = getSessionRecorderConfig({ ...this._configs, ...configs })
 
     this._isInitialized = true

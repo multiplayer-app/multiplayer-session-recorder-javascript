@@ -370,7 +370,7 @@ export interface ISessionRecorder extends Observable<SessionRecorderEvents> {
   /**
    * The HTML button element for the session widget's recorder button
    */
-  readonly sessionWidgetButtonElement: HTMLButtonElement
+  readonly sessionWidgetButtonElement: HTMLButtonElement | null
 
   /**
    * Provides access to navigation recording helpers

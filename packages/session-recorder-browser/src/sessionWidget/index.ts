@@ -1,4 +1,3 @@
-import 'rrweb-player/dist/style.css'
 import { Observable } from 'lib0/observable'
 import { insertTrustedHTML } from '../utils'
 import { formatTimeForSessionTimer } from '../utils'

@@ -82,81 +82,137 @@ function _headersToObject(headers: Headers): Record<string, string> {
   return result
 }
 
-// Store original fetch
-const originalFetch = window.fetch
+// Convert HeadersInit to a plain object without needing to construct a Request
+function _headersInitToObject(headersInit?: HeadersInit): Record<string, string> {
+  if (!headersInit) return {}
 
-// Override fetch
-window.fetch = async function (
-  input: RequestInfo | URL,
-  // eslint-disable-next-line
-  init?: RequestInit,
-): Promise<Response> {
-  const networkRequest: {
-    requestHeaders?: Record<string, string>,
-    requestBody?: string,
-    responseHeaders?: Record<string, string>,
-    responseBody?: string,
-  } = {}
-
-  // Capture request data
-  const request = new Request(input, init)
-
-  if (configs.recordRequestHeaders) {
-    networkRequest.requestHeaders = _headersToObject(request.headers)
+  if (headersInit instanceof Headers) {
+    return _headersToObject(headersInit)
   }
 
-  if (configs.shouldRecordBody && request.body) {
-    const requestBody = _tryReadFetchBody({
-      body: request.body,
-      url: request.url,
-    })
+  const result: Record<string, string> = {}
 
-    if (
-      requestBody?.length &&
-      new Blob([requestBody]).size <= configs.maxCapturingHttpPayloadSize
-    ) {
-      networkRequest.requestBody = requestBody
+  if (Array.isArray(headersInit)) {
+    for (const [key, value] of headersInit) {
+      result[String(key).toLowerCase()] = String(value)
     }
+    return result
   }
 
-  try {
-    // Make the actual fetch request
-    const response = await originalFetch(input, init)
+  // Record<string, string>
+  for (const [key, value] of Object.entries(headersInit)) {
+    result[String(key).toLowerCase()] = String(value)
+  }
 
-    // Capture response data
-    if (configs.recordResponseHeaders) {
-      networkRequest.responseHeaders = _headersToObject(response.headers)
-    }
+  return result
+}
 
-    if (configs.shouldRecordBody) {
-      const responseBody = await _tryReadResponseBody(response)
+if (typeof window !== 'undefined' && typeof window.fetch !== 'undefined') {
+  // Store original fetch
+  const originalFetch = window.fetch
 
-      if (
-        responseBody?.length &&
-        new Blob([responseBody]).size <= configs.maxCapturingHttpPayloadSize
-      ) {
-        networkRequest.responseBody = responseBody
+  // Override fetch
+  window.fetch = async function (
+    input: RequestInfo | URL,
+    // eslint-disable-next-line
+    init?: RequestInit,
+  ): Promise<Response> {
+    const networkRequest: {
+      requestHeaders?: Record<string, string>,
+      requestBody?: string,
+      responseHeaders?: Record<string, string>,
+      responseBody?: string,
+    } = {}
+
+    // Capture request data
+    const inputIsRequest = typeof Request !== 'undefined' && input instanceof Request
+    const safeToConstructRequest = !inputIsRequest || !(input as Request).bodyUsed
+
+    // Only construct a new Request when it's safe (i.e., body not already used)
+    let requestForMetadata: Request | null = null
+    if (safeToConstructRequest) {
+      try {
+        requestForMetadata = new Request(input as RequestInfo, init)
+      } catch {
+        // If construction fails for any reason, fall back to using available data
+        requestForMetadata = null
       }
     }
 
-    // Attach network request data to the response for later access
-    // @ts-ignore
-    response.networkRequest = networkRequest
-
-    return response
-  } catch (error) {
-    // Even if the fetch fails, we can still capture the request data
-    // Attach captured request data to the thrown error for downstream handling
-    // @ts-ignore
-    if (error && typeof error === 'object') {
-      // @ts-ignore
-      error.networkRequest = networkRequest
+    if (configs.recordRequestHeaders) {
+      if (requestForMetadata) {
+        networkRequest.requestHeaders = _headersToObject(requestForMetadata.headers)
+      } else if (inputIsRequest) {
+        networkRequest.requestHeaders = _headersToObject((input as Request).headers)
+      } else {
+        networkRequest.requestHeaders = _headersInitToObject(init?.headers)
+      }
     }
-    throw error
-  }
-}
 
-// Preserve the original fetch function's properties
-Object.setPrototypeOf(window.fetch, originalFetch)
-Object.defineProperty(window.fetch, 'name', { value: 'fetch' })
-Object.defineProperty(window.fetch, 'length', { value: originalFetch.length })
+    if (configs.shouldRecordBody) {
+      // Prefer reading from the safely constructed Request; else fallback to init.body
+      const urlStr = inputIsRequest
+        ? (input as Request).url
+        : (typeof input === 'string' || input instanceof URL ? String(input) : '')
+
+      const candidateBody: BodyInit | null | undefined = requestForMetadata
+        ? (requestForMetadata as Request).body as unknown as BodyInit | null | undefined
+        : (inputIsRequest ? init?.body : init?.body)
+
+      if (!isNullish(candidateBody)) {
+        const requestBody = _tryReadFetchBody({
+          body: candidateBody,
+          url: urlStr,
+        })
+
+        if (
+          requestBody?.length &&
+          new Blob([requestBody]).size <= configs.maxCapturingHttpPayloadSize
+        ) {
+          networkRequest.requestBody = requestBody
+        }
+      }
+    }
+
+    try {
+      // Make the actual fetch request
+      const response = await originalFetch(input, init)
+
+      // Capture response data
+      if (configs.recordResponseHeaders) {
+        networkRequest.responseHeaders = _headersToObject(response.headers)
+      }
+
+      if (configs.shouldRecordBody) {
+        const responseBody = await _tryReadResponseBody(response)
+
+        if (
+          responseBody?.length &&
+          new Blob([responseBody]).size <= configs.maxCapturingHttpPayloadSize
+        ) {
+          networkRequest.responseBody = responseBody
+        }
+      }
+
+      // Attach network request data to the response for later access
+      // @ts-ignore
+      response.networkRequest = networkRequest
+
+      return response
+    } catch (error) {
+      // Even if the fetch fails, we can still capture the request data
+      // Attach captured request data to the thrown error for downstream handling
+      // @ts-ignore
+      if (error && typeof error === 'object') {
+        // @ts-ignore
+        error.networkRequest = networkRequest
+      }
+      throw error
+    }
+  }
+
+  // Preserve the original fetch function's properties
+  Object.setPrototypeOf(window.fetch, originalFetch)
+  Object.defineProperty(window.fetch, 'name', { value: 'fetch' })
+  Object.defineProperty(window.fetch, 'length', { value: originalFetch.length })
+}

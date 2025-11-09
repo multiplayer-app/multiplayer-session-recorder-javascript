@@ -2,19 +2,30 @@
  * LocalStorage utility functions
  */
 
+const hasLocalStorage = typeof window !== 'undefined' && !!window.localStorage
+
 export const getStoredItem = (key: string, parse?: boolean): any => {
-  const item = localStorage?.getItem(key)
+  if (!hasLocalStorage) {
+    return parse ? null : null
+  }
+  const item = window.localStorage.getItem(key)
   return parse ? (item ? JSON.parse(item) : null) : item
 }
 
 export const setStoredItem = (key: string, value: any) => {
+  if (!hasLocalStorage) {
+    return
+  }
   if (value === null || value === undefined) {
-    localStorage?.removeItem(key)
+    window.localStorage.removeItem(key)
   } else {
-    localStorage?.setItem(key, typeof value === 'string' ? value : JSON.stringify(value))
+    window.localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value))
   }
 }
 
 export const removeStoredItem = (key: string) => {
-  localStorage?.removeItem(key)
+  if (!hasLocalStorage) {
+    return
+  }
+  window.localStorage.removeItem(key)
 }
