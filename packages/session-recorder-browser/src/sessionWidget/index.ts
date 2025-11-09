@@ -55,30 +55,36 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   public showRecorderButton: boolean = false
   public timerInterval: any
   public seconds = 0
+  private readonly isBrowser: boolean
 
   public set buttonState(newState: ButtonState) {
     this._buttonState = newState
+    if (!this.isBrowser) return
     const { icon, tooltip, classes, excludeClasses } = buttonStates[newState]
     if (newState === ButtonState.CANCEL) {
-      this.buttonDraggabilityObserver.observe(this.recorderButton, {
+      this.buttonDraggabilityObserver?.observe(this.recorderButton, {
         attributes: true,
         attributeOldValue: true,
         attributeFilter: ['class'],
       })
     } else {
-      this.buttonDraggabilityObserver.disconnect()
+      this.buttonDraggabilityObserver?.disconnect()
     }
     this.updateButton(icon, tooltip, excludeClasses, classes)
   }
 
   private set initialPopoverVisible(v: boolean) {
     this._initialPopoverVisible = v
-    this.initialPopover?.classList.toggle('hidden', !v)
+    if (this.isBrowser) {
+      this.initialPopover?.classList.toggle('hidden', !v)
+    }
   }
 
   private set finalPopoverVisible(v: boolean) {
     this._finalPopoverVisible = v
-    this.finalPopover?.classList.toggle('hidden', !v)
+    if (this.isBrowser) {
+      this.finalPopover?.classList.toggle('hidden', !v)
+    }
   }
 
   public get error(): string {
@@ -100,6 +106,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   public set isStarted(v: boolean) {
     this._isStarted = v
+    if (!this.isBrowser) return
 
     if (!this.showRecorderButton && v && !this._continuousRecording) {
       this.overlay.classList.remove('hidden')
@@ -128,6 +135,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   public set isPaused(v: boolean) {
     this._isPaused = v
+    if (!this.isBrowser) return
     if (this._isInitialized && !this.showRecorderButton && v && !this._continuousRecording) {
       this.overlay.classList.add('hidden')
       this.submitSessionDialog.classList.remove('hidden')
@@ -137,6 +145,20 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   constructor() {
     super()
+
+    this.isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined'
+
+    if (!this.isBrowser) {
+      // Create dummy elements for SSR to prevent crashes
+      this.recorderButton = {} as HTMLButtonElement
+      this.initialPopover = {} as HTMLElement
+      this.finalPopover = {} as HTMLElement
+      this.overlay = {} as HTMLElement
+      this.toast = {} as HTMLElement
+      this.submitSessionDialog = {} as HTMLElement
+      this.uiManager = {} as UIManager
+      return
+    }
 
     this.recorderButton = document.createElement('button')
     this.initialPopover = document.createElement('div')
@@ -194,6 +216,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     checked: boolean,
     disabled: boolean = false,
   ) {
+    if (!this.isBrowser) return
     const toggleCheckbox = this.initialPopover.querySelector(
       '#mp-session-debugger-continuous-debugging-checkbox',
     ) as HTMLInputElement
@@ -206,6 +229,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   public updateSaveContinuousDebugSessionState(
     state: ContinuousRecordingSaveButtonState,
   ) {
+    if (!this.isBrowser) return
     const saveButton = this.initialPopover.querySelector(
       '#mp-save-continuous-debug-session',
     ) as HTMLButtonElement
@@ -223,6 +247,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
    * @param duration - Duration in milliseconds to show the toast (default: 10000ms)
    */
   public showToast(config: ToastConfig, duration: number = 10000): void {
+    if (!this.isBrowser) return
     this.uiManager.showToast(config, duration)
   }
 
@@ -230,6 +255,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
    * Hides the currently displayed toast message
    */
   public hideToast(): void {
+    if (!this.isBrowser) return
     this.uiManager.hideToast()
   }
 
@@ -254,6 +280,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   private observeButtonDraggableMode() {
+    if (!this.isBrowser) return
     this.buttonDraggabilityObserver = new MutationObserver((mutationsList) => {
       for (const mutation of mutationsList) {
         if (
@@ -280,6 +307,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   init(options: SessionWidgetConfig) {
     if (this._isInitialized) return
+    if (!this.isBrowser) return
     this._isInitialized = true
     this.showRecorderButton = options.showWidget
     this._showContinuousRecording = options.showContinuousRecording
@@ -338,6 +366,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   private appendElements(elements: HTMLElement[]) {
+    if (!this.isBrowser || typeof document === 'undefined') return
     const rootWrapper = document.createElement('mp-root')
     rootWrapper.classList.add('mp-root-wrapper')
     rootWrapper.setAttribute('data-rr-ignore', 'true')
@@ -347,6 +376,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
 
   private addRecorderDragFunctionality() {
+    if (!this.isBrowser) return
     this.dragManager = new DragManager(
       this.recorderButton,
       this._recorderPlacement,
@@ -362,6 +392,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   private updatePopoverPosition() {
+    if (!this.isBrowser || typeof window === 'undefined') return
     const { top, right, bottom, left } =
       this.recorderButton.getBoundingClientRect()
     const isDraggable = !this.recorderButton.classList.contains('no-draggable')
@@ -410,6 +441,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   private addEventListeners() {
+    if (!this.isBrowser) return
     const events: any[] = []
 
     if (this.showRecorderButton) {
@@ -483,16 +515,19 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   private handleStopRecording() {
+    if (!this.isBrowser) return
     this.onStop()
     this.handleUIReseting()
   }
 
   public handleUIReseting() {
+    if (!this.isBrowser) return
     this.finalPopoverVisible = false
     this.resetRecordingButton()
   }
 
   private handleCloseInitialPopover() {
+    if (!this.isBrowser) return
     if (this._buttonState === ButtonState.LOADING) {
       this.onCancel()
       this.uiManager.setPopoverLoadingState(false)
@@ -501,7 +536,9 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     this.buttonState = this._continuousRecording
       ? ButtonState.CONTINUOUS_DEBUGGING
       : ButtonState.IDLE
-    document.removeEventListener('click', this.handleClickOutside)
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('click', this.handleClickOutside)
+    }
   }
 
   private handleCloseFinalPopover() {
@@ -509,14 +546,18 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   public onRequestError() {
+    if (!this.isBrowser) return
     this.initialPopoverVisible = false
     this.finalPopoverVisible = false
     this.buttonState = ButtonState.IDLE
-    document.removeEventListener('click', this.handleClickOutside)
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('click', this.handleClickOutside)
+    }
   }
 
 
   private handleDismissRecording() {
+    if (!this.isBrowser) return
     this.onCancel()
     this.finalPopoverVisible = !this._finalPopoverVisible
     this.buttonState = ButtonState.IDLE
@@ -543,6 +584,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   private onRecordingButtonClick(e) {
+    if (!this.isBrowser) return
     if (this.buttonClickExternalHandler) {
       const shouldPropagate = this.buttonClickExternalHandler()
       if (shouldPropagate === false) {
@@ -576,10 +618,12 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       this.initialPopoverVisible = !this._initialPopoverVisible
     }
 
-    if (this._initialPopoverVisible || this._finalPopoverVisible) {
-      document.addEventListener('click', this.handleClickOutside)
-    } else {
-      document.removeEventListener('click', this.handleClickOutside)
+    if (typeof document !== 'undefined') {
+      if (this._initialPopoverVisible || this._finalPopoverVisible) {
+        document.addEventListener('click', this.handleClickOutside)
+      } else {
+        document.removeEventListener('click', this.handleClickOutside)
+      }
     }
   }
 
@@ -589,7 +633,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     excludeClasses?: string[],
     classes?: string[],
   ) {
-    if (!this.recorderButton) return
+    if (!this.isBrowser || !this.recorderButton) return
     insertTrustedHTML(this.recorderButton, `${innerHTML}`)
     this.recorderButton.dataset['tooltip'] = tooltip
     if (excludeClasses) {
@@ -622,6 +666,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   private onStop() {
+    if (!this.isBrowser) return
     if (this.showRecorderButton && !this.recorderButton) return
 
     this.submitSessionDialog.classList.add('hidden')
@@ -645,6 +690,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   private onResume() {
+    if (!this.isBrowser) return
     this.finalPopoverVisible = false
     if (!this._continuousRecording) {
       this.buttonState = ButtonState.RECORDING
@@ -655,29 +701,34 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   private onCancel() {
+    if (!this.isBrowser) return
     this.submitSessionDialog.classList.add('hidden')
     this.emit('cancel', [])
   }
 
   enable() {
-    if (!this.recorderButton) return
+    if (!this.isBrowser || !this.recorderButton) return
     this.recorderButton.disabled = false
     this.recorderButton.style.opacity = '1'
   }
 
   disable() {
-    if (!this.recorderButton) return
+    if (!this.isBrowser || !this.recorderButton) return
     this.recorderButton.disabled = true
     this.recorderButton.style.opacity = '0.5'
   }
 
   destroy() {
-    if (!this.recorderButton) return
-    document.body.removeChild(this.recorderButton)
+    if (!this.isBrowser || !this.recorderButton || typeof document === 'undefined') return
+    const rootWrapper = document.querySelector('.mp-root-wrapper')
+    if (rootWrapper && rootWrapper.contains(this.recorderButton)) {
+      document.body.removeChild(rootWrapper)
+    }
     document.removeEventListener('click', this.handleClickOutside)
   }
 
   public startTimer() {
+    if (!this.isBrowser) return
     if (this.timerInterval) {
       clearInterval(this.timerInterval)
       this.timerInterval = null
@@ -700,6 +751,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   makeOverlayDraggable(): void {
+    if (!this.isBrowser || typeof document === 'undefined') return
     const element = this.overlay
     const dragHandle = element.querySelector('.mp-drag-handle') as HTMLElement
     if (!dragHandle) return

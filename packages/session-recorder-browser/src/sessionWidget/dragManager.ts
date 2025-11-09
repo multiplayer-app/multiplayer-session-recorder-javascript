@@ -9,6 +9,7 @@ export class DragManager {
   private onDragEnd: (isDragging: boolean, isDragStarted: boolean, isOnLeftHalfOfScreen: boolean) => void
   private updatePopoverPosition: () => void
   private onRecordingButtonClick: (e: MouseEvent) => void
+  private readonly isBrowser: boolean
 
   constructor(
     recorderButton: HTMLButtonElement,
@@ -17,6 +18,7 @@ export class DragManager {
     updatePopoverPosition: () => void = () => { },
     onRecordingButtonClick: (e: MouseEvent) => void = () => { },
   ) {
+    this.isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined'
     this.recorderButton = recorderButton
     this.recorderPlacement = recorderPlacement
     this.onDragEnd = onDragEnd
@@ -25,11 +27,13 @@ export class DragManager {
   }
 
   public init() {
+    if (!this.isBrowser) return
     this.loadStoredPosition()
     this.setupDragListeners()
   }
 
   private loadStoredPosition() {
+    if (!this.isBrowser || typeof window === 'undefined' || typeof localStorage === 'undefined') return
     const savedPosition = localStorage.getItem(POSITION_STATE_KEY)
     if (!savedPosition) {
       return
@@ -67,6 +71,7 @@ export class DragManager {
   }
 
   private savePosition(r: number, b: number) {
+    if (!this.isBrowser || typeof window === 'undefined' || typeof localStorage === 'undefined') return
     const right = (r / window.innerWidth) * 100
     const bottom = (b / window.innerHeight) * 100
 
@@ -74,6 +79,7 @@ export class DragManager {
   }
 
   private setupDragListeners() {
+    if (!this.isBrowser || typeof document === 'undefined' || typeof window === 'undefined') return
     this.recorderButton.addEventListener('mousedown', (e) => {
       const onMouseUp = () => {
         const isDraggable = !this.recorderButton.classList.contains('no-draggable')
