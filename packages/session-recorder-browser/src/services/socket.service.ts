@@ -34,7 +34,11 @@ export class SocketService {
     usePostMessageFallback?: boolean,
     keepAlive?: boolean,
   }) {
-    if (this.options.keepAlive) {
+    if (
+      this.options.keepAlive
+      && this.options.socketUrl
+      && this.options.apiKey
+    ) {
       this.init()
     }
   }
