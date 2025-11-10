@@ -19,7 +19,8 @@ import {
 } from './buttonStateConfigs'
 
 type SessionWidgetEvents =
-  | 'toggle'
+  | 'start'
+  | 'stop'
   | 'pause'
   | 'resume'
   | 'cancel'
@@ -70,6 +71,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     } else {
       this.buttonDraggabilityObserver?.disconnect()
     }
+    this.uiManager.setPopoverLoadingState(newState === ButtonState.LOADING)
     this.updateButton(icon, tooltip, excludeClasses, classes)
   }
 
@@ -127,7 +129,6 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       } else {
         this.buttonState = ButtonState.CONTINUOUS_DEBUGGING
       }
-      this.uiManager.setPopoverLoadingState(false)
     } else {
       this.buttonState = ButtonState.IDLE
     }
@@ -530,7 +531,6 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     if (!this.isBrowser) return
     if (this._buttonState === ButtonState.LOADING) {
       this.onCancel()
-      this.uiManager.setPopoverLoadingState(false)
     }
     this.initialPopoverVisible = false
     this.buttonState = this._continuousRecording
@@ -656,13 +656,12 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   private startRecording() {
     this.buttonState = ButtonState.LOADING
-    this.uiManager.setPopoverLoadingState(true)
     this.onStart()
   }
 
   private onStart() {
     if (!this.recorderButton) return
-    this.emit('toggle', [true])
+    this.emit('start', [])
   }
 
   private onStop() {
@@ -677,12 +676,12 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       ) as HTMLTextAreaElement)
 
     if (commentElement) {
-      this.emit('toggle', [false, commentElement.value])
+      this.emit('stop', [commentElement.value])
       commentElement.value = ''
       return
     }
 
-    this.emit('toggle', [false, ''])
+    this.emit('stop', [])
   }
 
   private onPause() {

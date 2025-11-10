@@ -435,45 +435,87 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    * Register session widget event listeners for controlling session actions
    */
   private _registerWidgetEvents(): void {
-    this._sessionWidget.on('toggle', (state: boolean, comment?: string) => {
+    this._sessionWidget.on('start', () => {
       this.error = ''
-      if (state) {
-        this.start(SessionType.MANUAL)
-      } else {
-        this.stop(comment?.trim())
-      }
+      this._handleStart()
+    })
+
+    this._sessionWidget.on('stop', (comment?: string) => {
+      this.error = ''
+      this._handleStop(comment)
     })
 
     this._sessionWidget.on('pause', () => {
       this.error = ''
-      this.pause()
+      this._handlePause()
     })
 
     this._sessionWidget.on('resume', () => {
       this.error = ''
-      this.resume()
+      this._handleResume()
     })
 
     this._sessionWidget.on('cancel', () => {
       this.error = ''
-      this.cancel()
+      this._handleCancel()
     })
 
     this._sessionWidget.on('continuous-debugging', (enabled: boolean) => {
       this.error = ''
       if (enabled) {
-        this.start(SessionType.CONTINUOUS)
+        this._handleContinuousDebugging()
       } else {
-        this.stop()
+        this._handleStop()
       }
     })
 
     this._sessionWidget.on('save', () => {
       this.error = ''
-      this.save()
+      this._handleSave()
     })
   }
 
+  private _handleStart(): void {
+    if (this.sessionState === SessionState.stopped) {
+      this.start(SessionType.MANUAL)
+    }
+  }
+
+  private _handleStop(comment?: string): void {
+    if (this.sessionState === SessionState.started || this.sessionState === SessionState.paused) {
+      this.stop(comment)
+    }
+  }
+
+  private _handlePause(): void {
+    if (this.sessionState === SessionState.started) {
+      this.pause()
+    }
+  }
+
+  private _handleResume(): void {
+    if (this.sessionState === SessionState.paused) {
+      this.resume()
+    }
+  }
+
+  private _handleCancel(): void {
+    if (this.sessionState === SessionState.started || this.sessionState === SessionState.paused) {
+      this.cancel()
+    }
+  }
+
+  private _handleSave(): void {
+    if (this.sessionState === SessionState.started && this.continuousRecording) {
+      this.save()
+    }
+  }
+
+  private _handleContinuousDebugging(): void {
+    if (this.sessionState === SessionState.stopped) {
+      this.start(SessionType.CONTINUOUS)
+    }
+  }
   /**
    * Register session limit reaching listeners for controlling session end
    */
@@ -533,6 +575,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       }
     } catch (error: any) {
       this.error = error.message
+      this.sessionState = SessionState.stopped
       if (this.continuousRecording) {
         this.sessionType = SessionType.MANUAL
       }
