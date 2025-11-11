@@ -225,14 +225,9 @@ SessionRecorder.setSessionAttributes({
 // optionally control via API (widget is enabled by default)
 // if you're not using widget (see: `showWidget: true/false`)
 // then you can programatically control the session recorder
-// by using the methods below
+// by using the method below
 
-// Option A: fire-and-forget (simple)
-// SessionRecorder.start()
-// ... later ...
-// SessionRecorder.stop('Finished session')
-
-// Option B: wire up your own UI controls
+// Wire up your own UI controls
 const startButton = document.getElementById('start')
 const pauseButton = document.getElementById('pause')
 const resumeButton = document.getElementById('resume')
