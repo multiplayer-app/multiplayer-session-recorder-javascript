@@ -41,9 +41,9 @@ The Multiplayer Full Stack Session Recorder is a powerful tool that offers deep 
 ### Installation
 
 ```bash
-npm i @multiplayer-app/session-recorder-browser @opentelemetry/api
+npm i @multiplayer-app/session-recorder-browser
 # or
-yarn add @multiplayer-app/session-recorder-browser @opentelemetry/api
+yarn add @multiplayer-app/session-recorder-browser
 ```
 
 ## Set up web client:
@@ -70,7 +70,12 @@ SessionRecorder.init({
   propagateTraceHeaderCorsUrls: [new RegExp('https://api.example.com', 'i')],
 })
 
-// add any key value pairs which should be associated with a session
+
+// Use session attributes to attach user context to recordings.
+// The provided `userName` and `userId` will be visible in the Multiplayer
+// sessions list and in the session details (shown as the reporter),
+// making it easier to identify who reported or recorded the session.
+
 SessionRecorder.setSessionAttributes({
   userId: '12345',
   userName: 'John Doe'
@@ -337,12 +342,42 @@ activeSpan.setAttribute(SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO
 activeSpan.setAttribute(SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE_REASON, 'Some reason')
 ```
 
-## Session Recorder for Next.js
+## Framework-Specific Integrations
 
-Use the React wrapper for Next.js. It includes idiomatic Next.js guidance and helpers:
+The Multiplayer Session Recorder works with any web framework, but we provide specialized packages and examples for popular frameworks to make integration easier.
 
-- React package: [@multiplayer-app/session-recorder-react](../session-recorder-react/README.md)
-- Next.js guide: [Next.js integration tips](../session-recorder-react/README.md#nextjs-integration-tips)
+### React & Next.js
+
+For React and Next.js applications, use the dedicated React package which includes idiomatic hooks, context helpers, and navigation tracking:
+
+- **Package**: [@multiplayer-app/session-recorder-react](../session-recorder-react/README.md)
+- **Features**: React hooks, context providers, error boundaries, and Next.js integration tips
+- **Documentation**: [React/Next.js Integration Guide](../session-recorder-react/README.md)
+
+### Vue.js
+
+For Vue.js applications, use the browser package directly. We provide comprehensive examples and integration guides:
+
+- **Package**: `@multiplayer-app/session-recorder-browser` (this package)
+- **Examples**: [Vue.js Example Application](./examples/vue/README.md)
+- **Features**: Plugin-based integration, composables, Vue Router integration, and HTTP client support
+
+### Angular
+
+For Angular applications, use the browser package with Angular-specific setup. We provide detailed examples and integration guides:
+
+- **Package**: `@multiplayer-app/session-recorder-browser` (this package)
+- **Examples**: [Angular Example Application](./examples/angular/README.md)
+- **Features**: Service-based integration, app initializer setup, Angular HttpClient integration, and router support
+
+### React Native
+
+For React Native applications (iOS and Android), use the dedicated React Native package:
+
+- **Package**: [@multiplayer-app/session-recorder-react-native](../session-recorder-react-native/README.md)
+- **Features**: Native screen recording, gesture tracking, navigation monitoring, and full-stack debugging
+- **Documentation**: [React Native Integration Guide](../session-recorder-react-native/README.md)
+- **Note**: Does not support React Native Web - use the browser package for web platforms
 
 ## Documentation
 
