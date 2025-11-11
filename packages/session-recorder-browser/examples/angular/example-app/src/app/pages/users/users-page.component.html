@@ -1,0 +1,21 @@
+<section class="page">
+  <app-page-header title="Users" subtitle="Data from jsonplaceholder.typicode.com" />
+
+  @if (error()) {
+    <div class="error">
+      Failed to load users.
+      <button type="button" (click)="reload()">Retry</button>
+    </div>
+  } @else {
+    @if (users().length === 0) {
+      <div class="loading">Loading users…</div>
+    } @else {
+      <div class="grid">
+        @for (u of users(); track u.id) {
+          <app-user-card [user]="u" />
+        }
+      </div>
+    }
+  }
+</section>
+

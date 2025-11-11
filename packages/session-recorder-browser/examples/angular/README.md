@@ -20,9 +20,9 @@ This guide provides comprehensive instructions for integrating the Multiplayer S
 Install the required packages:
 
 ```bash
-npm install @multiplayer-app/session-recorder-browser @opentelemetry/api
+npm install @multiplayer-app/session-recorder-browser
 # or
-yarn add @multiplayer-app/session-recorder-browser @opentelemetry/api
+yarn add @multiplayer-app/session-recorder-browser
 ```
 
 ## Quick Start (Recommended)
@@ -618,15 +618,9 @@ this.sessionRecorder.init({
 
 ### Programmatic Control Without Widget
 
-If you want to hide the widget and control recording programmatically:
+If you want to hide the widget and control recording programmatically set `showWidget` to `false` on initialization and use the methods below to control recording:
 
 ```typescript
-// Hide the widget
-this.sessionRecorder.init({
-  // ... other config
-  showWidget: false
-})
-
 // Control recording in your components
 export class BugReportComponent {
   constructor(private sessionRecorder: SessionRecorderService) {}
@@ -662,22 +656,6 @@ await this.sessionRecorder.save()
 
 // Or stop continuous recording
 await this.sessionRecorder.stop()
-```
-
-### Custom Button Click Handler
-
-Override the default widget button behavior:
-
-```typescript
-import SessionRecorder from '@multiplayer-app/session-recorder-browser'
-
-SessionRecorder.recordingButtonClickHandler = () => {
-  // Your custom logic
-  console.log('Custom button handler')
-  // Return false to prevent default action
-  // Return true or nothing to allow default action
-  return true
-}
 ```
 
 ### Listening to Events

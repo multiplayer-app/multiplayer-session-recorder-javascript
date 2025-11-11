@@ -1,0 +1,28 @@
+<nav class="app-nav">
+  <div class="nav-container">
+    <a
+      routerLink="/"
+      class="nav-brand"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+    >
+      Angular Example
+    </a>
+    <div class="nav-links">
+      <a
+        routerLink="/"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        >Home</a
+      >
+      <a routerLink="/posts" routerLinkActive="active">Posts</a>
+      <a routerLink="/users" routerLinkActive="active">Users</a>
+      <a routerLink="/http-client" routerLinkActive="active">HttpClient</a>
+      <a routerLink="/fetch" routerLinkActive="active">Fetch</a>
+    </div>
+  </div>
+</nav>
+
+<main class="app-main">
+  <router-outlet />
+</main>

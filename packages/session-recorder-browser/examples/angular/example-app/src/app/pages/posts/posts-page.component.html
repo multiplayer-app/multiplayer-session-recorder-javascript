@@ -1,0 +1,19 @@
+<section class="page">
+  <app-page-header title="Posts" subtitle="Data from jsonplaceholder.typicode.com" />
+
+  @if (error()) {
+    <div class="error">Failed to load posts. <button type="button" (click)="reload()">Retry</button></div>
+  } @else {
+    @if (posts().length === 0) {
+      <div class="loading">Loading posts…</div>
+    } @else {
+      <div class="grid">
+        @for (p of posts() | slice:0:20; track p.id) {
+          <app-post-card [post]="p" />
+        }
+      </div>
+    }
+  }
+</section>
+
+

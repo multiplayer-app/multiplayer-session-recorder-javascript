@@ -1,0 +1,102 @@
+<section class="demo-page">
+  <app-page-header
+    title="HttpClient Demo"
+    subtitle="Using Angular's HttpClient service for HTTP requests"
+  />
+
+  <div class="two-column-layout">
+    <div class="column column-form">
+      <div class="demo-section">
+        <h3>POST Request - Create Post</h3>
+        <form [formGroup]="postForm" (ngSubmit)="onSubmit()" class="demo-form">
+          <div class="form-group">
+            <label for="title">Title</label>
+            <input
+              id="title"
+              type="text"
+              formControlName="title"
+              placeholder="Enter post title"
+              [class.error]="
+                postForm.get('title')?.invalid && postForm.get('title')?.touched
+              "
+            />
+          </div>
+          <div class="form-group">
+            <label for="body">Body</label>
+            <textarea
+              id="body"
+              rows="4"
+              formControlName="body"
+              placeholder="Enter post body"
+              [class.error]="
+                postForm.get('body')?.invalid && postForm.get('body')?.touched
+              "
+            ></textarea>
+          </div>
+          <div class="form-group">
+            <label for="userId">User ID</label>
+            <input
+              id="userId"
+              type="number"
+              formControlName="userId"
+              placeholder="Enter user ID"
+              [class.error]="
+                postForm.get('userId')?.invalid &&
+                postForm.get('userId')?.touched
+              "
+            />
+          </div>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="postForm.invalid || creating()"
+          >
+            @if (creating()) { Creating... } @else { Create Post }
+          </button>
+        </form>
+
+        @if (createError()) {
+        <div class="error-message">{{ createError() }}</div>
+        } @if (createdPost()) {
+        <div class="success-card">
+          <h4>Post Created Successfully!</h4>
+          <pre>{{ createdPost() | json }}</pre>
+        </div>
+        }
+      </div>
+    </div>
+
+    <div class="column column-posts">
+      <div class="demo-section">
+        <div class="section-header">
+          <h3>GET Request - Load Posts</h3>
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="loadPosts()"
+            [disabled]="loading()"
+          >
+            @if (loading()) { Loading... } @else { Load Posts }
+          </button>
+        </div>
+
+        @if (errorMessage()) {
+        <div class="error-message">{{ errorMessage() }}</div>
+        } @if (posts().length > 0) {
+        <div class="posts-list">
+          @for (p of posts() | slice:0:10; track p.id) {
+          <div class="post-item">
+            <span class="post-id">#{{ p.id }}</span>
+            <span class="post-title">{{ p.title }}</span>
+          </div>
+          }
+        </div>
+        } @else if (!loading() && !errorMessage()) {
+        <div class="empty-state">
+          <p>Click "Load Posts" to fetch posts from the API</p>
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+</section>

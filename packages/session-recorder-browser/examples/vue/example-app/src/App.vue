@@ -1,0 +1,142 @@
+<template>
+  <div class="app">
+    <nav class="app-nav">
+      <div class="nav-container">
+        <router-link to="/" class="nav-brand" active-class="active" exact-active-class="active">
+          Vue Example
+        </router-link>
+        <div class="nav-links">
+          <router-link to="/" active-class="active" exact-active-class="active">Home</router-link>
+          <router-link to="/posts" active-class="active">Posts</router-link>
+          <router-link to="/users" active-class="active">Users</router-link>
+          <router-link to="/http-client" active-class="active">HttpClient</router-link>
+          <router-link to="/fetch" active-class="active">Fetch</router-link>
+        </div>
+      </div>
+    </nav>
+
+    <main class="app-main">
+      <router-view />
+    </main>
+  </div>
+</template>
+
+<script setup>
+// App component
+</script>
+
+<style scoped>
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-nav {
+  background: var(--surface, #fff);
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.nav-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.nav-brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary, #2563eb);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+  padding: 1rem 0;
+  transition: opacity 0.2s;
+}
+
+.nav-brand:hover {
+  opacity: 0.8;
+}
+
+.nav-brand.active {
+  color: var(--primary, #2563eb);
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.nav-links a {
+  padding: 0.625rem 1rem;
+  text-decoration: none;
+  color: var(--text, #111);
+  border-radius: 8px;
+  transition: all 0.2s;
+  font-weight: 500;
+  font-size: 0.9375rem;
+}
+
+.nav-links a:hover {
+  background: var(--surface-hover, #f5f5f5);
+  color: var(--primary, #2563eb);
+}
+
+.nav-links a.active {
+  background: var(--primary, #2563eb);
+  color: white;
+}
+
+.nav-links a.active:hover {
+  background: var(--primary-dark, #1e40af);
+  color: white;
+}
+
+.app-main {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .nav-container {
+    padding: 0 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .nav-brand {
+    text-align: center;
+  }
+
+  .nav-links {
+    justify-content: center;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+
+  .nav-links a {
+    white-space: nowrap;
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .app-main {
+    padding: 1rem;
+  }
+}
+</style>

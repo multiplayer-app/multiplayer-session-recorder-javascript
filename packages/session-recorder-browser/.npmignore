@@ -1,4 +1,5 @@
 tests/
+examples/
 .vscode/
 *.log
 *.ts

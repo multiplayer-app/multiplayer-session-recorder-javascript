@@ -1,0 +1,12 @@
+<header class="ph">
+  <div class="ph__titles">
+    <h2 class="ph__title">{{ title }}</h2>
+    @if (subtitle) {
+      <p class="ph__subtitle">{{ subtitle }}</p>
+    }
+  </div>
+  <div class="ph__actions">
+    <ng-content />
+  </div>
+</header>
+

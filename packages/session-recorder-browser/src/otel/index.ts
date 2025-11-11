@@ -21,12 +21,12 @@ import {
   headersToObject,
   extractResponseBody,
   getExporterEndpoint,
+  getElementTextContent,
 } from './helpers'
 
 export class TracerBrowserSDK {
   private tracerProvider?: WebTracerProvider
   private config?: TracerBrowserConfig
-  private allowedElements = new Set<string>(['A', 'BUTTON'])
   private sessionId = ''
   private idGenerator
   private exporter?: SessionRecorderBrowserTraceExporter
@@ -175,13 +175,12 @@ export class TracerBrowserSDK {
               if (span['parentSpanContext']) {
                 return true
               }
-              let textContent = ''
-              if (this.allowedElements.has(element.tagName)) {
-                textContent = String(
-                  element.textContent || element.ariaLabel || '',
-                ).trim()
-              }
-              span.setAttribute('target.innerText', textContent)
+
+              span.setAttribute('target.innerText', getElementTextContent(element))
+              Array.from(element.attributes).forEach(attribute => {
+                span.setAttribute(`target.attribute.${attribute.name}`, attribute.value)
+              })
+
               return false
             },
           },

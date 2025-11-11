@@ -1,0 +1,75 @@
+<template>
+  <article class="card">
+    <header class="card-header">
+      <h3 class="card-title">#{{ post?.id }} — {{ post?.title }}</h3>
+      <span class="badge">User {{ post?.userId }}</span>
+    </header>
+    <p class="card-body">{{ post?.body }}</p>
+  </article>
+</template>
+
+<script setup>
+defineProps({
+  post: {
+    type: Object,
+    default: null
+  }
+})
+</script>
+
+<style scoped>
+.card {
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--primary, #2563eb);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text, #0f172a);
+  line-height: 1.4;
+  flex: 1;
+  min-width: 0;
+}
+
+.card-body {
+  margin: 0;
+  color: var(--text-muted, #64748b);
+  line-height: 1.6;
+  flex: 1;
+}
+
+.badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--surface-hover, #f1f5f9);
+  border-radius: 999px;
+  padding: 0.375rem 0.75rem;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+}
+</style>

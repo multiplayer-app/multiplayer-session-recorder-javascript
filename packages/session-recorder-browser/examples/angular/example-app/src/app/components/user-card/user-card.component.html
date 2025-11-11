@@ -1,0 +1,14 @@
+<article class="card">
+  <header class="card-header">
+    <h3 class="card-title">{{ user?.name }}</h3>
+    <span class="badge">{{ '@' + user?.username }}</span>
+  </header>
+  <ul class="details">
+    <li><strong>Email:</strong> <a [href]="'mailto:' + user?.email">{{ user?.email }}</a></li>
+    <li><strong>Phone:</strong> <a [href]="'tel:' + user?.phone">{{ user?.phone }}</a></li>
+    <li><strong>Website:</strong> <a target="_blank" rel="noopener" [href]="'https://' + (user?.website || '')">{{ user?.website }}</a></li>
+    <li><strong>Company:</strong> {{ user?.company?.name }}</li>
+    <li><strong>City:</strong> {{ user?.address?.city }}</li>
+  </ul>
+</article>
+
