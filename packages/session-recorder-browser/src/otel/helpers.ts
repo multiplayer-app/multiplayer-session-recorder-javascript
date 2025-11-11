@@ -275,15 +275,5 @@ export const getExporterEndpoint = (exporterEndpoint: string): string => {
 
 
 export const getElementTextContent = (element: HTMLElement): string => {
-  const getInnerText = (element: HTMLElement): string => {
-    const slicedText = element.innerText.slice(0, 50)
-    if (slicedText.length < element.innerText.length) {
-      return `${slicedText}...`
-    }
-    return slicedText
-  }
-
-  return String(
-    element.textContent || element.ariaLabel || getInnerText(element) || '',
-  ).trim()
+  return String(element.textContent || element.ariaLabel || '').trim()
 }
