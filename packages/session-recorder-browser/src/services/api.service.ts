@@ -3,7 +3,7 @@ import {
   ApiServiceConfig,
   IResourceAttributes,
   ISessionAttributes,
-  IUserAttributes
+  IUserAttributes,
 } from '../types'
 
 

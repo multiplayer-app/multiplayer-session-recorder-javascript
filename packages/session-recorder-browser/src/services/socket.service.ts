@@ -14,7 +14,7 @@ import {
   SESSION_UNSUBSCRIBE_EVENT,
   SOCKET_SET_USER_EVENT,
   REMOTE_SESSION_RECORDING_START,
-  REMOTE_SESSION_RECORDING_STOP
+  REMOTE_SESSION_RECORDING_STOP,
 } from '../config'
 
 const MAX_RECONNECTION_ATTEMPTS = 2
@@ -157,14 +157,14 @@ export class SocketService {
     if (this.usePostMessage) {
       this.sendViaPostMessage({
         type: SESSION_SUBSCRIBE_EVENT,
-        ...payload
+        ...payload,
       })
     } else if (this.socket?.connected) {
       this.socket.emit(SESSION_SUBSCRIBE_EVENT, payload)
     } else {
       this.queue.push({
         data: payload,
-        name: SESSION_SUBSCRIBE_EVENT
+        name: SESSION_SUBSCRIBE_EVENT,
       })
       this.init()
     }
@@ -174,12 +174,12 @@ export class SocketService {
     if (this.usePostMessage) {
       this.sendViaPostMessage({
         type: SOCKET_SET_USER_EVENT,
-        data: userAttributes
+        data: userAttributes,
       })
     } else if (this.socket?.connected) {
       this.socket.emit(
         SOCKET_SET_USER_EVENT,
-        userAttributes
+        userAttributes,
       )
     }
   }

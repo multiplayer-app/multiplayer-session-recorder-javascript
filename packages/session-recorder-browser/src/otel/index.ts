@@ -246,6 +246,7 @@ export class TracerBrowserSDK {
         })
         return
       }
+      // eslint-disable-next-line
     } catch (_ignored) { }
 
     // Fallback: create a short-lived span to hold the exception details
@@ -261,6 +262,7 @@ export class TracerBrowserSDK {
         ...(errorInfo || {}),
       })
       span.end()
+      // eslint-disable-next-line
     } catch (_ignored) { }
   }
 
@@ -282,6 +284,7 @@ export class TracerBrowserSDK {
 
     if (typeof window === 'undefined') return
 
+    // eslint-disable-next-line
     const errorHandler = (event: ErrorEvent) => {
       const err = event?.error instanceof Error
         ? event.error
@@ -289,6 +292,7 @@ export class TracerBrowserSDK {
       this.captureException(err)
     }
 
+    // eslint-disable-next-line
     const rejectionHandler = (event: PromiseRejectionEvent) => {
       const reason = (event && 'reason' in event) ? (event as any).reason : undefined
       const err = reason instanceof Error

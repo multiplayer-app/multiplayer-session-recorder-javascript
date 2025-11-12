@@ -150,6 +150,7 @@ if (typeof window !== 'undefined' && typeof window.fetch !== 'undefined') {
 
         // Only attempt to read the body from init (safe); avoid constructing/cloning Requests
         // If the caller passed a Request as input, we do not attempt to read its body here
+        // eslint-disable-next-line
         const candidateBody: BodyInit | null | undefined = init?.body
 
         if (!isNullish(candidateBody)) {
