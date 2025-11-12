@@ -635,6 +635,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
 
     if (this.session) {
       recorderEventBus.emit(SESSION_STARTED_EVENT, this.session)
+      socketService?.emitStartedSessionRecording(this.session._id)
       this._recorder.subscribeToSession(this.session)
       this._sessionWidget.seconds = getTimeDifferenceInSeconds(this.session?.startedAt)
     }
@@ -645,6 +646,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    */
   private _stop(): void {
     this.sessionState = SessionState.stopped
+    socketService?.emitStoppedSessionRecording()
     this._tracer.stop()
     this._recorder.stop()
     this._navigationRecorder.stop()
