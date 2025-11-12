@@ -60,7 +60,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   private _recorder = new RecorderBrowserSDK()
   private _sessionWidget = new SessionWidget()
   private _navigationRecorder = new NavigationRecorder()
-  private _userAttributes: IUserAttributes | null = null
+  private _userAttributes: IUserAttributes | undefined = undefined
   private _startRequestController: AbortController | null = null
 
   public get navigation(): NavigationRecorderPublicApi {
@@ -439,6 +439,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
         ...getNavigatorInfo(),
         ...(sessionPayload?.resourceAttributes || {}),
       },
+      userAttributes: this._userAttributes
     }
 
     const { state } = await this._apiService.checkRemoteSession(payload)
@@ -780,7 +781,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     }
   }
 
-  public setUser(userAttributes: IUserAttributes | null): void {
+  public setUser(userAttributes: IUserAttributes | undefined): void {
     this._userAttributes = userAttributes
 
     socketService?.setUser(this._userAttributes)

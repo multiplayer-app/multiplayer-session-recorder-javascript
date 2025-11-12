@@ -170,7 +170,7 @@ export class SocketService {
     }
   }
 
-  public setUser(userAttributes: IUserAttributes | null): void {
+  public setUser(userAttributes: IUserAttributes | undefined): void {
     if (this.usePostMessage) {
       this.sendViaPostMessage({
         type: SOCKET_SET_USER_EVENT,

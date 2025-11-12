@@ -3,6 +3,7 @@ import {
   ApiServiceConfig,
   IResourceAttributes,
   ISessionAttributes,
+  IUserAttributes
 } from '../types'
 
 
@@ -11,6 +12,7 @@ export interface StartSessionRequest {
   stoppedAt?: string | number
   sessionAttributes?: ISessionAttributes
   resourceAttributes?: IResourceAttributes
+  userAttributes?: IUserAttributes
   debugSessionData?: Record<string, any>
   tags?: { key?: string; value: string }[]
 }
@@ -19,6 +21,13 @@ export interface StopSessionRequest {
   sessionAttributes?: ISessionAttributes
   stoppedAt: string | number
 }
+
+export interface CheckRemoteSessionRequest {
+  sessionAttributes?: ISessionAttributes
+  resourceAttributes?: IResourceAttributes
+  userAttributes?: IUserAttributes
+}
+
 export class ApiService {
   private config: ApiServiceConfig
 
@@ -67,7 +76,6 @@ export class ApiService {
     )
   }
 
-
   /**
    * Stop an active debug session
    * @param sessionId - ID of the session to stop
@@ -94,8 +102,6 @@ export class ApiService {
       'DELETE',
     )
   }
-
-
 
   /**
    * Start a new debug session
@@ -133,7 +139,6 @@ export class ApiService {
     )
   }
 
-
   /**
    * Stop an active continuous debug session
    * @param sessionId - ID of the session to stop
@@ -149,7 +154,7 @@ export class ApiService {
    * Check debug session should be started remotely
    */
   async checkRemoteSession(
-    requestBody: StartSessionRequest,
+    requestBody: CheckRemoteSessionRequest,
     signal?: AbortSignal,
   ): Promise<{ state: 'START' | 'STOP' }> {
     return this.makeRequest(
@@ -159,7 +164,6 @@ export class ApiService {
       signal,
     )
   }
-
 
   /**
    * Make a request to the session debugger API
