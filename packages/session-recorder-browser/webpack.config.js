@@ -124,7 +124,7 @@ const browserBundle = {
   ...baseConfig,
   mode: 'development',
   optimization: { minimize: false },
-  devtool: 'source-map',
+  devtool: false,
   target: 'web',
   output: {
     filename: 'index.js',
@@ -178,6 +178,7 @@ const exportersBundle = {
   experiments: {
     outputModule: true
   },
+  optimization: { minimize: true },
   externals: [],
   resolve: {
     extensions: ['.ts', '.js'],

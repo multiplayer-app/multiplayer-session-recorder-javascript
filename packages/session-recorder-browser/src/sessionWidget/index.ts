@@ -9,7 +9,7 @@ import {
   NON_DRAGGABLE_OFFSET,
 } from './constants'
 import { DEFAULT_WIDGET_TEXT_CONFIG } from '../config'
-
+import { isBrowser, isBrowserExtension } from '../global'
 import { UIManager } from './UIManager'
 import {
   ButtonState,
@@ -39,8 +39,9 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   private _isPaused: boolean = false
   private _isInitialized: boolean = false
 
-  private _recorderPlacement: string = ''
   private _error: string = ''
+  private _recorderPlacement: string = ''
+  private _showWidget: boolean = false
   private _initialPopoverVisible: boolean = false
   private _finalPopoverVisible: boolean = false
   private _buttonState: ButtonState = ButtonState.IDLE
@@ -53,10 +54,11 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   private dragManager: DragManager | null = null
   public buttonClickExternalHandler: (() => boolean | void) | null = null
 
-  public showRecorderButton: boolean = false
-  public timerInterval: any
   public seconds = 0
+  public timerInterval: any
+
   private readonly isBrowser: boolean
+  private readonly isBrowserExtension: boolean
 
   public set buttonState(newState: ButtonState) {
     this._buttonState = newState
@@ -110,7 +112,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     this._isStarted = v
     if (!this.isBrowser) return
 
-    if (!this.showRecorderButton && v && !this._continuousRecording) {
+    if (this.isBrowserExtension && v && !this._continuousRecording) {
       this.overlay.classList.remove('hidden')
       this.makeOverlayDraggable()
 
@@ -137,7 +139,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   public set isPaused(v: boolean) {
     this._isPaused = v
     if (!this.isBrowser) return
-    if (this._isInitialized && !this.showRecorderButton && v && !this._continuousRecording) {
+    if (this._isInitialized && this.isBrowserExtension && v && !this._continuousRecording) {
       this.overlay.classList.add('hidden')
       this.submitSessionDialog.classList.remove('hidden')
       this.stopTimer()
@@ -147,25 +149,26 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   constructor() {
     super()
 
-    this.isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined'
+    this.isBrowser = isBrowser
+    this.isBrowserExtension = isBrowserExtension
 
     if (!this.isBrowser) {
       // Create dummy elements for SSR to prevent crashes
-      this.recorderButton = {} as HTMLButtonElement
-      this.initialPopover = {} as HTMLElement
-      this.finalPopover = {} as HTMLElement
-      this.overlay = {} as HTMLElement
-      this.toast = {} as HTMLElement
-      this.submitSessionDialog = {} as HTMLElement
       this.uiManager = {} as UIManager
+      this.toast = {} as HTMLElement
+      this.overlay = {} as HTMLElement
+      this.finalPopover = {} as HTMLElement
+      this.initialPopover = {} as HTMLElement
+      this.submitSessionDialog = {} as HTMLElement
+      this.recorderButton = {} as HTMLButtonElement
       return
     }
 
-    this.recorderButton = document.createElement('button')
-    this.initialPopover = document.createElement('div')
-    this.finalPopover = document.createElement('div')
-    this.overlay = document.createElement('div')
     this.toast = document.createElement('div')
+    this.overlay = document.createElement('div')
+    this.finalPopover = document.createElement('div')
+    this.initialPopover = document.createElement('div')
+    this.recorderButton = document.createElement('button')
     this.submitSessionDialog = document.createElement('div')
 
     this.uiManager = new UIManager(
@@ -310,7 +313,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     if (this._isInitialized) return
     if (!this.isBrowser) return
     this._isInitialized = true
-    this.showRecorderButton = options.showWidget
+    this._showWidget = options.showWidget
     this._showContinuousRecording = options.showContinuousRecording
     this._widgetTextOverrides = {
       ...this._widgetTextOverrides,
@@ -445,7 +448,27 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     if (!this.isBrowser) return
     const events: any[] = []
 
-    if (this.showRecorderButton) {
+    if (this.isBrowserExtension) {
+      events.push(
+        {
+          target: this.overlay,
+          selector: '.mp-stop-btn',
+          handler: this.onPause.bind(this), // change to submit dialog
+        },
+        {
+          target: this.submitSessionDialog,
+          selector: '#mp-submit-recording',
+          handler: this.onStop.bind(this),
+        },
+        {
+          target: this.submitSessionDialog,
+          selector: '#mp-cancel-submission',
+          handler: this.onCancel.bind(this),
+        },
+      )
+    }
+
+    if (this._showWidget) {
       events.push(
         {
           target: this.initialPopover,
@@ -488,24 +511,6 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
           target: this.finalPopover,
           selector: '.mp-session-debugger-modal-close',
           handler: this.handleCloseFinalPopover.bind(this),
-        },
-      )
-    } else {
-      events.push(
-        {
-          target: this.overlay,
-          selector: '.mp-stop-btn',
-          handler: this.onPause.bind(this), // change to submit dialog
-        },
-        {
-          target: this.submitSessionDialog,
-          selector: '#mp-submit-recording',
-          handler: this.onStop.bind(this),
-        },
-        {
-          target: this.submitSessionDialog,
-          selector: '#mp-cancel-submission',
-          handler: this.onCancel.bind(this),
         },
       )
     }
@@ -666,22 +671,23 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   private onStop() {
     if (!this.isBrowser) return
-    if (this.showRecorderButton && !this.recorderButton) return
+    if (this._showWidget && !this.recorderButton) return
 
-    this.submitSessionDialog.classList.add('hidden')
-    const commentElement = this.showRecorderButton
-      ? this.commentTextarea
-      : (this.submitSessionDialog.querySelector(
-        '#mp-recording-comment',
-      ) as HTMLTextAreaElement)
+    let commentElement: HTMLTextAreaElement | null = null
+
+    if (this.isBrowserExtension) {
+      this.submitSessionDialog.classList.add('hidden')
+      commentElement = this.submitSessionDialog.querySelector('#mp-recording-comment')
+    } else {
+      commentElement = this.commentTextarea
+    }
 
     if (commentElement) {
       this.emit('stop', [commentElement.value])
       commentElement.value = ''
-      return
+    } else {
+      this.emit('stop', [])
     }
-
-    this.emit('stop', [])
   }
 
   private onPause() {
@@ -690,6 +696,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   private onResume() {
     if (!this.isBrowser) return
+
     this.finalPopoverVisible = false
     if (!this._continuousRecording) {
       this.buttonState = ButtonState.RECORDING

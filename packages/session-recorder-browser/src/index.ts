@@ -2,17 +2,13 @@ import './patch'
 import { setupListeners } from './listeners'
 import { recorderEventBus } from './eventBus'
 import { SessionRecorder } from './sessionRecorder'
+import { isBrowser, globalObj, SESSION_RECORDER_LOADED, SESSION_RECORDER_LISTENERS_SETUP } from './global'
 
 export * from './types'
 export * from './navigation'
 export * from '@multiplayer-app/session-recorder-common'
 
 // Create or reuse a single global instance, but be safe in non-browser environments
-const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined'
-// Prefer globalThis when available; fall back to window in browsers
-const globalObj: Record<string, unknown> = typeof globalThis !== 'undefined'
-  ? (globalThis as unknown as Record<string, unknown>)
-  : (isBrowser ? (window as unknown as Record<string, unknown>) : {})
 
 let SessionRecorderInstance: SessionRecorder
 if (isBrowser) {
@@ -22,12 +18,12 @@ if (isBrowser) {
 
   // Attach to the global object for reuse across bundles/loads
   globalObj['SessionRecorder'] = SessionRecorderInstance
-  globalObj['__SESSION_RECORDER_LOADED'] = true
+  globalObj[SESSION_RECORDER_LOADED] = true
 
   // Ensure listeners are set up only once
-  if (!globalObj['__SESSION_RECORDER_LISTENERS_SETUP__']) {
+  if (!globalObj[SESSION_RECORDER_LISTENERS_SETUP]) {
     setupListeners(SessionRecorderInstance)
-    globalObj['__SESSION_RECORDER_LISTENERS_SETUP__'] = true
+    globalObj[SESSION_RECORDER_LISTENERS_SETUP] = true
   }
 } else {
   // SSR / non-DOM environments: create an instance but don't touch globals or listeners
