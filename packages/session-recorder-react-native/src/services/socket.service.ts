@@ -13,6 +13,7 @@ import {
   SOCKET_SET_USER_EVENT,
   REMOTE_SESSION_RECORDING_START,
   REMOTE_SESSION_RECORDING_STOP,
+  SESSION_STARTED_EVENT,
 } from '../config';
 
 const MAX_RECONNECTION_ATTEMPTS = 2;
@@ -24,8 +25,8 @@ export type SocketServiceEvents =
   | typeof REMOTE_SESSION_RECORDING_STOP;
 
 export interface SocketServiceOptions {
-  socketUrl: string;
   apiKey: string;
+  socketUrl: string;
   keepAlive?: boolean;
 }
 
@@ -41,8 +42,8 @@ export class SocketService extends Observable<SocketServiceEvents> {
   constructor() {
     super();
     this.options = {
-      socketUrl: '',
       apiKey: '',
+      socketUrl: '',
       keepAlive: false,
     };
   }
@@ -132,7 +133,6 @@ export class SocketService extends Observable<SocketServiceEvents> {
 
     this.socket.on(SESSION_STOPPED_EVENT, (data: any) => {
       this.emit(SESSION_STOPPED_EVENT, [data]);
-      this.unsubscribeFromSession();
     });
 
     this.socket.on(SESSION_AUTO_CREATED, (data: any) => {
@@ -154,6 +154,15 @@ export class SocketService extends Observable<SocketServiceEvents> {
     }
   }
 
+  private emitSocketEvent(name: string, data: any): void {
+    if (this.socket?.connected) {
+      this.socket.emit(name, data)
+    } else {
+      this.queue.push({ data, name })
+      this._initConnection()
+    }
+  }
+
   private flushQueue(): void {
     while (this.queue.length > 0 && this.socket?.connected) {
       const event = this.queue.shift();
@@ -165,23 +174,11 @@ export class SocketService extends Observable<SocketServiceEvents> {
     }
   }
 
-  private unsubscribeFromSession() {
-    const payload = {
-      debugSessionId: this.sessionId,
-    };
-    if (this.socket?.connected) {
-      this.socket.emit(SESSION_UNSUBSCRIBE_EVENT, payload);
-    }
-  }
 
   public send(event: any): void {
-    if (this.socket?.connected) {
-      this.socket.emit(SESSION_ADD_EVENT, event);
-    } else {
-      this.queue.push({ data: event, name: SESSION_ADD_EVENT });
-      this._initConnection();
-    }
+    this.emitSocketEvent(SESSION_ADD_EVENT, event)
   }
+
 
   public subscribeToSession(session: ISession): void {
     this.sessionId = session.shortId || session._id;
@@ -191,18 +188,19 @@ export class SocketService extends Observable<SocketServiceEvents> {
       debugSessionId: this.sessionId,
       sessionType: session.creationType,
     };
-    if (this.socket?.connected) {
-      this.socket.emit(SESSION_SUBSCRIBE_EVENT, payload);
-    } else {
-      this.queue.push({ data: payload, name: SESSION_SUBSCRIBE_EVENT });
-      this._initConnection();
+    this.emitSocketEvent(SESSION_SUBSCRIBE_EVENT, payload)
+    this.emitSocketEvent(SESSION_STARTED_EVENT, { debugSessionId: this.sessionId })
+  }
+
+  public unsubscribeFromSession() {
+    if (this.sessionId) {
+      this.emitSocketEvent(SESSION_STOPPED_EVENT, {})
+      this.emitSocketEvent(SESSION_UNSUBSCRIBE_EVENT, { debugSessionId: this.sessionId })
     }
   }
 
   public setUser(userAttributes: IUserAttributes | undefined): void {
-    if (this.socket?.connected) {
-      this.socket.emit(SOCKET_SET_USER_EVENT, userAttributes);
-    }
+    this.emitSocketEvent(SOCKET_SET_USER_EVENT, userAttributes)
   }
 
   public close(): Promise<void> {

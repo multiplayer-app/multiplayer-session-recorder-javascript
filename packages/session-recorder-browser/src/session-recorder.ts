@@ -655,6 +655,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    */
   private _stop(): void {
     this.sessionState = SessionState.stopped
+    this._socketService.unsubscribeFromSession()
     this._tracer.stop()
     this._recorder.stop()
     this._navigationRecorder.stop()

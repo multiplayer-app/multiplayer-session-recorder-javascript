@@ -1,12 +1,9 @@
 import io, { Socket } from 'socket.io-client'
 import { Observable } from 'lib0/observable'
 
-import {
-  ISession,
-  IUserAttributes,
-} from '../types'
-import { recorderEventBus } from '../eventBus'
+import { type ISession, type IUserAttributes } from '../types'
 import messagingService from '../services/messaging.service'
+
 import {
   SESSION_ADD_EVENT,
   SESSION_AUTO_CREATED,
@@ -19,6 +16,7 @@ import {
   SESSION_STARTED_EVENT,
 } from '../config'
 
+
 const MAX_RECONNECTION_ATTEMPTS = 2
 
 export type SocketServiceEvents =
@@ -28,10 +26,10 @@ export type SocketServiceEvents =
   | typeof REMOTE_SESSION_RECORDING_STOP
 
 export interface SocketServiceOptions {
-  socketUrl: string
   apiKey: string
-  usePostMessageFallback?: boolean
+  socketUrl: string
   keepAlive?: boolean
+  usePostMessageFallback?: boolean
 }
 
 export class SocketService extends Observable<SocketServiceEvents> {
@@ -39,18 +37,18 @@ export class SocketService extends Observable<SocketServiceEvents> {
   private queue: any[] = []
   private isConnecting: boolean = false
   private isConnected: boolean = false
-  private usePostMessage: boolean = false
   private attempts: number = 0
   private sessionId: string | null = null
   private options: SocketServiceOptions
+  private usePostMessage: boolean = false
 
   constructor() {
     super()
     this.options = {
-      socketUrl: '',
       apiKey: '',
-      usePostMessageFallback: false,
+      socketUrl: '',
       keepAlive: false,
+      usePostMessageFallback: false,
     }
   }
 
@@ -64,9 +62,9 @@ export class SocketService extends Observable<SocketServiceEvents> {
       ...config,
     }
     if (
-      this.options.keepAlive
-      && this.options.socketUrl
-      && this.options.apiKey
+      this.options.keepAlive &&
+      this.options.socketUrl &&
+      this.options.apiKey
     ) {
       this._initConnection()
     }
@@ -78,13 +76,27 @@ export class SocketService extends Observable<SocketServiceEvents> {
    */
   public updateConfigs(config: Partial<SocketServiceOptions>): void {
     // If any config changed, reconnect if connected
-    if (Object.keys(config).some(key => config[key] !== undefined && config[key] !== this.options[key])) {
+    const hasChanges = Object.keys(config).some(
+      (key) => {
+        const typedKey = key as keyof SocketServiceOptions;
+        return (
+          config[typedKey] !== undefined &&
+          config[typedKey] !== this.options[typedKey]
+        );
+      }
+    );
+
+    if (hasChanges) {
       this.options = { ...this.options, ...config }
       if (this.socket?.connected) {
-        this.close()
-        if (this.options.keepAlive && this.options.socketUrl && this.options.apiKey) {
-          this._initConnection()
-        }
+        this.close().then(() => {
+          if (this.options.keepAlive &&
+            this.options.socketUrl &&
+            this.options.apiKey
+          ) {
+            this._initConnection()
+          }
+        })
       }
     }
   }
@@ -103,13 +115,6 @@ export class SocketService extends Observable<SocketServiceEvents> {
       reconnectionAttempts: 2,
       transports: ['websocket'],
     })
-
-    // this.socket.on('connect', () => {
-    //   this.isConnecting = false
-    //   this.isConnected = true
-    //   this.usePostMessage = false
-    //   this.flushQueue()
-    // })
 
     this.socket.on('ready', () => {
       this.isConnecting = false
@@ -131,13 +136,10 @@ export class SocketService extends Observable<SocketServiceEvents> {
 
     this.socket.on(SESSION_STOPPED_EVENT, (data: any) => {
       this.emit(SESSION_STOPPED_EVENT, [data])
-      this.unsubscribeFromSession()
     })
 
     this.socket.on(SESSION_AUTO_CREATED, (data: any) => {
       this.emit(SESSION_AUTO_CREATED, [data])
-      // Also emit via eventBus for backward compatibility
-      recorderEventBus.emit(SESSION_AUTO_CREATED, data)
     })
 
     this.socket.on(REMOTE_SESSION_RECORDING_START, (data: any) => {
@@ -156,8 +158,20 @@ export class SocketService extends Observable<SocketServiceEvents> {
     }
   }
 
-  private sendViaPostMessage(event: any): void {
-    messagingService.sendMessage('rrweb-event', event)
+  private sendViaPostMessage(name: string, data: any): void {
+    const action = name === SESSION_ADD_EVENT ? 'rrweb-event' : 'socket-emit'
+    messagingService.sendMessage(action, data)
+  }
+
+  private emitSocketEvent(name: string, data: any): void {
+    if (this.usePostMessage) {
+      this.sendViaPostMessage(name, data)
+    } else if (this.socket?.connected) {
+      this.socket.emit(name, data)
+    } else {
+      this.queue.push({ data, name })
+      this._initConnection()
+    }
   }
 
   private flushQueue(): void {
@@ -166,33 +180,15 @@ export class SocketService extends Observable<SocketServiceEvents> {
       if (!event) continue
 
       if (this.usePostMessage) {
-        this.sendViaPostMessage(event.data)
+        this.sendViaPostMessage(event.name, event.data)
       } else if (this.socket?.connected) {
         this.socket.emit(event.name, event.data)
       }
     }
   }
 
-  private unsubscribeFromSession() {
-    const payload = {
-      debugSessionId: this.sessionId,
-    }
-    if (this.usePostMessage) {
-      messagingService.sendMessage('socket-emit', { event: SESSION_UNSUBSCRIBE_EVENT, data: payload })
-    } else if (this.socket?.connected) {
-      this.socket.emit(SESSION_UNSUBSCRIBE_EVENT, payload)
-    }
-  }
-
   public send(event: any): void {
-    if (this.usePostMessage) {
-      this.sendViaPostMessage(event)
-    } else if (this.socket?.connected) {
-      this.socket.emit(SESSION_ADD_EVENT, event)
-    } else {
-      this.queue.push({ data: event, name: SESSION_ADD_EVENT })
-      this._initConnection()
-    }
+    this.emitSocketEvent(SESSION_ADD_EVENT, event)
   }
 
   public subscribeToSession(session: ISession): void {
@@ -203,68 +199,25 @@ export class SocketService extends Observable<SocketServiceEvents> {
       debugSessionId: this.sessionId,
       sessionType: session.creationType,
     }
-    if (this.usePostMessage) {
-      this.sendViaPostMessage({
-        type: SESSION_SUBSCRIBE_EVENT,
-        ...payload,
-      })
-    } else if (this.socket?.connected) {
-      this.socket.emit(SESSION_SUBSCRIBE_EVENT, payload)
-    } else {
-      this.queue.push({
-        data: payload,
-        name: SESSION_SUBSCRIBE_EVENT,
-      })
-      this._initConnection()
-    }
+    this.emitSocketEvent(SESSION_SUBSCRIBE_EVENT, payload)
+    this.emitSocketEvent(SESSION_STARTED_EVENT, { debugSessionId: this.sessionId })
   }
 
-  public emitStartedSessionRecording(debugSessionId: string): void {
-    if (this.usePostMessage) {
-      this.sendViaPostMessage({
-        type: SESSION_STARTED_EVENT,
-        data: { debugSessionId },
-      })
-    } else if (this.socket?.connected) {
-      this.socket.emit(
-        SESSION_STARTED_EVENT,
-        { debugSessionId },
-      )
-    }
-  }
-
-  public emitStoppedSessionRecording(): void {
-    if (this.usePostMessage) {
-      this.sendViaPostMessage({
-        type: SESSION_STOPPED_EVENT,
-        data: {},
-      })
-    } else if (this.socket?.connected) {
-      this.socket.emit(
-        SESSION_STOPPED_EVENT,
-        {},
-      )
+  public unsubscribeFromSession() {
+    if (this.sessionId) {
+      this.emitSocketEvent(SESSION_STOPPED_EVENT, {})
+      this.emitSocketEvent(SESSION_UNSUBSCRIBE_EVENT, { debugSessionId: this.sessionId })
     }
   }
 
   public setUser(userAttributes: IUserAttributes | undefined): void {
-    if (this.usePostMessage) {
-      this.sendViaPostMessage({
-        type: SOCKET_SET_USER_EVENT,
-        data: userAttributes,
-      })
-    } else if (this.socket?.connected) {
-      this.socket.emit(
-        SOCKET_SET_USER_EVENT,
-        userAttributes,
-      )
-    }
+    this.emitSocketEvent(SOCKET_SET_USER_EVENT, userAttributes)
   }
 
   public close(): Promise<void> {
     return new Promise((resolve) => {
       if (this.usePostMessage) {
-        this.sendViaPostMessage({ type: 'close' })
+        this.sendViaPostMessage('close', {})
       }
       if (this.socket?.connected) {
         setTimeout(() => {
