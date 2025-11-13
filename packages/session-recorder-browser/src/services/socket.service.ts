@@ -16,6 +16,7 @@ import {
   SOCKET_SET_USER_EVENT,
   REMOTE_SESSION_RECORDING_START,
   REMOTE_SESSION_RECORDING_STOP,
+  SESSION_STARTED_EVENT,
 } from '../config'
 
 const MAX_RECONNECTION_ATTEMPTS = 2
@@ -215,6 +216,34 @@ export class SocketService extends Observable<SocketServiceEvents> {
         name: SESSION_SUBSCRIBE_EVENT,
       })
       this._initConnection()
+    }
+  }
+
+  public emitStartedSessionRecording(debugSessionId: string): void {
+    if (this.usePostMessage) {
+      this.sendViaPostMessage({
+        type: SESSION_STARTED_EVENT,
+        data: { debugSessionId },
+      })
+    } else if (this.socket?.connected) {
+      this.socket.emit(
+        SESSION_STARTED_EVENT,
+        { debugSessionId },
+      )
+    }
+  }
+
+  public emitStoppedSessionRecording(): void {
+    if (this.usePostMessage) {
+      this.sendViaPostMessage({
+        type: SESSION_STOPPED_EVENT,
+        data: {},
+      })
+    } else if (this.socket?.connected) {
+      this.socket.emit(
+        SESSION_STOPPED_EVENT,
+        {},
+      )
     }
   }
 
