@@ -8,14 +8,15 @@ import { getRecordConsolePlugin, LogData } from '@rrweb/rrweb-plugin-console-rec
 
 import { isConsoleEvent } from '../utils'
 import { CONTINUOUS_DEBUGGING_TIMEOUT } from '../config'
-import { ISession, SessionRecorderConfigs } from '../types'
+import { SessionRecorderConfigs } from '../types'
 
 
-import { socketService } from '../services/socket.service'
+import { SocketService } from '../services/socket.service'
 
 export class RecorderBrowserSDK {
   private stopFn?: () => void
   private config?: SessionRecorderConfigs
+  private socketService?: SocketService
   private restartInterval: NodeJS.Timeout | null = null
 
   private _startedAt: string = ''
@@ -41,9 +42,11 @@ export class RecorderBrowserSDK {
   /**
    * Initializes the recorder SDK with configuration settings.
    * @param config - Configuration settings for the session debugger.
+   * @param socketService - Optional socket service instance for sending events.
    */
-  init(config: SessionRecorderConfigs): void {
+  init(config: SessionRecorderConfigs, socketService?: SocketService): void {
     this.config = config
+    this.socketService = socketService
   }
 
   /**
@@ -98,7 +101,7 @@ export class RecorderBrowserSDK {
     this.stopFn = record({
       ...options,
       emit: async (event: eventWithTime) => {
-        if (socketService) {
+        if (this.socketService) {
 
           if (typeof maskingConfig.maskConsoleEvent === 'function' && isConsoleEvent(event)) {
             const { data } = event as pluginEvent<LogData>
@@ -108,7 +111,7 @@ export class RecorderBrowserSDK {
 
           const packedEvent = pack(event)
           this.stoppedAt = new Date(event.timestamp).toISOString()
-          socketService.send({
+          this.socketService.send({
             event: packedEvent,
             eventType: event.type,
             timestamp: event.timestamp,
@@ -152,12 +155,8 @@ export class RecorderBrowserSDK {
   stop(): void {
     this.stopFn?.()
     if (!this.config?.useWebsocket) {
-      socketService?.close()
+      this.socketService?.close()
     }
     this.clearRestartInterval()
-  }
-
-  subscribeToSession(session: ISession): void {
-    socketService?.subscribeToSession(session)
   }
 }

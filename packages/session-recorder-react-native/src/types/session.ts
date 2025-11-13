@@ -1,5 +1,6 @@
-import { SessionType } from '@multiplayer-app/session-recorder-common';
-import type { UserType } from './client-type.enum';
+import { SessionType, UserType } from '@multiplayer-app/session-recorder-common';
+
+
 
 export interface IResourceAttributes {
   browserInfo?: string;

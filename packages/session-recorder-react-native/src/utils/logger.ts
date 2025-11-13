@@ -24,7 +24,7 @@ class Logger {
     ['ScreenRecorder', '📸'],
     ['NativeGestureRecorder', '👆'],
     ['SessionRecorderContext', '🎯'],
-    ['EventExporter', '📤'],
+    ['SocketService', '📤'],
     ['NavigationTracker', '📸'],
     ['RecorderReactNativeSDK', '📤'],
     ['DEBUGGER_LIB', '🔍'],

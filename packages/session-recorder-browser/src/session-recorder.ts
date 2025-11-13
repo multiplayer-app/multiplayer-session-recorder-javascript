@@ -16,10 +16,7 @@ import {
   SessionRecorderEvents,
   IUserAttributes,
 } from './types'
-import { 
-  createSocketService,
-  socketService,
- } from './services/socket.service'
+import { SocketService } from './services/socket.service'
 
 import {
   BASE_CONFIG,
@@ -43,7 +40,6 @@ import { SessionWidget } from './sessionWidget'
 import messagingService from './services/messaging.service'
 import { ApiService, StartSessionRequest, StopSessionRequest } from './services/api.service'
 
-import './index.scss'
 import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { ContinuousRecordingSaveButtonState } from './sessionWidget/buttonStateConfigs'
 import { ISessionRecorder } from './types'
@@ -56,6 +52,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
 
   private _configs: SessionRecorderConfigs
   private _apiService = new ApiService()
+  private _socketService = new SocketService()
   private _tracer = new TracerBrowserSDK()
   private _recorder = new RecorderBrowserSDK()
   private _sessionWidget = new SessionWidget()
@@ -202,22 +199,22 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     this._tracer.init(this._configs)
     this._apiService.init(this._configs)
     this._sessionWidget.init(this._configs)
-    this._navigationRecorder.init({
-      enabled: this._configs.recordNavigation,
-      application: this._configs.application,
-      environment: this._configs.environment,
-      version: this._configs.version,
-    })
-
-    createSocketService({
+    this._socketService.init({
       apiKey: this._configs.apiKey,
       socketUrl: this._configs.apiBaseUrl || '',
-      usePostMessageFallback: Boolean(this._configs.usePostMessageFallback),
       keepAlive: Boolean(this._configs.useWebsocket),
+      usePostMessageFallback: Boolean(this._configs.usePostMessageFallback),
+    })
+
+    this._navigationRecorder.init({
+      version: this._configs.version,
+      application: this._configs.application,
+      environment: this._configs.environment,
+      enabled: this._configs.recordNavigation,
     })
 
     if (this._configs.apiKey) {
-      this._recorder.init(this._configs)
+      this._recorder.init(this._configs, this._socketService)
     }
 
     if (
@@ -231,10 +228,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     }
 
     this._registerWidgetEvents()
-    this._registerSessionLimitReach()
-    this._registerSessionAutoCreation()
-    this._registerRemoteSessionRecordingStart()
-    this._registerRemoteSessionRecordingStop()
+    this._registerSocketServiceListeners()
     messagingService.sendMessage('state-change', this.sessionState)
     // Emit init observable event
     this.emit('init', [this])
@@ -258,12 +252,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
           sessionAttributes: this.sessionAttributes,
           resourceAttributes: getNavigatorInfo(),
           stoppedAt: this._recorder.stoppedAt,
-          name: this.sessionAttributes.userName
-            ? `${this.sessionAttributes.userName}'s session on ${getFormattedDate(
-              Date.now(),
-              { month: 'short', day: 'numeric' },
-            )}`
-            : `Session on ${getFormattedDate(Date.now())}`,
+          name: this._getSessionName()
         },
       )
 
@@ -395,6 +384,15 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   }
 
   /**
+   * Set the user attributes
+   * @param userAttributes - the user attributes to set
+   */
+  public setUserAttributes(userAttributes: IUserAttributes | undefined): void {
+    this._userAttributes = userAttributes
+    this._socketService.setUser(this._userAttributes)
+  }
+
+  /**
    * Updates the button click handler in the library.
    * @param handler - A function that will be invoked when the button is clicked.
    *                  The function receives the click event as its parameter and
@@ -500,63 +498,77 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     })
   }
 
+  /**
+   * Handle the safe start event
+   */
   private _handleStart(): void {
     if (this.sessionState === SessionState.stopped) {
       this.start(SessionType.MANUAL)
     }
   }
-
+  /**
+   * Handle the safe stop event
+   */
   private _handleStop(comment?: string): void {
     if (this.sessionState === SessionState.started || this.sessionState === SessionState.paused) {
       this.stop(comment)
     }
   }
-
+  /**
+   * Handle the safe pause event
+   */
   private _handlePause(): void {
     if (this.sessionState === SessionState.started) {
       this.pause()
     }
   }
-
+  /**
+   * Handle the safe resume event
+   */
   private _handleResume(): void {
     if (this.sessionState === SessionState.paused) {
       this.resume()
     }
   }
 
+  /**
+   * Handle the safe cancel event
+   */
   private _handleCancel(): void {
     if (this.sessionState === SessionState.started || this.sessionState === SessionState.paused) {
       this.cancel()
     }
   }
 
+  /**
+   * Handle the safe save event
+   */
   private _handleSave(): void {
     if (this.sessionState === SessionState.started && this.continuousRecording) {
       this.save()
     }
   }
 
+  /**
+   * Handle the safe continuous debugging event
+   */
   private _handleContinuousDebugging(): void {
     if (this.sessionState === SessionState.stopped) {
       this.start(SessionType.CONTINUOUS)
     }
   }
+
   /**
-   * Register session limit reaching listeners for controlling session end
+   * Register socket service event listeners
    */
-  private _registerSessionLimitReach() {
-    recorderEventBus.on(SESSION_STOPPED_EVENT, () => {
+  private _registerSocketServiceListeners() {
+    this._socketService.on(SESSION_STOPPED_EVENT, () => {
       this._stop()
       this._clearSession()
       this._sessionWidget.handleUIReseting()
     })
-  }
 
-  /**
-   * Register session auto creation listeners during continuous recording
-   */
-  private _registerSessionAutoCreation() {
-    recorderEventBus.on(SESSION_AUTO_CREATED, (payload) => {
+    this._socketService.on(SESSION_AUTO_CREATED, (payload: any) => {
       if (!payload?.data) return
       this._sessionWidget.showToast(
         {
@@ -570,19 +582,19 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
         5000,
       )
     })
-  }
 
-  private _registerRemoteSessionRecordingStart() {
-    recorderEventBus.on(REMOTE_SESSION_RECORDING_START, (payload) => {
+    this._socketService.on(REMOTE_SESSION_RECORDING_START, (payload: any) => {
       console.log('REMOTE_SESSION_RECORDING_START', payload)
-      this.start()
+      if (this.sessionState === SessionState.stopped) {
+        this.start()
+      }
     })
-  }
 
-  private _registerRemoteSessionRecordingStop() {
-    recorderEventBus.on(REMOTE_SESSION_RECORDING_STOP, (payload) => { 
+    this._socketService.on(REMOTE_SESSION_RECORDING_STOP, (payload: any) => {
       console.log('REMOTE_SESSION_RECORDING_STOP', payload)
-      this.stop()
+      if (this.sessionState !== SessionState.stopped) {
+        this.stop()
+      }
     })
   }
 
@@ -596,9 +608,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
         sessionAttributes: this.sessionAttributes,
         resourceAttributes: getNavigatorInfo(),
         userAttributes: this._userAttributes,
-        name: this.sessionAttributes.userName
-          ? `${this.sessionAttributes.userName}'s session on ${getFormattedDate(Date.now(), { month: 'short', day: 'numeric' })}`
-          : `Session on ${getFormattedDate(Date.now())}`,
+        name: this._getSessionName()
       }
       const request: StartSessionRequest = !this.continuousRecording ?
         payload : { debugSessionData: payload }
@@ -635,7 +645,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
 
     if (this.session) {
       recorderEventBus.emit(SESSION_STARTED_EVENT, this.session)
-      this._recorder.subscribeToSession(this.session)
+      this._socketService.subscribeToSession(this.session)
       this._sessionWidget.seconds = getTimeDifferenceInSeconds(this.session?.startedAt)
     }
   }
@@ -673,7 +683,8 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   private _setupSessionAndStart(session: ISession, configureExporters: boolean = true): void {
     if (configureExporters && session.tempApiKey) {
       this._configs.apiKey = session.tempApiKey
-      this._recorder.init(this._configs)
+      this._socketService.updateConfigs({ apiKey: this._configs.apiKey })
+      this._recorder.init(this._configs, this._socketService)
       this._tracer.setApiKey(session.tempApiKey)
       this._apiService.updateConfigs({ apiKey: this._configs.apiKey })
     }
@@ -781,9 +792,16 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     }
   }
 
-  public setUser(userAttributes: IUserAttributes | undefined): void {
-    this._userAttributes = userAttributes
 
-    socketService?.setUser(this._userAttributes)
+  /**
+   * Get the session name
+   * @returns the session name
+   */
+  private _getSessionName(date: Date = new Date()): string {
+    const userName = this.sessionAttributes?.userName || this._userAttributes?.userName || this._userAttributes?.name || '';
+    return userName
+      ? `${userName}'s session on ${getFormattedDate(date, { month: 'short', day: 'numeric' })}`
+      : `Session on ${getFormattedDate(date)}`;
   }
+
 }

@@ -1,6 +1,6 @@
 import { SessionType } from '@multiplayer-app/session-recorder-common';
 // import { pack } from '@rrweb/packer' // Removed to avoid blob creation issues in Hermes
-import { EventExporter } from './eventExporter';
+import { SocketService } from '../services/socket.service';
 import { logger } from '../utils';
 import { ScreenRecorder } from './screenRecorder';
 import { GestureRecorder } from './gestureRecorder';
@@ -14,7 +14,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
   private gestureRecorder: GestureRecorder;
   private navigationTracker: NavigationTracker;
   private recordedEvents: eventWithTime[] = [];
-  private exporter: EventExporter;
+  private socketService!: SocketService;
   private sessionId: string | null = null;
   private sessionType: SessionType = SessionType.MANUAL;
 
@@ -22,29 +22,16 @@ export class RecorderReactNativeSDK implements EventRecorder {
     this.screenRecorder = new ScreenRecorder();
     this.gestureRecorder = new GestureRecorder();
     this.navigationTracker = new NavigationTracker();
-    this.exporter = new EventExporter({
-      socketUrl: '',
-      apiKey: '',
-    });
   }
 
-  init(config: RecorderConfig): void {
+  init(config: RecorderConfig, socketService: SocketService): void {
     this.config = config;
+    this.socketService = socketService;
     this.screenRecorder.init(config, this);
     this.navigationTracker.init(config, this.screenRecorder);
     this.gestureRecorder.init(config, this, this.screenRecorder);
-
-    this.exporter.setApiKey(config.apiKey);
-    this.exporter.setSocketUrl(config.apiBaseUrl);
   }
 
-  setApiKey(apiKey: string): void {
-    this.exporter.setApiKey(apiKey);
-  }
-
-  setSocketUrl(socketUrl: string): void {
-    this.exporter.setSocketUrl(socketUrl);
-  }
 
   start(sessionId: string | null, sessionType: SessionType): void {
     if (!this.config) {
@@ -77,7 +64,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
     this.gestureRecorder.stop();
     this.navigationTracker.stop();
     this.screenRecorder.stop();
-    this.exporter?.close();
+    this.socketService?.close();
   }
 
   setNavigationRef(ref: any): void {
@@ -101,11 +88,11 @@ export class RecorderReactNativeSDK implements EventRecorder {
       return;
     }
 
-    if (this.exporter) {
-      logger.debug('RecorderReactNativeSDK', 'Sending to exporter', event);
+    if (this.socketService) {
+      logger.debug('RecorderReactNativeSDK', 'Sending to socket service', event);
       // Skip packing to avoid blob creation issues in Hermes
       // const packedEvent = pack(event)
-      this.exporter.send({
+      this.socketService.send({
         event: event, // Send raw event instead of packed
         eventType: event.type,
         timestamp: event.timestamp,

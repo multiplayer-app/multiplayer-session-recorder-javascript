@@ -13,7 +13,13 @@ import {
   type SessionRecorderConfigs,
   type SessionRecorderOptions,
   type EventRecorder,
+  type IUserAttributes,
 } from './types';
+import {
+  SESSION_STOPPED_EVENT,
+  REMOTE_SESSION_RECORDING_START,
+  REMOTE_SESSION_RECORDING_STOP
+} from './config';
 import { getFormattedDate, isSessionActive, getNavigatorInfo } from './utils';
 import {
   setShouldRecordHttpData,
@@ -28,6 +34,7 @@ import {
   type StartSessionRequest,
   type StopSessionRequest,
 } from './services/api.service';
+import { SocketService } from './services/socket.service';
 
 type SessionRecorderEvents = 'state-change' | 'init';
 
@@ -36,6 +43,7 @@ class SessionRecorder
   implements ISessionRecorder, EventRecorder {
   private _configs: SessionRecorderConfigs;
   private _apiService = new ApiService();
+  private _socketService = new SocketService();
   private _tracer = new TracerReactNativeSDK();
   private _recorder = new RecorderReactNativeSDK();
   private _storageService = StorageService.getInstance();
@@ -109,6 +117,8 @@ class SessionRecorder
   set sessionAttributes(attributes: Record<string, any> | null) {
     this._sessionAttributes = attributes;
   }
+
+  private _userAttributes: IUserAttributes | undefined = undefined;
 
   /**
    * Error message getter and setter
@@ -200,10 +210,16 @@ class SessionRecorder
     );
 
     this._tracer.init(this._configs);
-    this._recorder.init(this._configs);
     this._apiService.init(this._configs);
+    this._socketService.init({
+      apiKey: this._configs.apiKey,
+      socketUrl: this._configs.apiBaseUrl,
+      keepAlive: this._configs.useWebsocket
+    });
+    this._recorder.init(this._configs, this._socketService);
     await this._networkService.init();
     this._setupNetworkCallbacks();
+    this._registerSocketServiceListeners();
 
     if (
       this.sessionId &&
@@ -213,6 +229,30 @@ class SessionRecorder
       this._start();
     }
     this.emit('init', []);
+  }
+
+  /**
+   * Register socket service event listeners
+   */
+  private _registerSocketServiceListeners(): void {
+    this._socketService.on(SESSION_STOPPED_EVENT, () => {
+      this._stop();
+      this._clearSession();
+    });
+
+    this._socketService.on(REMOTE_SESSION_RECORDING_START, (payload: any) => {
+      logger.info('SessionRecorder', 'Remote session recording started', payload);
+      if (this.sessionState === SessionState.stopped) {
+        this.start();
+      }
+    });
+
+    this._socketService.on(REMOTE_SESSION_RECORDING_STOP, (payload: any) => {
+      logger.info('SessionRecorder', 'Remote session recording stopped', payload);
+      if (this.sessionState !== SessionState.stopped) {
+        this.stop();
+      }
+    });
   }
 
   /**
@@ -361,13 +401,9 @@ class SessionRecorder
         {
           sessionAttributes: this.sessionAttributes,
           resourceAttributes: getNavigatorInfo(),
+          userAttributes: this._userAttributes,
           stoppedAt: Date.now(),
-          name: this.sessionAttributes.userName
-            ? `${this.sessionAttributes.userName}'s session on ${getFormattedDate(
-              Date.now(),
-              { month: 'short', day: 'numeric' }
-            )}`
-            : `Session on ${getFormattedDate(Date.now())}`,
+          name: this._getSessionName()
         }
       );
 
@@ -383,6 +419,15 @@ class SessionRecorder
    */
   public setSessionAttributes(attributes: Record<string, any>): void {
     this._sessionAttributes = attributes;
+  }
+
+  /**
+   * Set the user attributes
+   * @param userAttributes - the user attributes to set
+   */
+  public setUserAttributes(userAttributes: IUserAttributes | undefined): void {
+    this._userAttributes = userAttributes;
+    this._socketService.setUser(this._userAttributes);
   }
 
   /**
@@ -406,6 +451,7 @@ class SessionRecorder
         ...getNavigatorInfo(),
         ...(sessionPayload?.resourceAttributes || {}),
       },
+      userAttributes: this._userAttributes,
     };
 
     const { state } = await this._apiService.checkRemoteSession(payload);
@@ -430,9 +476,8 @@ class SessionRecorder
       const payload = {
         sessionAttributes: this.sessionAttributes,
         resourceAttributes: getNavigatorInfo(),
-        name: this.sessionAttributes.userName
-          ? `${this.sessionAttributes.userName}'s session on ${getFormattedDate(Date.now(), { month: 'short', day: 'numeric' })}`
-          : `Session on ${getFormattedDate(Date.now())}`,
+        userAttributes: this._userAttributes,
+        name: this._getSessionName()
       };
       const request: StartSessionRequest = !this.continuousRecording
         ? payload
@@ -467,6 +512,9 @@ class SessionRecorder
     if (this.sessionId) {
       this._tracer.start(this.sessionId, this.sessionType);
       this._recorder.start(this.sessionId, this.sessionType);
+      if (this.session) {
+        this._socketService.subscribeToSession(this.session);
+      }
     }
   }
 
@@ -506,8 +554,8 @@ class SessionRecorder
     if (configureExporters && session.tempApiKey) {
       this._configs.apiKey = session.tempApiKey;
       this._tracer.setApiKey(session.tempApiKey);
-      this._recorder.setApiKey(session.tempApiKey);
       this._apiService.setApiKey(session.tempApiKey);
+      this._socketService.updateConfigs({ apiKey: session.tempApiKey });
     }
 
     this._setSession(session);
@@ -684,6 +732,17 @@ class SessionRecorder
     } catch (_e) {
       return { errorInfo: String(errorInfo) }
     }
+  }
+
+  /**
+   * Get the session name
+   * @returns the session name
+   */
+  private _getSessionName(date: Date = new Date()): string {
+    const userName = this.sessionAttributes?.userName || this._userAttributes?.userName || this._userAttributes?.name || '';
+    return userName
+      ? `${userName}'s session on ${getFormattedDate(date, { month: 'short', day: 'numeric' })}`
+      : `Session on ${getFormattedDate(date)}`;
   }
 }
 

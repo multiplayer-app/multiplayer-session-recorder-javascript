@@ -2,6 +2,7 @@ import {
   type IResourceAttributes,
   type ISessionAttributes,
   type ApiServiceConfig,
+  type IUserAttributes,
 } from '../types';
 
 export interface StartSessionRequest {
@@ -9,6 +10,7 @@ export interface StartSessionRequest {
   stoppedAt?: string | number;
   sessionAttributes?: ISessionAttributes;
   resourceAttributes?: IResourceAttributes;
+  userAttributes?: IUserAttributes;
   debugSessionData?: Record<string, any>;
   tags?: { key?: string; value: string }[];
 }
@@ -16,6 +18,13 @@ export interface StartSessionRequest {
 export interface StopSessionRequest {
   sessionAttributes?: ISessionAttributes;
   stoppedAt: string | number;
+}
+
+
+export interface CheckRemoteSessionRequest {
+  sessionAttributes?: ISessionAttributes
+  resourceAttributes?: IResourceAttributes
+  userAttributes?: IUserAttributes
 }
 
 export class ApiService {
@@ -200,17 +209,17 @@ export class ApiService {
   }
 
   /**
-   * Check debug session should be started remotely
-   */
+  * Check debug session should be started remotely
+  */
   async checkRemoteSession(
-    requestBody: StartSessionRequest,
-    signal?: AbortSignal
+    requestBody: CheckRemoteSessionRequest,
+    signal?: AbortSignal,
   ): Promise<{ state: 'START' | 'STOP' }> {
     return this.makeRequest(
       '/remote-debug-session/check',
       'POST',
       requestBody,
-      signal
-    );
+      signal,
+    )
   }
 }

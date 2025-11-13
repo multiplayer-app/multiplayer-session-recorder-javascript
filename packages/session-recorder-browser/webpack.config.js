@@ -26,8 +26,22 @@ const baseConfig = {
         exclude: /node_modules/
       },
       {
-        test: /\.scss$/,
-        use: [isProduction ? MiniCssExtractPlugin.loader : 'style-loader', 'css-loader', 'sass-loader']
+        // SCSS rules - use oneOf to ensure only one matches
+        oneOf: [
+          {
+            // Handle SCSS imports with ?raw query to get CSS as string
+            // This must come first to match before the regular rule
+            test: /\.scss$/,
+            resourceQuery: /raw/,
+            type: 'asset/source',
+            use: ['sass-loader']
+          },
+          {
+            // Regular SCSS imports (for style injection)
+            test: /\.scss$/,
+            use: [isProduction ? MiniCssExtractPlugin.loader : 'style-loader', 'css-loader', 'sass-loader']
+          }
+        ]
       },
       {
         test: /\.css$/,

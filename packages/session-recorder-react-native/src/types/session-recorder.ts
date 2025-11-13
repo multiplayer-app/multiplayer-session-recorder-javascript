@@ -1,7 +1,7 @@
 import { type Span } from '@opentelemetry/api';
 import { SessionType } from '@multiplayer-app/session-recorder-common';
 import { type PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
-import type { ISession } from './session';
+import type { ISession, IUserAttributes } from './session';
 
 // WidgetButtonPlacement moved to configs.ts
 
@@ -155,6 +155,13 @@ export interface SessionRecorderOptions {
     level?: number;
     enabled?: boolean;
   };
+
+  /**
+  * @description
+  * If true, webSocket will be used to manage remote recording sessions.
+  * @default true
+  */
+  useWebsocket?: boolean
 }
 
 /**
@@ -331,6 +338,12 @@ export interface ISessionRecorder {
    * @param attributes - the attributes to set
    */
   setSessionAttributes(attributes: Record<string, any>): void;
+
+  /**
+   * Set the user attributes
+   * @param userAttributes - the user attributes to set
+   */
+  setUserAttributes(userAttributes: IUserAttributes | undefined): void;
 
   /**
    * Capture an exception and send it as an error trace

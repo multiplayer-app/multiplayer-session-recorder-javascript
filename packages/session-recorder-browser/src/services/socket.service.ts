@@ -1,4 +1,5 @@
 import io, { Socket } from 'socket.io-client'
+import { Observable } from 'lib0/observable'
 
 import {
   ISession,
@@ -19,7 +20,20 @@ import {
 
 const MAX_RECONNECTION_ATTEMPTS = 2
 
-export class SocketService {
+export type SocketServiceEvents =
+  | typeof SESSION_STOPPED_EVENT
+  | typeof SESSION_AUTO_CREATED
+  | typeof REMOTE_SESSION_RECORDING_START
+  | typeof REMOTE_SESSION_RECORDING_STOP
+
+export interface SocketServiceOptions {
+  socketUrl: string
+  apiKey: string
+  usePostMessageFallback?: boolean
+  keepAlive?: boolean
+}
+
+export class SocketService extends Observable<SocketServiceEvents> {
   private socket: Socket | null = null
   private queue: any[] = []
   private isConnecting: boolean = false
@@ -27,23 +41,55 @@ export class SocketService {
   private usePostMessage: boolean = false
   private attempts: number = 0
   private sessionId: string | null = null
+  private options: SocketServiceOptions
 
-  constructor(private options: {
-    socketUrl: string,
-    apiKey: string,
-    usePostMessageFallback?: boolean,
-    keepAlive?: boolean,
-  }) {
+  constructor() {
+    super()
+    this.options = {
+      socketUrl: '',
+      apiKey: '',
+      usePostMessageFallback: false,
+      keepAlive: false,
+    }
+  }
+
+  /**
+   * Initialize the socket service
+   * @param config - Socket service configuration
+   */
+  public init(config: SocketServiceOptions): void {
+    this.options = {
+      ...this.options,
+      ...config,
+    }
     if (
       this.options.keepAlive
       && this.options.socketUrl
       && this.options.apiKey
     ) {
-      this.init()
+      this._initConnection()
     }
   }
 
-  private init(): void {
+  /**
+   * Update the socket service configuration
+   * @param config - Partial configuration to update
+   */
+  public updateConfigs(config: Partial<SocketServiceOptions>): void {
+    // If any config changed, reconnect if connected
+    if (Object.keys(config).some(key => config[key] !== undefined && config[key] !== this.options[key])) {
+      this.options = { ...this.options, ...config }
+      if (this.socket?.connected) {
+        this.close()
+        if (this.options.keepAlive && this.options.socketUrl && this.options.apiKey) {
+          this._initConnection()
+        }
+      }
+    }
+  }
+
+
+  private _initConnection(): void {
     if (this.isConnecting || this.isConnected) return
     this.attempts++
     this.isConnecting = true
@@ -83,20 +129,22 @@ export class SocketService {
     })
 
     this.socket.on(SESSION_STOPPED_EVENT, (data: any) => {
-      recorderEventBus.emit(SESSION_STOPPED_EVENT, data)
+      this.emit(SESSION_STOPPED_EVENT, [data])
       this.unsubscribeFromSession()
     })
 
     this.socket.on(SESSION_AUTO_CREATED, (data: any) => {
+      this.emit(SESSION_AUTO_CREATED, [data])
+      // Also emit via eventBus for backward compatibility
       recorderEventBus.emit(SESSION_AUTO_CREATED, data)
     })
 
     this.socket.on(REMOTE_SESSION_RECORDING_START, (data: any) => {
-      recorderEventBus.emit(REMOTE_SESSION_RECORDING_START, data)
+      this.emit(REMOTE_SESSION_RECORDING_START, [data])
     })
 
     this.socket.on(REMOTE_SESSION_RECORDING_STOP, (data: any) => {
-      recorderEventBus.emit(REMOTE_SESSION_RECORDING_STOP, data)
+      this.emit(REMOTE_SESSION_RECORDING_STOP, [data])
     })
   }
 
@@ -142,7 +190,7 @@ export class SocketService {
       this.socket.emit(SESSION_ADD_EVENT, event)
     } else {
       this.queue.push({ data: event, name: SESSION_ADD_EVENT })
-      this.init()
+      this._initConnection()
     }
   }
 
@@ -166,7 +214,7 @@ export class SocketService {
         data: payload,
         name: SESSION_SUBSCRIBE_EVENT,
       })
-      this.init()
+      this._initConnection()
     }
   }
 
@@ -184,33 +232,24 @@ export class SocketService {
     }
   }
 
-  public close(): void {
-    if (this.usePostMessage) {
-      this.sendViaPostMessage({ type: 'close' })
-    }
-    if (this.socket?.connected) {
-      setTimeout(() => {
-        this.unsubscribeFromSession()
-        this.attempts = 0
-        this.isConnected = false
-        this.isConnecting = false
-        this.socket?.disconnect()
-        this.socket = null
-      }, 500)
-    }
+  public close(): Promise<void> {
+    return new Promise((resolve) => {
+      if (this.usePostMessage) {
+        this.sendViaPostMessage({ type: 'close' })
+      }
+      if (this.socket?.connected) {
+        setTimeout(() => {
+          this.unsubscribeFromSession()
+          this.attempts = 0
+          this.isConnected = false
+          this.isConnecting = false
+          this.socket?.disconnect()
+          this.socket = null
+          resolve()
+        }, 500)
+      } else {
+        resolve()
+      }
+    })
   }
-}
-
-export let socketService: SocketService | null = null
-
-export const createSocketService = (options: {
-  socketUrl: string,
-  apiKey: string,
-  usePostMessageFallback?: boolean,
-  keepAlive?: boolean,
-}): SocketService => {
-  if (!socketService) {
-    socketService = new SocketService(options)
-  }
-  return socketService
 }
