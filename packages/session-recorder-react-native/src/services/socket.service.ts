@@ -192,10 +192,12 @@ export class SocketService extends Observable<SocketServiceEvents> {
     this.emitSocketEvent(SESSION_STARTED_EVENT, { debugSessionId: this.sessionId })
   }
 
-  public unsubscribeFromSession() {
+  public unsubscribeFromSession(stopSession?: boolean) {
     if (this.sessionId) {
-      this.emitSocketEvent(SESSION_STOPPED_EVENT, {})
       this.emitSocketEvent(SESSION_UNSUBSCRIBE_EVENT, { debugSessionId: this.sessionId })
+      if (stopSession) {
+        this.emitSocketEvent(SESSION_STOPPED_EVENT, {})
+      }
     }
   }
 

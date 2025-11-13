@@ -523,7 +523,7 @@ class SessionRecorder
    */
   private _stop(): void {
     this.sessionState = SessionState.stopped;
-    this._socketService.unsubscribeFromSession();
+    this._socketService.unsubscribeFromSession(true);
     this._tracer.shutdown();
     this._recorder.stop();
   }
