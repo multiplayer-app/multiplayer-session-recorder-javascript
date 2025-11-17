@@ -1,7 +1,7 @@
 import './patch'
 import { setupListeners } from './listeners'
 import { recorderEventBus } from './eventBus'
-import { SessionRecorder } from './sessionRecorder'
+import { SessionRecorder } from './session-recorder'
 import { isBrowser, globalObj, SESSION_RECORDER_LOADED, SESSION_RECORDER_LISTENERS_SETUP } from './global'
 
 export * from './types'

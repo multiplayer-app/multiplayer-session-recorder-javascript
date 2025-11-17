@@ -1,16 +1,16 @@
 import { Observable } from 'lib0/observable'
-import { insertTrustedHTML } from '../utils'
-import { formatTimeForSessionTimer } from '../utils'
+import { insertTrustedHTML, injectStylesIntoShadowRoot, formatTimeForSessionTimer } from '../utils'
 import { SessionWidgetConfig, SessionState, ToastConfig, WidgetTextOverridesConfig } from '../types'
-import { DragManager } from './dragManager'
+
 import {
   POPOVER_WIDTH,
-  POPOVER_DISTANCE_FROM_BUTTON,
   NON_DRAGGABLE_OFFSET,
+  POPOVER_DISTANCE_FROM_BUTTON,
 } from './constants'
 import { DEFAULT_WIDGET_TEXT_CONFIG } from '../config'
 import { isBrowser, isBrowserExtension } from '../global'
 import { UIManager } from './UIManager'
+import { DragManager } from './dragManager'
 import {
   ButtonState,
   buttonStates,
@@ -18,14 +18,17 @@ import {
   continuousRecordingSaveButtonStates,
 } from './buttonStateConfigs'
 
+// Import styles as string for shadow DOM injection
+import widgetStyles from '../index.scss?raw'
+
 type SessionWidgetEvents =
   | 'start'
   | 'stop'
   | 'pause'
   | 'resume'
   | 'cancel'
-  | 'continuous-debugging'
-  | 'save';
+  | 'save'
+  | 'continuous-debugging';
 
 export class SessionWidget extends Observable<SessionWidgetEvents> {
   public readonly recorderButton: HTMLButtonElement
@@ -59,6 +62,8 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   private readonly isBrowser: boolean
   private readonly isBrowserExtension: boolean
+  private shadowRoot: ShadowRoot | null = null
+  private hostElement: HTMLElement | null = null
 
   public set buttonState(newState: ButtonState) {
     this._buttonState = newState
@@ -267,9 +272,11 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     const target = event.target as HTMLElement
     const isPopoverVisible = this._initialPopoverVisible || this._finalPopoverVisible
     const popover = this._initialPopoverVisible ? this.initialPopover : this.finalPopover
+
+    if (!isPopoverVisible || !target) return
+
     if (
-      isPopoverVisible &&
-      target &&
+      target !== this.hostElement &&
       !popover?.contains(target) &&
       !this.recorderButton?.contains(target) &&
       target !== this.recorderButton &&
@@ -371,10 +378,25 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
   private appendElements(elements: HTMLElement[]) {
     if (!this.isBrowser || typeof document === 'undefined') return
+
+    // Create host element
     const rootWrapper = document.createElement('mp-root')
     rootWrapper.classList.add('mp-root-wrapper')
     rootWrapper.setAttribute('data-rr-ignore', 'true')
-    elements.forEach((element) => rootWrapper.appendChild(element))
+    this.hostElement = rootWrapper
+
+    // Create shadow root
+    this.shadowRoot = rootWrapper.attachShadow({ mode: 'open' })
+
+    // Inject styles directly from imported SCSS file
+    if (widgetStyles) {
+      injectStylesIntoShadowRoot(this.shadowRoot, widgetStyles)
+    }
+
+    // Append all elements to shadow root
+    elements.forEach((element) => this.shadowRoot!.appendChild(element))
+
+    // Append host element to document body
     document.body.appendChild(rootWrapper)
   }
 
@@ -725,11 +747,13 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   }
 
   destroy() {
-    if (!this.isBrowser || !this.recorderButton || typeof document === 'undefined') return
-    const rootWrapper = document.querySelector('.mp-root-wrapper')
-    if (rootWrapper && rootWrapper.contains(this.recorderButton)) {
-      document.body.removeChild(rootWrapper)
+    if (!this.isBrowser || typeof document === 'undefined') return
+    const rootWrapper = this.hostElement || document.querySelector('.mp-root-wrapper')
+    if (rootWrapper && rootWrapper.parentNode) {
+      rootWrapper.parentNode.removeChild(rootWrapper)
     }
+    this.shadowRoot = null
+    this.hostElement = null
     document.removeEventListener('click', this.handleClickOutside)
   }
 

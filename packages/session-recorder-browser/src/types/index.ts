@@ -1,4 +1,3 @@
 export * from './widget'
 export * from './session'
-export * from './sessionRecorder'
-export * from './client-type.enum'
+export * from './session-recorder'

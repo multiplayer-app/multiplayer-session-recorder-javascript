@@ -83,5 +83,7 @@ export const getSessionRecorderConfig = (
     masking: getMaskingConfig(c.masking),
     widget: getWidgetConfig(c.widget),
     logger: getLoggerConfig(c.logger),
+
+    useWebsocket: isValidBoolean(c.useWebsocket, BASE_CONFIG.useWebsocket),
   };
 };

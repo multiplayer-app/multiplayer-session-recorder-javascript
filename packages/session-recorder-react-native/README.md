@@ -851,9 +851,7 @@ SessionRecorder.init({
     isContentMaskingEnabled: true,
     maskHeadersList: ['authorization', 'cookie', 'x-api-key'],
     maskBodyFieldsList: ['password', 'token', 'secret', 'creditCard'],
-    maskTextInputs: true,
-    maskImages: false,
-    maskButtons: false,
+    maskTextInputs: false,
   },
 
   // Session widget configuration

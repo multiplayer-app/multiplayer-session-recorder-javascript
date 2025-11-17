@@ -10,7 +10,7 @@ import type {
 import type { maskTextClass } from '@rrweb/types'
 import { LogData } from '@rrweb/rrweb-plugin-console-record'
 import { Observable } from 'lib0/observable'
-import type { ISession } from './session'
+import type { ISession, IUserAttributes } from './session'
 import type { NavigationRecorderPublicApi } from '../navigation'
 
 export enum WidgetButtonPlacement {
@@ -148,6 +148,12 @@ export interface SessionRecorderOptions {
    */
   widgetTextOverrides?: WidgetTextOverridesConfig
 
+  /**
+   * @description
+   * If true, webSocket will be used to manage remote recording sessions.
+   * @default true
+   */
+  useWebsocket?: boolean
 }
 
 /**
@@ -422,6 +428,13 @@ export interface ISessionRecorder extends Observable<SessionRecorderEvents> {
    * @param attributes - the attributes to set
    */
   setSessionAttributes(attributes: Record<string, any>): void
+
+
+  /**
+   * Set the user attributes
+   * @param userAttributes - the user attributes to set
+   */
+  setUserAttributes(userAttributes: IUserAttributes | undefined): void
 
   /**
    * Set a custom click handler for the recording button

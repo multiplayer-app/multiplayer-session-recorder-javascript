@@ -79,4 +79,5 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
   masking: DEFAULT_MASKING_CONFIG,
   widgetTextOverrides: DEFAULT_WIDGET_TEXT_CONFIG,
 
+  useWebsocket: true,
 }

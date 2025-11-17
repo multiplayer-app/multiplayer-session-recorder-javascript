@@ -2488,9 +2488,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@multiplayer-app/session-recorder-common@npm:1.2.37":
-  version: 1.2.37
-  resolution: "@multiplayer-app/session-recorder-common@npm:1.2.37"
+"@multiplayer-app/session-recorder-common@npm:1.3.1":
+  version: 1.3.1
+  resolution: "@multiplayer-app/session-recorder-common@npm:1.3.1"
   dependencies:
     "@opentelemetry/core": ^2.0.1
     "@opentelemetry/exporter-logs-otlp-http": ^0.203.0
@@ -2505,7 +2505,7 @@ __metadata:
     to-json-schema: ^0.2.5
   peerDependencies:
     "@opentelemetry/api": ^1.9.0
-  checksum: efbfa04320582942d586ab34aa50a77e51ed851977829956b9b24c8b73884a18a716abf2940a26b4c2bce066ebcaa7ef553c2a49cf4a018bdf4cdd024d539fa3
+  checksum: 9f996a144e58c1f5c03ed05e96ed77f6a614497038e6e2838daf3816af6175e6abb899a5f8560695a0dada4b6f44d6e63e8b5ed21d396e68673cb5ff94b02108
   languageName: node
   linkType: hard
 
@@ -2518,7 +2518,7 @@ __metadata:
     "@eslint/eslintrc": ^3.3.1
     "@eslint/js": ^9.35.0
     "@evilmartians/lefthook": ^1.12.3
-    "@multiplayer-app/session-recorder-common": 1.2.37
+    "@multiplayer-app/session-recorder-common": 1.3.1
     "@opentelemetry/api": ^1.9.0
     "@opentelemetry/core": 2.0.1
     "@opentelemetry/exporter-trace-otlp-http": 0.203.0

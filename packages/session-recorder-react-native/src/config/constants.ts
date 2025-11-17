@@ -26,6 +26,12 @@ export const DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE = 100000;
 
 export const SESSION_RESPONSE = 'multiplayer-debug-session-response';
 
+export const REMOTE_SESSION_RECORDING_START = 'remote-session-recording:start';
+
+export const REMOTE_SESSION_RECORDING_STOP = 'remote-session-recording:stop';
+
+export const SOCKET_SET_USER_EVENT = 'socket:set-user';
+
 export const CONTINUOUS_DEBUGGING_TIMEOUT = 60000; // 1 minutes
 
 export const DEBUG_SESSION_MAX_DURATION_SECONDS = 10 * 60 + 30; // TODO: move to shared config otel core
