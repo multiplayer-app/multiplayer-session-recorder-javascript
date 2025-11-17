@@ -62,18 +62,27 @@ $z-index-modal: 10004;
 }
 
 // Base styles
-.mp-root-wrapper {
-  * {
-    font-family: $font-family-base !important;
-    box-sizing: border-box;
-  }
 
-  textarea {
-    background: $color-background;
-    color: $color-text-primary;
-  }
+* {
+  font-family: $font-family-base !important;
+  box-sizing: border-box;
 }
 
+.hidden {
+  display: none !important;
+}
+
+textarea {
+  background: $color-background;
+  color: $color-text-primary;
+}
+a,
+button {
+  appearance: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+}
 // Button styles
 .mp-session-debugger-button {
   @include button-base;
@@ -296,6 +305,15 @@ $z-index-modal: 10004;
         .mp-session-debugger-continuous-debugging-overlay {
           display: flex;
         }
+        .mp-session-debugger-continuous-debugging {
+          ~ h2,
+          ~ p {
+            display: none;
+          }
+        }
+        .mp-session-debugger-popover-footer {
+          display: none;
+        }
       }
     }
 
@@ -370,19 +388,19 @@ $z-index-modal: 10004;
     border-radius: $border-radius-md;
     border: 1px solid $color-border;
     @include box-shadow-sm;
-    margin-bottom: $spacing-xl;
+    margin-bottom: 15px;
 
     &-overlay {
-      position: absolute;
-      inset: 65px 0 0 0;
-      z-index: 2;
+      /* Delete this block after it was fixed in the lib */
+      position: relative;
+      inset: unset;
+      padding: 0;
       display: none;
       border-radius: $border-radius-md;
       backdrop-filter: blur(10px);
       background: rgba(255, 255, 255, 0.5);
       flex-direction: column;
       justify-content: flex-end;
-      padding: $spacing-md;
       gap: $spacing-md;
 
       &-content {
@@ -875,6 +893,7 @@ $z-index-modal: 10004;
     cursor: pointer;
     text-decoration: none !important;
     transition: background 0.18s;
+    color: white;
   }
   &-button:hover,
   &-button:focus {

@@ -1,7 +1,7 @@
 import SessionRecorderNative, { type MaskingOptions } from '../native/SessionRecorderNative';
 import { logger } from '../utils';
 
-export interface ScreenMaskingConfig {
+export interface ScreenRecordingConfig {
   /** Whether screen masking is enabled */
   enabled: boolean;
   /** Whether to mask text inputs (UITextField, UITextView, React Native text components) */
@@ -18,12 +18,12 @@ export interface ScreenMaskingConfig {
   maskSandboxedViews?: boolean;
 }
 
-export class ScreenMaskingService {
-  private config: ScreenMaskingConfig;
+export class ScreenRecordingService {
+  private config: ScreenRecordingConfig;
   private isAvailable: boolean = false;
 
   constructor(
-    config: ScreenMaskingConfig = {
+    config: ScreenRecordingConfig = {
       enabled: true,
       maskTextInputs: true,
       maskImages: false,
@@ -49,20 +49,20 @@ export class ScreenMaskingService {
       ) {
         this.isAvailable = true;
         logger.info(
-          'ScreenMaskingService',
+          'ScreenRecordingService',
           'Screen masking native module is available'
         );
       } else {
         this.isAvailable = false;
         logger.warn(
-          'ScreenMaskingService',
+          'ScreenRecordingService',
           'Screen masking native module is not available - auto-linking may still be in progress'
         );
       }
     } catch (error) {
       this.isAvailable = false;
       logger.error(
-        'ScreenMaskingService',
+        'ScreenRecordingService',
         'Error checking screen masking availability:',
         error
       );
@@ -75,7 +75,7 @@ export class ScreenMaskingService {
   async captureMaskedScreen(options: MaskingOptions): Promise<string | null> {
     if (!this.isAvailable || !this.config.enabled) {
       logger.warn(
-        'ScreenMaskingService',
+        'ScreenRecordingService',
         'Screen masking is not available or disabled'
       );
       return null;
@@ -91,7 +91,7 @@ export class ScreenMaskingService {
       return maskedImageBase64;
     } catch (error) {
       logger.error(
-        'ScreenMaskingService',
+        'ScreenRecordingService',
         'Failed to capture masked screen:',
         error
       );
@@ -105,7 +105,7 @@ export class ScreenMaskingService {
   async captureMaskedScreenBasic(): Promise<string | null> {
     if (!this.isAvailable || !this.config.enabled) {
       logger.warn(
-        'ScreenMaskingService',
+        'ScreenRecordingService',
         'Screen masking is not available or disabled'
       );
       return null;
@@ -116,7 +116,7 @@ export class ScreenMaskingService {
       return maskedImageBase64;
     } catch (error) {
       logger.error(
-        'ScreenMaskingService',
+        'ScreenRecordingService',
         'Failed to capture masked screen (basic):',
         error
       );
@@ -127,25 +127,25 @@ export class ScreenMaskingService {
   /**
    * Update the masking configuration
    */
-  updateConfig(config: Partial<ScreenMaskingConfig>): void {
+  updateConfig(config: Partial<ScreenRecordingConfig>): void {
     this.config = { ...this.config, ...config };
-    logger.info('ScreenMaskingService', 'Screen masking configuration updated');
+    logger.info('ScreenRecordingService', 'Screen masking configuration updated');
   }
 
   /**
    * Check if screen masking is available
    */
-  isScreenMaskingAvailable(): boolean {
+  isScreenRecordingAvailable(): boolean {
     return this.isAvailable && this.config.enabled;
   }
 
   /**
    * Get the current configuration
    */
-  getConfig(): ScreenMaskingConfig {
+  getConfig(): ScreenRecordingConfig {
     return { ...this.config };
   }
 }
 
 // Create a singleton instance
-export const screenMaskingService = new ScreenMaskingService();
+export const screenRecordingService = new ScreenRecordingService();

@@ -275,28 +275,13 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
 
     if (!isPopoverVisible || !target) return
 
-    // Check if click is inside shadow root
-    const isInsideShadowRoot = this.shadowRoot && (
-      this.shadowRoot.contains(target) ||
-      (target.getRootNode && target.getRootNode() === this.shadowRoot)
-    )
-
-    // If click is inside shadow root, check if it's outside the popover and button
-    if (isInsideShadowRoot) {
-      if (
-        !popover?.contains(target) &&
-        !this.recorderButton?.contains(target) &&
-        target !== this.recorderButton &&
-        target !== popover
-      ) {
-        if (this._initialPopoverVisible) {
-          this.handleCloseInitialPopover()
-        } else {
-          this.handleCloseFinalPopover()
-        }
-      }
-    } else {
-      // Click is outside shadow root entirely, close popover
+    if (
+      target !== this.hostElement &&
+      !popover?.contains(target) &&
+      !this.recorderButton?.contains(target) &&
+      target !== this.recorderButton &&
+      target !== popover
+    ) {
       if (this._initialPopoverVisible) {
         this.handleCloseInitialPopover()
       } else {

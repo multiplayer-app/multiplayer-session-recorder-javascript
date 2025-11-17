@@ -28,7 +28,7 @@ export const DEFAULT_MASKING_CONFIG: SessionRecorderConfigs['masking'] = {
   maskLabels: false,
   maskButtons: false,
   maskWebViews: false,
-  maskTextInputs: true,
+  maskTextInputs: false,
   maskSandboxedViews: false,
 };
 

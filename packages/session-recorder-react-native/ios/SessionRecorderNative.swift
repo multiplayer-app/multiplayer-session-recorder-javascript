@@ -52,30 +52,45 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
         return
       }
 
-      UIGraphicsBeginImageContextWithOptions(window.bounds.size, false, UIScreen.main.scale)
-      window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
-      let screenshot = UIGraphicsGetImageFromCurrentImageContext()
-      UIGraphicsEndImageContext()
-
-      guard let image = screenshot else {
-        reject("CAPTURE_FAILED", "Failed to capture screen", nil)
+      // Skip screenshot if window is not visible or if an animation/scroll is in progress
+      // || self.isAnimatingTransition(window) || self.windowHasActiveAnimations(window)
+      if !window.isVisible()  {
+        reject("ANIMATION_IN_PROGRESS", "Skipping screenshot - animation or transition in progress", nil)
         return
+      }
+
+      // Integrate optional scale directly into the capture to avoid a second resize pass
+      let clampedScale = max(CGFloat(0.1), min(self.scale, 1.0))
+      let contextScale = UIScreen.main.scale * clampedScale
+
+      let rendererFormat = UIGraphicsImageRendererFormat()
+      rendererFormat.scale = contextScale
+      rendererFormat.opaque = false
+
+      let renderer = UIGraphicsImageRenderer(size: window.bounds.size, format: rendererFormat)
+      let image = renderer.image { _ in
+        window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
       }
 
       // Apply masking to sensitive elements
       let maskedImage = self.applyMasking(to: image, in: window)
 
-      // Apply optional scaling (resolution downsample)
-      let finalImage = self.scale < 1.0 ? self.resizeImage(maskedImage, scale: self.scale) : maskedImage
 
-      // Debug logging
-      print("SessionRecorder captureAndMask: Scale = \(self.scale), Original size = \(maskedImage.size), Final size = \(finalImage.size)")
+      let quality = self.imageQuality
+      let finalImageForEncoding = maskedImage
 
-      if let data = finalImage.jpegData(compressionQuality: self.imageQuality) {
+      // Move JPEG encoding off the main thread to reduce UI stalls
+      DispatchQueue.global(qos: .userInitiated).async {
+        if let data = finalImageForEncoding.jpegData(compressionQuality: quality) {
           let base64 = data.base64EncodedString()
-          resolve(base64)
-      } else {
-        reject("ENCODING_FAILED", "Failed to encode image", nil)
+          DispatchQueue.main.async {
+            resolve(base64)
+          }
+        } else {
+          DispatchQueue.main.async {
+            reject("ENCODING_FAILED", "Failed to encode image", nil)
+          }
+        }
       }
     }
   }
@@ -90,30 +105,45 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
         return
       }
 
-      UIGraphicsBeginImageContextWithOptions(window.bounds.size, false, UIScreen.main.scale)
-      window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
-      let screenshot = UIGraphicsGetImageFromCurrentImageContext()
-      UIGraphicsEndImageContext()
-
-      guard let image = screenshot else {
-        reject("CAPTURE_FAILED", "Failed to capture screen", nil)
+      // Skip screenshot if window is not visible or if an animation/scroll is in progress
+      // || self.isAnimatingTransition(window) || self.windowHasActiveAnimations(window)
+      if !window.isVisible()  {
+        reject("ANIMATION_IN_PROGRESS", "Skipping screenshot - animation or transition in progress", nil)
         return
+      }
+
+      // Integrate optional scale directly into the capture to avoid a second resize pass
+      let clampedScale = max(CGFloat(0.1), min(self.scale, 1.0))
+      let contextScale = UIScreen.main.scale * clampedScale
+
+      let rendererFormat = UIGraphicsImageRendererFormat()
+      rendererFormat.scale = contextScale
+      rendererFormat.opaque = false
+
+      let renderer = UIGraphicsImageRenderer(size: window.bounds.size, format: rendererFormat)
+      let image = renderer.image { _ in
+        window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
       }
 
       // Apply masking with custom options
       let maskedImage = self.applyMaskingWithOptions(to: image, in: window, options: options)
 
-      // Apply optional scaling (resolution downsample)
-      let finalImage = self.scale < 1.0 ? self.resizeImage(maskedImage, scale: self.scale) : maskedImage
 
-      // Debug logging
-      print("SessionRecorder captureAndMaskWithOptions: Scale = \(self.scale), Original size = \(maskedImage.size), Final size = \(finalImage.size)")
+      let quality = self.imageQuality
+      let finalImageForEncoding = maskedImage
 
-      if let data = finalImage.jpegData(compressionQuality: self.imageQuality) {
-        let base64 = data.base64EncodedString()
-        resolve(base64)
-      } else {
-        reject("ENCODING_FAILED", "Failed to encode image", nil)
+      // Move JPEG encoding off the main thread to reduce UI stalls
+      DispatchQueue.global(qos: .userInitiated).async {
+        if let data = finalImageForEncoding.jpegData(compressionQuality: quality) {
+          let base64 = data.base64EncodedString()
+          DispatchQueue.main.async {
+            resolve(base64)
+          }
+        } else {
+          DispatchQueue.main.async {
+            reject("ENCODING_FAILED", "Failed to encode image", nil)
+          }
+        }
       }
     }
   }
@@ -221,48 +251,60 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
   }
 
   private func applyMaskingWithOptions(to image: UIImage, in window: UIWindow, options: NSDictionary) -> UIImage {
-    UIGraphicsBeginImageContextWithOptions(image.size, false, image.scale)
-    guard let context = UIGraphicsGetCurrentContext() else { return image }
-
-    // Draw the original image
-    image.draw(in: CGRect(origin: .zero, size: image.size))
-
-
-    var maskableWidgets: [CGRect] = []
-    var maskChildren = false
-    findMaskableWidgets(window, window, &maskableWidgets, &maskChildren)
-
-    for frame in maskableWidgets {
-      // Skip zero rects (which indicate invalid coordinates)
-      if frame == CGRect.zero { continue }
-
-      // Validate frame dimensions before processing
-      guard frame.size.width.isFinite && frame.size.height.isFinite &&
-            frame.origin.x.isFinite && frame.origin.y.isFinite else {
-        continue
-      }
-
-      // Clip the frame to the image bounds to avoid drawing outside context
-      let clippedFrame = frame.intersection(CGRect(origin: .zero, size: image.size))
-      if clippedFrame.isNull || clippedFrame.isEmpty { continue }
-
-      applyCleanMask(in: context, frame: clippedFrame)
+    // Early exit optimization: if all masking options are false, skip masking entirely
+    if !hasAnyMaskingEnabled() {
+      return image
     }
 
-    let maskedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
-    UIGraphicsEndImageContext()
+    let rendererFormat = UIGraphicsImageRendererFormat()
+    rendererFormat.scale = image.scale
+    rendererFormat.opaque = false
+
+    let renderer = UIGraphicsImageRenderer(size: image.size, format: rendererFormat)
+
+    let maskedImage = renderer.image { rendererContext in
+      let context = rendererContext.cgContext
+
+      // Draw the original image
+      image.draw(in: CGRect(origin: .zero, size: image.size))
+
+      var maskableWidgets: [CGRect] = []
+      findMaskableWidgets(window, window, &maskableWidgets)
+
+      for frame in maskableWidgets {
+        // Skip zero rects (which indicate invalid coordinates)
+        if frame == CGRect.zero { continue }
+
+        // Validate frame dimensions before processing
+        guard frame.size.width.isFinite && frame.size.height.isFinite &&
+              frame.origin.x.isFinite && frame.origin.y.isFinite else {
+          continue
+        }
+
+        // Clip the frame to the image bounds to avoid drawing outside context
+        let clippedFrame = frame.intersection(CGRect(origin: .zero, size: image.size))
+        if clippedFrame.isNull || clippedFrame.isEmpty { continue }
+
+        applyCleanMask(in: context, frame: clippedFrame)
+      }
+    }
 
     return maskedImage
   }
 
-  private func findMaskableWidgets(_ view: UIView, _ window: UIWindow, _ maskableWidgets: inout [CGRect], _ maskChildren: inout Bool) {
+  // Check if any masking option is enabled (optimization)
+  private func hasAnyMaskingEnabled() -> Bool {
+    return maskTextInputs || maskImages || maskButtons || maskLabels || maskWebViews || maskSandboxedViews
+  }
+
+  private func findMaskableWidgets(_ view: UIView, _ window: UIWindow, _ maskableWidgets: inout [CGRect]) {
     // Skip hidden or transparent views
     if !view.isVisible() {
       return
     }
 
     // Check for UITextView (TextEditor, SwiftUI.TextEditorTextView, SwiftUI.UIKitTextView)
-    if let textView = view as? UITextView {
+    if maskTextInputs, let textView = view as? UITextView {
       if isTextViewSensitive(textView) {
         maskableWidgets.append(view.toAbsoluteRect(window))
         return
@@ -270,87 +312,89 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
     }
 
     // Check for UITextField (SwiftUI: TextField, SecureField)
-    if let textField = view as? UITextField {
+    if maskTextInputs, let textField = view as? UITextField {
       if isTextFieldSensitive(textField) {
         maskableWidgets.append(view.toAbsoluteRect(window))
         return
       }
     }
 
-    // React Native text views
-    if let reactNativeTextView = reactNativeTextView {
-      if view.isKind(of: reactNativeTextView), maskTextInputs {
+    // React Native text views - only if maskTextInputs is enabled
+    if maskTextInputs, let reactNativeTextView = reactNativeTextView {
+      if view.isKind(of: reactNativeTextView) {
         maskableWidgets.append(view.toAbsoluteRect(window))
         return
       }
     }
 
-    // React Native text inputs
-    if let reactNativeTextInput = reactNativeTextInput {
-      if view.isKind(of: reactNativeTextInput), maskTextInputs {
+    // React Native text inputs - only if maskTextInputs is enabled
+    if maskTextInputs, let reactNativeTextInput = reactNativeTextInput {
+      if view.isKind(of: reactNativeTextInput) {
         maskableWidgets.append(view.toAbsoluteRect(window))
         return
       }
     }
 
-    if let reactNativeTextInputView = reactNativeTextInputView {
-      if view.isKind(of: reactNativeTextInputView), maskTextInputs {
+    if maskTextInputs, let reactNativeTextInputView = reactNativeTextInputView {
+      if view.isKind(of: reactNativeTextInputView) {
         maskableWidgets.append(view.toAbsoluteRect(window))
         return
       }
     }
 
-    // UIImageView (SwiftUI: Some control images like the ones in Picker view)
-    if let imageView = view as? UIImageView {
+    // UIImageView (SwiftUI: Some control images like the ones in Picker view) - only if maskImages is enabled
+    if maskImages, let imageView = view as? UIImageView {
       if isImageViewSensitive(imageView) {
         maskableWidgets.append(view.toAbsoluteRect(window))
         return
       }
     }
 
-    // React Native image views
-    if let reactNativeImageView = reactNativeImageView {
-      if view.isKind(of: reactNativeImageView), maskImages {
+    // React Native image views - only if maskImages is enabled
+    if maskImages, let reactNativeImageView = reactNativeImageView {
+      if view.isKind(of: reactNativeImageView) {
         maskableWidgets.append(view.toAbsoluteRect(window))
         return
       }
     }
 
-    // UILabel (Text, this code might never be reachable in SwiftUI)
-    if let label = view as? UILabel {
-      if isLabelSensitive(label) {
+    // UILabel (Text) - only if maskLabels is enabled
+    if maskLabels, let label = view as? UILabel {
+      if hasText(label.text) || label.isNoCapture() {
         maskableWidgets.append(view.toAbsoluteRect(window))
         return
       }
     }
 
-    // WKWebView (Link, this code might never be reachable in SwiftUI)
-    if let webView = view as? WKWebView {
-      if isAnyInputSensitive(webView) {
+    // WKWebView - only if maskWebViews is enabled
+    if maskWebViews, let webView = view as? WKWebView {
+      maskableWidgets.append(view.toAbsoluteRect(window))
+      return
+    }
+
+    // UIButton - only if maskButtons is enabled
+    if maskButtons, let button = view as? UIButton {
+      if hasText(button.titleLabel?.text) || button.isNoCapture() {
         maskableWidgets.append(view.toAbsoluteRect(window))
         return
       }
     }
 
-    // UIButton (SwiftUI: SwiftUI.UIKitIconPreferringButton and other subclasses)
-    if let button = view as? UIButton {
-      if isButtonSensitive(button) {
+    // UISwitch (SwiftUI: Toggle) - only if maskButtons is enabled (treat as button-like)
+    if maskButtons, let theSwitch = view as? UISwitch {
+      var containsText = true
+      if #available(iOS 14.0, *) {
+        containsText = hasText(theSwitch.title)
+      }
+      if containsText || theSwitch.isNoCapture() {
         maskableWidgets.append(view.toAbsoluteRect(window))
         return
       }
     }
 
-    // UISwitch (SwiftUI: Toggle)
-    if let theSwitch = view as? UISwitch {
-      if isSwitchSensitive(theSwitch) {
-        maskableWidgets.append(view.toAbsoluteRect(window))
-        return
-      }
-    }
-
-    // UIPickerView (SwiftUI: Picker with .pickerStyle(.wheel))
-    if let picker = view as? UIPickerView {
-      if isTextInputSensitive(picker), !view.subviews.isEmpty {
+    // UIPickerView (SwiftUI: Picker with .pickerStyle(.wheel)) - only if maskTextInputs is enabled
+    if maskTextInputs, let picker = view as? UIPickerView {
+      if !view.subviews.isEmpty {
         maskableWidgets.append(picker.toAbsoluteRect(window))
         return
       }
@@ -367,73 +411,58 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
     let hasSubViews = !view.subviews.isEmpty
 
     // SwiftUI: Text based views like Text, Button, TextEditor
-    if swiftUITextBasedViewTypes.contains(where: view.isKind(of:)) {
-      if isTextInputSensitive(view), !hasSubViews {
+    // Only check if relevant masking options are enabled
+    if swiftUITextBasedViewTypes.contains(where: view.isKind(of:)), !hasSubViews {
+      // Check if it's a text input (should be masked with maskTextInputs)
+      if maskTextInputs && view.isNoCapture() {
+        maskableWidgets.append(view.toAbsoluteRect(window))
+        return
+      }
+      // Check if it's a button (should be masked with maskButtons)
+      if maskButtons && view.isNoCapture() {
         maskableWidgets.append(view.toAbsoluteRect(window))
         return
       }
     }
 
-    // SwiftUI: Image based views like Image, AsyncImage
-    if swiftUIImageLayerTypes.contains(where: view.layer.isKind(of:)) {
-      if isSwiftUIImageSensitive(view), !hasSubViews {
+    // SwiftUI: Image based views like Image, AsyncImage - only if maskImages is enabled
+    if maskImages, swiftUIImageLayerTypes.contains(where: view.layer.isKind(of:)), !hasSubViews {
+      if isSwiftUIImageSensitive(view) {
         maskableWidgets.append(view.toAbsoluteRect(window))
         return
       }
     }
 
-    // Generic SwiftUI types
-    if swiftUIGenericTypes.contains(where: { view.isKind(of: $0) }), !isSwiftUILayerSafe(view.layer) {
-      if isTextInputSensitive(view), !hasSubViews {
+    // Generic SwiftUI types - only check if relevant masking is enabled
+    if swiftUIGenericTypes.contains(where: { view.isKind(of: $0) }), !isSwiftUILayerSafe(view.layer), !hasSubViews {
+      if (maskTextInputs || maskButtons) && view.isNoCapture() {
         maskableWidgets.append(view.toAbsoluteRect(window))
         return
       }
     }
 
-    // Recursively check subviews
+    // Recursively check subviews only if we still need to check for more widgets
+    // Early exit optimization: if we've found all we need, don't recurse
     if !view.subviews.isEmpty {
       for child in view.subviews {
         if !child.isVisible() {
           continue
         }
-        findMaskableWidgets(child, window, &maskableWidgets, &maskChildren)
+        findMaskableWidgets(child, window, &maskableWidgets)
       }
     }
-    maskChildren = false
   }
 
   // MARK: - Sensitive Content Detection Methods
 
-  private func isAnyInputSensitive(_ view: UIView) -> Bool {
-    return isTextInputSensitive(view) || maskImages
-  }
-
-  private func isTextInputSensitive(_ view: UIView) -> Bool {
-    return maskTextInputs || view.isNoCapture()
-  }
-
-  private func isLabelSensitive(_ view: UILabel) -> Bool {
-    return isTextInputSensitive(view) && hasText(view.text)
-  }
-
-  private func isButtonSensitive(_ view: UIButton) -> Bool {
-    return isTextInputSensitive(view) && hasText(view.titleLabel?.text)
-  }
-
   private func isTextViewSensitive(_ view: UITextView) -> Bool {
-    return (isTextInputSensitive(view) || view.isSensitiveText()) && hasText(view.text)
-  }
-
-  private func isSwitchSensitive(_ view: UISwitch) -> Bool {
-    var containsText = true
-    if #available(iOS 14.0, *) {
-      containsText = hasText(view.title)
-    }
-    return isTextInputSensitive(view) && containsText
+    // Only check if maskTextInputs is enabled, or if view is explicitly marked as sensitive
+    return (maskTextInputs || view.isSensitiveText()) && hasText(view.text)
   }
 
   private func isTextFieldSensitive(_ view: UITextField) -> Bool {
-    return (isTextInputSensitive(view) || view.isSensitiveText()) && (hasText(view.text) || hasText(view.placeholder))
+    // Only check if maskTextInputs is enabled, or if view is explicitly marked as sensitive
+    return (maskTextInputs || view.isSensitiveText()) && (hasText(view.text) || hasText(view.placeholder))
   }
 
   private func isSwiftUILayerSafe(_ layer: CALayer) -> Bool {
@@ -565,12 +594,17 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
       )
 
 
-      // Use the same scale as the original image to maintain quality
-      UIGraphicsBeginImageContextWithOptions(newSize, false, image.scale)
-      image.draw(in: CGRect(origin: .zero, size: newSize))
-      let newImage = UIGraphicsGetImageFromCurrentImageContext()
-      UIGraphicsEndImageContext()
-      return newImage ?? image
+      // Use UIGraphicsImageRenderer (modern API) to render the resized image
+      let rendererFormat = UIGraphicsImageRendererFormat()
+      rendererFormat.scale = image.scale
+      rendererFormat.opaque = false
+
+      let renderer = UIGraphicsImageRenderer(size: newSize, format: rendererFormat)
+      let newImage = renderer.image { _ in
+        image.draw(in: CGRect(origin: .zero, size: newSize))
+      }
+
+      return newImage
   }
 
   // MARK: - Gesture setup and handlers
@@ -753,6 +787,60 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
 
   func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
     return true
+  }
+
+  // MARK: - Animation Transition Detection
+  /// Check if any view controller in the hierarchy is animating a transition
+  private func isAnimatingTransition(_ window: UIWindow) -> Bool {
+    guard let rootViewController = window.rootViewController else { return false }
+    return isAnimatingTransition(rootViewController)
+  }
+
+  private func isAnimatingTransition(_ viewController: UIViewController) -> Bool {
+    // Check if this view controller is animating
+    if viewController.transitionCoordinator?.isAnimated ?? false {
+      return true
+    }
+
+    // Check if presented view controller is animating
+    if let presented = viewController.presentedViewController, isAnimatingTransition(presented) {
+      return true
+    }
+
+    // Check if any of the child view controllers is animating
+    if viewController.children.first(where: { self.isAnimatingTransition($0) }) != nil {
+      return true
+    }
+
+    return false
+  }
+
+  // MARK: - Additional animation detection (layer + scroll)
+  /// Detects ongoing layer-based animations or actively scrolling scroll views.
+  private func windowHasActiveAnimations(_ window: UIWindow) -> Bool {
+    // Check for any Core Animation animations attached to the window's layer
+    if let keys = window.layer.animationKeys(), !keys.isEmpty {
+      return true
+    }
+
+    // Check for actively scrolling UIScrollView instances
+    return hasAnimatingScrollView(in: window)
+  }
+
+  private func hasAnimatingScrollView(in view: UIView) -> Bool {
+    if let scrollView = view as? UIScrollView {
+      if scrollView.isDragging || scrollView.isDecelerating {
+        return true
+      }
+    }
+
+    for subview in view.subviews {
+      if hasAnimatingScrollView(in: subview) {
+        return true
+      }
+    }
+
+    return false
   }
 }
 

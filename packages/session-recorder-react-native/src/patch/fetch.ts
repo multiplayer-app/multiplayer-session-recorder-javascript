@@ -118,22 +118,9 @@ if (typeof fetch !== 'undefined' && typeof global !== 'undefined') {
 
     // Capture request data
     const inputIsRequest = typeof Request !== 'undefined' && input instanceof Request
-    const safeToConstructRequest = !inputIsRequest || !(input as Request).bodyUsed
-
-    // Only construct a new Request when it's safe (i.e., body not already used)
-    let requestForMetadata: Request | null = null
-    if (safeToConstructRequest) {
-      try {
-        requestForMetadata = new Request(input as RequestInfo, init)
-      } catch {
-        requestForMetadata = null
-      }
-    }
 
     if (configs.recordRequestHeaders) {
-      if (requestForMetadata) {
-        networkRequest.requestHeaders = _headersToObject(requestForMetadata.headers)
-      } else if (inputIsRequest) {
+      if (inputIsRequest) {
         networkRequest.requestHeaders = _headersToObject((input as Request).headers)
       } else {
         networkRequest.requestHeaders = _headersInitToObject(init?.headers)
@@ -141,9 +128,9 @@ if (typeof fetch !== 'undefined' && typeof global !== 'undefined') {
     }
 
     if (configs.shouldRecordBody) {
-      const candidateBody: any | null | undefined = requestForMetadata
-        ? (requestForMetadata as any).body as any
-        : (inputIsRequest ? (init as any)?.body : (init as any)?.body)
+      // Only attempt to read the body from init (safe); avoid constructing/cloning Requests
+      // If the caller passed a Request as input, we do not attempt to read its body here
+      const candidateBody: any | null | undefined = init?.body
 
       if (!isNullish(candidateBody)) {
         const requestBody = _tryReadFetchBody({

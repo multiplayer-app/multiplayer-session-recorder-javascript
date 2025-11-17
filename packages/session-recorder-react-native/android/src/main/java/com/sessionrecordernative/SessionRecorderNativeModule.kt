@@ -372,6 +372,16 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
         val rootView = activity.window.decorView.rootView
         val window = activity.window
 
+        // Skip screenshot if view is not visible or if animation transition is in progress
+        if (
+                !rootView.isVisible() ||
+                        isAnimatingTransition(activity, rootView) ||
+                        !rootView.isViewStateStableForMatrixOperations()
+        ) {
+            throw RuntimeException(
+                    "Skipping screenshot - animation or transition in progress or view not visible")
+        }
+
         // Capture bitmap
         val bitmap =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -382,21 +392,19 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
 
         bitmap ?: throw RuntimeException("Failed to capture screen")
 
-        // Apply masking
+        // Apply masking and optional scaling in a single pass
         val maskedBitmap = applyMasking(bitmap, rootView, options)
-
-        // Apply optional scaling (resolution downsample)
-        val finalBitmap =
-            if (config.scale < 1.0f) resizeBitmap(maskedBitmap, config.scale) else maskedBitmap
 
         // Convert to base64 with compression
         val output = ByteArrayOutputStream()
         val quality = (config.imageQuality * 100).toInt().coerceIn(1, 100)
-        finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)
+        maskedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)
         val base64 = Base64.encodeToString(output.toByteArray(), Base64.DEFAULT)
 
         // Clean up memory
-        if (finalBitmap != maskedBitmap) maskedBitmap.recycle()
+        if (maskedBitmap !== bitmap) {
+            bitmap.recycle()
+        }
 
         return base64
     }
@@ -493,35 +501,74 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
     }
 
     private fun applyMasking(bitmap: Bitmap, rootView: View, options: ReadableMap?): Bitmap {
-        val maskedBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-        val canvas = Canvas(maskedBitmap)
+        val hasMasks = hasAnyMaskingEnabled()
 
-        // Find maskable widgets
-        val maskableWidgets = mutableListOf<Rect>()
-        findMaskableWidgets(rootView, rootView, maskableWidgets)
+        // Integrate optional scaling directly into the masking pass to avoid extra resize work
+        val clampedScale = config.scale.coerceIn(0.1f, 1.0f)
+        val scaleFactor = if (clampedScale < 1.0f) clampedScale else 1.0f
+        val shouldDownsample = scaleFactor < 1.0f
 
-        for (frame in maskableWidgets) {
-            // Skip zero rects (which indicate invalid coordinates)
-            if (frame.isEmpty) continue
-
-            // Validate frame dimensions before processing
-            if (!frame.isValid()) continue
-
-            // Clip the frame to the image bounds to avoid drawing outside context
-            val clippedFrame =
-                    Rect(
-                            frame.left.coerceAtLeast(0),
-                            frame.top.coerceAtLeast(0),
-                            frame.right.coerceAtMost(bitmap.width),
-                            frame.bottom.coerceAtMost(bitmap.height)
-                    )
-
-            if (clippedFrame.isEmpty) continue
-
-            applyCleanMask(canvas, clippedFrame)
+        // If there is no masking and no downsampling requested, return the original bitmap
+        if (!hasMasks && !shouldDownsample) {
+            return bitmap
         }
 
-        return maskedBitmap
+        val sourceWidth = bitmap.width
+        val sourceHeight = bitmap.height
+        val targetWidth =
+                if (shouldDownsample) (sourceWidth * scaleFactor).toInt().coerceAtLeast(1)
+                else sourceWidth
+        val targetHeight =
+                if (shouldDownsample) (sourceHeight * scaleFactor).toInt().coerceAtLeast(1)
+                else sourceHeight
+
+        val resultBitmap =
+                Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(resultBitmap)
+
+        canvas.save()
+        if (shouldDownsample) {
+            canvas.scale(scaleFactor, scaleFactor)
+        }
+
+        // Draw the original screenshot into the (possibly downsampled) canvas
+        canvas.drawBitmap(bitmap, 0f, 0f, null)
+
+        if (hasMasks) {
+            // Find maskable widgets
+            val maskableWidgets = mutableListOf<Rect>()
+            findMaskableWidgets(rootView, rootView, maskableWidgets)
+
+            for (frame in maskableWidgets) {
+                // Skip zero rects (which indicate invalid coordinates)
+                if (frame.isEmpty) continue
+
+                // Validate frame dimensions before processing
+                if (!frame.isValid()) continue
+
+                // Clip the frame to the image bounds to avoid drawing outside context
+                val clippedFrame =
+                        Rect(
+                                frame.left.coerceAtLeast(0),
+                                frame.top.coerceAtLeast(0),
+                                frame.right.coerceAtMost(sourceWidth),
+                                frame.bottom.coerceAtMost(sourceHeight)
+                        )
+
+                if (clippedFrame.isEmpty) continue
+
+                applyCleanMask(canvas, clippedFrame)
+            }
+        }
+
+        canvas.restore()
+
+        return resultBitmap
+    }
+
+    // Check if any masking option is enabled (optimization)
+    private fun hasAnyMaskingEnabled(): Boolean {
+        return config.maskTextInputs || config.maskImages || config.maskButtons || config.maskWebViews
     }
 
     private fun findMaskableWidgets(
@@ -543,27 +590,31 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
             return
         }
 
-        // Masking logic - clean and organized
+        // Masking logic - only check if the relevant masking option is enabled
         when {
-            view is EditText && view.shouldMaskEditText() -> {
+            // EditText - only if maskTextInputs is enabled
+            view is EditText && config.maskTextInputs && view.shouldMaskEditText() -> {
                 maskableWidgets.add(view.toAbsoluteRect(rootView))
                 return
             }
-            view is Button && view.shouldMaskButton() -> {
+            // Button - only if maskButtons is enabled
+            view is Button && config.maskButtons && view.shouldMaskButton() -> {
                 maskableWidgets.add(view.toAbsoluteRect(rootView))
                 return
             }
-            view is ImageView && view.shouldMaskImage() -> {
+            // ImageView - only if maskImages is enabled
+            view is ImageView && config.maskImages && view.shouldMaskImage() -> {
                 maskableWidgets.add(view.toAbsoluteRect(rootView))
                 return
             }
-            view is WebView && view.shouldMaskWebView() -> {
+            // WebView - only if maskWebViews is enabled
+            view is WebView && config.maskWebViews && view.shouldMaskWebView() -> {
                 maskableWidgets.add(view.toAbsoluteRect(rootView))
                 return
             }
         }
 
-        // Detect React Native views
+        // Detect React Native views - only check if relevant masking is enabled
         if (isReactNativeView(view)) {
             if (shouldMaskReactNativeView(view)) {
                 maskableWidgets.add(view.toAbsoluteRect(rootView))
@@ -598,29 +649,29 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
 
     // MARK: - Sensitive Content Detection Methods
 
-    private fun View.isAnyInputSensitive(): Boolean {
-        return this.isTextInputSensitive() || config.maskImages
-    }
-
-    private fun View.isTextInputSensitive(): Boolean {
-        return config.maskTextInputs && this is EditText
-    }
-
     // Masking methods for different view types
+    // Note: These methods are only called when the relevant config option is already checked
     private fun Button.shouldMaskButton(): Boolean {
-        return config.maskButtons || this.isExplicitlyMasked(config.noCaptureLabel)
+        // Only mask if explicitly marked or if maskButtons is enabled (already checked in caller)
+        return this.isExplicitlyMasked(config.noCaptureLabel)
     }
 
     private fun ImageView.shouldMaskImage(): Boolean {
-        return config.maskImages || this.isExplicitlyMasked(config.noCaptureLabel)
+        // Only mask if explicitly marked or if maskImages is enabled (already checked in caller)
+        return this.isExplicitlyMasked(config.noCaptureLabel)
     }
 
     private fun WebView.shouldMaskWebView(): Boolean {
-        return config.maskWebViews || this.isExplicitlyMasked(config.noCaptureLabel)
+        // Only mask if explicitly marked or if maskWebViews is enabled (already checked in caller)
+        return this.isExplicitlyMasked(config.noCaptureLabel)
     }
 
     private fun EditText.shouldMaskEditText(): Boolean {
-        return this.isTextInputSensitive() || this.isExplicitlyMasked(config.noCaptureLabel)
+        // Mask if explicitly marked, or if it has content (text or hint), or if it's secure
+        return this.isExplicitlyMasked(config.noCaptureLabel) ||
+               hasText(this.text?.toString()) ||
+               hasText(this.hint?.toString()) ||
+               this.isSecureTextEntry()
     }
 
     // Check if view is explicitly marked as sensitive
@@ -645,20 +696,22 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
 
         // React Native input views: only treat EditText-like classes as inputs.
         // Examples: ReactEditText, EditText, TextInputEditText
-        if (className.contains("EditText") ||
-                        className.contains("ReactEditText") ||
-                        className.contains("TextInputEditText") ||
-                        // Some RN implementations may expose TextInput class names without TextView
-                        // suffix
-                        (className.contains("TextInput") && !className.contains("TextView"))
+        // Only check if maskTextInputs is enabled
+        if (config.maskTextInputs &&
+            (className.contains("EditText") ||
+             className.contains("ReactEditText") ||
+             className.contains("TextInputEditText") ||
+             // Some RN implementations may expose TextInput class names without TextView suffix
+             (className.contains("TextInput") && !className.contains("TextView")))
         ) {
-            return config.maskTextInputs
+            return true
         }
 
-        // Do NOT mask generic ReactTextView labels when maskTextInputs is enabled
-        // Only mask images when explicitly configured
-        if (className.contains("ImageView") || className.contains("Image")) {
-            return config.maskImages
+        // Only mask images when maskImages is explicitly enabled
+        if (config.maskImages &&
+            (className.contains("ImageView") || className.contains("Image"))
+        ) {
+            return true
         }
 
         return false
@@ -690,6 +743,69 @@ class SessionRecorderNativeModule(reactContext: ReactApplicationContext) :
         RECTANGLE,
         PIXELATE,
         NONE
+    }
+
+    // MARK: - Animation Transition Detection
+    /// Check if any view controller or fragment is animating a transition
+    private fun isAnimatingTransition(activity: Activity, rootView: View): Boolean {
+        // Check for activity transitions
+        if (isActivityTransitionInProgress(activity)) {
+            return true
+        }
+
+        // Check for view animations (most reliable indicator)
+        if (isViewAnimationInProgress(rootView)) {
+            return true
+        }
+
+        return false
+    }
+
+    private fun isActivityTransitionInProgress(activity: Activity): Boolean {
+        return try {
+            // Check if activity is finishing or in transition
+            activity.isFinishing || activity.isChangingConfigurations
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun isViewAnimationInProgress(view: View): Boolean {
+        return try {
+            // Check if view has any running animations
+            if (view.animation != null && view.animation?.hasStarted() == true && view.animation?.hasEnded() != true) {
+                return true
+            }
+
+            // Check if view has transient state (indicating animation)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                if (view.hasTransientState()) {
+                    return true
+                }
+            }
+
+            // Check if view is in layout transition
+            if (view.parent is ViewGroup) {
+                val parent = view.parent as ViewGroup
+                if (parent.isInLayout) {
+                    return true
+                }
+            }
+
+            // Recursively check child views
+            if (view is ViewGroup) {
+                for (i in 0 until view.childCount) {
+                    val child = view.getChildAt(i)
+                    if (isViewAnimationInProgress(child)) {
+                        return true
+                    }
+                }
+            }
+
+            false
+        } catch (e: Exception) {
+            false
+        }
     }
 }
 
@@ -756,11 +872,23 @@ private fun View.toAbsoluteRect(rootView: View): Rect {
     try {
         val location = IntArray(2)
 
-        // Use stable view state check before accessing location
-        if (isViewStateStableForMatrixOperations()) {
+        // Try to resolve the absolute screen location for this view.
+        // On some Android layouts (especially with React Native views), the
+        // view may report transient or "unstable" state while still having
+        // valid coordinates. Calling getLocationOnScreen() directly is safe
+        // and matches the iOS behavior where we always convert from the
+        // window's coordinate space.
+        //
+        // Previously we gated this call behind isViewStateStableForMatrixOperations()
+        // and fell back to (0, 0) when the view was considered unstable. In
+        // practice this caused many valid views to be mapped to the top‑left
+        // corner of the screenshot, which produced masking rectangles that
+        // did not align with the underlying elements.
+        try {
             getLocationOnScreen(location)
-        } else {
-            // Use zero coordinates as fallback when view state is unstable
+        } catch (e: Exception) {
+            // Use zero coordinates as a last‑resort fallback if location
+            // lookup truly fails.
             location[0] = 0
             location[1] = 0
         }

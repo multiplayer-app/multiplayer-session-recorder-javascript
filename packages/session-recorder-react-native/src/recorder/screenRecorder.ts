@@ -14,10 +14,9 @@ import {
   logger,
 } from '../utils';
 import {
-  screenMaskingService,
-  type ScreenMaskingConfig,
-} from '../services/screenMaskingService';
-import { captureRef } from 'react-native-view-shot';
+  screenRecordingService,
+  type ScreenRecordingConfig,
+} from '../services/screenRecordingService';
 const isWeb = Platform.OS === 'web';
 
 export class ScreenRecorder implements EventRecorder {
@@ -28,18 +27,18 @@ export class ScreenRecorder implements EventRecorder {
   private captureCount: number = 0;
   private maxCaptures: number = 100; // Limit captures to prevent memory issues
   private captureQuality: number = 0.2;
-  private captureScale: number = 0.66;
+  private captureScale: number = 0.33;
   private captureFormat: 'png' | 'jpg' = 'jpg';
   private screenDimensions: { width: number; height: number } | null = null;
   private eventRecorder?: EventRecorder;
   private nodeIdCounter: number = 1;
-  private viewShotRef: any = null;
   private lastScreenCapture: string | null = null;
   private lastScreenHash: string | null = null;
   private enableChangeDetection: boolean = true;
   private hashSampleSize: number = 100;
   private currentImageNodeId: number | null = null;
-  private maskingConfig?: ScreenMaskingConfig;
+  private recordingConfig?: ScreenRecordingConfig;
+  private viewShotRef: any = null;
 
   init(config: RecorderConfig, eventRecorder?: EventRecorder): void {
     this.config = config;
@@ -47,13 +46,13 @@ export class ScreenRecorder implements EventRecorder {
     this._getScreenDimensions();
 
     // Initialize masking configuration
-    this.maskingConfig = {
+    this.recordingConfig = {
       enabled: true,
       ...this.config.masking,
     };
 
     // Update the masking service configuration
-    screenMaskingService.updateConfig(this.maskingConfig);
+    screenRecordingService.updateConfig(this.recordingConfig);
   }
 
   start(): void {
@@ -169,18 +168,18 @@ export class ScreenRecorder implements EventRecorder {
       }
 
       // Try native masking first if available
-      if (screenMaskingService.isScreenMaskingAvailable()) {
+      if (screenRecordingService.isScreenRecordingAvailable()) {
         logger.info(
           'ScreenRecorder',
           'Using native masking for screen capture'
         );
-        const maskedImage = await screenMaskingService.captureMaskedScreen({
+        const recordingImage = await screenRecordingService.captureMaskedScreen({
           quality: this.captureQuality,
           scale: this.captureScale,
         });
 
-        if (maskedImage) {
-          return maskedImage;
+        if (recordingImage) {
+          return recordingImage;
         }
 
         logger.warn(
@@ -189,7 +188,9 @@ export class ScreenRecorder implements EventRecorder {
         );
       }
 
-      // Fallback to react-native-view-shot
+
+
+      // // Fallback to react-native-view-shot
       if (!this.viewShotRef) {
         logger.warn(
           'ScreenRecorder',
@@ -198,20 +199,22 @@ export class ScreenRecorder implements EventRecorder {
         return null;
       }
 
-      // Check if captureRef is available
-      if (!captureRef) {
-        logger.warn('ScreenRecorder', 'react-native-view-shot not available');
-        return null;
-      }
+      return null;
 
-      // Capture the screen using react-native-view-shot
-      const result = await captureRef(this.viewShotRef, {
-        format: this.captureFormat,
-        quality: this.captureQuality,
-        result: 'base64',
-      });
+      // // Check if captureRef is available
+      // if (!captureRef) {
+      //   logger.warn('ScreenRecorder', 'react-native-view-shot not available');
+      //   return null;
+      // }
 
-      return result;
+      // // Capture the screen using react-native-view-shot
+      // const result = await captureRef(this.viewShotRef, {
+      //   format: this.captureFormat,
+      //   quality: this.captureQuality,
+      //   result: 'base64',
+      // });
+
+      // return result;
     } catch (error) {
       logger.error(
         'ScreenRecorder',
@@ -397,27 +400,7 @@ export class ScreenRecorder implements EventRecorder {
     }
   }
 
-  async captureSpecificElement(
-    elementRef: any,
-    _options?: {
-      format?: 'png' | 'jpg' | 'webp';
-      quality?: number;
-    }
-  ): Promise<string | null> {
-    try {
-      if (isWeb || !captureRef) {
-        logger.warn(
-          'ScreenRecorder',
-          'Element capture not available on web platform'
-        );
-        return null;
-      }
-      return await captureRef(elementRef);
-    } catch (error) {
-      // Failed to capture specific element - silently continue
-      return null;
-    }
-  }
+
 
   // Configuration methods
   setCaptureInterval(intervalMs: number): void {
