@@ -274,6 +274,10 @@ export const getExporterEndpoint = (exporterEndpoint: string): string => {
 }
 
 
+export const getElementInnerText = (element: HTMLElement): string => {
+  return String(element.innerText || '').trim()
+}
+
 export const getElementTextContent = (element: HTMLElement): string => {
-  return String(element.textContent || element.ariaLabel || '').trim()
+  return String(element.textContent?.split('\n').filter(Boolean).join(' ') || '').trim()
 }

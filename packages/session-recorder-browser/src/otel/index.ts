@@ -22,6 +22,7 @@ import {
   extractResponseBody,
   getExporterEndpoint,
   getElementTextContent,
+  getElementInnerText,
 } from './helpers'
 
 export class TracerBrowserSDK {
@@ -176,7 +177,8 @@ export class TracerBrowserSDK {
                 return true
               }
 
-              span.setAttribute('target.innerText', getElementTextContent(element))
+              span.setAttribute('target.innerText', getElementInnerText(element))
+              span.setAttribute('target.textContent', getElementTextContent(element))
               Array.from(element.attributes).forEach(attribute => {
                 span.setAttribute(`target.attribute.${attribute.name}`, attribute.value)
               })
