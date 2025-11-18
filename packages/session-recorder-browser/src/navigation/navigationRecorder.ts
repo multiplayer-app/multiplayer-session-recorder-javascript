@@ -136,11 +136,6 @@ export class NavigationRecorder {
           'navigation.operation': 'navigate',
           'navigation.type': 'navigate',
           'navigation.platform': 'web',
-          'navigation.session_id': this.sessionContext.sessionId ?? undefined,
-          'navigation.session_type': this.sessionContext.sessionType,
-          'navigation.application': this.config.application,
-          'navigation.environment': this.config.environment,
-          'navigation.version': this.config.version,
         },
       })
 
