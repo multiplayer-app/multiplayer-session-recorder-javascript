@@ -83,4 +83,10 @@ export const ATTR_MULTIPLAYER_SESSION_RECORDER_VERSION = 'multiplayer.session-re
 
 export const ATTR_MULTIPLAYER_ISSUE_CUSTOM_HASH = 'multiplayer.issue.custom-hash'
 
+export const ATTR_MULTIPLAYER_ISSUE_HASH = 'multiplayer.issue.hash'
+
+export const ATTR_MULTIPLAYER_ISSUE_COMPONENT_HASH = 'multiplayer.issue.component-hash'
+
+export const ATTR_MULTIPLAYER_USER_HASH = 'multiplayer.user.hash'
+
 export const MASK_PLACEHOLDER = '***MASKED***'
