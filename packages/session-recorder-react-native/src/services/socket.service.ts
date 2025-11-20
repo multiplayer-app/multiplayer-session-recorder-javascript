@@ -189,7 +189,8 @@ export class SocketService extends Observable<SocketServiceEvents> {
       sessionType: session.creationType,
     };
     this.emitSocketEvent(SESSION_SUBSCRIBE_EVENT, payload)
-    this.emitSocketEvent(SESSION_STARTED_EVENT, { debugSessionId: this.sessionId })
+    // use long id instead of short id
+    this.emitSocketEvent(SESSION_STARTED_EVENT, { debugSessionId: session._id })
   }
 
   public unsubscribeFromSession(stopSession?: boolean) {
