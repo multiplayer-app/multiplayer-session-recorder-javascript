@@ -1,6 +1,5 @@
-import { SessionType, UserType } from '@multiplayer-app/session-recorder-common';
-
-
+import { SessionType } from "./session-type.enum";
+import { UserType } from "./user-type.enum";
 
 export interface IResourceAttributes {
   browserInfo?: string;
@@ -18,7 +17,6 @@ export interface ISessionAttributes {
   [key: string]: any;
 }
 
-
 export interface IUserAttributes {
   type: UserType
   id?: string
@@ -33,11 +31,7 @@ export interface IUserAttributes {
   orgId?: string
   orgName?: string
   tags?: string[]
-}
-export interface ISessionView {
-  _id: string;
-  name: string;
-  components?: string[];
+  environment?: string
 }
 
 export interface ISession {
@@ -73,6 +67,15 @@ export interface ISession {
   finishedS3Transfer?: boolean;
   tempApiKey?: string;
 }
+
+
+
+export interface ISessionView {
+  _id: string;
+  name: string;
+  components?: string[];
+}
+
 
 export enum DebugSessionDataType {
   OTLP_TRACES = 'OTLP_TRACES',

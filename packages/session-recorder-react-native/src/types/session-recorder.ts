@@ -1,7 +1,7 @@
 import { type Span } from '@opentelemetry/api';
-import { SessionType } from '@multiplayer-app/session-recorder-common';
+import { type ISession, type SessionType, type IUserAttributes } from '@multiplayer-app/session-recorder-common';
 import { type PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
-import type { ISession, IUserAttributes } from './session';
+
 
 // WidgetButtonPlacement moved to configs.ts
 

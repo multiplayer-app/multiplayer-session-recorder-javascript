@@ -1,4 +1,4 @@
-import { IResourceAttributes } from '../types'
+import { type IResourceAttributes } from '@multiplayer-app/session-recorder-common'
 import { PACKAGE_VERSION_EXPORT } from '../config/constants'
 
 export const getNavigatorInfo = (): IResourceAttributes => {

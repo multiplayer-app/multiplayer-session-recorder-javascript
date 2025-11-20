@@ -1,6 +1,6 @@
 
-import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { Span } from '@opentelemetry/api'
+import { ISession, IUserAttributes, SessionType } from '@multiplayer-app/session-recorder-common'
 import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web'
 import type {
   MaskTextFn,
@@ -10,7 +10,7 @@ import type {
 import type { maskTextClass } from '@rrweb/types'
 import { LogData } from '@rrweb/rrweb-plugin-console-record'
 import { Observable } from 'lib0/observable'
-import type { ISession, IUserAttributes } from './session'
+
 import type { NavigationRecorderPublicApi } from '../navigation'
 
 export enum WidgetButtonPlacement {

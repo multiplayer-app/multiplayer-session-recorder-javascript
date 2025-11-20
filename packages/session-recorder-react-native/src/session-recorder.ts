@@ -1,4 +1,8 @@
-import { SessionType } from '@multiplayer-app/session-recorder-common';
+import {
+  SessionType,
+  type ISession,
+  type IUserAttributes
+} from '@multiplayer-app/session-recorder-common';
 import { Observable } from 'lib0/observable';
 import { type eventWithTime } from '@rrweb/types';
 
@@ -8,12 +12,10 @@ import { logger } from './utils';
 
 import {
   SessionState,
-  type ISession,
   type ISessionRecorder,
   type SessionRecorderConfigs,
   type SessionRecorderOptions,
   type EventRecorder,
-  type IUserAttributes,
 } from './types';
 import {
   SESSION_STOPPED_EVENT,

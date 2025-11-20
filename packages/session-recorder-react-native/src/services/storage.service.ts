@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
-import { SessionType } from '@multiplayer-app/session-recorder-common';
-import { type ISession, type SessionState } from '../types';
+import { SessionType, type ISession } from '@multiplayer-app/session-recorder-common';
 import { logger } from '../utils';
+import type { SessionState } from '../types';
 
 // Safe import for AsyncStorage with web fallback
 let AsyncStorage: any = null;

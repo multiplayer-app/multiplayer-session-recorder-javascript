@@ -1,7 +1,6 @@
 import io, { Socket } from 'socket.io-client'
 import { Observable } from 'lib0/observable'
 
-import { type ISession, type IUserAttributes } from '../types'
 import messagingService from '../services/messaging.service'
 
 import {
@@ -15,6 +14,7 @@ import {
   REMOTE_SESSION_RECORDING_STOP,
   SESSION_STARTED_EVENT,
 } from '../config'
+import { type ISession, type IUserAttributes } from '@multiplayer-app/session-recorder-common'
 
 
 const MAX_RECONNECTION_ATTEMPTS = 2

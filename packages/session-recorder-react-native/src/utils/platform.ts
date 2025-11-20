@@ -1,4 +1,4 @@
-import { type IResourceAttributes } from '../types';
+import { type IResourceAttributes } from '@multiplayer-app/session-recorder-common';
 import OptionalConstants from './constants.optional';
 import { Platform, Dimensions, PixelRatio } from 'react-native';
 import { version } from '../version';

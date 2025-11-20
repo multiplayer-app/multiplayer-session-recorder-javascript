@@ -1,8 +1,11 @@
+import type {
+  IUserAttributes,
+  ISessionAttributes,
+  IResourceAttributes,
+} from '@multiplayer-app/session-recorder-common';
 import {
-  type IResourceAttributes,
-  type ISessionAttributes,
   type ApiServiceConfig,
-  type IUserAttributes,
+
 } from '../types';
 
 export interface StartSessionRequest {

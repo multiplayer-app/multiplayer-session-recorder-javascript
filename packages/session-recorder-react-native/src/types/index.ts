@@ -1,5 +1,4 @@
 export * from './session-recorder';
-export * from './session';
 export * from './configs';
 
 // Import types for use in this file

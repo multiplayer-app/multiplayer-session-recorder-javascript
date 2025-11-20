@@ -1,3 +1,11 @@
+import { Observable } from 'lib0/observable'
+
+import {
+  SessionType,
+  type ISession,
+  type IUserAttributes,
+} from '@multiplayer-app/session-recorder-common'
+
 import { TracerBrowserSDK } from './otel'
 import { RecorderBrowserSDK } from './rrweb'
 import {
@@ -10,11 +18,10 @@ import {
 } from './utils'
 import {
   SessionState,
-  ISession,
   SessionRecorderOptions,
   SessionRecorderConfigs,
   SessionRecorderEvents,
-  IUserAttributes,
+
 } from './types'
 import { SocketService } from './services/socket.service'
 
@@ -40,10 +47,8 @@ import { SessionWidget } from './sessionWidget'
 import messagingService from './services/messaging.service'
 import { ApiService, StartSessionRequest, StopSessionRequest } from './services/api.service'
 
-import { SessionType } from '@multiplayer-app/session-recorder-common'
 import { ContinuousRecordingSaveButtonState } from './sessionWidget/buttonStateConfigs'
 import { ISessionRecorder } from './types'
-import { Observable } from 'lib0/observable'
 import { NavigationRecorder, NavigationRecorderPublicApi } from './navigation'
 
 

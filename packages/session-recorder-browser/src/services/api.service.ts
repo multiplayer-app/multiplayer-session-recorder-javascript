@@ -1,10 +1,6 @@
 import messagingService from './messaging.service'
-import {
-  ApiServiceConfig,
-  IResourceAttributes,
-  ISessionAttributes,
-  IUserAttributes,
-} from '../types'
+import { ApiServiceConfig } from '../types'
+import { type ISessionAttributes, type IResourceAttributes, type IUserAttributes } from '@multiplayer-app/session-recorder-common'
 
 
 export interface StartSessionRequest {
