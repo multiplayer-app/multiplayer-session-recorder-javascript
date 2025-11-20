@@ -343,7 +343,7 @@ export interface ISessionRecorder {
    * Set the user attributes
    * @param userAttributes - the user attributes to set
    */
-  setUserAttributes(userAttributes: IUserAttributes | undefined): void;
+  setUserAttributes(userAttributes: IUserAttributes | null): void;
 
   /**
    * Capture an exception and send it as an error trace

@@ -15,6 +15,8 @@ cd packages/session-recorder-common
 npm publish
 cd ../..
 
+npm install
+
 echo "  🌐 Publishing session-recorder-browser..."
 cd packages/session-recorder-browser
 npm publish
@@ -32,6 +34,7 @@ cd ../..
 
 echo "  🖥️  Publishing session-recorder-react-native..."
 cd packages/session-recorder-react-native
+yarn
 npm publish
 cd ../..
 

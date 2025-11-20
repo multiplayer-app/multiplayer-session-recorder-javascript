@@ -12,7 +12,7 @@ export interface StartSessionRequest {
   stoppedAt?: string | number
   sessionAttributes?: ISessionAttributes
   resourceAttributes?: IResourceAttributes
-  userAttributes?: IUserAttributes
+  userAttributes?: IUserAttributes | null
   debugSessionData?: Record<string, any>
   tags?: { key?: string; value: string }[]
 }
@@ -25,7 +25,7 @@ export interface StopSessionRequest {
 export interface CheckRemoteSessionRequest {
   sessionAttributes?: ISessionAttributes
   resourceAttributes?: IResourceAttributes
-  userAttributes?: IUserAttributes
+  userAttributes?: IUserAttributes | null
 }
 
 export class ApiService {

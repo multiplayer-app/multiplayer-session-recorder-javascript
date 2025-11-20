@@ -434,7 +434,7 @@ export interface ISessionRecorder extends Observable<SessionRecorderEvents> {
    * Set the user attributes
    * @param userAttributes - the user attributes to set
    */
-  setUserAttributes(userAttributes: IUserAttributes | undefined): void
+  setUserAttributes(userAttributes: IUserAttributes | null): void
 
   /**
    * Set a custom click handler for the recording button

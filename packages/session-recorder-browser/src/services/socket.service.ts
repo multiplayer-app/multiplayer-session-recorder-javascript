@@ -166,7 +166,7 @@ export class SocketService extends Observable<SocketServiceEvents> {
   private emitSocketEvent(name: string, data: any): void {
     if (this.usePostMessage) {
       this.sendViaPostMessage(name, data)
-    } else if (this.socket?.connected) {
+    } else if (this.socket && this.isConnected) {
       this.socket.emit(name, data)
     } else {
       this.queue.push({ data, name })
@@ -175,13 +175,13 @@ export class SocketService extends Observable<SocketServiceEvents> {
   }
 
   private flushQueue(): void {
-    while (this.queue.length > 0 && (this.usePostMessage || this.socket?.connected)) {
+    while (this.queue.length > 0 && (this.usePostMessage || this.isConnected)) {
       const event = this.queue.shift()
       if (!event) continue
 
       if (this.usePostMessage) {
         this.sendViaPostMessage(event.name, event.data)
-      } else if (this.socket?.connected) {
+      } else if (this.socket && this.isConnected) {
         this.socket.emit(event.name, event.data)
       }
     }
@@ -213,7 +213,7 @@ export class SocketService extends Observable<SocketServiceEvents> {
     }
   }
 
-  public setUser(userAttributes: IUserAttributes | undefined): void {
+  public setUser(userAttributes: IUserAttributes | null): void {
     this.emitSocketEvent(SOCKET_SET_USER_EVENT, userAttributes)
   }
 

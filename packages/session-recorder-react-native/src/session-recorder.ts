@@ -118,8 +118,13 @@ class SessionRecorder
     this._sessionAttributes = attributes;
   }
 
-  private _userAttributes: IUserAttributes | undefined = undefined;
-
+  private _userAttributes: IUserAttributes | null = null;
+  get userAttributes(): IUserAttributes | null {
+    return this._userAttributes;
+  }
+  set userAttributes(userAttributes: IUserAttributes | null) {
+    this._userAttributes = userAttributes;
+  }
   /**
    * Error message getter and setter
    */
@@ -401,7 +406,6 @@ class SessionRecorder
         {
           sessionAttributes: this.sessionAttributes,
           resourceAttributes: getNavigatorInfo(),
-          userAttributes: this._userAttributes,
           stoppedAt: Date.now(),
           name: this._getSessionName()
         }
@@ -425,7 +429,10 @@ class SessionRecorder
    * Set the user attributes
    * @param userAttributes - the user attributes to set
    */
-  public setUserAttributes(userAttributes: IUserAttributes | undefined): void {
+  public setUserAttributes(userAttributes: IUserAttributes | null): void {
+    if (!this._userAttributes && !userAttributes) {
+      return;
+    }
     this._userAttributes = userAttributes;
     this._socketService.setUser(this._userAttributes);
   }
@@ -451,7 +458,7 @@ class SessionRecorder
         ...getNavigatorInfo(),
         ...(sessionPayload?.resourceAttributes || {}),
       },
-      userAttributes: this._userAttributes,
+      ...(this._userAttributes ? { userAttributes: this._userAttributes } : {}),
     };
 
     const { state } = await this._apiService.checkRemoteSession(payload);
@@ -476,8 +483,8 @@ class SessionRecorder
       const payload = {
         sessionAttributes: this.sessionAttributes,
         resourceAttributes: getNavigatorInfo(),
-        userAttributes: this._userAttributes,
-        name: this._getSessionName()
+        name: this._getSessionName(),
+        ...(this._userAttributes ? { userAttributes: this._userAttributes } : {}),
       };
       const request: StartSessionRequest = !this.continuousRecording
         ? payload

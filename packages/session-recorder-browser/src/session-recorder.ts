@@ -57,7 +57,6 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   private _recorder = new RecorderBrowserSDK()
   private _sessionWidget = new SessionWidget()
   private _navigationRecorder = new NavigationRecorder()
-  private _userAttributes: IUserAttributes | undefined = undefined
   private _startRequestController: AbortController | null = null
 
   public get navigation(): NavigationRecorderPublicApi {
@@ -123,6 +122,14 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   }
   set sessionAttributes(attributes: Record<string, any> | null) {
     this._sessionAttributes = attributes
+  }
+
+  private _userAttributes: IUserAttributes | null = null
+  get userAttributes(): IUserAttributes | null {
+    return this._userAttributes
+  }
+  set userAttributes(userAttributes: IUserAttributes | null) {
+    this._userAttributes = userAttributes
   }
   /**
    * Error message getter and setter
@@ -387,7 +394,10 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    * Set the user attributes
    * @param userAttributes - the user attributes to set
    */
-  public setUserAttributes(userAttributes: IUserAttributes | undefined): void {
+  public setUserAttributes(userAttributes: IUserAttributes | null): void {
+    if (!this._userAttributes && !userAttributes) {
+      return
+    }
     this._userAttributes = userAttributes
     this._socketService.setUser(this._userAttributes)
   }
@@ -607,8 +617,8 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       const payload = {
         sessionAttributes: this.sessionAttributes,
         resourceAttributes: getNavigatorInfo(),
-        userAttributes: this._userAttributes,
-        name: this._getSessionName()
+        name: this._getSessionName(),
+        ...(this._userAttributes ? { userAttributes: this._userAttributes } : {}),
       }
       const request: StartSessionRequest = !this.continuousRecording ?
         payload : { debugSessionData: payload }
