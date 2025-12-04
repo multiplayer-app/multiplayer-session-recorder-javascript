@@ -1,0 +1,82 @@
+// Variables
+$font-family-base: 'PP Neue Montreal', Montserrat, Roboto, Arial, sans-serif;
+$font-family-inter: Inter, sans-serif;
+
+// Colors
+$color-primary: #493bff;
+$color-primary-dark: #382be4;
+$color-primary-darker: #160d9c;
+$color-text-primary: #2d3748;
+$color-text-secondary: #718096;
+$color-border: #e1e8f1;
+$color-background: #ffffff;
+$color-overlay: rgba(0, 0, 0, 0.5);
+
+// Spacing
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 12px;
+$spacing-lg: 16px;
+$spacing-xl: 20px;
+$spacing-xxl: 24px;
+
+// Border radius
+$border-radius-sm: 8px;
+$border-radius-md: 12px;
+$border-radius-lg: 24px;
+$border-radius-full: 36px;
+
+// Z-index layers
+$z-index-base: 10000;
+$z-index-overlay: 10003;
+$z-index-modal: 10004;
+
+// Mixins
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin button-base {
+  cursor: pointer;
+  border-radius: $border-radius-md;
+  font-family: $font-family-inter;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+@mixin gradient-primary {
+  background: linear-gradient(180deg, $color-primary 0%, $color-primary-dark 100%);
+}
+
+@mixin box-shadow-sm {
+  box-shadow: 0 1px 1px -0.5px rgba(0, 0, 0, 0.06), 0 3px 3px -1.5px rgba(0, 0, 0, 0.06);
+}
+
+@keyframes _rotateAnimation {
+  0% {
+    transform: rotate(0);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes _bounceAnimation {
+  0%,
+  100% {
+    padding: 3px;
+  }
+  50% {
+    padding: 0;
+  }
+}

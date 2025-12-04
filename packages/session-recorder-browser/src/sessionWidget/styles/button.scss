@@ -1,0 +1,132 @@
+@import './base.scss';
+// Button styles
+
+// Button styles
+.mp-session-debugger-button {
+  @include button-base;
+  @include flex-center;
+  position: fixed;
+  z-index: 2247483003;
+  padding: 5px;
+  background-color: $color-background;
+  border: solid 1px #bebfc1;
+  border-radius: $border-radius-full;
+  color: $color-text-secondary;
+  transition: background 0.3s;
+
+  width: 42px;
+  height: 42px;
+  will-change: right, bottom;
+
+  &.is-started {
+    color: $color-primary;
+  }
+
+  // Position variants
+  &.top-left {
+    top: $spacing-xxl;
+    left: $spacing-xxl;
+  }
+
+  &.top-right {
+    top: $spacing-xxl;
+    right: $spacing-xxl;
+  }
+
+  &.bottom-left {
+    bottom: $spacing-xxl;
+    left: $spacing-xxl;
+  }
+
+  &.bottom-right {
+    bottom: $spacing-xxl;
+    right: $spacing-xxl;
+  }
+
+  &.no-draggable {
+    position: static;
+    &::before {
+      transform: translateY(-18px) !important;
+      top: -10px !important;
+      left: 10px !important;
+    }
+    &:hover::before {
+      z-index: 1;
+      transform: translateY(-18px);
+      top: -10px;
+      left: 10px;
+      right: unset;
+    }
+    &.no-tooltip::before {
+      display: none;
+    }
+  }
+  &.mp-button-blue {
+    border: 1px rgba(0, 0, 0, 0.2);
+    background: #493bff;
+    &::before {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  &:not([data-tooltip='']) {
+    &:before {
+      content: attr(data-tooltip);
+      position: absolute;
+      pointer-events: none;
+      height: 28px;
+      top: 6px;
+      padding: 6px 8px 6px 8px;
+      border-radius: 8px;
+      font-family: Inter, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 16px;
+      opacity: 0;
+      transition: all 0.3s;
+      background: #1a202c;
+      color: white;
+      white-space: nowrap;
+      box-sizing: border-box;
+      z-index: -1;
+      transform: translateX(-8px);
+      left: unset;
+      right: 100%;
+    }
+    &.top-left:before,
+    &.bottom-left:before,
+    &.button-leftside:before {
+      transform: translateX(8px);
+      left: 100%;
+      right: unset;
+    }
+  }
+  &:not(.no-hover) {
+    &:hover {
+      color: #473cfb;
+      box-shadow: 0 3px 3px -1.5px rgba(0, 0, 0, 0.06), 0 1px 1px -0.5px rgba(0, 0, 0, 0.06);
+      &:before {
+        opacity: 1;
+      }
+    }
+  }
+  svg {
+    transform: rotate(0deg);
+    transition: transform 0.3s linear;
+  }
+  &.rotate-on-hover {
+    &:hover {
+      svg {
+        transform: rotate(-180deg);
+      }
+    }
+  }
+  &.animate-rotate svg {
+    animation: _rotateAnimation 3s linear infinite;
+  }
+}
+
+.animate-bounce {
+  animation: _bounceAnimation 1.6s infinite;
+  animation-timing-function: cubic-bezier(0.87, 0, 0.13, 1);
+}

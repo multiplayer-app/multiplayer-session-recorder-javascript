@@ -19,7 +19,8 @@ import {
 } from './buttonStateConfigs'
 
 // Import styles as string for shadow DOM injection
-import widgetStyles from '../index.scss?raw'
+import widgetStyles from './styles/index.scss?raw'
+import './styles/button.scss'
 
 type SessionWidgetEvents =
   | 'start'
