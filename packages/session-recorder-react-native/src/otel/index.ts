@@ -13,8 +13,7 @@ import {
 import { type TracerReactNativeConfig } from '../types';
 import { getInstrumentations } from './instrumentations';
 import { getExporterEndpoint } from './helpers';
-import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common';
-import { trace, SpanStatusCode, context } from '@opentelemetry/api';
+import { trace, SpanStatusCode, context, type Span } from '@opentelemetry/api';
 
 import { getPlatformAttributes } from '../utils/platform';
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
@@ -142,20 +141,11 @@ export class TracerReactNativeSDK {
    */
   captureException(error: Error, errorInfo?: Record<string, any>): void {
     if (!error) return;
-
-
     // Prefer attaching to the active span to keep correlation intact
     try {
       const activeSpan = trace.getSpan(context.active())
       if (activeSpan) {
-        // Standard OTEL exception event + span status
-        SessionRecorderSdk.captureException(error)
-        activeSpan.addEvent('exception', {
-          'exception.type': error.name || 'Error',
-          'exception.message': error.message,
-          'exception.stacktrace': error.stack || '',
-          ...(errorInfo || {}),
-        })
+        this._recordException(activeSpan, error, errorInfo)
         return
       }
     } catch (_ignored) { }
@@ -164,16 +154,22 @@ export class TracerReactNativeSDK {
     try {
       const tracer = trace.getTracer('exception')
       const span = tracer.startSpan(error.name || 'Error')
-      span.recordException(error)
-      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
-      span.addEvent('exception', {
-        'exception.type': error.name || 'Error',
-        'exception.message': error.message,
-        'exception.stacktrace': error.stack || '',
-        ...(errorInfo || {}),
-      })
+      this._recordException(span, error, errorInfo)
       span.end()
     } catch (_ignored) { }
+  }
+
+  private _recordException(span: Span, error: Error, errorInfo?: Record<string, any>): void {
+    span.recordException(error)
+    span.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
+    span.setAttribute('exception.type', error.name || 'Error')
+    span.setAttribute('exception.message', error.message)
+    span.setAttribute('exception.stacktrace', error.stack || '')
+    if (errorInfo) {
+      Object.entries(errorInfo).forEach(([key, value]) => {
+        span.setAttribute(`error_info.${key}`, value)
+      })
+    }
   }
 
   private _registerGlobalErrorHandlers(): void {

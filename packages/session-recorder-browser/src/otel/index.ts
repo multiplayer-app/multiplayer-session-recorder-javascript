@@ -12,8 +12,7 @@ import {
   SessionRecorderBrowserTraceExporter,
   SessionRecorderTraceIdRatioBasedSampler,
 } from '@multiplayer-app/session-recorder-common'
-import { SessionRecorderSdk } from '@multiplayer-app/session-recorder-common'
-import { trace, SpanStatusCode, context } from '@opentelemetry/api'
+import { trace, SpanStatusCode, context, Span } from '@opentelemetry/api'
 import { TracerBrowserConfig } from '../types'
 import { OTEL_IGNORE_URLS } from '../config'
 import {
@@ -238,14 +237,7 @@ export class TracerBrowserSDK {
     try {
       const activeSpan = trace.getSpan(context.active())
       if (activeSpan) {
-        // Standard OTEL exception event + span status
-        SessionRecorderSdk.captureException(error)
-        activeSpan.addEvent('exception', {
-          'exception.type': error.name || 'Error',
-          'exception.message': error.message,
-          'exception.stacktrace': error.stack || '',
-          ...(errorInfo || {}),
-        })
+        this._recordException(activeSpan, error, errorInfo)
         return
       }
       // eslint-disable-next-line
@@ -255,17 +247,23 @@ export class TracerBrowserSDK {
     try {
       const tracer = trace.getTracer('exception')
       const span = tracer.startSpan(error.name || 'Error')
-      span.recordException(error)
-      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
-      span.addEvent('exception', {
-        'exception.type': error.name || 'Error',
-        'exception.message': error.message,
-        'exception.stacktrace': error.stack || '',
-        ...(errorInfo || {}),
-      })
+      this._recordException(span, error, errorInfo)
       span.end()
       // eslint-disable-next-line
     } catch (_ignored) { }
+  }
+
+  private _recordException(span: Span, error: Error, errorInfo?: Record<string, any>): void {
+    span.recordException(error)
+    span.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
+    span.setAttribute('exception.type', error.name || 'Error')
+    span.setAttribute('exception.message', error.message)
+    span.setAttribute('exception.stacktrace', error.stack || '')
+    if (errorInfo) {
+      Object.entries(errorInfo).forEach(([key, value]) => {
+        span.setAttribute(`error_info.${key}`, value)
+      })
+    }
   }
 
   private _getSpanSessionIdProcessor(): SpanProcessor {
