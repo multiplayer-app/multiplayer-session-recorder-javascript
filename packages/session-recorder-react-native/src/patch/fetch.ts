@@ -35,28 +35,90 @@ function _tryReadFetchBody({
   return `[Fetch] Cannot read body of type ${Object.prototype.toString.call(body)}`
 }
 
+/**
+ * Detects if a response is a streaming response that should NOT have its body read.
+ * Reading the body of streaming responses (SSE, chunked streams, etc.) will either:
+ * - Block forever (SSE streams never end)
+ * - Corrupt the stream for the actual consumer
+ */
+function _isStreamingResponse(response: Response): boolean {
+  const contentType = response.headers.get('content-type')?.toLowerCase() ?? ''
+
+  // SSE - Server-Sent Events (infinite stream)
+  if (contentType.includes('text/event-stream')) {
+    return true
+  }
+
+  // Binary streams that are typically long-running
+  if (contentType.includes('application/octet-stream')) {
+    return true
+  }
+
+  // NDJSON streaming (newline-delimited JSON, common in streaming APIs)
+  if (contentType.includes('application/x-ndjson') || contentType.includes('application/ndjson')) {
+    return true
+  }
+
+  // gRPC-web streaming
+  if (contentType.includes('application/grpc')) {
+    return true
+  }
+
+  // Check for chunked transfer encoding (often indicates streaming)
+  const transferEncoding = response.headers.get('transfer-encoding')?.toLowerCase()
+  if (transferEncoding?.includes('chunked')) {
+    // Chunked alone isn't definitive, but combined with no content-length = streaming
+    const contentLength = response.headers.get('content-length')
+    if (!contentLength) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * Safely reads response body for non-streaming responses.
+ * Returns null for streaming responses to avoid blocking/corruption.
+ */
 async function _tryReadResponseBody(response: Response): Promise<string | null> {
+  // CRITICAL: Never attempt to read streaming response bodies
+  if (_isStreamingResponse(response)) {
+    return null
+  }
+
   try {
     // Clone the response to avoid consuming the original stream.
     const clonedResponse = response.clone()
+    const contentType = response.headers.get('content-type')?.toLowerCase() ?? ''
 
-    const contentType = response.headers.get('content-type') || ''
+    // Check content-length to avoid reading massive responses
+    const contentLength = response.headers.get('content-length')
+    if (contentLength) {
+      const length = parseInt(contentLength, 10)
+      if (!isNaN(length) && length > configs.maxCapturingHttpPayloadSize) {
+        return `[Fetch] Response too large (${length} bytes)`
+      }
+    }
+
     if (contentType.includes('application/json')) {
       const json = await clonedResponse.json()
       return JSON.stringify(json)
-    } else if (contentType.includes('text/')) {
+    }
+
+    if (contentType.includes('text/')) {
       return await clonedResponse.text()
-    } else {
-      // For other content types, try text first, fallback to arrayBuffer
+    }
+
+    // For unknown types, attempt text read
+    try {
+      return await clonedResponse.text()
+    } catch {
       try {
-        return await clonedResponse.text()
+        const arrayBuffer = await clonedResponse.arrayBuffer()
+        return `[Fetch] Binary data (${arrayBuffer.byteLength} bytes)`
       } catch {
-        try {
-          const arrayBuffer = await clonedResponse.arrayBuffer()
-          return `[Fetch] Binary data (${arrayBuffer.byteLength} bytes)`
-        } catch {
-          return '[Fetch] Unable to read response body'
-        }
+        return '[Fetch] Unable to read response body'
       }
     }
   } catch (error) {

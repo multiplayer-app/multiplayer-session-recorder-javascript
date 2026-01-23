@@ -1,18 +1,10 @@
-import {
-  isDocument,
-  isFormData,
-  isNullish,
-  isObject,
-  isString,
-} from '../utils/type-utils'
+import { isDocument, isFormData, isNullish, isObject, isString } from '../utils/type-utils'
 import { formDataToQuery } from '../utils/request-utils'
 import { configs } from './configs'
 
-
-
 function _tryReadFetchBody({
   body,
-  url,
+  url
 }: {
   // eslint-disable-next-line
   body: BodyInit | null | undefined
@@ -45,28 +37,90 @@ function _tryReadFetchBody({
   return `[Fetch] Cannot read body of type ${toString.call(body)}`
 }
 
-async function _tryReadResponseBody(response: Response): Promise<string | null> {
-  try {
-    // Clone the response to avoid consuming the original stream
-    const clonedResponse = response.clone()
+/**
+ * Detects if a response is a streaming response that should NOT have its body read.
+ * Reading the body of streaming responses (SSE, chunked streams, etc.) will either:
+ * - Block forever (SSE streams never end)
+ * - Corrupt the stream for the actual consumer
+ */
+function _isStreamingResponse(response: Response): boolean {
+  const contentType = response.headers.get('content-type')?.toLowerCase() ?? ''
 
-    // Try different methods to read the body
-    if (response.headers.get('content-type')?.includes('application/json')) {
+  // SSE - Server-Sent Events (infinite stream)
+  if (contentType.includes('text/event-stream')) {
+    return true
+  }
+
+  // Binary streams that are typically long-running
+  if (contentType.includes('application/octet-stream')) {
+    return true
+  }
+
+  // NDJSON streaming (newline-delimited JSON, common in streaming APIs)
+  if (contentType.includes('application/x-ndjson') || contentType.includes('application/ndjson')) {
+    return true
+  }
+
+  // gRPC-web streaming
+  if (contentType.includes('application/grpc')) {
+    return true
+  }
+
+  // Check for chunked transfer encoding (often indicates streaming)
+  const transferEncoding = response.headers.get('transfer-encoding')?.toLowerCase()
+  if (transferEncoding?.includes('chunked')) {
+    // Chunked alone isn't definitive, but combined with no content-length = streaming
+    const contentLength = response.headers.get('content-length')
+    if (!contentLength) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * Safely reads response body for non-streaming responses.
+ * Returns null for streaming responses to avoid blocking/corruption.
+ */
+async function _tryReadResponseBody(response: Response): Promise<string | null> {
+  // CRITICAL: Never attempt to read streaming response bodies
+  if (_isStreamingResponse(response)) {
+    return null
+  }
+
+  try {
+    // Clone the response to avoid consuming the original
+    const clonedResponse = response.clone()
+    const contentType = response.headers.get('content-type')?.toLowerCase() ?? ''
+
+    // Check content-length to avoid reading massive responses
+    const contentLength = response.headers.get('content-length')
+    if (contentLength) {
+      const length = parseInt(contentLength, 10)
+      if (!isNaN(length) && length > configs.maxCapturingHttpPayloadSize) {
+        return `[Fetch] Response too large (${length} bytes)`
+      }
+    }
+
+    if (contentType.includes('application/json')) {
       const json = await clonedResponse.json()
       return JSON.stringify(json)
-    } else if (response.headers.get('content-type')?.includes('text/')) {
+    }
+
+    if (contentType.includes('text/')) {
       return await clonedResponse.text()
-    } else {
-      // For other content types, try text first, fallback to arrayBuffer
+    }
+
+    // For unknown types, attempt text read with timeout protection
+    try {
+      return await clonedResponse.text()
+    } catch {
       try {
-        return await clonedResponse.text()
+        const arrayBuffer = await clonedResponse.arrayBuffer()
+        return `[Fetch] Binary data (${arrayBuffer.byteLength} bytes)`
       } catch {
-        try {
-          const arrayBuffer = await clonedResponse.arrayBuffer()
-          return `[Fetch] Binary data (${arrayBuffer.byteLength} bytes)`
-        } catch {
-          return '[Fetch] Unable to read response body'
-        }
+        return '[Fetch] Unable to read response body'
       }
     }
   } catch (error) {
@@ -114,7 +168,7 @@ if (typeof window !== 'undefined' && typeof window.fetch !== 'undefined') {
     // Already patched; do nothing
   } else {
     // @ts-ignore
-    (window.fetch as any).__mp_session_recorder_patched__ = true
+    ;(window.fetch as any).__mp_session_recorder_patched__ = true
 
     // Store original fetch
     const originalFetch = window.fetch
@@ -123,13 +177,13 @@ if (typeof window !== 'undefined' && typeof window.fetch !== 'undefined') {
     window.fetch = async function (
       input: RequestInfo | URL,
       // eslint-disable-next-line
-      init?: RequestInit,
+      init?: RequestInit
     ): Promise<Response> {
       const networkRequest: {
-        requestHeaders?: Record<string, string>,
-        requestBody?: string,
-        responseHeaders?: Record<string, string>,
-        responseBody?: string,
+        requestHeaders?: Record<string, string>
+        requestBody?: string
+        responseHeaders?: Record<string, string>
+        responseBody?: string
       } = {}
 
       // Capture request data
@@ -146,7 +200,9 @@ if (typeof window !== 'undefined' && typeof window.fetch !== 'undefined') {
       if (configs.shouldRecordBody) {
         const urlStr = inputIsRequest
           ? (input as Request).url
-          : (typeof input === 'string' || input instanceof URL ? String(input) : '')
+          : typeof input === 'string' || input instanceof URL
+          ? String(input)
+          : ''
 
         // Only attempt to read the body from init (safe); avoid constructing/cloning Requests
         // If the caller passed a Request as input, we do not attempt to read its body here
@@ -156,13 +212,10 @@ if (typeof window !== 'undefined' && typeof window.fetch !== 'undefined') {
         if (!isNullish(candidateBody)) {
           const requestBody = _tryReadFetchBody({
             body: candidateBody,
-            url: urlStr,
+            url: urlStr
           })
 
-          if (
-            requestBody?.length &&
-            new Blob([requestBody]).size <= configs.maxCapturingHttpPayloadSize
-          ) {
+          if (requestBody?.length && new Blob([requestBody]).size <= configs.maxCapturingHttpPayloadSize) {
             networkRequest.requestBody = requestBody
           }
         }
@@ -180,10 +233,7 @@ if (typeof window !== 'undefined' && typeof window.fetch !== 'undefined') {
         if (configs.shouldRecordBody) {
           const responseBody = await _tryReadResponseBody(response)
 
-          if (
-            responseBody?.length &&
-            new Blob([responseBody]).size <= configs.maxCapturingHttpPayloadSize
-          ) {
+          if (responseBody?.length && new Blob([responseBody]).size <= configs.maxCapturingHttpPayloadSize) {
             networkRequest.responseBody = responseBody
           }
         }
