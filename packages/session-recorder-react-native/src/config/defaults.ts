@@ -104,4 +104,9 @@ export const BASE_CONFIG: SessionRecorderConfigs = {
   },
 
   useWebsocket: true,
+
+  buffering: {
+    enabled: true,
+    windowMinutes: 1,
+  },
 };

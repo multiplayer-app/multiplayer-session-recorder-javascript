@@ -17,6 +17,7 @@ import { trace, SpanStatusCode, context, type Span } from '@opentelemetry/api';
 
 import { getPlatformAttributes } from '../utils/platform';
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
+import { CrashBufferService } from '../services/crashBuffer.service';
 
 export class TracerReactNativeSDK {
   private tracerProvider?: WebTracerProvider;
@@ -26,6 +27,8 @@ export class TracerReactNativeSDK {
   private idGenerator?: SessionRecorderIdGenerator;
   private exporter?: any;
   private globalErrorHandlerRegistered = false;
+  private crashBuffer?: CrashBufferService;
+  private bufferWindowMs: number = 1 * 60 * 1000;
 
   constructor() { }
 
@@ -62,6 +65,7 @@ export class TracerReactNativeSDK {
       ),
       spanProcessors: [
         this._getSpanSessionIdProcessor(),
+        this._getCrashBufferSpanProcessor(),
         new BatchSpanProcessor(this.exporter),
       ],
     });
@@ -79,15 +83,64 @@ export class TracerReactNativeSDK {
     this._registerGlobalErrorHandlers();
   }
 
+  setCrashBuffer(crashBuffer: CrashBufferService | undefined, windowMs: number): void {
+    this.crashBuffer = crashBuffer;
+    this.bufferWindowMs = Math.max(10_000, windowMs || 1 * 60 * 1000);
+  }
+
+  private _getCrashBufferSpanProcessor() {
+    return {
+      onStart: () => { },
+      onEnd: (span: any) => {
+        // Only buffer spans when we don't have an active debug session.
+        if (this.sessionId) return;
+        if (!this.crashBuffer) return;
+        try {
+          const ts = Date.now();
+          this.crashBuffer.appendOtelSpan(
+            { ts, span: this._serializeSpan(span) },
+            this.bufferWindowMs
+          );
+        } catch (_e) { }
+      },
+      shutdown: () => Promise.resolve(),
+      forceFlush: () => Promise.resolve(),
+    };
+  }
+
+  private _serializeSpan(span: any): any {
+    const spanContext = span?.spanContext?.()
+      ? span.spanContext()
+      : span?._spanContext;
+    return {
+      _spanContext: spanContext,
+      name: span?.name,
+      kind: span?.kind,
+      links: span?.links,
+      ended: span?.ended,
+      events: span?.events,
+      status: span?.status,
+      endTime: span?.endTime,
+      startTime: span?.startTime,
+      duration: span?.duration,
+      attributes: span?.attributes,
+      parentSpanId: span?.parentSpanContext?.spanId,
+      droppedAttributesCount: span?.droppedAttributesCount,
+      droppedEventsCount: span?.droppedEventsCount,
+      droppedLinksCount: span?.droppedLinksCount,
+      resource: span?.resource ? {
+        attributes: span.resource.attributes,
+        asyncAttributesPending: span.resource.asyncAttributesPending,
+      } : undefined,
+    };
+  }
+
   private _getSpanSessionIdProcessor() {
     return {
       onStart: (span: any) => {
         if (this.sessionId) {
           span.setAttribute(ATTR_MULTIPLAYER_SESSION_ID, this.sessionId);
         }
-        // Add React Native specific attributes
-        span.setAttribute('platform', 'react-native');
-        span.setAttribute('timestamp', Date.now());
       },
       onEnd: () => { },
       shutdown: () => Promise.resolve(),

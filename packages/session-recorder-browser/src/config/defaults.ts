@@ -80,4 +80,10 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
   widgetTextOverrides: DEFAULT_WIDGET_TEXT_CONFIG,
 
   useWebsocket: true,
+
+  buffering: {
+    enabled: true,
+    windowMinutes: 1,
+    snapshotIntervalMs: 30000,
+  },
 }

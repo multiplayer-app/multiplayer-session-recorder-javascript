@@ -20,7 +20,8 @@ import {
 import {
   SESSION_STOPPED_EVENT,
   REMOTE_SESSION_RECORDING_START,
-  REMOTE_SESSION_RECORDING_STOP
+  REMOTE_SESSION_RECORDING_STOP,
+  SESSION_SAVE_BUFFER_EVENT,
 } from './config';
 import { getFormattedDate, isSessionActive, getNavigatorInfo } from './utils';
 import {
@@ -31,6 +32,7 @@ import { BASE_CONFIG, getSessionRecorderConfig } from './config';
 
 import { StorageService } from './services/storage.service';
 import { NetworkService } from './services/network.service';
+import { CrashBufferService } from './services/crashBuffer.service';
 import {
   ApiService,
   type StartSessionRequest,
@@ -50,6 +52,8 @@ class SessionRecorder
   private _recorder = new RecorderReactNativeSDK();
   private _storageService = StorageService.getInstance();
   private _networkService = NetworkService.getInstance();
+  private _crashBuffer = CrashBufferService.getInstance();
+  private _isFlushingBuffer: boolean = false;
   private _startRequestController: AbortController | null = null;
 
   // Whether the session recorder is initialized
@@ -118,6 +122,14 @@ class SessionRecorder
   }
   set sessionAttributes(attributes: Record<string, any> | null) {
     this._sessionAttributes = attributes;
+    // Keep crash buffer attributes updated (best-effort)
+    if (this._configs?.buffering?.enabled) {
+      const windowMs = Math.max(10_000, (this._configs.buffering.windowMinutes || 2) * 60 * 1000);
+      void this._crashBuffer.setAttrs({
+        sessionAttributes: this.sessionAttributes,
+      });
+      void this._crashBuffer.pruneOlderThan(Date.now() - windowMs);
+    }
   }
 
   private _userAttributes: IUserAttributes | null = null;
@@ -126,6 +138,14 @@ class SessionRecorder
   }
   set userAttributes(userAttributes: IUserAttributes | null) {
     this._userAttributes = userAttributes;
+    // Keep crash buffer attributes updated (best-effort)
+    if (this._configs?.buffering?.enabled) {
+      const windowMs = Math.max(10_000, (this._configs.buffering.windowMinutes || 2) * 60 * 1000);
+      void this._crashBuffer.setAttrs({
+        userAttributes: this._userAttributes,
+      });
+      void this._crashBuffer.pruneOlderThan(Date.now() - windowMs);
+    }
   }
   /**
    * Error message getter and setter
@@ -167,8 +187,67 @@ class SessionRecorder
       const normalizedError = this._normalizeError(error);
       const normalizedErrorInfo = this._normalizeErrorInfo(errorInfo);
       this._tracer.captureException(normalizedError, normalizedErrorInfo);
+      if (this.sessionState === SessionState.stopped && !this.sessionId) {
+        void this.flushBuffer({ reason: 'exception' });
+      }
     } catch (e: any) {
       this.error = e?.message || 'Failed to capture exception';
+    }
+  }
+
+  public async flushBuffer(payload?: { reason?: string }): Promise<any> {
+    if (!this._configs?.buffering?.enabled) return null;
+    if (this._isFlushingBuffer) return null;
+    if (this.sessionState !== SessionState.stopped || this.sessionId) return null;
+
+    const windowMs = Math.max(
+      10_000,
+      (this._configs.buffering.windowMinutes || 2) * 60 * 1000
+    );
+
+    this._isFlushingBuffer = true;
+    try {
+      const reason = payload?.reason || 'manual';
+      await this._crashBuffer.setAttrs({
+        sessionAttributes: this.sessionAttributes,
+        resourceAttributes: getNavigatorInfo(),
+        userAttributes: this._userAttributes,
+      });
+
+      const snapshot = await this._crashBuffer.snapshot(windowMs);
+      if (snapshot.rrwebEvents.length === 0 && snapshot.otelSpans.length === 0) {
+        return null;
+      }
+
+      const request: StartSessionRequest = {
+        name: `${this._configs.application} ${getFormattedDate(new Date())}`,
+        stoppedAt: new Date().toISOString(),
+        sessionAttributes: this.sessionAttributes,
+        resourceAttributes: getNavigatorInfo(),
+        ...(this._userAttributes ? { userAttributes: this._userAttributes } : {}),
+        debugSessionData: {
+          meta: {
+            reason,
+            windowMs: snapshot.windowMs,
+            fromTs: snapshot.fromTs,
+            toTs: snapshot.toTs,
+          },
+          events: snapshot.rrwebEvents,
+          spans: snapshot.otelSpans.map((s) => s.span),
+          attrs: snapshot.attrs,
+        },
+      };
+
+      try {
+        const res = await this._apiService.startSession(request);
+        await this._crashBuffer.clear();
+        return res;
+      } catch (_e) {
+        // swallow: flush is best-effort; never throw into app code
+        return null;
+      }
+    } finally {
+      this._isFlushingBuffer = false;
     }
   }
 
@@ -223,7 +302,18 @@ class SessionRecorder
       socketUrl: this._configs.apiBaseUrl,
       keepAlive: this._configs.useWebsocket
     });
-    this._recorder.init(this._configs, this._socketService);
+
+    // Crash buffer wiring (RN): used only when sessionId is null.
+    const bufferEnabled = Boolean(this._configs.buffering?.enabled);
+    const windowMs = Math.max(10_000, (this._configs.buffering?.windowMinutes || 2) * 60 * 1000);
+    this._tracer.setCrashBuffer(bufferEnabled ? this._crashBuffer : undefined, windowMs);
+    this._recorder.init(
+      this._configs,
+      this._socketService,
+      bufferEnabled ? this._crashBuffer : undefined,
+      { enabled: bufferEnabled, windowMs },
+    );
+
     await this._networkService.init();
     this._setupNetworkCallbacks();
     this._registerSocketServiceListeners();
@@ -234,8 +324,34 @@ class SessionRecorder
         this.sessionState === SessionState.paused)
     ) {
       this._start();
+    } else {
+      this._startBufferOnlyRecording();
     }
     this.emit('init', []);
+  }
+
+  private _startBufferOnlyRecording(): void {
+    if (!this._configs?.buffering?.enabled) return;
+    if (this.sessionState !== SessionState.stopped || this.sessionId) return;
+
+    const windowMs = Math.max(10_000, (this._configs.buffering.windowMinutes || 2) * 60 * 1000);
+
+    // Best-effort: persist current attrs so flush has context.
+    this._crashBuffer.setAttrs({
+      sessionAttributes: this.sessionAttributes,
+      resourceAttributes: getNavigatorInfo(),
+      userAttributes: this._userAttributes,
+    });
+
+    // Wire buffer into tracer + recorder (only used when sessionId is null).
+    this._tracer.setCrashBuffer(this._crashBuffer, windowMs);
+    this._recorder.init(this._configs, this._socketService, this._crashBuffer, { enabled: true, windowMs });
+
+    // Start capturing events without an active debug session id.
+    try {
+      this._recorder.stop();
+    } catch (_e) { }
+    this._recorder.start(null, SessionType.MANUAL);
   }
 
   /**
@@ -259,6 +375,11 @@ class SessionRecorder
       if (this.sessionState !== SessionState.stopped) {
         this.stop();
       }
+    });
+
+    this._socketService.on(SESSION_SAVE_BUFFER_EVENT, (payload: any) => {
+      const reason = payload?.reason || 'remote';
+      void this.flushBuffer({ reason });
     });
   }
 
@@ -519,6 +640,10 @@ class SessionRecorder
     this.sessionType = this.sessionType;
 
     if (this.sessionId) {
+      // Switch from buffer-only recording to session recording cleanly.
+      try {
+        this._recorder.stop();
+      } catch (_e) { }
       this._tracer.start(this.sessionId, this.sessionType);
       this._recorder.start(this.sessionId, this.sessionType);
       if (this.session) {
@@ -533,15 +658,16 @@ class SessionRecorder
   private _stop(): void {
     this.sessionState = SessionState.stopped;
     this._socketService.unsubscribeFromSession(true);
-    this._tracer.shutdown();
+    this._tracer.stop();
     this._recorder.stop();
+    this._startBufferOnlyRecording();
   }
 
   /**
    * Pause the session tracing and recording
    */
   private _pause(): void {
-    this._tracer.shutdown();
+    this._tracer.stop();
     this._recorder.stop();
     this.sessionState = SessionState.paused;
   }
@@ -551,7 +677,10 @@ class SessionRecorder
    */
   private _resume(): void {
     if (this.sessionId) {
-      this._tracer.setSessionId(this.sessionId, this.sessionType);
+      this._tracer.start(this.sessionId, this.sessionType);
+      try {
+        this._recorder.stop();
+      } catch (_e) { }
       this._recorder.start(this.sessionId, this.sessionType);
     }
     this.sessionState = SessionState.started;

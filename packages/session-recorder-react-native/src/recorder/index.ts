@@ -1,6 +1,7 @@
 import { SessionType } from '@multiplayer-app/session-recorder-common';
 // import { pack } from '@rrweb/packer' // Removed to avoid blob creation issues in Hermes
 import { SocketService } from '../services/socket.service';
+import { CrashBufferService } from '../services/crashBuffer.service';
 import { logger } from '../utils';
 import { ScreenRecorder } from './screenRecorder';
 import { GestureRecorder } from './gestureRecorder';
@@ -15,6 +16,9 @@ export class RecorderReactNativeSDK implements EventRecorder {
   private navigationTracker: NavigationTracker;
   private recordedEvents: eventWithTime[] = [];
   private socketService!: SocketService;
+  private crashBuffer?: CrashBufferService;
+  private bufferingEnabled: boolean = false;
+  private bufferWindowMs: number = 2 * 60 * 1000;
   private sessionId: string | null = null;
   private sessionType: SessionType = SessionType.MANUAL;
 
@@ -24,9 +28,17 @@ export class RecorderReactNativeSDK implements EventRecorder {
     this.navigationTracker = new NavigationTracker();
   }
 
-  init(config: RecorderConfig, socketService: SocketService): void {
+  init(
+    config: RecorderConfig,
+    socketService: SocketService,
+    crashBuffer?: CrashBufferService,
+    buffering?: { enabled: boolean; windowMs: number },
+  ): void {
     this.config = config;
     this.socketService = socketService;
+    this.crashBuffer = crashBuffer;
+    this.bufferingEnabled = Boolean(buffering?.enabled);
+    this.bufferWindowMs = Math.max(10_000, buffering?.windowMs || 1 * 60 * 1000);
     this.screenRecorder.init(config, this);
     this.navigationTracker.init(config, this.screenRecorder);
     this.gestureRecorder.init(config, this, this.screenRecorder);
@@ -86,6 +98,12 @@ export class RecorderReactNativeSDK implements EventRecorder {
   recordEvent(event: eventWithTime): void {
     if (!this.isRecording) {
       return;
+    }
+
+    // Buffer-only mode (no active debug session): persist locally.
+    if (!this.sessionId && this.crashBuffer && this.bufferingEnabled) {
+      void this.crashBuffer.appendRrwebEvent({ ts: event.timestamp, event }, this.bufferWindowMs)
+      return
     }
 
     if (this.socketService) {

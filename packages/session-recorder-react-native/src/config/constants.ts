@@ -22,6 +22,9 @@ export const SESSION_AUTO_CREATED = 'debug-session:auto-created';
 
 export const SESSION_ADD_EVENT = 'debug-session:rrweb:add-event';
 
+// Backend-triggered flush of client-side crash buffer
+export const SESSION_SAVE_BUFFER_EVENT = 'debug-session:save-buffer';
+
 export const DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE = 100000;
 
 export const SESSION_RESPONSE = 'multiplayer-debug-session-response';

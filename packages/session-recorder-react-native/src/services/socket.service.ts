@@ -13,6 +13,7 @@ import {
   REMOTE_SESSION_RECORDING_START,
   REMOTE_SESSION_RECORDING_STOP,
   SESSION_STARTED_EVENT,
+  SESSION_SAVE_BUFFER_EVENT,
 } from '../config';
 import type { ISession, IUserAttributes } from '@multiplayer-app/session-recorder-common';
 
@@ -22,7 +23,8 @@ export type SocketServiceEvents =
   | typeof SESSION_STOPPED_EVENT
   | typeof SESSION_AUTO_CREATED
   | typeof REMOTE_SESSION_RECORDING_START
-  | typeof REMOTE_SESSION_RECORDING_STOP;
+  | typeof REMOTE_SESSION_RECORDING_STOP
+  | typeof SESSION_SAVE_BUFFER_EVENT;
 
 export interface SocketServiceOptions {
   apiKey: string;
@@ -145,6 +147,10 @@ export class SocketService extends Observable<SocketServiceEvents> {
 
     this.socket.on(REMOTE_SESSION_RECORDING_STOP, (data: any) => {
       this.emit(REMOTE_SESSION_RECORDING_STOP, [data]);
+    });
+
+    this.socket.on(SESSION_SAVE_BUFFER_EVENT, (data: any) => {
+      this.emit(SESSION_SAVE_BUFFER_EVENT, [data]);
     });
   }
 

@@ -154,6 +154,20 @@ export interface SessionRecorderOptions {
    * @default true
    */
   useWebsocket?: boolean
+
+  /**
+   * (Optional) Client-side crash buffer configuration.
+   * When enabled, the SDK keeps a rolling window of recent rrweb events + traces
+   * even if the user did not start a manual/continuous recording.
+   */
+  buffering?: {
+    /** Enable/disable buffering. @default true */
+    enabled?: boolean
+    /** Rolling window size (minutes). @default 1 */
+    windowMinutes?: number
+    /** Full snapshot interval (ms) while buffering. @default 30000 */
+    snapshotIntervalMs?: number
+  }
 }
 
 /**
@@ -446,6 +460,12 @@ export interface ISessionRecorder extends Observable<SessionRecorderEvents> {
    * Capture an exception and send it as an error trace
    */
   captureException(error: unknown, errorInfo?: Record<string, any>): void
+
+  /**
+   * Flush the local crash buffer by creating a debug session and uploading buffered data.
+   * No-op if a live recording is currently active.
+   */
+  flushBuffer(payload?: { reason?: string }): Promise<any>
 }
 
 export type Breaker = {}

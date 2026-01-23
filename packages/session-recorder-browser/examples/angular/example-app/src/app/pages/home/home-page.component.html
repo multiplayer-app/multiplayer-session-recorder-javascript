@@ -11,6 +11,37 @@
   </div>
 </section>
 
+<section class="exception-testing">
+  <h2 class="section-title">Exception Testing</h2>
+  <p class="section-subtitle">Test session recorder error handling with different exception types</p>
+  <div class="exception-buttons">
+    <button class="btn-exception btn-exception-error" (click)="throwSynchronousException()">
+      Throw Synchronous Error
+    </button>
+    <button class="btn-exception btn-exception-error" (click)="throwExceptionWithContext()">
+      Throw Error with Context
+    </button>
+    <button class="btn-exception btn-exception-error" (click)="throwAsyncException()">
+      Throw Async Error
+    </button>
+    <button class="btn-exception btn-exception-error" (click)="throwDelayedException()">
+      Throw Delayed Error (1s)
+    </button>
+    <button class="btn-exception btn-exception-error" (click)="throwObservableError()">
+      Throw RxJS Observable Error
+    </button>
+    <button class="btn-exception btn-exception-reference" (click)="throwReferenceError()">
+      Throw ReferenceError
+    </button>
+    <button class="btn-exception btn-exception-type" (click)="throwTypeError()">
+      Throw TypeError
+    </button>
+    <button class="btn-exception btn-exception-custom" (click)="throwCustomError()">
+      Throw Custom Error
+    </button>
+  </div>
+</section>
+
 <section class="features">
   <h2 class="features-title">Features</h2>
   <div class="features-grid">

@@ -1,31 +1,46 @@
 /**
- * LocalStorage utility functions
+ * Storage utility functions.
+ *
+ * Session state must be isolated per-tab to avoid conflicts across multiple tabs.
+ * We therefore prefer `sessionStorage` and fall back to `localStorage` if needed.
  */
 
-const hasLocalStorage = typeof window !== 'undefined' && !!window.localStorage
+const hasWindow = typeof window !== 'undefined'
+
+const getStorage = (): Storage | null => {
+  if (!hasWindow) return null
+  try {
+    if (window.sessionStorage) return window.sessionStorage
+  } catch (_e) {
+    // sessionStorage can throw (e.g. blocked in some environments)
+  }
+  try {
+    if (window.localStorage) return window.localStorage
+  } catch (_e) {
+    // localStorage can throw (e.g. blocked in some environments)
+  }
+  return null
+}
 
 export const getStoredItem = (key: string, parse?: boolean): any => {
-  if (!hasLocalStorage) {
-    return parse ? null : null
-  }
-  const item = window.localStorage.getItem(key)
+  const storage = getStorage()
+  if (!storage) return null
+  const item = storage.getItem(key)
   return parse ? (item ? JSON.parse(item) : null) : item
 }
 
 export const setStoredItem = (key: string, value: any) => {
-  if (!hasLocalStorage) {
-    return
-  }
+  const storage = getStorage()
+  if (!storage) return
   if (value === null || value === undefined) {
-    window.localStorage.removeItem(key)
+    storage.removeItem(key)
   } else {
-    window.localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value))
+    storage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value))
   }
 }
 
 export const removeStoredItem = (key: string) => {
-  if (!hasLocalStorage) {
-    return
-  }
-  window.localStorage.removeItem(key)
+  const storage = getStorage()
+  if (!storage) return
+  storage.removeItem(key)
 }

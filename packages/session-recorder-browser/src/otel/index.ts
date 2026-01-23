@@ -15,6 +15,7 @@ import {
 import { trace, SpanStatusCode, context, Span } from '@opentelemetry/api'
 import { TracerBrowserConfig } from '../types'
 import { OTEL_IGNORE_URLS } from '../config'
+import { CrashBufferService } from '../services/crashBuffer.service'
 import {
   processHttpPayload,
   headersToObject,
@@ -31,6 +32,7 @@ export class TracerBrowserSDK {
   private idGenerator
   private exporter?: SessionRecorderBrowserTraceExporter
   private globalErrorListenersRegistered = false
+  private crashBuffer?: CrashBufferService
 
   constructor() { }
 
@@ -64,6 +66,7 @@ export class TracerBrowserSDK {
       sampler: new SessionRecorderTraceIdRatioBasedSampler(this.config.sampleTraceRatio),
       spanProcessors: [
         this._getSpanSessionIdProcessor(),
+        this._getCrashBufferSpanProcessor(),
         new BatchSpanProcessor(this.exporter),
       ],
     })
@@ -190,6 +193,59 @@ export class TracerBrowserSDK {
     })
 
     this._registerGlobalErrorListeners()
+  }
+
+  setCrashBuffer(crashBuffer: CrashBufferService | undefined): void {
+    this.crashBuffer = crashBuffer
+  }
+
+  private _getCrashBufferSpanProcessor(): SpanProcessor {
+    return {
+      onStart: () => { },
+      onEnd: (span: any) => {
+        // Only buffer spans when we don't have an active debug session.
+        if (this.sessionId) return
+        if (!this.crashBuffer) return
+        try {
+          const now = Date.now()
+          this.crashBuffer.appendOtelSpan({
+            ts: now,
+            span: this._serializeSpan(span),
+          })
+        } catch (_e) {
+          // ignore
+        }
+      },
+      shutdown: () => Promise.resolve(),
+      forceFlush: () => Promise.resolve(),
+    }
+  }
+
+  private _serializeSpan(span: any): any {
+    const spanContext = span?.spanContext?.()
+      ? span.spanContext()
+      : span?._spanContext
+    return {
+      _spanContext: spanContext,
+      name: span?.name,
+      kind: span?.kind,
+      links: span?.links,
+      ended: span?.ended,
+      events: span?.events,
+      status: span?.status,
+      endTime: span?.endTime,
+      startTime: span?.startTime,
+      duration: span?.duration,
+      attributes: span?.attributes,
+      parentSpanId: span?.parentSpanContext?.spanId,
+      droppedAttributesCount: span?.droppedAttributesCount,
+      droppedEventsCount: span?.droppedEventsCount,
+      droppedLinksCount: span?.droppedLinksCount,
+      resource: span?.resource ? {
+        attributes: span.resource.attributes,
+        asyncAttributesPending: span.resource.asyncAttributesPending,
+      } : undefined,
+    }
   }
 
   start(

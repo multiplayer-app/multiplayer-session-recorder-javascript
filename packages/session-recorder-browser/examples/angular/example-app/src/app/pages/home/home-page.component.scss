@@ -66,6 +66,94 @@
   }
 }
 
+.exception-testing {
+  margin-top: 4rem;
+  padding: 2rem;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.section-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  text-align: center;
+  color: var(--text, #111);
+}
+
+.section-subtitle {
+  text-align: center;
+  color: var(--text-muted, #666);
+  margin: 0 0 2rem;
+  font-size: 1rem;
+}
+
+.exception-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.btn-exception {
+  padding: 0.875rem 1.25rem;
+  border-radius: 8px;
+  border: none;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &.btn-exception-error {
+    background: #dc2626;
+    color: white;
+
+    &:hover {
+      background: #b91c1c;
+    }
+  }
+
+  &.btn-exception-reference {
+    background: #ea580c;
+    color: white;
+
+    &:hover {
+      background: #c2410c;
+    }
+  }
+
+  &.btn-exception-type {
+    background: #d97706;
+    color: white;
+
+    &:hover {
+      background: #b45309;
+    }
+  }
+
+  &.btn-exception-custom {
+    background: #7c3aed;
+    color: white;
+
+    &:hover {
+      background: #6d28d9;
+    }
+  }
+}
+
 .features {
   margin-top: 4rem;
 }
