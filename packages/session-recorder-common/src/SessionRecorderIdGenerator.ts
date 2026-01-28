@@ -1,14 +1,14 @@
 import { IdGenerator } from '@opentelemetry/sdk-trace-base'
 import { SessionType } from './type'
-import {
-  MULTIPLAYER_TRACE_DEBUG_PREFIX,
-  MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
-} from './constants/constants.base'
 import { getIdGenerator } from './sdk'
+import {
+  MULTIPLAYER_TRACE_PREFIX_MAP,
+} from './constants/constants.base'
 
 export class SessionRecorderIdGenerator implements IdGenerator {
   sessionShortId: string
   sessionType: SessionType
+  clientId: string
   private generateLongId: () => string
   private generateShortId: () => string
 
@@ -16,30 +16,22 @@ export class SessionRecorderIdGenerator implements IdGenerator {
     this.generateLongId = getIdGenerator(16)
     this.generateShortId = getIdGenerator(8)
     this.sessionShortId = ''
+    this.clientId = ''
     this.sessionType = SessionType.MANUAL
   }
 
   generateTraceId(): string {
     const traceId = this.generateLongId()
 
-    if (this.sessionShortId) {
-      let sessionTypePrefix: string = ''
-      switch (this.sessionType) {
-        case SessionType.CONTINUOUS:
-          sessionTypePrefix = MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX
-          break
-        default:
-          sessionTypePrefix = MULTIPLAYER_TRACE_DEBUG_PREFIX
-      }
-
-      const prefix = `${sessionTypePrefix}${this.sessionShortId}`
-
-      const sessionTraceId = `${prefix}${traceId.substring(prefix.length, traceId.length)}`
-
-      return sessionTraceId
+    if (!this.sessionShortId && !this.sessionType) {
+      return traceId
     }
 
-    return traceId
+    const sessionTypePrefix = MULTIPLAYER_TRACE_PREFIX_MAP[this.sessionType]
+    const prefix = `${sessionTypePrefix}${[SessionType.CONTINUOUS_SESSION_CACHE, SessionType.SESSION_CACHE].includes(this.sessionType) ? this.clientId : ''}${this.sessionShortId}`
+    const sessionTraceId = `${prefix}${traceId.substring(prefix.length, traceId.length)}`
+
+    return sessionTraceId
   }
 
   generateSpanId(): string {
@@ -49,8 +41,23 @@ export class SessionRecorderIdGenerator implements IdGenerator {
   setSessionId(
     sessionShortId: string,
     sessionType: SessionType = SessionType.MANUAL,
+    clientId: string = '',
   ) {
+    if (
+      !clientId &&
+      [
+        SessionType.SESSION_CACHE,
+        SessionType.CONTINUOUS_SESSION_CACHE,
+      ].includes(sessionType)
+    ) {
+      throw new Error(`Client ID is required for ${[
+        SessionType.SESSION_CACHE,
+        SessionType.CONTINUOUS_SESSION_CACHE,
+      ].join(', ')} session types`)
+    }
+
     this.sessionShortId = sessionShortId
     this.sessionType = sessionType
+    this.clientId = clientId
   }
 }

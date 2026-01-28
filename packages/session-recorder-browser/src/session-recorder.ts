@@ -227,6 +227,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     this._apiService.init(this._configs)
     this._sessionWidget.init(this._configs)
     this._socketService.init({
+      clientId: this._tracer.clientId,
       apiKey: this._configs.apiKey,
       socketUrl: this._configs.apiBaseUrl || '',
       keepAlive: Boolean(this._configs.useWebsocket),

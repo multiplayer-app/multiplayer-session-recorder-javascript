@@ -11,6 +11,8 @@ import {
   SessionRecorderIdGenerator,
   SessionRecorderBrowserTraceExporter,
   SessionRecorderTraceIdRatioBasedSampler,
+  SessionRecorderSdk,
+  MULTIPLAYER_TRACE_CLIENT_ID_LENGTH,
 } from '@multiplayer-app/session-recorder-common'
 import { trace, SpanStatusCode, context, Span } from '@opentelemetry/api'
 import { TracerBrowserConfig } from '../types'
@@ -29,7 +31,8 @@ export class TracerBrowserSDK {
   private tracerProvider?: WebTracerProvider
   private config?: TracerBrowserConfig
   private sessionId = ''
-  private idGenerator
+  clientId = ''
+  private idGenerator?: SessionRecorderIdGenerator
   private exporter?: SessionRecorderBrowserTraceExporter
   private globalErrorListenersRegistered = false
   private crashBuffer?: CrashBufferService
@@ -38,14 +41,24 @@ export class TracerBrowserSDK {
 
   private setSessionId(
     sessionId: string,
-    sessionType: SessionType = SessionType.PLAIN,
+    sessionType: SessionType = SessionType.MANUAL,
   ) {
     this.sessionId = sessionId
-    this.idGenerator.setSessionId(sessionId, sessionType)
+
+    if (!this.idGenerator) {
+      throw new Error('Id generator not initialized')
+    }
+
+    this.idGenerator.setSessionId(
+      sessionId,
+      sessionType,
+      this.clientId
+    )
   }
 
   init(options: TracerBrowserConfig): void {
     this.config = options
+    this.clientId = SessionRecorderSdk.getIdGenerator(MULTIPLAYER_TRACE_CLIENT_ID_LENGTH)()
     const { application, version, environment } = this.config
 
     this.idGenerator = new SessionRecorderIdGenerator()

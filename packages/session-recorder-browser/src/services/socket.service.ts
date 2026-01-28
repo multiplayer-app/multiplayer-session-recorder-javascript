@@ -15,7 +15,11 @@ import {
   SESSION_STARTED_EVENT,
   SESSION_SAVE_BUFFER_EVENT,
 } from '../config'
-import { type ISession, type IUserAttributes } from '@multiplayer-app/session-recorder-common'
+import {
+  type ISession,
+  type IUserAttributes,
+  ATTR_MULTIPLAYER_SESSION_CLIENT_ID
+} from '@multiplayer-app/session-recorder-common'
 
 
 const MAX_RECONNECTION_ATTEMPTS = 2
@@ -32,6 +36,7 @@ export interface SocketServiceOptions {
   socketUrl: string
   keepAlive?: boolean
   usePostMessageFallback?: boolean
+  clientId?: string
 }
 
 export class SocketService extends Observable<SocketServiceEvents> {
@@ -113,6 +118,9 @@ export class SocketService extends Observable<SocketServiceEvents> {
       path: '/v0/radar/ws',
       auth: {
         'x-api-key': this.options.apiKey,
+        ...this.options.clientId
+          ? { [ATTR_MULTIPLAYER_SESSION_CLIENT_ID]: this.options.clientId }
+          : {},
       },
       reconnectionAttempts: 2,
       transports: ['websocket'],

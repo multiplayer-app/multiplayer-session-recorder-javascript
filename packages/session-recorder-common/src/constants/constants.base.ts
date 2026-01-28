@@ -1,3 +1,5 @@
+import { SessionType } from '../type'
+
 /**
  * @deprecated
  */
@@ -7,7 +9,20 @@ export const MULTIPLAYER_TRACE_DEBUG_PREFIX = 'debdeb'
 
 export const MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX = 'cdbcdb'
 
-export const MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH = 16
+export const MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX = 'cdbcac'
+
+export const MULTIPLAYER_TRACE_CONTINUOUS_SESSION_DEBUG_PREFIX = 'debcdb'
+
+export const MULTIPLAYER_TRACE_PREFIX_MAP = {
+  [SessionType.CONTINUOUS]: MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
+  [SessionType.SESSION_CACHE]: MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
+  [SessionType.CONTINUOUS_SESSION_CACHE]: MULTIPLAYER_TRACE_CONTINUOUS_SESSION_DEBUG_PREFIX,
+  [SessionType.MANUAL]: MULTIPLAYER_TRACE_DEBUG_PREFIX,
+} as Record<SessionType, string>
+
+export const MULTIPLAYER_TRACE_DEBUG_SESSION_SHORT_ID_LENGTH = 8
+
+export const MULTIPLAYER_TRACE_CLIENT_ID_LENGTH = 8
 
 /**
  * @deprecated Use MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL instead
@@ -48,6 +63,8 @@ export const ATTR_MULTIPLAYER_CLIENT_ID = 'multiplayer.client.id'
 export const ATTR_MULTIPLAYER_INTEGRATION_ID = 'multiplayer.integration.id'
 
 export const ATTR_MULTIPLAYER_SESSION_ID = 'multiplayer.session.id'
+
+export const ATTR_MULTIPLAYER_SESSION_CLIENT_ID = 'multiplayer.session.client.id'
 
 export const ATTR_MULTIPLAYER_HTTP_PROXY = 'multiplayer.http.proxy'
 
