@@ -69,7 +69,7 @@ export class IndexedDBService {
   }
 
   /**
-   * @deprecated Prefer `appendRrwebEvent(tabId, ...)` and `getRrwebEventsWindow(...)`.
+   * @deprecated Prefer `appendEvent(tabId, ...)` and `getRrwebEventsWindow(...)`.
    * This writes into the legacy store with no pruning semantics.
    */
   async saveEvent(event: any): Promise<void> {
@@ -121,7 +121,7 @@ export class IndexedDBService {
     const db = await this.dbPromise
     const payload: CrashBufferAttrs = {
       ...attrs,
-      updatedAt: attrs.updatedAt ?? Date.now(),
+      updatedAt: attrs.updatedAt ?? Date.now()
     }
     return new Promise<void>((resolve, reject) => {
       const tx = db.transaction(attrsStore, 'readwrite')
@@ -163,9 +163,7 @@ export class IndexedDBService {
 
       getReq.onsuccess = () => {
         const existing = (getReq.result || null) as CrashBufferAttrs | null
-        const next: CrashBufferAttrs = existing
-          ? { ...existing, updatedAt }
-          : { tabId, updatedAt }
+        const next: CrashBufferAttrs = existing ? { ...existing, updatedAt } : { tabId, updatedAt }
         store.put(next)
       }
       getReq.onerror = () => reject(getReq.error)
@@ -199,7 +197,7 @@ export class IndexedDBService {
     return cleared
   }
 
-  async appendRrwebEvent(record: CrashBufferRrwebEventRecord): Promise<void> {
+  async appendEvent(record: CrashBufferRrwebEventRecord): Promise<void> {
     const db = await this.dbPromise
     return new Promise<void>((resolve, reject) => {
       const tx = db.transaction(rrwebEventsStore, 'readwrite')
@@ -209,11 +207,15 @@ export class IndexedDBService {
     })
   }
 
-  async appendOtelSpan(record: CrashBufferOtelSpanRecord): Promise<void> {
+  async appendSpans(records: CrashBufferOtelSpanRecord[]): Promise<void> {
+    if (!records.length) return
     const db = await this.dbPromise
     return new Promise<void>((resolve, reject) => {
       const tx = db.transaction(otelSpansStore, 'readwrite')
-      tx.objectStore(otelSpansStore).add(record)
+      const store = tx.objectStore(otelSpansStore)
+      for (const record of records) {
+        store.add(record)
+      }
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)
     })
@@ -276,34 +278,34 @@ export class IndexedDBService {
     const rrwebRange = IDBKeyRange.bound([tabId, 0], [tabId, cutoffTs])
     const spansRange = IDBKeyRange.bound([tabId, 0], [tabId, cutoffTs])
 
-    const pruneStore = (store: IDBObjectStore, range: IDBKeyRange) => new Promise<void>((resolve, reject) => {
-      const idx = store.index('tabId_ts')
-      const req = idx.openCursor(range)
-      req.onsuccess = () => {
-        const cursor = req.result
-        if (!cursor) {
-          resolve()
-          return
+    const pruneStore = (store: IDBObjectStore, range: IDBKeyRange) =>
+      new Promise<void>((resolve, reject) => {
+        const idx = store.index('tabId_ts')
+        const req = idx.openCursor(range)
+        req.onsuccess = () => {
+          const cursor = req.result
+          if (!cursor) {
+            resolve()
+            return
+          }
+          cursor.delete()
+          cursor.continue()
         }
-        cursor.delete()
-        cursor.continue()
-      }
-      req.onerror = () => reject(req.error)
-    })
+        req.onerror = () => reject(req.error)
+      })
 
     return new Promise<void>((resolve, reject) => {
       const tx = db.transaction([rrwebEventsStore, otelSpansStore], 'readwrite')
       const rrwebStore = tx.objectStore(rrwebEventsStore)
       const spanStore = tx.objectStore(otelSpansStore)
 
-      Promise.all([
-        pruneStore(rrwebStore, rrwebRange),
-        pruneStore(spanStore, spansRange),
-      ]).then(() => {
-        // noop; completion is signaled by tx.oncomplete
-      }).catch((e) => {
-        reject(e)
-      })
+      Promise.all([pruneStore(rrwebStore, rrwebRange), pruneStore(spanStore, spansRange)])
+        .then(() => {
+          // noop; completion is signaled by tx.oncomplete
+        })
+        .catch((e) => {
+          reject(e)
+        })
 
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)
@@ -325,32 +327,32 @@ export class IndexedDBService {
     const rrwebRange = IDBKeyRange.bound([tabId, 0], [tabId, rrwebCutoffTs])
     const spansRange = IDBKeyRange.bound([tabId, 0], [tabId, cutoffTs])
 
-    const pruneStore = (store: IDBObjectStore, range: IDBKeyRange) => new Promise<void>((resolve, reject) => {
-      const idx = store.index('tabId_ts')
-      const req = idx.openCursor(range)
-      req.onsuccess = () => {
-        const cursor = req.result
-        if (!cursor) {
-          resolve()
-          return
+    const pruneStore = (store: IDBObjectStore, range: IDBKeyRange) =>
+      new Promise<void>((resolve, reject) => {
+        const idx = store.index('tabId_ts')
+        const req = idx.openCursor(range)
+        req.onsuccess = () => {
+          const cursor = req.result
+          if (!cursor) {
+            resolve()
+            return
+          }
+          cursor.delete()
+          cursor.continue()
         }
-        cursor.delete()
-        cursor.continue()
-      }
-      req.onerror = () => reject(req.error)
-    })
+        req.onerror = () => reject(req.error)
+      })
 
     return new Promise<void>((resolve, reject) => {
       const tx = db.transaction([rrwebEventsStore, otelSpansStore], 'readwrite')
       const rrwebStore = tx.objectStore(rrwebEventsStore)
       const spanStore = tx.objectStore(otelSpansStore)
 
-      Promise.all([
-        pruneStore(rrwebStore, rrwebRange),
-        pruneStore(spanStore, spansRange),
-      ]).then(() => {
-        // noop
-      }).catch((e) => reject(e))
+      Promise.all([pruneStore(rrwebStore, rrwebRange), pruneStore(spanStore, spansRange)])
+        .then(() => {
+          // noop
+        })
+        .catch((e) => reject(e))
 
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)
@@ -361,20 +363,21 @@ export class IndexedDBService {
     const db = await this.dbPromise
     const allRange = IDBKeyRange.bound([tabId, 0], [tabId, Number.MAX_SAFE_INTEGER])
 
-    const clearByTab = (store: IDBObjectStore) => new Promise<void>((resolve, reject) => {
-      const idx = store.index('tabId_ts')
-      const req = idx.openCursor(allRange)
-      req.onsuccess = () => {
-        const cursor = req.result
-        if (!cursor) {
-          resolve()
-          return
+    const clearByTab = (store: IDBObjectStore) =>
+      new Promise<void>((resolve, reject) => {
+        const idx = store.index('tabId_ts')
+        const req = idx.openCursor(allRange)
+        req.onsuccess = () => {
+          const cursor = req.result
+          if (!cursor) {
+            resolve()
+            return
+          }
+          cursor.delete()
+          cursor.continue()
         }
-        cursor.delete()
-        cursor.continue()
-      }
-      req.onerror = () => reject(req.error)
-    })
+        req.onerror = () => reject(req.error)
+      })
 
     return new Promise<void>((resolve, reject) => {
       const tx = db.transaction([rrwebEventsStore, otelSpansStore, attrsStore], 'readwrite')
@@ -389,10 +392,12 @@ export class IndexedDBService {
           const r = attr.delete(tabId)
           r.onsuccess = () => res()
           r.onerror = () => rej(r.error)
-        }),
-      ]).then(() => {
-        // noop
-      }).catch((e) => reject(e))
+        })
+      ])
+        .then(() => {
+          // noop
+        })
+        .catch((e) => reject(e))
 
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)

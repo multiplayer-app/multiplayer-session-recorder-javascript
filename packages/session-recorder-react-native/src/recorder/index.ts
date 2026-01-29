@@ -32,18 +32,20 @@ export class RecorderReactNativeSDK implements EventRecorder {
     config: RecorderConfig,
     socketService: SocketService,
     crashBuffer?: CrashBufferService,
-    buffering?: { enabled: boolean; windowMs: number },
+    buffering?: { enabled: boolean; windowMs: number }
   ): void {
     this.config = config;
     this.socketService = socketService;
     this.crashBuffer = crashBuffer;
     this.bufferingEnabled = Boolean(buffering?.enabled);
-    this.bufferWindowMs = Math.max(10_000, buffering?.windowMs || 1 * 60 * 1000);
+    this.bufferWindowMs = Math.max(
+      10_000,
+      buffering?.windowMs || 1 * 60 * 1000
+    );
     this.screenRecorder.init(config, this);
     this.navigationTracker.init(config, this.screenRecorder);
     this.gestureRecorder.init(config, this, this.screenRecorder);
   }
-
 
   start(sessionId: string | null, sessionType: SessionType): void {
     if (!this.config) {
@@ -102,12 +104,19 @@ export class RecorderReactNativeSDK implements EventRecorder {
 
     // Buffer-only mode (no active debug session): persist locally.
     if (!this.sessionId && this.crashBuffer && this.bufferingEnabled) {
-      void this.crashBuffer.appendRrwebEvent({ ts: event.timestamp, event }, this.bufferWindowMs)
-      return
+      void this.crashBuffer.appendEvent(
+        { ts: event.timestamp, event },
+        this.bufferWindowMs
+      );
+      return;
     }
 
     if (this.socketService) {
-      logger.debug('RecorderReactNativeSDK', 'Sending to socket service', event);
+      logger.debug(
+        'RecorderReactNativeSDK',
+        'Sending to socket service',
+        event
+      );
       // Skip packing to avoid blob creation issues in Hermes
       // const packedEvent = pack(event)
       this.socketService.send({

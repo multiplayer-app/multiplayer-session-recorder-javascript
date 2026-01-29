@@ -8,7 +8,7 @@ import { isConsoleEvent } from '../utils'
 import { CONTINUOUS_DEBUGGING_TIMEOUT } from '../config'
 import { SessionRecorderConfigs } from '../types'
 import { SocketService } from '../services/socket.service'
-import { CrashBufferService } from '../services/crashBuffer.service'
+import type { CrashBuffer } from '@multiplayer-app/session-recorder-common'
 
 interface IntervalManager {
   restart: NodeJS.Timeout | null
@@ -19,21 +19,24 @@ export class RecorderBrowserSDK {
   private stopFn?: () => void
   private config?: SessionRecorderConfigs
   private socketService?: SocketService
-  private crashBuffer?: CrashBufferService
+  private crashBuffer?: CrashBuffer
   private intervals: IntervalManager = {
     restart: null,
-    bufferSnapshot: null,
+    bufferSnapshot: null
   }
 
   public startedAt: string = ''
   public stoppedAt: string = ''
 
-  constructor() { }
+  constructor() {}
 
   /**
    * Full snapshot.
    */
   takeFullSnapshot(): void {
+    if (!this.stopFn) {
+      return
+    }
     record.takeFullSnapshot()
   }
 
@@ -46,7 +49,6 @@ export class RecorderBrowserSDK {
     this.config = config
     this.socketService = socketService
   }
-
 
   /**
    * Starts recording.
@@ -71,7 +73,7 @@ export class RecorderBrowserSDK {
         }
 
         this._handleLiveSessionEvent(event, ts, sessionId, sessionType)
-      },
+      }
     })
 
     this.takeFullSnapshot()
@@ -95,7 +97,7 @@ export class RecorderBrowserSDK {
    */
   stop(): void {
     this.stopFn?.()
-
+    this.stopFn = undefined
     if (!this.config?.useWebsocket) {
       this.socketService?.close()
     }
@@ -118,7 +120,7 @@ export class RecorderBrowserSDK {
    * Sets the crash buffer.
    * @param crashBuffer - Crash buffer service.
    */
-  setCrashBuffer(crashBuffer: CrashBufferService): void {
+  setCrashBuffer(crashBuffer: CrashBuffer): void {
     this.crashBuffer = crashBuffer
   }
 
@@ -147,14 +149,14 @@ export class RecorderBrowserSDK {
       const packedEvent = pack(event)
       this.stoppedAt = new Date(ts).toISOString()
 
-      await this.crashBuffer.appendRrwebEvent({
+      await this.crashBuffer.appendEvent({
         ts,
         isFullSnapshot: event.type === EventType.FullSnapshot,
         event: {
           event: packedEvent,
           eventType: event.type,
-          timestamp: ts,
-        },
+          timestamp: ts
+        }
       })
     } catch (error) {
       // Silent failure - library constraint
@@ -168,12 +170,7 @@ export class RecorderBrowserSDK {
    * @param sessionId - Session ID.
    * @param sessionType - Session type.
    */
-  private _handleLiveSessionEvent(
-    event: eventWithTime,
-    ts: number,
-    sessionId: string,
-    sessionType: SessionType,
-  ): void {
+  private _handleLiveSessionEvent(event: eventWithTime, ts: number, sessionId: string, sessionType: SessionType): void {
     if (!this.socketService) return
 
     this._applyConsoleMasking(event)
@@ -185,7 +182,7 @@ export class RecorderBrowserSDK {
       eventType: event.type,
       timestamp: ts,
       debugSessionId: sessionId,
-      debugSessionType: sessionType,
+      debugSessionType: sessionType
     })
   }
 
@@ -200,7 +197,7 @@ export class RecorderBrowserSDK {
       sampling: { canvas: 5 },
       recordCanvas: this.config?.recordCanvas,
       dataURLOptions: { type: 'image/webp', quality: 0.1 },
-      plugins: [getRecordConsolePlugin({ level: ['log', 'error'] })],
+      plugins: [getRecordConsolePlugin({ level: ['log', 'error'] })]
     }
 
     if (maskingConfig.maskInputOptions) {

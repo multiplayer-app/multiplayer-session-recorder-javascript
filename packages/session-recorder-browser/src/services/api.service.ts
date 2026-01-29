@@ -1,7 +1,11 @@
 import messagingService from './messaging.service'
 import { ApiServiceConfig } from '../types'
-import { type ISessionAttributes, type IResourceAttributes, type IUserAttributes } from '@multiplayer-app/session-recorder-common'
-
+import {
+  type ISessionAttributes,
+  type IResourceAttributes,
+  type IUserAttributes
+} from '@multiplayer-app/session-recorder-common'
+import { eventWithTime } from 'rrweb'
 
 export interface StartSessionRequest {
   name?: string
@@ -11,6 +15,10 @@ export interface StartSessionRequest {
   userAttributes?: IUserAttributes | null
   debugSessionData?: Record<string, any>
   tags?: { key?: string; value: string }[]
+}
+
+export interface CreateErrorSpanSessionRequest {
+  span: any
 }
 
 export interface StopSessionRequest {
@@ -27,12 +35,11 @@ export interface CheckRemoteSessionRequest {
 export class ApiService {
   private config: ApiServiceConfig
 
-
   constructor() {
     this.config = {
       apiKey: '',
       apiBaseUrl: '',
-      exporterEndpoint: '',
+      exporterEndpoint: ''
     }
   }
 
@@ -43,7 +50,7 @@ export class ApiService {
   public init(config: ApiServiceConfig) {
     this.config = {
       ...this.config,
-      ...config,
+      ...config
     }
   }
 
@@ -60,16 +67,19 @@ export class ApiService {
    * @param request - Session start request data
    * @param signal - Optional AbortSignal for request cancellation
    */
-  async startSession(
-    request: StartSessionRequest,
-    signal?: AbortSignal,
+  async startSession(request: StartSessionRequest, signal?: AbortSignal): Promise<any> {
+    return this.makeRequest('/debug-sessions/start', 'POST', request, signal)
+  }
+  /**
+   * Start a new debug session
+   * @param request - Session start request data
+   * @param signal - Optional AbortSignal for request cancellation
+   */
+  async createErrorSession(
+    request: CreateErrorSpanSessionRequest,
+    signal?: AbortSignal
   ): Promise<any> {
-    return this.makeRequest(
-      '/debug-sessions/start',
-      'POST',
-      request,
-      signal,
-    )
+    return this.makeRequest('/debug-sessions/error-span/start', 'POST', request, signal)
   }
 
   /**
@@ -77,15 +87,8 @@ export class ApiService {
    * @param sessionId - ID of the session to stop
    * @param request - Session stop request data
    */
-  async stopSession(
-    sessionId: string,
-    request: StopSessionRequest,
-  ): Promise<any> {
-    return this.makeRequest(
-      `/debug-sessions/${sessionId}/stop`,
-      'PATCH',
-      request,
-    )
+  async stopSession(sessionId: string, request: StopSessionRequest): Promise<any> {
+    return this.makeRequest(`/debug-sessions/${sessionId}/stop`, 'PATCH', request)
   }
 
   /**
@@ -93,10 +96,7 @@ export class ApiService {
    * @param sessionId - ID of the session to cancel
    */
   async cancelSession(sessionId: string): Promise<any> {
-    return this.makeRequest(
-      `/debug-sessions/${sessionId}/cancel`,
-      'DELETE',
-    )
+    return this.makeRequest(`/debug-sessions/${sessionId}/cancel`, 'DELETE')
   }
 
   /**
@@ -106,14 +106,9 @@ export class ApiService {
    */
   async startContinuousDebugSession(
     request: StartSessionRequest,
-    signal?: AbortSignal,
+    signal?: AbortSignal
   ): Promise<any> {
-    return this.makeRequest(
-      '/continuous-debug-sessions/start',
-      'POST',
-      request,
-      signal,
-    )
+    return this.makeRequest('/continuous-debug-sessions/start', 'POST', request, signal)
   }
 
   /**
@@ -125,14 +120,9 @@ export class ApiService {
   async saveContinuousDebugSession(
     sessionId: string,
     request: StartSessionRequest,
-    signal?: AbortSignal,
+    signal?: AbortSignal
   ): Promise<any> {
-    return this.makeRequest(
-      `/continuous-debug-sessions/${sessionId}/save`,
-      'POST',
-      request,
-      signal,
-    )
+    return this.makeRequest(`/continuous-debug-sessions/${sessionId}/save`, 'POST', request, signal)
   }
 
   /**
@@ -140,10 +130,7 @@ export class ApiService {
    * @param sessionId - ID of the session to stop
    */
   async stopContinuousDebugSession(sessionId: string): Promise<any> {
-    return this.makeRequest(
-      `/continuous-debug-sessions/${sessionId}/cancel`,
-      'DELETE',
-    )
+    return this.makeRequest(`/continuous-debug-sessions/${sessionId}/cancel`, 'DELETE')
   }
 
   /**
@@ -151,13 +138,24 @@ export class ApiService {
    */
   async checkRemoteSession(
     requestBody: CheckRemoteSessionRequest,
-    signal?: AbortSignal,
+    signal?: AbortSignal
   ): Promise<{ state: 'START' | 'STOP' }> {
+    return this.makeRequest('/remote-debug-session/check', 'POST', requestBody, signal)
+  }
+
+  /**
+   * Export events to the session debugger API
+   */
+  async exportEvents(
+    sessionId: string,
+    requestBody: { events: eventWithTime[] },
+    signal?: AbortSignal
+  ): Promise<any> {
     return this.makeRequest(
-      '/remote-debug-session/check',
+      `/debug-sessions/${sessionId}/rrweb-events`,
       'POST',
       requestBody,
-      signal,
+      signal
     )
   }
 
@@ -172,7 +170,7 @@ export class ApiService {
     path: string,
     method: string,
     body?: any,
-    signal?: AbortSignal,
+    signal?: AbortSignal
   ): Promise<any> {
     const url = `${this.config.apiBaseUrl}/v0/radar${path}`
     const params = {
@@ -180,15 +178,15 @@ export class ApiService {
       body: body ? JSON.stringify(body) : null,
       headers: {
         'Content-Type': 'application/json',
-        ...(this.config.apiKey && { 'X-Api-Key': this.config.apiKey }),
-      },
+        ...(this.config.apiKey && { 'X-Api-Key': this.config.apiKey })
+      }
     }
 
     try {
       const response = await fetch(url, {
         ...params,
         credentials: 'include',
-        signal,
+        signal
       })
 
       if (!response.ok) {
@@ -208,16 +206,10 @@ export class ApiService {
     }
   }
 
-  private async handleRequestError(
-    error: any,
-    payload: { url: string; params: any },
-  ) {
+  private async handleRequestError(error: any, payload: { url: string; params: any }) {
     if (this.config.usePostMessageFallback) {
       try {
-        const response = await messagingService.sendMessagePromise(
-          'request',
-          payload,
-        )
+        const response = await messagingService.sendMessagePromise('request', payload)
         return response
       } catch (error: any) {
         throw new Error('Error making request: ' + error.message)

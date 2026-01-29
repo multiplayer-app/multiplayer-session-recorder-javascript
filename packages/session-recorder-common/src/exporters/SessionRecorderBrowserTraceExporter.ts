@@ -1,9 +1,11 @@
 import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base'
+import { ExportResult } from '@opentelemetry/core'
+
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import {
   MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
-  MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
+  MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX
 } from '../constants/constants.base'
 
 export interface SessionRecorderBrowserTraceExporterConfig {
@@ -48,7 +50,7 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       keepAlive = true,
       concurrencyLimit = 20,
       postMessageType = 'MULTIPLAYER_SESSION_DEBUGGER_LIB',
-      postMessageTargetOrigin = '*',
+      postMessageTargetOrigin = '*'
     } = config
 
     this.config = {
@@ -56,9 +58,9 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       url,
       apiKey,
       headers,
-      timeoutMillis,
       keepAlive,
-      concurrencyLimit,
+      timeoutMillis,
+      concurrencyLimit
     }
     this.postMessageType = postMessageType
     this.postMessageTargetOrigin = postMessageTargetOrigin
@@ -66,15 +68,14 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
     this.exporter = this._createExporter()
   }
 
-  export(
-    spans: ReadableSpan[],
-    resultCallback: (result: { code: number }) => void,
-  ): void {
+  export(spans: ReadableSpan[], resultCallback: (result: { code: number }) => void): void {
     // Filter spans to only include those with Multiplayer trace prefixes
-    const filteredSpans = spans.filter(span => {
+    const filteredSpans = spans.filter((span) => {
       const traceId = span.spanContext().traceId
-      return traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
+      return (
+        traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
         traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
+      )
     })
 
     // Only proceed if there are filtered spans
@@ -104,6 +105,14 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
     return this.exporter.shutdown()
   }
 
+  exportBuffer(spans: ReadableSpan[]): Promise<ExportResult | undefined> {
+    return new Promise((resolve) => {
+      this.exporter.export(spans, (result) => {
+        resolve(result)
+      })
+    })
+  }
+
   private exportViaPostMessage(spans: ReadableSpan[], resultCallback: (result: { code: number }) => void): void {
     if (typeof window === 'undefined') {
       resultCallback({ code: 1 })
@@ -115,9 +124,9 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
         {
           action: 'traces',
           type: this.postMessageType,
-          payload: spans.map(span => this._serializeSpan(span)),
+          payload: spans.map((span) => this.serializeSpan(span))
         },
-        this.postMessageTargetOrigin,
+        this.postMessageTargetOrigin
       )
       resultCallback({ code: 0 })
     } catch (e) {
@@ -125,7 +134,7 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
     }
   }
 
-  private _serializeSpan(span: ReadableSpan): any {
+  serializeSpan(span: ReadableSpan): any {
     const spanContext = span.spanContext()
     return {
       _spanContext: spanContext,
@@ -136,17 +145,15 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       events: span.events,
       status: span.status,
       endTime: span.endTime,
-      startTime: span.startTime,
+      resource: span.resource,
       duration: span.duration,
+      startTime: span.startTime,
       attributes: span.attributes,
-      parentSpanId: span.parentSpanContext?.spanId,
-      droppedAttributesCount: span.droppedAttributesCount,
-      droppedEventsCount: span.droppedEventsCount,
       droppedLinksCount: span.droppedLinksCount,
-      resource: {
-        attributes: span.resource.attributes,
-        asyncAttributesPending: span.resource.asyncAttributesPending,
-      },
+      parentSpanContext: span.parentSpanContext,
+      droppedEventsCount: span.droppedEventsCount,
+      instrumentationScope: span.instrumentationScope,
+      droppedAttributesCount: span.droppedAttributesCount
     }
   }
 
@@ -155,18 +162,17 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       url: this.config.url,
       headers: {
         'Content-Type': 'application/json',
-        ...(this.config.apiKey ? { 'Authorization': this.config.apiKey } : {}),
-        ...(this.config.headers || {}),
+        ...(this.config.apiKey ? { Authorization: this.config.apiKey } : {}),
+        ...(this.config.headers || {})
       },
       timeoutMillis: this.config.timeoutMillis,
       keepAlive: this.config.keepAlive,
-      concurrencyLimit: this.config.concurrencyLimit,
+      concurrencyLimit: this.config.concurrencyLimit
     })
   }
 
   setApiKey(apiKey: string): void {
     this.config.apiKey = apiKey
-
     this.exporter = this._createExporter()
   }
 }

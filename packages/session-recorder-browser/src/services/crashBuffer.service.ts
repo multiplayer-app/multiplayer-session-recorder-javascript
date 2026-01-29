@@ -1,19 +1,16 @@
+import { SpanStatusCode } from '@opentelemetry/api'
 import { IndexedDBService } from './indexedDb.service'
+import type {
+  CrashBuffer,
+  CrashBufferAttrs,
+  CrashBufferEventMap,
+  CrashBufferEventName,
+  CrashBufferOtelSpanBatchPayload,
+  CrashBufferRrwebEventPayload,
+  CrashBufferSnapshot
+} from '@multiplayer-app/session-recorder-common'
 
-export type CrashBufferSnapshot = {
-  rrwebEvents: Array<{ ts: number; isFullSnapshot?: boolean; event: any }>
-  otelSpans: Array<{ ts: number; span: any }>
-  attrs: {
-    sessionAttributes?: Record<string, any>
-    resourceAttributes?: Record<string, any>
-    userAttributes?: any
-  } | null
-  windowMs: number
-  fromTs: number
-  toTs: number
-}
-
-export class CrashBufferService {
+export class CrashBufferService implements CrashBuffer {
   private lastPruneAt = 0
   private pruneInFlight: Promise<void> | null = null
   private isActive = true
@@ -21,12 +18,13 @@ export class CrashBufferService {
   private lastSeenEventTs: number = 0
   private requiresFullSnapshot = true
   private lastTouchAt = 0
+  private listeners = new Map<CrashBufferEventName, Set<(payload: CrashBufferEventMap[CrashBufferEventName]) => void>>()
 
   constructor(
     private readonly db: IndexedDBService,
     private readonly tabId: string,
-    private readonly windowMs: number,
-  ) { }
+    private readonly windowMs: number
+  ) {}
 
   private async _safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
     try {
@@ -36,20 +34,16 @@ export class CrashBufferService {
     }
   }
 
-  async setAttrs(attrs: {
-    sessionAttributes?: Record<string, any>
-    resourceAttributes?: Record<string, any>
-    userAttributes?: any
-  }): Promise<void> {
+  async setAttrs(attrs: CrashBufferAttrs): Promise<void> {
     await this._safe(async () => {
       await this.db.setAttrs({
         tabId: this.tabId,
-        ...attrs,
+        ...attrs
       })
     }, undefined as any)
   }
 
-  async appendRrwebEvent(payload: { ts: number; isFullSnapshot?: boolean; event: any }): Promise<void> {
+  async appendEvent(payload: CrashBufferRrwebEventPayload, _windowMs?: number): Promise<void> {
     this.lastSeenEventTs = Math.max(this.lastSeenEventTs, payload.ts || 0)
     if (!this.isActive) return
 
@@ -60,11 +54,11 @@ export class CrashBufferService {
     }
 
     await this._safe(async () => {
-      await this.db.appendRrwebEvent({
+      await this.db.appendEvent({
         tabId: this.tabId,
         ts: payload.ts,
         isFullSnapshot: payload.isFullSnapshot,
-        event: payload.event,
+        event: payload.event
       })
     }, undefined as any)
 
@@ -80,20 +74,60 @@ export class CrashBufferService {
     this.pruneSoon()
   }
 
-  async appendOtelSpan(payload: { ts: number; span: any }): Promise<void> {
-    this.lastSeenEventTs = Math.max(this.lastSeenEventTs, payload.ts || 0)
+  async appendSpans(payload: CrashBufferOtelSpanBatchPayload, _windowMs?: number): Promise<void> {
+    for (const p of payload) {
+      this.lastSeenEventTs = Math.max(this.lastSeenEventTs, p.ts || 0)
+    }
     if (!this.isActive) return
+    let errorEvent: CrashBufferEventMap['error-span-appended'] | null = null
     await this._safe(async () => {
-      await this.db.appendOtelSpan({
-        tabId: this.tabId,
-        ts: payload.ts,
-        span: payload.span,
+      const records = payload.map((p) => {
+        if (!errorEvent && p?.span?.status?.code === SpanStatusCode.ERROR) {
+          errorEvent = { ts: p.ts, span: p.span }
+        }
+        return {
+          tabId: this.tabId,
+          ts: p.ts,
+          span: p.span
+        }
       })
+      await this.db.appendSpans(records)
     }, undefined as any)
+
     this.pruneSoon()
+
+    if (errorEvent) {
+      this._emit('error-span-appended', errorEvent)
+    }
   }
 
-  async snapshot(now: number = Date.now()): Promise<CrashBufferSnapshot> {
+  on<E extends CrashBufferEventName>(event: E, listener: (payload: CrashBufferEventMap[E]) => void): () => void {
+    const set = this.listeners.get(event) || new Set()
+    set.add(listener as any)
+    this.listeners.set(event, set as any)
+    return () => this.off(event, listener as any)
+  }
+
+  off<E extends CrashBufferEventName>(event: E, listener: (payload: CrashBufferEventMap[E]) => void): void {
+    const set = this.listeners.get(event)
+    if (!set) return
+    set.delete(listener as any)
+    if (set.size === 0) this.listeners.delete(event)
+  }
+
+  private _emit<E extends CrashBufferEventName>(event: E, payload: CrashBufferEventMap[E]): void {
+    const set = this.listeners.get(event)
+    if (!set || set.size === 0) return
+    for (const fn of Array.from(set)) {
+      try {
+        ;(fn as any)(payload)
+      } catch (_e) {
+        // never throw into app code
+      }
+    }
+  }
+
+  async snapshot(_windowMs?: number, now: number = Date.now()): Promise<CrashBufferSnapshot> {
     const toTs = now
     const fromTs = Math.max(0, toTs - this.windowMs)
 
@@ -106,7 +140,7 @@ export class CrashBufferService {
     const [rrweb, spans, attrs] = await Promise.all([
       this._safe(() => this.db.getRrwebEventsWindow(this.tabId, rrwebFromTs, toTs), []),
       this._safe(() => this.db.getOtelSpansWindow(this.tabId, fromTs, toTs), []),
-      this._safe(() => this.db.getAttrs(this.tabId), null),
+      this._safe(() => this.db.getAttrs(this.tabId), null)
     ])
 
     const rrwebSorted = rrweb
@@ -127,14 +161,16 @@ export class CrashBufferService {
     return {
       rrwebEvents,
       otelSpans,
-      attrs: attrs ? {
-        sessionAttributes: attrs.sessionAttributes,
-        resourceAttributes: attrs.resourceAttributes,
-        userAttributes: attrs.userAttributes,
-      } : null,
+      attrs: attrs
+        ? {
+            sessionAttributes: attrs.sessionAttributes,
+            resourceAttributes: attrs.resourceAttributes,
+            userAttributes: attrs.userAttributes
+          }
+        : null,
       windowMs: this.windowMs,
       fromTs: replayStartTs,
-      toTs,
+      toTs
     }
   }
 
@@ -190,7 +226,11 @@ export class CrashBufferService {
       void this._safe(() => this.db.touchTab(this.tabId, now), undefined as any)
     }
 
-    this.pruneInFlight = this._safe(() => this.db.pruneOlderThanWithRrwebSnapshotAnchor(this.tabId, cutoff), undefined as any)
-      .finally(() => { this.pruneInFlight = null })
+    this.pruneInFlight = this._safe(
+      () => this.db.pruneOlderThanWithRrwebSnapshotAnchor(this.tabId, cutoff),
+      undefined as any
+    ).finally(() => {
+      this.pruneInFlight = null
+    })
   }
 }

@@ -1,14 +1,24 @@
 import { resourceFromAttributes } from '@opentelemetry/resources';
-import { W3CTraceContextPropagator } from '@opentelemetry/core';
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import {
+  W3CTraceContextPropagator,
+  type ExportResult,
+} from '@opentelemetry/core';
+import {
+  AlwaysOnSampler,
+  BatchSpanProcessor,
+  type ReadableSpan,
+} from '@opentelemetry/sdk-trace-base';
 import * as SemanticAttributes from '@opentelemetry/semantic-conventions';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import {
   SessionType,
-  ATTR_MULTIPLAYER_SESSION_ID,
+  SessionRecorderSdk,
   SessionRecorderIdGenerator,
-  SessionRecorderTraceIdRatioBasedSampler,
   SessionRecorderBrowserTraceExporter,
+  ATTR_MULTIPLAYER_SESSION_ID,
+  MULTIPLAYER_TRACE_CLIENT_ID_LENGTH,
+  MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
+  MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX,
 } from '@multiplayer-app/session-recorder-common';
 import { type TracerReactNativeConfig } from '../types';
 import { getInstrumentations } from './instrumentations';
@@ -20,28 +30,32 @@ import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
 import { CrashBufferService } from '../services/crashBuffer.service';
 
 export class TracerReactNativeSDK {
+  clientId = '';
   private tracerProvider?: WebTracerProvider;
   private config?: TracerReactNativeConfig;
 
   private sessionId = '';
   private idGenerator?: SessionRecorderIdGenerator;
-  private exporter?: any;
+  private exporter?: SessionRecorderBrowserTraceExporter;
   private globalErrorHandlerRegistered = false;
   private crashBuffer?: CrashBufferService;
-  private bufferWindowMs: number = 1 * 60 * 1000;
 
-  constructor() { }
+  constructor() {}
 
   private _setSessionId(
     sessionId: string,
     sessionType: SessionType = SessionType.MANUAL
   ) {
     this.sessionId = sessionId;
-    this.idGenerator?.setSessionId(sessionId, sessionType);
+    this.idGenerator?.setSessionId(sessionId, sessionType, this.clientId);
   }
 
   init(options: TracerReactNativeConfig): void {
     this.config = options;
+    const clientIdGenerator = SessionRecorderSdk.getIdGenerator(
+      MULTIPLAYER_TRACE_CLIENT_ID_LENGTH
+    );
+    this.clientId = clientIdGenerator();
 
     const { application, version, environment } = this.config;
 
@@ -60,12 +74,10 @@ export class TracerReactNativeSDK {
         ...getPlatformAttributes(),
       }),
       idGenerator: this.idGenerator,
-      sampler: new SessionRecorderTraceIdRatioBasedSampler(
-        this.config.sampleTraceRatio || 0.15
-      ),
+      sampler: new AlwaysOnSampler(),
       spanProcessors: [
         this._getSpanSessionIdProcessor(),
-        this._getCrashBufferSpanProcessor(),
+        this._getSpanBufferProcessor(),
         new BatchSpanProcessor(this.exporter),
       ],
     });
@@ -83,55 +95,40 @@ export class TracerReactNativeSDK {
     this._registerGlobalErrorHandlers();
   }
 
-  setCrashBuffer(crashBuffer: CrashBufferService | undefined, windowMs: number): void {
+  setCrashBuffer(
+    crashBuffer: CrashBufferService | undefined,
+    windowMs?: number
+  ): void {
     this.crashBuffer = crashBuffer;
-    this.bufferWindowMs = Math.max(10_000, windowMs || 1 * 60 * 1000);
+    if (
+      crashBuffer &&
+      typeof windowMs === 'number' &&
+      Number.isFinite(windowMs)
+    ) {
+      crashBuffer.setDefaultWindowMs(windowMs);
+    }
   }
 
-  private _getCrashBufferSpanProcessor() {
+  exportTraces(spans: ReadableSpan[]): Promise<ExportResult | undefined> {
+    if (!this.exporter) return Promise.resolve(undefined);
+    return this.exporter.exportBuffer(spans);
+  }
+
+  private _getSpanBufferProcessor() {
     return {
-      onStart: () => { },
-      onEnd: (span: any) => {
-        // Only buffer spans when we don't have an active debug session.
-        if (this.sessionId) return;
-        if (!this.crashBuffer) return;
-        try {
-          const ts = Date.now();
-          this.crashBuffer.appendOtelSpan(
-            { ts, span: this._serializeSpan(span) },
-            this.bufferWindowMs
-          );
-        } catch (_e) { }
+      onStart: () => Promise.resolve(),
+      onEnd: (span: ReadableSpan) => {
+        if (!this.exporter || !this.crashBuffer) return;
+        const traceId = span.spanContext().traceId;
+        if (
+          traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX) ||
+          traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX)
+        ) {
+          this.crashBuffer.appendSpans([this.exporter?.serializeSpan(span)]);
+        }
       },
       shutdown: () => Promise.resolve(),
       forceFlush: () => Promise.resolve(),
-    };
-  }
-
-  private _serializeSpan(span: any): any {
-    const spanContext = span?.spanContext?.()
-      ? span.spanContext()
-      : span?._spanContext;
-    return {
-      _spanContext: spanContext,
-      name: span?.name,
-      kind: span?.kind,
-      links: span?.links,
-      ended: span?.ended,
-      events: span?.events,
-      status: span?.status,
-      endTime: span?.endTime,
-      startTime: span?.startTime,
-      duration: span?.duration,
-      attributes: span?.attributes,
-      parentSpanId: span?.parentSpanContext?.spanId,
-      droppedAttributesCount: span?.droppedAttributesCount,
-      droppedEventsCount: span?.droppedEventsCount,
-      droppedLinksCount: span?.droppedLinksCount,
-      resource: span?.resource ? {
-        attributes: span.resource.attributes,
-        asyncAttributesPending: span.resource.asyncAttributesPending,
-      } : undefined,
     };
   }
 
@@ -142,7 +139,7 @@ export class TracerReactNativeSDK {
           span.setAttribute(ATTR_MULTIPLAYER_SESSION_ID, this.sessionId);
         }
       },
-      onEnd: () => { },
+      onEnd: () => {},
       shutdown: () => Promise.resolve(),
       forceFlush: () => Promise.resolve(),
     };
@@ -196,32 +193,36 @@ export class TracerReactNativeSDK {
     if (!error) return;
     // Prefer attaching to the active span to keep correlation intact
     try {
-      const activeSpan = trace.getSpan(context.active())
+      const activeSpan = trace.getSpan(context.active());
       if (activeSpan) {
-        this._recordException(activeSpan, error, errorInfo)
-        return
+        this._recordException(activeSpan, error, errorInfo);
+        return;
       }
-    } catch (_ignored) { }
+    } catch (_ignored) {}
 
     // Fallback: create a short-lived span to hold the exception details
     try {
-      const tracer = trace.getTracer('exception')
-      const span = tracer.startSpan(error.name || 'Error')
-      this._recordException(span, error, errorInfo)
-      span.end()
-    } catch (_ignored) { }
+      const tracer = trace.getTracer('exception');
+      const span = tracer.startSpan(error.name || 'Error');
+      this._recordException(span, error, errorInfo);
+      span.end();
+    } catch (_ignored) {}
   }
 
-  private _recordException(span: Span, error: Error, errorInfo?: Record<string, any>): void {
-    span.recordException(error)
-    span.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
-    span.setAttribute('exception.type', error.name || 'Error')
-    span.setAttribute('exception.message', error.message)
-    span.setAttribute('exception.stacktrace', error.stack || '')
+  private _recordException(
+    span: Span,
+    error: Error,
+    errorInfo?: Record<string, any>
+  ): void {
+    span.recordException(error);
+    span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+    span.setAttribute('exception.type', error.name || 'Error');
+    span.setAttribute('exception.message', error.message);
+    span.setAttribute('exception.stacktrace', error.stack || '');
     if (errorInfo) {
       Object.entries(errorInfo).forEach(([key, value]) => {
-        span.setAttribute(`error_info.${key}`, value)
-      })
+        span.setAttribute(`error_info.${key}`, value);
+      });
     }
   }
 
@@ -235,11 +236,18 @@ export class TracerReactNativeSDK {
       const previous = ErrorUtilsRef.getGlobalHandler?.();
       ErrorUtilsRef.setGlobalHandler((error: any, isFatal?: boolean) => {
         try {
-          const err = error instanceof Error ? error : new Error(String(error?.message || error));
+          const err =
+            error instanceof Error
+              ? error
+              : new Error(String(error?.message || error));
           this.captureException(err);
         } finally {
           if (typeof previous === 'function') {
-            try { previous(error, isFatal); } catch (_e) { /* ignore */ }
+            try {
+              previous(error, isFatal);
+            } catch (_e) {
+              /* ignore */
+            }
           }
         }
       });
