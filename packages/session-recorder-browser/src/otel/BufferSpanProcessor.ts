@@ -3,7 +3,8 @@ import {
     SamplingDecision,
     ReadableSpan,
     SpanProcessor,
-    Span
+    Span,
+    BatchSpanProcessor
 } from '@opentelemetry/sdk-trace-base'
 import {
     MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
@@ -17,9 +18,9 @@ import type { CrashBuffer } from '@multiplayer-app/session-recorder-common'
  * Implementation of the {@link SpanProcessor} that batches spans exported by
  * the SDK then pushes them to the exporter pipeline.
  */
-export abstract class BufferSpanProcessorBase implements SpanProcessor {
+export class CrashBufferSpanProcessor implements SpanProcessor {
     constructor(
-        private readonly _exporter: SessionRecorderBrowserTraceExporter,
+        private readonly _exporter: BatchSpanProcessor,
         private readonly _sampler: SessionRecorderTraceIdRatioBasedSampler,
         private readonly _crashBuffer: CrashBuffer
     ) { }

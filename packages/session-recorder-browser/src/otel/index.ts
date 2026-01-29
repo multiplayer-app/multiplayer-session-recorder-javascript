@@ -1,4 +1,3 @@
-import { MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX } from './../../node_modules/@multiplayer-app/session-recorder-common/src/constants/constants.base'
 import { resourceFromAttributes } from '@opentelemetry/resources'
 import { ExportResult, W3CTraceContextPropagator } from '@opentelemetry/core'
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web'
@@ -13,7 +12,9 @@ import {
   SessionRecorderBrowserTraceExporter,
   SessionRecorderSdk,
   MULTIPLAYER_TRACE_CLIENT_ID_LENGTH,
-  MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX
+  MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
+  MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX,
+  SessionRecorderTraceIdRatioBasedSampler
 } from '@multiplayer-app/session-recorder-common'
 import { trace, SpanStatusCode, context, Span } from '@opentelemetry/api'
 import { TracerBrowserConfig } from '../types'
@@ -27,6 +28,7 @@ import {
   getElementTextContent,
   getElementInnerText
 } from './helpers'
+import { CrashBufferSpanProcessor } from './BufferSpanProcessor'
 
 export class TracerBrowserSDK {
   clientId = ''
@@ -74,8 +76,11 @@ export class TracerBrowserSDK {
       sampler: new AlwaysOnSampler(),
       spanProcessors: [
         this._getSpanSessionIdProcessor(),
-        this._getSpanBufferProcessor(),
-        new BatchSpanProcessor(this.exporter)
+        new CrashBufferSpanProcessor(
+          new BatchSpanProcessor(this.exporter),
+          new SessionRecorderTraceIdRatioBasedSampler(this.config.sampleTraceRatio),
+          this.crashBuffer
+        )
       ]
     })
 
