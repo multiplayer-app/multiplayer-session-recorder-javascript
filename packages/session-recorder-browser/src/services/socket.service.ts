@@ -18,7 +18,7 @@ import {
 import {
   type ISession,
   type IUserAttributes,
-  ATTR_MULTIPLAYER_SESSION_CLIENT_ID
+  ATTR_MULTIPLAYER_SESSION_CLIENT_ID,
 } from '@multiplayer-app/session-recorder-common'
 
 
@@ -85,13 +85,13 @@ export class SocketService extends Observable<SocketServiceEvents> {
     // If any config changed, reconnect if connected
     const hasChanges = Object.keys(config).some(
       (key) => {
-        const typedKey = key as keyof SocketServiceOptions;
+        const typedKey = key as keyof SocketServiceOptions
         return (
           config[typedKey] !== undefined &&
           config[typedKey] !== this.options[typedKey]
-        );
-      }
-    );
+        )
+      },
+    )
 
     if (hasChanges) {
       this.options = { ...this.options, ...config }

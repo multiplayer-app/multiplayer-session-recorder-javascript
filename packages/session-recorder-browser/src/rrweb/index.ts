@@ -172,7 +172,7 @@ export class RecorderBrowserSDK {
     event: eventWithTime,
     ts: number,
     sessionId: string,
-    sessionType: SessionType
+    sessionType: SessionType,
   ): void {
     if (!this.socketService) return
 

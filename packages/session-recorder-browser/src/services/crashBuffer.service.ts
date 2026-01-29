@@ -1,4 +1,4 @@
-import { IndexedDBService } from './indexedDb.service';
+import { IndexedDBService } from './indexedDb.service'
 
 export type CrashBufferSnapshot = {
   rrwebEvents: Array<{ ts: number; isFullSnapshot?: boolean; event: any }>

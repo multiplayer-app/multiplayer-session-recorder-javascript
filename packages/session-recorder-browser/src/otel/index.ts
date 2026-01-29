@@ -52,7 +52,7 @@ export class TracerBrowserSDK {
     this.idGenerator.setSessionId(
       sessionId,
       sessionType,
-      this.clientId
+      this.clientId,
     )
   }
 
