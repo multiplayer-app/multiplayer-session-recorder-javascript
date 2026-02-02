@@ -26,7 +26,7 @@ import {
   getElementTextContent,
   getElementInnerText
 } from './helpers'
-import { CrashBufferSpanProcessor } from './BufferSpanProcessor'
+import { CrashBufferSpanProcessor } from './CrashBufferSpanProcessor'
 
 export class TracerBrowserSDK {
   clientId = ''
@@ -37,6 +37,7 @@ export class TracerBrowserSDK {
   private exporter?: SessionRecorderBrowserTraceExporter
   private globalErrorListenersRegistered = false
   private crashBuffer?: CrashBuffer
+  batchSpanProcessor?: BatchSpanProcessor
 
   constructor() {}
 
@@ -64,6 +65,8 @@ export class TracerBrowserSDK {
       usePostMessageFallback: options.usePostMessageFallback
     })
 
+    this.batchSpanProcessor = new BatchSpanProcessor(this.exporter)
+
     this.tracerProvider = new WebTracerProvider({
       resource: resourceFromAttributes({
         [SemanticAttributes.SEMRESATTRS_SERVICE_NAME]: application,
@@ -75,7 +78,7 @@ export class TracerBrowserSDK {
       spanProcessors: [
         this._getSpanSessionIdProcessor(),
         new CrashBufferSpanProcessor(
-          new BatchSpanProcessor(this.exporter),
+          this.batchSpanProcessor,
           this.crashBuffer
         )
       ]
@@ -255,14 +258,13 @@ export class TracerBrowserSDK {
     } catch (_ignored) {}
   }
 
-  exportTraces(spans: ReadableSpan[]): Promise<ExportResult | undefined> {
-    const self = this
-
-    if (!self?.exporter) {
-      return Promise.resolve(undefined)
+  async exportTraces(spans: ReadableSpan[]): Promise<ExportResult | undefined | void> {
+    if (this?.batchSpanProcessor?.onEnd) {
+      spans.map(span => this?.batchSpanProcessor?.onEnd(span))
+      // return this.batchSpanProcessor.onEnd()
     }
 
-    return new Promise(res => self?.exporter?.export(spans, () => res)) 
+    throw new Error('Buffer span processor not initialized')
   }
 
   private _recordException(span: Span, error: Error, errorInfo?: Record<string, any>): void {
