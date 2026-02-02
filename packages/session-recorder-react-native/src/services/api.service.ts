@@ -3,10 +3,8 @@ import type {
   ISessionAttributes,
   IResourceAttributes,
 } from '@multiplayer-app/session-recorder-common';
-import {
-  type ApiServiceConfig,
-
-} from '../types';
+import { type ApiServiceConfig } from '../types';
+import type { eventWithTime } from '@rrweb/types';
 
 export interface StartSessionRequest {
   name?: string;
@@ -23,11 +21,14 @@ export interface StopSessionRequest {
   stoppedAt: string | number;
 }
 
-
 export interface CheckRemoteSessionRequest {
-  sessionAttributes?: ISessionAttributes
-  resourceAttributes?: IResourceAttributes
-  userAttributes?: IUserAttributes
+  sessionAttributes?: ISessionAttributes;
+  resourceAttributes?: IResourceAttributes;
+  userAttributes?: IUserAttributes;
+}
+
+export interface CreateErrorSpanSessionRequest {
+  span: any;
 }
 
 export class ApiService {
@@ -70,6 +71,42 @@ export class ApiService {
     if (this.config) {
       this.config.apiKey = apiKey;
     }
+  }
+
+  /**
+   * Create a new error span session
+   * @param request - Session create error span request data
+   * @param signal - Optional AbortSignal for request cancellation
+   */
+  async createErrorSession(
+    request: CreateErrorSpanSessionRequest,
+    signal?: AbortSignal
+  ): Promise<any> {
+    return this.makeRequest(
+      '/debug-sessions/error-span/start',
+      'POST',
+      request,
+      signal
+    );
+  }
+
+  /**
+   * Export events to the session debugger API
+   * @param sessionId - ID of the session to export events
+   * @param requestBody - Request body containing events
+   * @param signal - Optional AbortSignal for request cancellation
+   */
+  async exportEvents(
+    sessionId: string,
+    requestBody: { events: eventWithTime[] },
+    signal?: AbortSignal
+  ): Promise<any> {
+    return this.makeRequest(
+      `/debug-sessions/${sessionId}/rrweb-events`,
+      'POST',
+      requestBody,
+      signal
+    );
   }
 
   /**
@@ -212,17 +249,17 @@ export class ApiService {
   }
 
   /**
-  * Check debug session should be started remotely
-  */
+   * Check debug session should be started remotely
+   */
   async checkRemoteSession(
     requestBody: CheckRemoteSessionRequest,
-    signal?: AbortSignal,
+    signal?: AbortSignal
   ): Promise<{ state: 'START' | 'STOP' }> {
     return this.makeRequest(
       '/remote-debug-session/check',
       'POST',
       requestBody,
-      signal,
-    )
+      signal
+    );
   }
 }

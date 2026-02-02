@@ -123,17 +123,6 @@ class SessionRecorder
   }
   set sessionAttributes(attributes: Record<string, any> | null) {
     this._sessionAttributes = attributes;
-    // Keep crash buffer attributes updated (best-effort)
-    if (this._configs?.buffering?.enabled) {
-      const windowMs = Math.max(
-        10_000,
-        (this._configs.buffering.windowMinutes || 2) * 60 * 1000
-      );
-      void this._crashBuffer.setAttrs({
-        sessionAttributes: this.sessionAttributes,
-      });
-      void this._crashBuffer.pruneOlderThan(Date.now() - windowMs);
-    }
   }
 
   private _userAttributes: IUserAttributes | null = null;
@@ -142,17 +131,6 @@ class SessionRecorder
   }
   set userAttributes(userAttributes: IUserAttributes | null) {
     this._userAttributes = userAttributes;
-    // Keep crash buffer attributes updated (best-effort)
-    if (this._configs?.buffering?.enabled) {
-      const windowMs = Math.max(
-        10_000,
-        (this._configs.buffering.windowMinutes || 2) * 60 * 1000
-      );
-      void this._crashBuffer.setAttrs({
-        userAttributes: this._userAttributes,
-      });
-      void this._crashBuffer.pruneOlderThan(Date.now() - windowMs);
-    }
   }
   /**
    * Error message getter and setter
@@ -197,9 +175,6 @@ class SessionRecorder
       const normalizedError = this._normalizeError(error);
       const normalizedErrorInfo = this._normalizeErrorInfo(errorInfo);
       this._tracer.captureException(normalizedError, normalizedErrorInfo);
-      if (this.sessionState === SessionState.stopped && !this.sessionId) {
-        void this.flushBuffer({ reason: 'exception' });
-      }
     } catch (e: any) {
       this.error = e?.message || 'Failed to capture exception';
     }
@@ -264,6 +239,51 @@ class SessionRecorder
       }
     } finally {
       this._isFlushingBuffer = false;
+    }
+  }
+
+  private async _flushBuffer(sessionId: string): Promise<any> {
+    if (!this._configs?.buffering?.enabled) return null;
+    if (this._isFlushingBuffer) return null;
+    if (this.sessionState !== SessionState.stopped || this.sessionId)
+      return null;
+
+    const windowMs = Math.max(
+      10_000,
+      (this._configs.buffering.windowMinutes || 2) * 60 * 1000
+    );
+
+    this._isFlushingBuffer = true;
+    try {
+      const snapshot = await this._crashBuffer.snapshot(windowMs);
+      if (
+        snapshot.rrwebEvents.length === 0 &&
+        snapshot.otelSpans.length === 0
+      ) {
+        return null;
+      }
+      const spans = snapshot.otelSpans.map((s) => s.span);
+      const events = snapshot.rrwebEvents.map((e) => e.event);
+      await Promise.all([
+        this._tracer.exportTraces(spans),
+        this._apiService.exportEvents(sessionId, { events }),
+      ]);
+    } catch (_e) {
+      // swallow: flush is best-effort; never throw into app code
+    } finally {
+      await this._crashBuffer.clear();
+      this._isFlushingBuffer = false;
+    }
+  }
+
+  private async _createExceptionSession(span: any): Promise<void> {
+    try {
+      const session = await this._apiService.createErrorSession({ span });
+      if (session) {
+        void this._flushBuffer(session._id);
+      }
+    } catch (_ignored) {
+      // best-effort
     }
   }
 
@@ -337,6 +357,12 @@ class SessionRecorder
       bufferEnabled ? this._crashBuffer : undefined,
       { enabled: bufferEnabled, windowMs }
     );
+
+    this._crashBuffer.on('error-span-appended', (payload) => {
+      if (this.sessionState !== SessionState.stopped || this.sessionId) return;
+      if (!payload.span) return;
+      this._createExceptionSession(payload.span);
+    });
 
     await this._networkService.init();
     this._setupNetworkCallbacks();
@@ -416,8 +442,9 @@ class SessionRecorder
     });
 
     this._socketService.on(SESSION_SAVE_BUFFER_EVENT, (payload: any) => {
-      const reason = payload?.reason || 'remote';
-      void this.flushBuffer({ reason });
+      if (payload?.debugSession?._id) {
+        void this._flushBuffer(payload.debugSession._id);
+      }
     });
   }
 

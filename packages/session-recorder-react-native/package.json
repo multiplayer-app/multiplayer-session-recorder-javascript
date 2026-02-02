@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-react-native",
-  "version": "1.3.16",
+  "version": "1.3.18",
   "description": "Multiplayer Fullstack Session Recorder for React Native",
   "author": {
     "name": "Multiplayer Software, Inc.",

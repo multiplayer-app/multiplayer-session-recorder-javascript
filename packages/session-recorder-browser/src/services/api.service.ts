@@ -71,14 +71,11 @@ export class ApiService {
     return this.makeRequest('/debug-sessions/start', 'POST', request, signal)
   }
   /**
-   * Start a new debug session
-   * @param request - Session start request data
+   * Create a new error span session
+   * @param request - Session create error span request data
    * @param signal - Optional AbortSignal for request cancellation
    */
-  async createErrorSession(
-    request: CreateErrorSpanSessionRequest,
-    signal?: AbortSignal
-  ): Promise<any> {
+  async createErrorSession(request: CreateErrorSpanSessionRequest, signal?: AbortSignal): Promise<any> {
     return this.makeRequest('/debug-sessions/error-span/start', 'POST', request, signal)
   }
 
@@ -104,10 +101,7 @@ export class ApiService {
    * @param request - Session start request data
    * @param signal - Optional AbortSignal for request cancellation
    */
-  async startContinuousDebugSession(
-    request: StartSessionRequest,
-    signal?: AbortSignal
-  ): Promise<any> {
+  async startContinuousDebugSession(request: StartSessionRequest, signal?: AbortSignal): Promise<any> {
     return this.makeRequest('/continuous-debug-sessions/start', 'POST', request, signal)
   }
 
@@ -146,17 +140,8 @@ export class ApiService {
   /**
    * Export events to the session debugger API
    */
-  async exportEvents(
-    sessionId: string,
-    requestBody: { events: eventWithTime[] },
-    signal?: AbortSignal
-  ): Promise<any> {
-    return this.makeRequest(
-      `/debug-sessions/${sessionId}/rrweb-events`,
-      'POST',
-      requestBody,
-      signal
-    )
+  async exportEvents(sessionId: string, requestBody: { events: eventWithTime[] }, signal?: AbortSignal): Promise<any> {
+    return this.makeRequest(`/debug-sessions/${sessionId}/rrweb-events`, 'POST', requestBody, signal)
   }
 
   /**
@@ -166,12 +151,7 @@ export class ApiService {
    * @param body - request payload
    * @param signal - AbortSignal to set request's signal
    */
-  private async makeRequest(
-    path: string,
-    method: string,
-    body?: any,
-    signal?: AbortSignal
-  ): Promise<any> {
+  private async makeRequest(path: string, method: string, body?: any, signal?: AbortSignal): Promise<any> {
     const url = `${this.config.apiBaseUrl}/v0/radar${path}`
     const params = {
       method,

@@ -123,7 +123,6 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   }
   set sessionAttributes(attributes: Record<string, any> | null) {
     this._sessionAttributes = attributes
-    this._crashBuffer?.setAttrs({ sessionAttributes: this.sessionAttributes })
   }
 
   private _userAttributes: IUserAttributes | null = null
@@ -132,7 +131,6 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   }
   set userAttributes(userAttributes: IUserAttributes | null) {
     this._userAttributes = userAttributes
-    this._crashBuffer?.setAttrs({ userAttributes: this._userAttributes })
   }
   /**
    * Error message getter and setter
@@ -500,11 +498,11 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
 
     this._isFlushingBuffer = true
     try {
-      await this._crashBuffer.setAttrs({
-        sessionAttributes: this.sessionAttributes,
-        resourceAttributes: getNavigatorInfo(),
-        userAttributes: this._userAttributes
-      })
+      // await this._crashBuffer.setAttrs({
+      //   sessionAttributes: this.sessionAttributes,
+      //   resourceAttributes: getNavigatorInfo(),
+      //   userAttributes: this._userAttributes
+      // })
       const snapshot = await this._crashBuffer.snapshot()
       if (snapshot.rrwebEvents.length === 0 && snapshot.otelSpans.length === 0) {
         return null

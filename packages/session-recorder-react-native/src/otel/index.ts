@@ -17,8 +17,6 @@ import {
   SessionRecorderBrowserTraceExporter,
   ATTR_MULTIPLAYER_SESSION_ID,
   MULTIPLAYER_TRACE_CLIENT_ID_LENGTH,
-  MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
-  MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX,
 } from '@multiplayer-app/session-recorder-common';
 import { type TracerReactNativeConfig } from '../types';
 import { getInstrumentations } from './instrumentations';
@@ -28,6 +26,7 @@ import { trace, SpanStatusCode, context, type Span } from '@opentelemetry/api';
 import { getPlatformAttributes } from '../utils/platform';
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
 import { CrashBufferService } from '../services/crashBuffer.service';
+import { CrashBufferSpanProcessor } from './CrashBufferSpanProcessor';
 
 export class TracerReactNativeSDK {
   clientId = '';
@@ -37,6 +36,7 @@ export class TracerReactNativeSDK {
   private sessionId = '';
   private idGenerator?: SessionRecorderIdGenerator;
   private exporter?: SessionRecorderBrowserTraceExporter;
+  private batchSpanProcessor?: BatchSpanProcessor;
   private globalErrorHandlerRegistered = false;
   private crashBuffer?: CrashBufferService;
 
@@ -66,6 +66,8 @@ export class TracerReactNativeSDK {
       url: getExporterEndpoint(options.exporterEndpoint),
     });
 
+    this.batchSpanProcessor = new BatchSpanProcessor(this.exporter);
+
     this.tracerProvider = new WebTracerProvider({
       resource: resourceFromAttributes({
         [SemanticAttributes.SEMRESATTRS_SERVICE_NAME]: application,
@@ -77,8 +79,11 @@ export class TracerReactNativeSDK {
       sampler: new AlwaysOnSampler(),
       spanProcessors: [
         this._getSpanSessionIdProcessor(),
-        this._getSpanBufferProcessor(),
-        new BatchSpanProcessor(this.exporter),
+        new CrashBufferSpanProcessor(
+          this.batchSpanProcessor,
+          this.crashBuffer,
+          this.exporter.serializeSpan.bind(this.exporter)
+        ),
       ],
     });
 
@@ -109,27 +114,17 @@ export class TracerReactNativeSDK {
     }
   }
 
-  exportTraces(spans: ReadableSpan[]): Promise<ExportResult | undefined> {
-    if (!this.exporter) return Promise.resolve(undefined);
-    return this.exporter.exportBuffer(spans);
-  }
+  async exportTraces(
+    spans: ReadableSpan[]
+  ): Promise<ExportResult | undefined | void> {
+    if (this.batchSpanProcessor) {
+      spans.map((span) => {
+        this.batchSpanProcessor?.onEnd(span);
+      });
+      return Promise.resolve();
+    }
 
-  private _getSpanBufferProcessor() {
-    return {
-      onStart: () => Promise.resolve(),
-      onEnd: (span: ReadableSpan) => {
-        if (!this.exporter || !this.crashBuffer) return;
-        const traceId = span.spanContext().traceId;
-        if (
-          traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX) ||
-          traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX)
-        ) {
-          this.crashBuffer.appendSpans([this.exporter?.serializeSpan(span)]);
-        }
-      },
-      shutdown: () => Promise.resolve(),
-      forceFlush: () => Promise.resolve(),
-    };
+    throw new Error('Buffer span processor not initialized');
   }
 
   private _getSpanSessionIdProcessor() {

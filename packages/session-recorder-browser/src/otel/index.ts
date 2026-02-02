@@ -37,7 +37,7 @@ export class TracerBrowserSDK {
   private exporter?: SessionRecorderBrowserTraceExporter
   private globalErrorListenersRegistered = false
   private crashBuffer?: CrashBuffer
-  batchSpanProcessor?: BatchSpanProcessor
+  private batchSpanProcessor?: BatchSpanProcessor
 
   constructor() {}
 
@@ -79,7 +79,8 @@ export class TracerBrowserSDK {
         this._getSpanSessionIdProcessor(),
         new CrashBufferSpanProcessor(
           this.batchSpanProcessor,
-          this.crashBuffer
+          this.crashBuffer,
+          this.exporter.serializeSpan.bind(this.exporter)
         )
       ]
     })
@@ -260,7 +261,7 @@ export class TracerBrowserSDK {
 
   async exportTraces(spans: ReadableSpan[]): Promise<ExportResult | undefined | void> {
     if (this?.batchSpanProcessor?.onEnd) {
-      spans.map(span => this?.batchSpanProcessor?.onEnd(span))
+      spans.map((span) => this?.batchSpanProcessor?.onEnd(span))
       // return this.batchSpanProcessor.onEnd()
     }
 
