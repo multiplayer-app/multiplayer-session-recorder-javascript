@@ -1,7 +1,7 @@
 import { resourceFromAttributes } from '@opentelemetry/resources'
 import { ExportResult, W3CTraceContextPropagator } from '@opentelemetry/core'
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web'
-import { AlwaysOnSampler, BatchSpanProcessor, ReadableSpan, SpanProcessor } from '@opentelemetry/sdk-trace-base'
+import { BatchSpanProcessor, ReadableSpan, SpanProcessor } from '@opentelemetry/sdk-trace-base'
 import * as SemanticAttributes from '@opentelemetry/semantic-conventions'
 import { registerInstrumentations } from '@opentelemetry/instrumentation'
 import { getWebAutoInstrumentations } from '@opentelemetry/auto-instrumentations-web'
@@ -12,8 +12,6 @@ import {
   SessionRecorderBrowserTraceExporter,
   SessionRecorderSdk,
   MULTIPLAYER_TRACE_CLIENT_ID_LENGTH,
-  MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
-  MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX,
   SessionRecorderTraceIdRatioBasedSampler
 } from '@multiplayer-app/session-recorder-common'
 import { trace, SpanStatusCode, context, Span } from '@opentelemetry/api'
@@ -73,12 +71,11 @@ export class TracerBrowserSDK {
         [SemanticAttributes.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment
       }),
       idGenerator: this.idGenerator,
-      sampler: new AlwaysOnSampler(),
+      sampler: new SessionRecorderTraceIdRatioBasedSampler(this.config.sampleTraceRatio),
       spanProcessors: [
         this._getSpanSessionIdProcessor(),
         new CrashBufferSpanProcessor(
           new BatchSpanProcessor(this.exporter),
-          new SessionRecorderTraceIdRatioBasedSampler(this.config.sampleTraceRatio),
           this.crashBuffer
         )
       ]
@@ -259,8 +256,13 @@ export class TracerBrowserSDK {
   }
 
   exportTraces(spans: ReadableSpan[]): Promise<ExportResult | undefined> {
-    if (!this.exporter) return Promise.resolve(undefined)
-    return this.exporter.exportBuffer(spans)
+    const self = this
+
+    if (!self?.exporter) {
+      return Promise.resolve(undefined)
+    }
+
+    return new Promise(res => self?.exporter?.export(spans, () => res)) 
   }
 
   private _recordException(span: Span, error: Error, errorInfo?: Record<string, any>): void {
@@ -273,24 +275,6 @@ export class TracerBrowserSDK {
       Object.entries(errorInfo).forEach(([key, value]) => {
         span.setAttribute(`error_info.${key}`, value)
       })
-    }
-  }
-
-  private _getSpanBufferProcessor(): SpanProcessor {
-    return {
-      forceFlush: () => Promise.resolve(),
-      onEnd: (span: ReadableSpan) => {
-        if (!this.exporter || !this.crashBuffer) return
-        const traceId = span.spanContext().traceId
-        if (
-          traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX) ||
-          traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX)
-        ) {
-          this.crashBuffer.appendSpans([this.exporter?.serializeSpan(span)])
-        }
-      },
-      shutdown: () => Promise.resolve(),
-      onStart: () => Promise.resolve()
     }
   }
 

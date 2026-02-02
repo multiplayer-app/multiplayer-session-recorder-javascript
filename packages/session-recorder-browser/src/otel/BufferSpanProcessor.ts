@@ -1,6 +1,5 @@
 import { Context, TraceFlags } from '@opentelemetry/api';
 import {
-    SamplingDecision,
     ReadableSpan,
     SpanProcessor,
     Span,
@@ -9,8 +8,6 @@ import {
 import {
     MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
     MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX,
-    SessionRecorderTraceIdRatioBasedSampler,
-    SessionRecorderBrowserTraceExporter
 } from '@multiplayer-app/session-recorder-common'
 import type { CrashBuffer } from '@multiplayer-app/session-recorder-common'
 
@@ -21,8 +18,7 @@ import type { CrashBuffer } from '@multiplayer-app/session-recorder-common'
 export class CrashBufferSpanProcessor implements SpanProcessor {
     constructor(
         private readonly _exporter: BatchSpanProcessor,
-        private readonly _sampler: SessionRecorderTraceIdRatioBasedSampler,
-        private readonly _crashBuffer: CrashBuffer
+        private readonly _crashBuffer?: CrashBuffer
     ) { }
 
     forceFlush(): Promise<void> {
@@ -46,22 +42,37 @@ export class CrashBufferSpanProcessor implements SpanProcessor {
             traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX) ||
             traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX)
         ) {
-            this._crashBuffer.appendSpans([this._exporter?.serializeSpan(span)])
+            if (this._crashBuffer) {
+                this._crashBuffer.appendSpans([{
+                    ts: span.startTime[0] * 1000 + span.startTime[1] / 1000000,
+                    span: span
+                }])
+            }
+            return
         }
 
+        this._exporter.onEnd(span)
 
-        const shouldSample = this._sampler.shouldSample(undefined, traceId)
-
-        if (shouldSample.decision === SamplingDecision.RECORD_AND_SAMPLED) {
-            this._exporter.export([span], () => {})
-        }
+        // this._exporter.export([span], () => { })
     }
 
     shutdown(): Promise<void> {
         return Promise.resolve()
     }
 
-    exportBuffer(): Promise<void> {
-        return this._exporter.export(this._crashBuffer.spans)
+    async exportBuffer(): Promise<void> {
+        if (!this._crashBuffer) {
+            return Promise.resolve()
+        }
+
+        const snapshot = await this._crashBuffer.snapshot()
+        const spans = snapshot.otelSpans.map((s) => s.span)
+
+        spans.forEach(span => {
+            this._exporter.onEnd(span)
+        })
+        
+        return Promise.resolve()
+        // return this._exporter.export(this._crashBuffer.spans)
     }
 }
