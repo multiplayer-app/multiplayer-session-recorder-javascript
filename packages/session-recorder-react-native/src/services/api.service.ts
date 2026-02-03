@@ -90,6 +90,24 @@ export class ApiService {
     );
   }
 
+  async updateSessionAttributes(
+    sessionId: string,
+    requestBody: {
+      name?: string;
+      userAttributes?: IUserAttributes;
+      sessionAttributes?: ISessionAttributes;
+      resourceAttributes?: IResourceAttributes;
+    },
+    signal?: AbortSignal
+  ): Promise<any> {
+    return this.makeRequest(
+      `/debug-sessions/${sessionId}`,
+      'PATCH',
+      requestBody,
+      signal
+    );
+  }
+
   /**
    * Export events to the session debugger API
    * @param sessionId - ID of the session to export events

@@ -267,6 +267,12 @@ class SessionRecorder
       await Promise.all([
         this._tracer.exportTraces(spans),
         this._apiService.exportEvents(sessionId, { events }),
+        this._apiService.updateSessionAttributes(sessionId, {
+          name: this._getSessionName(),
+          sessionAttributes: this.sessionAttributes,
+          resourceAttributes: getNavigatorInfo(),
+          userAttributes: this._userAttributes || undefined,
+        }),
       ]);
     } catch (_e) {
       // swallow: flush is best-effort; never throw into app code

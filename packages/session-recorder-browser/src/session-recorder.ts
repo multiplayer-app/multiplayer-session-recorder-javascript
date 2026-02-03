@@ -510,7 +510,16 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       if (sessionId) {
         const spans = snapshot.otelSpans.map((s) => s.span)
         const events = snapshot.rrwebEvents.map((e) => e.event)
-        await Promise.all([this._tracer.exportTraces(spans), this._apiService.exportEvents(sessionId, { events })])
+        await Promise.all([
+          this._tracer.exportTraces(spans),
+          this._apiService.exportEvents(sessionId, { events }),
+          this._apiService.updateSessionAttributes(sessionId, {
+            name: this._getSessionName(),
+            sessionAttributes: this.sessionAttributes,
+            resourceAttributes: getNavigatorInfo(),
+            userAttributes: this._userAttributes || undefined
+          })
+        ])
       }
     } catch (_e) {
       // swallow: flush is best-effort; never throw into app code
