@@ -5,7 +5,8 @@
   "scripts": {
     "lint": "eslint **/src/**/*.ts",
     "build": "./scripts/build.sh",
-    "publish": "./scripts/publish.sh"
+    "publish": "./scripts/publish.sh",
+    "preinstall": "cd ./packages/session-recorder-react-native && yarn"
   },
   "repository": {
     "type": "git",

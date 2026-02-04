@@ -694,14 +694,12 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     })
 
     this._socketService.on(REMOTE_SESSION_RECORDING_START, (payload: any) => {
-      console.log('REMOTE_SESSION_RECORDING_START', payload)
       if (this.sessionState === SessionState.stopped) {
         this.start()
       }
     })
 
     this._socketService.on(REMOTE_SESSION_RECORDING_STOP, (payload: any) => {
-      console.log('REMOTE_SESSION_RECORDING_STOP', payload)
       if (this.sessionState !== SessionState.stopped) {
         this.stop()
       }

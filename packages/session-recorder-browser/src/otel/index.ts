@@ -48,7 +48,11 @@ export class TracerBrowserSDK {
       throw new Error('Id generator not initialized')
     }
 
-    this.idGenerator.setSessionId(sessionId, sessionType, this.clientId)
+    this.idGenerator.setSessionId(
+      sessionId, 
+      sessionType, 
+      this.clientId
+    )
   }
 
   init(options: TracerBrowserConfig): void {
@@ -58,6 +62,11 @@ export class TracerBrowserSDK {
     const { application, version, environment } = this.config
 
     this.idGenerator = new SessionRecorderIdGenerator()
+
+    this.setSessionId(
+      '',
+      SessionType.SESSION_CACHE
+    )
 
     this.exporter = new SessionRecorderBrowserTraceExporter({
       apiKey: options.apiKey,
@@ -219,7 +228,10 @@ export class TracerBrowserSDK {
       throw new Error('Configuration not initialized. Call init() before start().')
     }
 
-    this.setSessionId('')
+    this.setSessionId(
+      '',
+      SessionType.SESSION_CACHE,
+    )
   }
 
   setApiKey(apiKey: string): void {
