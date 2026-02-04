@@ -23,7 +23,7 @@ export class SessionRecorderIdGenerator implements IdGenerator {
   generateTraceId(): string {
     const traceId = this.generateLongId()
 
-    if (!this.sessionShortId && !this.sessionType) {
+    if (!this.sessionShortId || !this.sessionType) {
       return traceId
     }
 
