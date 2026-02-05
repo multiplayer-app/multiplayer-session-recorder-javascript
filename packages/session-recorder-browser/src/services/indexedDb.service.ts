@@ -121,7 +121,7 @@ export class IndexedDBService {
     const db = await this.dbPromise
     const payload: CrashBufferAttrs = {
       ...attrs,
-      updatedAt: attrs.updatedAt ?? Date.now()
+      updatedAt: attrs.updatedAt ?? Date.now(),
     }
     return new Promise<void>((resolve, reject) => {
       const tx = db.transaction(attrsStore, 'readwrite')
@@ -392,7 +392,7 @@ export class IndexedDBService {
           const r = attr.delete(tabId)
           r.onsuccess = () => res()
           r.onerror = () => rej(r.error)
-        })
+        }),
       ])
         .then(() => {
           // noop

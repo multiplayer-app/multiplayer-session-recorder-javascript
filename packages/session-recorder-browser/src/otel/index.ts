@@ -12,7 +12,7 @@ import {
   SessionRecorderBrowserTraceExporter,
   SessionRecorderSdk,
   MULTIPLAYER_TRACE_CLIENT_ID_LENGTH,
-  SessionRecorderTraceIdRatioBasedSampler
+  SessionRecorderTraceIdRatioBasedSampler,
 } from '@multiplayer-app/session-recorder-common'
 import { trace, SpanStatusCode, context, Span } from '@opentelemetry/api'
 import { TracerBrowserConfig } from '../types'
@@ -24,7 +24,7 @@ import {
   extractResponseBody,
   getExporterEndpoint,
   getElementTextContent,
-  getElementInnerText
+  getElementInnerText,
 } from './helpers'
 import { CrashBufferSpanProcessor } from './CrashBufferSpanProcessor'
 
@@ -65,7 +65,7 @@ export class TracerBrowserSDK {
     this.exporter = new SessionRecorderBrowserTraceExporter({
       apiKey: options.apiKey,
       url: getExporterEndpoint(options.exporterEndpoint),
-      usePostMessageFallback: options.usePostMessageFallback
+      usePostMessageFallback: options.usePostMessageFallback,
     })
 
     this.batchSpanProcessor = new BatchSpanProcessor(this.exporter)
@@ -74,7 +74,7 @@ export class TracerBrowserSDK {
       resource: resourceFromAttributes({
         [SemanticAttributes.SEMRESATTRS_SERVICE_NAME]: application,
         [SemanticAttributes.SEMRESATTRS_SERVICE_VERSION]: version,
-        [SemanticAttributes.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment
+        [SemanticAttributes.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment,
       }),
       idGenerator: this.idGenerator,
       sampler: new SessionRecorderTraceIdRatioBasedSampler(this.config.sampleTraceRatio),
@@ -83,14 +83,14 @@ export class TracerBrowserSDK {
         new CrashBufferSpanProcessor(
           this.batchSpanProcessor,
           this.crashBuffer,
-          this.exporter.serializeSpan.bind(this.exporter)
-        )
-      ]
+          this.exporter.serializeSpan.bind(this.exporter),
+        ),
+      ],
     })
 
     this.tracerProvider.register({
       // contextManager: new ZoneContextManager(),
-      propagator: new W3CTraceContextPropagator()
+      propagator: new W3CTraceContextPropagator(),
     })
 
     registerInstrumentations({
@@ -122,14 +122,14 @@ export class TracerBrowserSDK {
                   requestBody,
                   responseBody,
                   requestHeaders,
-                  responseHeaders
+                  responseHeaders,
                 }
                 processHttpPayload(payload, this.config, span)
               } catch (error) {
                 // eslint-disable-next-line
                 console.error('[MULTIPLAYER_SESSION_RECORDER] Failed to capture xml-http payload', error)
               }
-            }
+            },
           },
           '@opentelemetry/instrumentation-fetch': {
             clearTimingResources: true,
@@ -175,14 +175,14 @@ export class TracerBrowserSDK {
                   requestBody,
                   responseBody,
                   requestHeaders,
-                  responseHeaders
+                  responseHeaders,
                 }
                 processHttpPayload(payload, this.config, span)
               } catch (error) {
                 // eslint-disable-next-line
                 console.error('[MULTIPLAYER_SESSION_RECORDER] Failed to capture fetch payload', error)
               }
-            }
+            },
           },
           '@opentelemetry/instrumentation-user-interaction': {
             shouldPreventSpanCreation: (_event, element: HTMLElement, span) => {
@@ -196,10 +196,10 @@ export class TracerBrowserSDK {
               })
 
               return false
-            }
-          }
-        })
-      ]
+            },
+          },
+        }),
+      ],
     })
 
     this._registerGlobalErrorListeners()
@@ -292,7 +292,7 @@ export class TracerBrowserSDK {
         if (this.sessionId?.length) {
           span.setAttribute(ATTR_MULTIPLAYER_SESSION_ID, this.sessionId)
         }
-      }
+      },
     }
   }
 

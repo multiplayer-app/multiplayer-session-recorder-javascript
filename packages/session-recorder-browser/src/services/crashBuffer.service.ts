@@ -7,7 +7,7 @@ import type {
   CrashBufferEventName,
   CrashBufferOtelSpanBatchPayload,
   CrashBufferRrwebEventPayload,
-  CrashBufferSnapshot
+  CrashBufferSnapshot,
 } from '@multiplayer-app/session-recorder-common'
 
 export class CrashBufferService implements CrashBuffer {
@@ -23,7 +23,7 @@ export class CrashBufferService implements CrashBuffer {
   constructor(
     private readonly db: IndexedDBService,
     private readonly tabId: string,
-    private readonly windowMs: number
+    private readonly windowMs: number,
   ) {}
 
   private async _safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -38,7 +38,7 @@ export class CrashBufferService implements CrashBuffer {
     await this._safe(async () => {
       await this.db.setAttrs({
         tabId: this.tabId,
-        ...attrs
+        ...attrs,
       })
     }, undefined as any)
   }
@@ -58,7 +58,7 @@ export class CrashBufferService implements CrashBuffer {
         tabId: this.tabId,
         ts: payload.ts,
         isFullSnapshot: payload.isFullSnapshot,
-        event: payload.event
+        event: payload.event,
       })
     }, undefined as any)
 
@@ -88,7 +88,7 @@ export class CrashBufferService implements CrashBuffer {
         return {
           tabId: this.tabId,
           ts: p.ts,
-          span: p.span
+          span: p.span,
         }
       })
       await this.db.appendSpans(records)
@@ -140,7 +140,7 @@ export class CrashBufferService implements CrashBuffer {
     const [rrweb, spans, attrs] = await Promise.all([
       this._safe(() => this.db.getRrwebEventsWindow(this.tabId, rrwebFromTs, toTs), []),
       this._safe(() => this.db.getOtelSpansWindow(this.tabId, fromTs, toTs), []),
-      this._safe(() => this.db.getAttrs(this.tabId), null)
+      this._safe(() => this.db.getAttrs(this.tabId), null),
     ])
 
     const rrwebSorted = rrweb
@@ -163,14 +163,14 @@ export class CrashBufferService implements CrashBuffer {
       otelSpans,
       attrs: attrs
         ? {
-            sessionAttributes: attrs.sessionAttributes,
-            resourceAttributes: attrs.resourceAttributes,
-            userAttributes: attrs.userAttributes
-          }
+          sessionAttributes: attrs.sessionAttributes,
+          resourceAttributes: attrs.resourceAttributes,
+          userAttributes: attrs.userAttributes,
+        }
         : null,
       windowMs: this.windowMs,
       fromTs: replayStartTs,
-      toTs
+      toTs,
     }
   }
 
@@ -228,7 +228,7 @@ export class CrashBufferService implements CrashBuffer {
 
     this.pruneInFlight = this._safe(
       () => this.db.pruneOlderThanWithRrwebSnapshotAnchor(this.tabId, cutoff),
-      undefined as any
+      undefined as any,
     ).finally(() => {
       this.pruneInFlight = null
     })

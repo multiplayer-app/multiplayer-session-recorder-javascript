@@ -22,7 +22,7 @@ export class RecorderBrowserSDK {
   private crashBuffer?: CrashBuffer
   private intervals: IntervalManager = {
     restart: null,
-    bufferSnapshot: null
+    bufferSnapshot: null,
   }
 
   public startedAt: string = ''
@@ -73,7 +73,7 @@ export class RecorderBrowserSDK {
         }
 
         this._handleLiveSessionEvent(event, ts, sessionId, sessionType)
-      }
+      },
     })
 
     this.takeFullSnapshot()
@@ -155,8 +155,8 @@ export class RecorderBrowserSDK {
         event: {
           event: packedEvent,
           eventType: event.type,
-          timestamp: ts
-        }
+          timestamp: ts,
+        },
       })
     } catch (error) {
       // Silent failure - library constraint
@@ -182,7 +182,7 @@ export class RecorderBrowserSDK {
       eventType: event.type,
       timestamp: ts,
       debugSessionId: sessionId,
-      debugSessionType: sessionType
+      debugSessionType: sessionType,
     })
   }
 
@@ -197,7 +197,7 @@ export class RecorderBrowserSDK {
       sampling: { canvas: 5 },
       recordCanvas: this.config?.recordCanvas,
       dataURLOptions: { type: 'image/webp', quality: 0.1 },
-      plugins: [getRecordConsolePlugin({ level: ['log', 'error'] })]
+      plugins: [getRecordConsolePlugin({ level: ['log', 'error'] })],
     }
 
     if (maskingConfig.maskInputOptions) {

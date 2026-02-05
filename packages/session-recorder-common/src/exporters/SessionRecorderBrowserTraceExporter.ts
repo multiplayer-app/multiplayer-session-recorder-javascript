@@ -5,7 +5,7 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import {
   MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
-  MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX
+  MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
 } from '../constants/constants.base'
 
 export interface SessionRecorderBrowserTraceExporterConfig {
@@ -50,7 +50,7 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       keepAlive = true,
       concurrencyLimit = 20,
       postMessageType = 'MULTIPLAYER_SESSION_DEBUGGER_LIB',
-      postMessageTargetOrigin = '*'
+      postMessageTargetOrigin = '*',
     } = config
 
     this.config = {
@@ -60,7 +60,7 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       headers,
       keepAlive,
       timeoutMillis,
-      concurrencyLimit
+      concurrencyLimit,
     }
     this.postMessageType = postMessageType
     this.postMessageTargetOrigin = postMessageTargetOrigin
@@ -124,9 +124,9 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
         {
           action: 'traces',
           type: this.postMessageType,
-          payload: spans.map((span) => this.serializeSpan(span))
+          payload: spans.map((span) => this.serializeSpan(span)),
         },
-        this.postMessageTargetOrigin
+        this.postMessageTargetOrigin,
       )
       resultCallback({ code: 0 })
     } catch (e) {
@@ -138,7 +138,7 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
     const spanContext = span.spanContext()
     return {
       ...span,
-      _spanContext: spanContext
+      _spanContext: spanContext,
     }
   }
 
@@ -148,11 +148,11 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       headers: {
         'Content-Type': 'application/json',
         ...(this.config.apiKey ? { Authorization: this.config.apiKey } : {}),
-        ...(this.config.headers || {})
+        ...(this.config.headers || {}),
       },
       timeoutMillis: this.config.timeoutMillis,
       keepAlive: this.config.keepAlive,
-      concurrencyLimit: this.config.concurrencyLimit
+      concurrencyLimit: this.config.concurrencyLimit,
     })
   }
 

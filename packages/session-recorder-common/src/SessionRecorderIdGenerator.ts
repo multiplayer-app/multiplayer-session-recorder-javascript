@@ -7,8 +7,8 @@ import {
 
 export class SessionRecorderIdGenerator implements IdGenerator {
   sessionShortId: string
-  sessionType: SessionType
-  clientId: string
+  sessionType?: SessionType
+  clientId?: string
   private generateLongId: () => string
   private generateShortId: () => string
 
@@ -17,16 +17,18 @@ export class SessionRecorderIdGenerator implements IdGenerator {
     this.generateShortId = getIdGenerator(8)
     this.sessionShortId = ''
     this.clientId = ''
-    this.sessionType = SessionType.MANUAL
+    this.sessionType
   }
 
   generateTraceId(): string {
     const traceId = this.generateLongId()
 
     if (
-      !this.sessionShortId
-      && !this.sessionType
-      && !this.clientId
+      (
+        !this.sessionShortId
+        && !this.clientId
+      )
+      || !this.sessionType
     ) {
       return traceId
     }
@@ -44,12 +46,13 @@ export class SessionRecorderIdGenerator implements IdGenerator {
 
   setSessionId(
     sessionShortId: string,
-    sessionType: SessionType = SessionType.MANUAL,
-    clientId: string = '',
+    sessionType?: SessionType,
+    clientId?: string,
   ) {
     if (
-      !clientId &&
-      [
+      sessionType
+      && !clientId
+      && [
         SessionType.SESSION_CACHE,
         SessionType.CONTINUOUS_SESSION_CACHE,
       ].includes(sessionType)
