@@ -28,6 +28,7 @@ import {
 } from './helpers'
 import { CrashBufferSpanProcessor } from './CrashBufferSpanProcessor'
 
+const clientIdGenerator = SessionRecorderSdk.getIdGenerator(MULTIPLAYER_TRACE_CLIENT_ID_LENGTH)
 export class TracerBrowserSDK {
   clientId = ''
   private tracerProvider?: WebTracerProvider
@@ -41,32 +42,25 @@ export class TracerBrowserSDK {
 
   constructor() {}
 
-  private setSessionId(sessionId: string, sessionType: SessionType = SessionType.MANUAL) {
+  private _setSessionId(sessionId: string, sessionType: SessionType = SessionType.MANUAL) {
     this.sessionId = sessionId
 
     if (!this.idGenerator) {
       throw new Error('Id generator not initialized')
     }
 
-    this.idGenerator.setSessionId(
-      sessionId, 
-      sessionType, 
-      this.clientId
-    )
+    this.idGenerator.setSessionId(sessionId, sessionType, this.clientId)
   }
 
   init(options: TracerBrowserConfig): void {
     this.config = options
-    this.clientId = SessionRecorderSdk.getIdGenerator(MULTIPLAYER_TRACE_CLIENT_ID_LENGTH)()
+    this.clientId = clientIdGenerator()
 
     const { application, version, environment } = this.config
 
     this.idGenerator = new SessionRecorderIdGenerator()
 
-    this.setSessionId(
-      '',
-      SessionType.SESSION_CACHE
-    )
+    this._setSessionId('', SessionType.SESSION_CACHE)
 
     this.exporter = new SessionRecorderBrowserTraceExporter({
       apiKey: options.apiKey,
@@ -220,7 +214,7 @@ export class TracerBrowserSDK {
       throw new Error('Configuration not initialized. Call init() before start().')
     }
 
-    this.setSessionId(sessionId, sessionType)
+    this._setSessionId(sessionId, sessionType)
   }
 
   stop(): void {
@@ -228,10 +222,7 @@ export class TracerBrowserSDK {
       throw new Error('Configuration not initialized. Call init() before start().')
     }
 
-    this.setSessionId(
-      '',
-      SessionType.SESSION_CACHE,
-    )
+    this._setSessionId('', SessionType.SESSION_CACHE)
   }
 
   setApiKey(apiKey: string): void {
@@ -242,6 +233,14 @@ export class TracerBrowserSDK {
     this.exporter.setApiKey(apiKey)
   }
 
+  async exportTraces(spans: ReadableSpan[]): Promise<ExportResult | undefined | void> {
+    if (this?.batchSpanProcessor?.onEnd) {
+      spans.map((span) => this?.batchSpanProcessor?.onEnd(span))
+      // return this.batchSpanProcessor.onEnd()
+    }
+
+    throw new Error('Buffer span processor not initialized')
+  }
   /**
    * Capture an exception as an error span/event.
    * If there is an active span, the exception will be recorded on it.
@@ -269,15 +268,6 @@ export class TracerBrowserSDK {
       this.tracerProvider?.forceFlush()
       // eslint-disable-next-line
     } catch (_ignored) {}
-  }
-
-  async exportTraces(spans: ReadableSpan[]): Promise<ExportResult | undefined | void> {
-    if (this?.batchSpanProcessor?.onEnd) {
-      spans.map((span) => this?.batchSpanProcessor?.onEnd(span))
-      // return this.batchSpanProcessor.onEnd()
-    }
-
-    throw new Error('Buffer span processor not initialized')
   }
 
   private _recordException(span: Span, error: Error, errorInfo?: Record<string, any>): void {

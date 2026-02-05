@@ -114,6 +114,14 @@ SessionRecorder.init({
   // should be sent through `exporters`
   sampleTraceRatio: 0,
 
+  // crash buffer: keep a rolling window of rrweb + traces when no recording is active.
+  // when user starts a session or saves (e.g. on error), the buffer is flushed into the session.
+  buffering: {
+    enabled: true,           // enable/disable buffering (default: true)
+    windowMinutes: 1,        // rolling window size in minutes (default: 1)
+    snapshotIntervalMs: 30000 // full snapshot interval while buffering in ms (default: 30000)
+  },
+
   // optional: exporters allow you to send
   // OTLP data to observability platforms
   exporters: [

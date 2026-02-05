@@ -28,6 +28,10 @@ import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
 import { CrashBufferService } from '../services/crashBuffer.service';
 import { CrashBufferSpanProcessor } from './CrashBufferSpanProcessor';
 
+const clientIdGenerator = SessionRecorderSdk.getIdGenerator(
+  MULTIPLAYER_TRACE_CLIENT_ID_LENGTH
+);
+
 export class TracerReactNativeSDK {
   clientId = '';
   private tracerProvider?: WebTracerProvider;
@@ -47,19 +51,23 @@ export class TracerReactNativeSDK {
     sessionType: SessionType = SessionType.MANUAL
   ) {
     this.sessionId = sessionId;
-    this.idGenerator?.setSessionId(sessionId, sessionType, this.clientId);
+
+    if (!this.idGenerator) {
+      throw new Error('Id generator not initialized');
+    }
+
+    this.idGenerator.setSessionId(sessionId, sessionType, this.clientId);
   }
 
   init(options: TracerReactNativeConfig): void {
     this.config = options;
-    const clientIdGenerator = SessionRecorderSdk.getIdGenerator(
-      MULTIPLAYER_TRACE_CLIENT_ID_LENGTH
-    );
     this.clientId = clientIdGenerator();
 
     const { application, version, environment } = this.config;
 
     this.idGenerator = new SessionRecorderIdGenerator();
+
+    this._setSessionId('', SessionType.SESSION_CACHE);
 
     this.exporter = new SessionRecorderBrowserTraceExporter({
       apiKey: options.apiKey,
@@ -157,7 +165,7 @@ export class TracerReactNativeSDK {
       );
     }
 
-    this._setSessionId('');
+    this._setSessionId('', SessionType.SESSION_CACHE);
   }
 
   setApiKey(apiKey: string): void {
@@ -167,16 +175,7 @@ export class TracerReactNativeSDK {
       );
     }
 
-    this.exporter.setApiKey?.(apiKey);
-  }
-
-  setSessionId(sessionId: string, sessionType: SessionType): void {
-    this._setSessionId(sessionId, sessionType);
-  }
-
-  // Shutdown (React Native specific)
-  shutdown(): Promise<void> {
-    return Promise.resolve();
+    this.exporter.setApiKey(apiKey);
   }
 
   /**

@@ -1,0 +1,79 @@
+name: Publish Packages to npm
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to publish (leave empty for all)'
+        required: false
+        type: choice
+        options:
+          - all
+          - '@multiplayer-app/session-recorder-browser'
+          - '@multiplayer-app/session-recorder-node'
+          - '@multiplayer-app/session-recorder-common'
+          - '@multiplayer-app/session-recorder-react'
+          - '@multiplayer-app/session-recorder-react-native'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Configure npm authentication
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> .npmrc
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine packages to publish
+        id: packages
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.package }}" != "all" ] && [ "${{ github.event.inputs.package }}" != "" ]; then
+            echo "packages=${{ github.event.inputs.package }}" >> $GITHUB_OUTPUT
+          else
+            # Publish in dependency order: types -> db -> node/mongo/react (can be parallel after types/db)
+            echo "packages=@multiplayer-app/session-recorder-common @multiplayer-app/session-recorder-browser @multiplayer-app/session-recorder-node @multiplayer-app/session-recorder-react @multiplayer-app/session-recorder-react-native" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish packages
+        working-directory: ${{ github.workspace }}
+        run: |
+          for package in ${{ steps.packages.outputs.packages }}; do
+            case $package in
+              "@multiplayer-app/session-recorder-common")
+                cd packages/session-recorder-common
+                ;;
+              "@multiplayer-app/session-recorder-browser")
+                cd packages/session-recorder-browser
+                ;;
+              "@multiplayer-app/session-recorder-node")
+                cd packages/session-recorder-node
+                ;;
+              "@multiplayer-app/session-recorder-react")
+                cd packages/session-recorder-react
+                ;;
+              "@multiplayer-app/session-recorder-react-native")
+                cd packages/session-recorder-react-native
+                ;;
+            esac
+            npm publish
+            cd ${{ github.workspace }}
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
