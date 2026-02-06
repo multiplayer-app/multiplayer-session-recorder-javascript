@@ -4,8 +4,17 @@ export enum SessionType {
    * @deprecated Use MANUAL instead
    */
   PLAIN = 'MANUAL',
+  /**
+   * @description Manually triggered session recording
+   */
   MANUAL = 'MANUAL',
 
-  CONTINUOUS_SESSION_CACHE = 'CONTINUOUS_SESSION_CACHE',
+  /**
+   * @description Just for corellation without cache
+   */
+  SESSION = 'SESSION',
+  /**
+   * @description Correlation + caching
+   */
   SESSION_CACHE = 'SESSION_CACHE',
 }

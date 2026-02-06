@@ -34,7 +34,7 @@ export class SessionRecorderIdGenerator implements IdGenerator {
     }
 
     const sessionTypePrefix = MULTIPLAYER_TRACE_PREFIX_MAP[this.sessionType]
-    const prefix = `${sessionTypePrefix}${[SessionType.CONTINUOUS_SESSION_CACHE, SessionType.SESSION_CACHE].includes(this.sessionType) ? this.clientId : ''}${this.sessionShortId}`
+    const prefix = `${sessionTypePrefix}${[SessionType.SESSION, SessionType.SESSION_CACHE].includes(this.sessionType) ? this.clientId : ''}${this.sessionShortId}`
     const sessionTraceId = `${prefix}${traceId.substring(prefix.length, traceId.length)}`
 
     return sessionTraceId
@@ -53,13 +53,13 @@ export class SessionRecorderIdGenerator implements IdGenerator {
       sessionType
       && !clientId
       && [
+        SessionType.SESSION,
         SessionType.SESSION_CACHE,
-        SessionType.CONTINUOUS_SESSION_CACHE,
       ].includes(sessionType)
     ) {
       throw new Error(`Client ID is required for ${[
+        SessionType.SESSION,
         SessionType.SESSION_CACHE,
-        SessionType.CONTINUOUS_SESSION_CACHE,
       ].join(', ')} session types`)
     }
 
