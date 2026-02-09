@@ -1,3 +1,4 @@
+
 import {
   isValidTraceId,
   Context,
@@ -18,7 +19,7 @@ import {
 import {
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
-  // MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
+  MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
   // MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX,
 } from './constants/constants.base'
 
@@ -47,7 +48,7 @@ export class SessionRecorderTraceIdRatioBasedSampler implements Sampler {
     if (
       traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
       || traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
-      // || traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX)
+      || traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX)
       // || traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX)
     ) {
       return {

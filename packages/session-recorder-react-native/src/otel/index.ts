@@ -21,7 +21,6 @@ import {
 import { type TracerReactNativeConfig } from '../types';
 import { getInstrumentations } from './instrumentations';
 import { getExporterEndpoint } from './helpers';
-import { trace, SpanStatusCode, context, type Span } from '@opentelemetry/api';
 
 import { getPlatformAttributes } from '../utils/platform';
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
@@ -90,7 +89,7 @@ export class TracerReactNativeSDK {
         new CrashBufferSpanProcessor(
           this.batchSpanProcessor,
           this.crashBuffer,
-          this.exporter.serializeSpan.bind(this.exporter)
+          this.exporter.serializeSpan
         ),
       ],
     });
@@ -125,14 +124,93 @@ export class TracerReactNativeSDK {
   async exportTraces(
     spans: ReadableSpan[]
   ): Promise<ExportResult | undefined | void> {
-    if (this.batchSpanProcessor) {
-      spans.map((span) => {
-        this.batchSpanProcessor?.onEnd(span);
-      });
+    if (!this.exporter) {
+      throw new Error('Trace exporter not initialized');
+    }
+    if (!spans || spans.length === 0) {
       return Promise.resolve();
     }
 
-    throw new Error('Buffer span processor not initialized');
+    const toReadableSpanLike = (span: any): ReadableSpan => {
+      if (
+        span &&
+        typeof span.spanContext === 'function' &&
+        span.instrumentationScope
+      ) {
+        return span as ReadableSpan;
+      }
+      const spanContext =
+        typeof span?.spanContext === 'function'
+          ? span.spanContext()
+          : span?._spanContext;
+      const normalizedCtx =
+        spanContext ||
+        ({
+          traceId: span?.traceId,
+          spanId: span?.spanId,
+          traceFlags: span?.traceFlags,
+          traceState: span?.traceState,
+        } as any);
+
+      const instrumentationScope =
+        span?.instrumentationScope ||
+        span?.instrumentationLibrary ||
+        ({
+          name: 'multiplayer-buffer',
+          version: undefined,
+          schemaUrl: undefined,
+        } as any);
+
+      const normalizedScope = {
+        name: instrumentationScope?.name || 'multiplayer-buffer',
+        version: instrumentationScope?.version,
+        schemaUrl: instrumentationScope?.schemaUrl,
+      };
+
+      const resource = span?.resource || {
+        attributes: {},
+        asyncAttributesPending: false,
+      };
+      const parentSpanId = span?.parentSpanId;
+
+      return {
+        name: span?.name || '',
+        kind: span?.kind,
+        spanContext: () => normalizedCtx,
+        parentSpanContext: parentSpanId
+          ? ({
+              traceId: normalizedCtx?.traceId,
+              spanId: parentSpanId,
+              traceFlags: normalizedCtx?.traceFlags,
+              traceState: normalizedCtx?.traceState,
+            } as any)
+          : undefined,
+        startTime: span?.startTime,
+        endTime: span?.endTime ?? span?.startTime,
+        duration: span?.duration,
+        status: span?.status,
+        attributes: span?.attributes || {},
+        links: span?.links || [],
+        events: span?.events || [],
+        ended: typeof span?.ended === 'boolean' ? span.ended : true,
+        droppedAttributesCount: span?.droppedAttributesCount || 0,
+        droppedEventsCount: span?.droppedEventsCount || 0,
+        droppedLinksCount: span?.droppedLinksCount || 0,
+        resource,
+        instrumentationScope: normalizedScope as any,
+      } as any;
+    };
+
+    const readableSpans = spans.map((s: any) => toReadableSpanLike(s));
+
+    const CHUNK_SIZE = 50;
+    let result: ExportResult | undefined;
+    for (let i = 0; i < readableSpans.length; i += CHUNK_SIZE) {
+      result = await this.exporter.exportBuffer(
+        readableSpans.slice(i, i + CHUNK_SIZE)
+      );
+    }
+    return result;
   }
 
   private _getSpanSessionIdProcessor() {
@@ -185,39 +263,7 @@ export class TracerReactNativeSDK {
    */
   captureException(error: Error, errorInfo?: Record<string, any>): void {
     if (!error) return;
-    // Prefer attaching to the active span to keep correlation intact
-    try {
-      const activeSpan = trace.getSpan(context.active());
-      if (activeSpan) {
-        this._recordException(activeSpan, error, errorInfo);
-        return;
-      }
-    } catch (_ignored) {}
-
-    // Fallback: create a short-lived span to hold the exception details
-    try {
-      const tracer = trace.getTracer('exception');
-      const span = tracer.startSpan(error.name || 'Error');
-      this._recordException(span, error, errorInfo);
-      span.end();
-    } catch (_ignored) {}
-  }
-
-  private _recordException(
-    span: Span,
-    error: Error,
-    errorInfo?: Record<string, any>
-  ): void {
-    span.recordException(error);
-    span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-    span.setAttribute('exception.type', error.name || 'Error');
-    span.setAttribute('exception.message', error.message);
-    span.setAttribute('exception.stacktrace', error.stack || '');
-    if (errorInfo) {
-      Object.entries(errorInfo).forEach(([key, value]) => {
-        span.setAttribute(`error_info.${key}`, value);
-      });
-    }
+    SessionRecorderSdk.captureException(error, errorInfo);
   }
 
   private _registerGlobalErrorHandlers(): void {
