@@ -7,6 +7,8 @@ const rrwebEventsStore = 'rrwebEvents'
 const otelSpansStore = 'otelSpans'
 const attrsStore = 'crashBufferAttrs'
 
+import { EventType } from '@rrweb/types'
+
 type TabId = string
 
 export type CrashBufferAttrs = {
@@ -261,6 +263,40 @@ export class IndexedDBService {
     })
   }
 
+  /**
+   * Returns the last (highest-ts) Meta event record at/before `cutoffTs`.
+   *
+   * rrweb replays expect the stream to begin with:
+   * - Meta
+   * - FullSnapshot
+   *
+   * We persist packed events (plus a small wrapper) so we detect Meta via `record.event.eventType`.
+   */
+  async getLastRrwebMetaBefore(tabId: TabId, cutoffTs: number): Promise<CrashBufferRrwebEventRecord | null> {
+    const db = await this.dbPromise
+    const range = IDBKeyRange.bound([tabId, 0], [tabId, cutoffTs])
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(rrwebEventsStore, 'readonly')
+      const idx = tx.objectStore(rrwebEventsStore).index('tabId_ts')
+      const req = idx.openCursor(range, 'prev')
+      req.onsuccess = () => {
+        const cursor = req.result
+        if (!cursor) {
+          resolve(null)
+          return
+        }
+        const value = cursor.value as CrashBufferRrwebEventRecord
+        const eventType = value?.event?.eventType
+        if (eventType === EventType.Meta) {
+          resolve(value)
+          return
+        }
+        cursor.continue()
+      }
+      req.onerror = () => reject(req.error)
+    })
+  }
+
   async getOtelSpansWindow(tabId: TabId, fromTs: number, toTs: number): Promise<CrashBufferOtelSpanRecord[]> {
     const db = await this.dbPromise
     const range = IDBKeyRange.bound([tabId, fromTs], [tabId, toTs])
@@ -314,16 +350,27 @@ export class IndexedDBService {
 
   /**
    * Prune older data while keeping rrweb replayability:
-   * - rrweb: keep the last FullSnapshot at/before cutoff as an "anchor"
+   * - rrweb: keep the last Meta + FullSnapshot pair at/before cutoff as an "anchor"
    * - spans: prune strictly by cutoff
    */
   async pruneOlderThanWithRrwebSnapshotAnchor(tabId: TabId, cutoffTs: number): Promise<void> {
     const db = await this.dbPromise
     const anchor = await this.getLastRrwebFullSnapshotBefore(tabId, cutoffTs)
 
-    // rrweb: delete everything strictly older than the anchor snapshot (keep the anchor itself)
+    // rrweb: delete everything strictly older than the anchor meta event (if any),
+    // otherwise strictly older than the anchor snapshot (keep the anchor itself).
+    //
+    // This preserves rrweb's expected replay prefix:
+    //   Meta -> FullSnapshot
+    const anchorMeta = anchor ? await this.getLastRrwebMetaBefore(tabId, anchor.ts) : null
+
     // spans: delete everything older than cutoffTs
-    const rrwebCutoffTs = typeof anchor?.ts === 'number' ? Math.max(0, anchor.ts - 1) : cutoffTs
+    const rrwebCutoffTs =
+      typeof anchorMeta?.ts === 'number'
+        ? Math.max(0, anchorMeta.ts - 1)
+        : typeof anchor?.ts === 'number'
+          ? Math.max(0, anchor.ts - 1)
+          : cutoffTs
     const rrwebRange = IDBKeyRange.bound([tabId, 0], [tabId, rrwebCutoffTs])
     const spansRange = IDBKeyRange.bound([tabId, 0], [tabId, cutoffTs])
 

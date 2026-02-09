@@ -261,6 +261,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       this._crashBuffer.on('error-span-appended', (payload) => {
         if (this.sessionState !== SessionState.stopped || this.sessionId) return
         if (!payload.span) return
+        console.log('error-span-appended', payload)
         this._createExceptionSession(payload.span)
       })
       this._registerCrashBufferLifecycleHandlers()
@@ -498,11 +499,6 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
 
     this._isFlushingBuffer = true
     try {
-      // await this._crashBuffer.setAttrs({
-      //   sessionAttributes: this.sessionAttributes,
-      //   resourceAttributes: getNavigatorInfo(),
-      //   userAttributes: this._userAttributes
-      // })
       const snapshot = await this._crashBuffer.snapshot()
       if (snapshot.rrwebEvents.length === 0 && snapshot.otelSpans.length === 0) {
         return null
@@ -515,6 +511,8 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
           this._apiService.exportEvents(sessionId, { events }),
           this._apiService.updateSessionAttributes(sessionId, {
             name: this._getSessionName(),
+            // startedAt: new Date(snapshot.rrwebEvents[0].ts).toISOString(),
+            // stoppedAt: new Date().toISOString(),
             sessionAttributes: this.sessionAttributes,
             resourceAttributes: getNavigatorInfo(),
             userAttributes: this._userAttributes || undefined
@@ -714,7 +712,9 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   private async _createExceptionSession(span: any): Promise<void> {
     try {
       const session = await this._apiService.createErrorSession({ span })
-
+      console.log('====================================')
+      console.log(span)
+      console.log('====================================')
       if (session) {
         void this._flushBuffer(session._id)
       }

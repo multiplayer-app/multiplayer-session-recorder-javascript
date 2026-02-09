@@ -1,4 +1,5 @@
 import { SpanStatusCode } from '@opentelemetry/api'
+import { EventType } from '@rrweb/types'
 import { IndexedDBService } from './indexedDb.service'
 import type {
   CrashBuffer,
@@ -48,8 +49,11 @@ export class CrashBufferService implements CrashBuffer {
     if (!this.isActive) return
 
     const isFullSnapshot = Boolean(payload.isFullSnapshot)
-    if (this.requiresFullSnapshot && !isFullSnapshot) {
-      // Buffer must always start with a full snapshot; drop incrementals until we see one.
+    const eventType = payload?.event?.eventType
+    const isMeta = eventType === EventType.Meta
+    if (this.requiresFullSnapshot && !isFullSnapshot && !isMeta) {
+      // rrweb replayable prefix is Meta -> FullSnapshot.
+      // While waiting for the first FullSnapshot, we still keep the Meta event (but drop incrementals).
       return
     }
 
@@ -64,8 +68,8 @@ export class CrashBufferService implements CrashBuffer {
 
     if (isFullSnapshot && this.requiresFullSnapshot) {
       // Ensure this snapshot becomes the first replayable event.
-      // We keep the snapshot itself and prune everything older.
-      await this._safe(() => this.db.pruneOlderThan(this.tabId, Math.max(0, payload.ts - 1)), undefined as any)
+      // Keep Meta + FullSnapshot (if present) and prune everything older.
+      await this._safe(() => this.db.pruneOlderThanWithRrwebSnapshotAnchor(this.tabId, payload.ts), undefined as any)
       this.requiresFullSnapshot = false
     } else if (isFullSnapshot) {
       this.requiresFullSnapshot = false
@@ -147,11 +151,39 @@ export class CrashBufferService implements CrashBuffer {
       .sort((a, b) => a.ts - b.ts)
       .map((r) => ({ ts: r.ts, isFullSnapshot: r.isFullSnapshot, event: r.event }))
 
-    // Hard guarantee: snapshot payload starts with a FullSnapshot (or is empty).
+    // Hard guarantee: snapshot payload starts with Meta -> FullSnapshot (or is empty).
     const firstFullSnapshotIdx = rrwebSorted.findIndex((e) => Boolean(e.isFullSnapshot))
-    const rrwebEvents = firstFullSnapshotIdx >= 0 ? rrwebSorted.slice(firstFullSnapshotIdx) : []
+    if (firstFullSnapshotIdx < 0) {
+      return {
+        rrwebEvents: [],
+        otelSpans: [],
+        attrs: attrs
+          ? {
+            sessionAttributes: attrs.sessionAttributes,
+            resourceAttributes: attrs.resourceAttributes,
+            userAttributes: attrs.userAttributes,
+          }
+          : null,
+        windowMs: this.windowMs,
+        fromTs,
+        toTs,
+      }
+    }
 
-    // Align spans with the rrweb replay start: spans must start from the FullSnapshot timestamp.
+    // Prefer including the Meta event immediately preceding the first FullSnapshot.
+    let startIdx = firstFullSnapshotIdx
+    for (let i = firstFullSnapshotIdx - 1; i >= 0; i--) {
+      const t = rrwebSorted[i]?.event?.eventType
+      if (t === EventType.Meta) {
+        startIdx = i
+        break
+      }
+    }
+    const rrwebEvents = rrwebSorted.slice(startIdx)
+
+    // Align spans with the rrweb replay start (Meta if present, otherwise FullSnapshot).
+    // Important: we return `fromTs` to consumers and many UIs compute relative offsets from it,
+    // so `fromTs` must match the first rrweb event timestamp we return.
     const replayStartTs = rrwebEvents.length > 0 ? rrwebEvents[0].ts : fromTs
     const otelSpans = spans
       .filter((s) => typeof s?.ts === 'number' && s.ts >= replayStartTs)
