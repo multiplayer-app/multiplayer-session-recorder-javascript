@@ -137,8 +137,27 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
   serializeSpan(span: ReadableSpan): any {
     const spanContext = span.spanContext()
     return {
-      ...span,
       _spanContext: spanContext,
+      traceId: spanContext.traceId,
+      spanId: spanContext.spanId,
+      name: span.name,
+      kind: span.kind,
+      links: span.links,
+      ended: span.ended,
+      events: span.events,
+      status: span.status,
+      endTime: span.endTime,
+      startTime: span.startTime,
+      duration: span.duration,
+      attributes: span.attributes,
+      parentSpanId: span.parentSpanContext?.spanId,
+      droppedAttributesCount: span.droppedAttributesCount,
+      droppedEventsCount: span.droppedEventsCount,
+      droppedLinksCount: span.droppedLinksCount,
+      resource: {
+        attributes: span.resource.attributes,
+        asyncAttributesPending: span.resource.asyncAttributesPending,
+      },
     }
   }
 

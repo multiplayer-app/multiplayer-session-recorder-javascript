@@ -70,12 +70,16 @@ export class TracerBrowserSDK {
 
     this.batchSpanProcessor = new BatchSpanProcessor(this.exporter)
 
+    const resourceAttributes = resourceFromAttributes({
+      [SemanticAttributes.SEMRESATTRS_SERVICE_NAME]: application,
+      [SemanticAttributes.SEMRESATTRS_SERVICE_VERSION]: version,
+      [SemanticAttributes.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment,
+    })
+
+    SessionRecorderSdk.setResourceAttributes(resourceAttributes.attributes)
+
     this.tracerProvider = new WebTracerProvider({
-      resource: resourceFromAttributes({
-        [SemanticAttributes.SEMRESATTRS_SERVICE_NAME]: application,
-        [SemanticAttributes.SEMRESATTRS_SERVICE_VERSION]: version,
-        [SemanticAttributes.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment,
-      }),
+      resource: resourceAttributes,
       idGenerator: this.idGenerator,
       sampler: new SessionRecorderTraceIdRatioBasedSampler(this.config.sampleTraceRatio),
       spanProcessors: [
@@ -83,7 +87,7 @@ export class TracerBrowserSDK {
         new CrashBufferSpanProcessor(
           this.batchSpanProcessor,
           this.crashBuffer,
-          this.exporter.serializeSpan.bind(this.exporter),
+          this.exporter.serializeSpan,
         ),
       ],
     })
@@ -233,8 +237,9 @@ export class TracerBrowserSDK {
     this.exporter.setApiKey(apiKey)
   }
 
-  async exportTraces(spans: ReadableSpan[]): Promise<ExportResult | undefined | void> {
+  async exportTraces(spans: ReadableSpan[]): Promise<ExportResult | undefined | void> {    
     if (this?.batchSpanProcessor?.onEnd) {
+
       spans.map((span) => this?.batchSpanProcessor?.onEnd(span))
       // return this.batchSpanProcessor.onEnd()
     }
@@ -247,40 +252,7 @@ export class TracerBrowserSDK {
    * Otherwise, a short-lived span will be created to hold the exception event.
    */
   captureException(error: Error, errorInfo?: Record<string, any>): void {
-    if (!error) return
-    // Prefer attaching to the active span to keep correlation intact
-    try {
-      const activeSpan = trace.getSpan(context.active())
-      if (activeSpan) {
-        this._recordException(activeSpan, error, errorInfo)
-        this.tracerProvider?.forceFlush()
-        return
-      }
-      // eslint-disable-next-line
-    } catch (_ignored) {}
-
-    // Fallback: create a short-lived span to hold the exception details
-    try {
-      const tracer = trace.getTracer('exception')
-      const span = tracer.startSpan(error.name || 'Error')
-      this._recordException(span, error, errorInfo)
-      span.end()
-      this.tracerProvider?.forceFlush()
-      // eslint-disable-next-line
-    } catch (_ignored) {}
-  }
-
-  private _recordException(span: Span, error: Error, errorInfo?: Record<string, any>): void {
-    span.recordException(error)
-    span.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
-    span.setAttribute('exception.type', error.name || 'Error')
-    span.setAttribute('exception.message', error.message)
-    span.setAttribute('exception.stacktrace', error.stack || '')
-    if (errorInfo) {
-      Object.entries(errorInfo).forEach(([key, value]) => {
-        span.setAttribute(`error_info.${key}`, value)
-      })
-    }
+    SessionRecorderSdk.captureException(error, errorInfo)
   }
 
   private _getSpanSessionIdProcessor(): SpanProcessor {

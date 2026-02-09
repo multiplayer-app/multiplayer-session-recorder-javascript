@@ -714,6 +714,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   private async _createExceptionSession(span: any): Promise<void> {
     try {
       const session = await this._apiService.createErrorSession({ span })
+
       if (session) {
         void this._flushBuffer(session._id)
       }

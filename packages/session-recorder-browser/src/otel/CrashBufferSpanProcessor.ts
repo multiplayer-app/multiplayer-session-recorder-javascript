@@ -1,5 +1,14 @@
-import { Context, TraceFlags } from '@opentelemetry/api'
-import { ReadableSpan, SpanProcessor, Span, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
+import { 
+  Context,
+   TraceFlags,
+   SpanStatusCode,
+   } from '@opentelemetry/api'
+import { 
+  ReadableSpan, 
+  SpanProcessor, 
+  Span, 
+  BatchSpanProcessor,
+ } from '@opentelemetry/sdk-trace-base'
 import {
   MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
 } from '@multiplayer-app/session-recorder-common'
@@ -25,13 +34,14 @@ export class CrashBufferSpanProcessor implements SpanProcessor {
   }
 
   onEnd(span: ReadableSpan): void {
-    const traceId = span.spanContext().traceId
+    const _spanContext = span.spanContext()
+    
+    const traceId = _spanContext.traceId
 
-    if ((span.spanContext().traceFlags & TraceFlags.SAMPLED) === 0) {
-      return
-    }
-
-    if (traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX)) {
+    if (
+      traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX)
+      || span.status?.code === SpanStatusCode.ERROR
+    ) {
       if (this._crashBuffer) {
         this._crashBuffer.appendSpans([
           {
