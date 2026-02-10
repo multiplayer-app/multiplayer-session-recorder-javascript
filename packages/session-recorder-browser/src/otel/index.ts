@@ -12,7 +12,7 @@ import {
   SessionRecorderBrowserTraceExporter,
   SessionRecorderTraceIdRatioBasedSampler,
   ATTR_MULTIPLAYER_SESSION_ID,
-  MULTIPLAYER_TRACE_CLIENT_ID_LENGTH
+  MULTIPLAYER_TRACE_CLIENT_ID_LENGTH,
 } from '@multiplayer-app/session-recorder-common'
 import { TracerBrowserConfig } from '../types'
 import { OTEL_IGNORE_URLS } from '../config'
@@ -23,7 +23,7 @@ import {
   extractResponseBody,
   getExporterEndpoint,
   getElementTextContent,
-  getElementInnerText
+  getElementInnerText,
 } from './helpers'
 import { CrashBufferSpanProcessor } from './CrashBufferSpanProcessor'
 
@@ -64,13 +64,13 @@ export class TracerBrowserSDK {
     this.exporter = new SessionRecorderBrowserTraceExporter({
       apiKey: options.apiKey,
       url: getExporterEndpoint(options.exporterEndpoint),
-      usePostMessageFallback: options.usePostMessageFallback
+      usePostMessageFallback: options.usePostMessageFallback,
     })
 
     const resourceAttributes = resourceFromAttributes({
       [SemanticAttributes.SEMRESATTRS_SERVICE_NAME]: application,
       [SemanticAttributes.SEMRESATTRS_SERVICE_VERSION]: version,
-      [SemanticAttributes.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment
+      [SemanticAttributes.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment,
     })
 
     SessionRecorderSdk.setResourceAttributes(resourceAttributes.attributes)
@@ -82,13 +82,13 @@ export class TracerBrowserSDK {
       spanProcessors: [
         this._getSpanSessionIdProcessor(),
         new BatchSpanProcessor(this.exporter),
-        new CrashBufferSpanProcessor(this.crashBuffer, this.exporter.serializeSpan)
-      ]
+        new CrashBufferSpanProcessor(this.crashBuffer, this.exporter.serializeSpan),
+      ],
     })
 
     this.tracerProvider.register({
       // contextManager: new ZoneContextManager(),
-      propagator: new W3CTraceContextPropagator()
+      propagator: new W3CTraceContextPropagator(),
     })
 
     registerInstrumentations({
@@ -120,14 +120,14 @@ export class TracerBrowserSDK {
                   requestBody,
                   responseBody,
                   requestHeaders,
-                  responseHeaders
+                  responseHeaders,
                 }
                 processHttpPayload(payload, this.config, span)
               } catch (error) {
                 // eslint-disable-next-line
                 console.error('[MULTIPLAYER_SESSION_RECORDER] Failed to capture xml-http payload', error)
               }
-            }
+            },
           },
           '@opentelemetry/instrumentation-fetch': {
             clearTimingResources: true,
@@ -173,14 +173,14 @@ export class TracerBrowserSDK {
                   requestBody,
                   responseBody,
                   requestHeaders,
-                  responseHeaders
+                  responseHeaders,
                 }
                 processHttpPayload(payload, this.config, span)
               } catch (error) {
                 // eslint-disable-next-line
                 console.error('[MULTIPLAYER_SESSION_RECORDER] Failed to capture fetch payload', error)
               }
-            }
+            },
           },
           '@opentelemetry/instrumentation-user-interaction': {
             shouldPreventSpanCreation: (_event, element: HTMLElement, span) => {
@@ -194,10 +194,10 @@ export class TracerBrowserSDK {
               })
 
               return false
-            }
-          }
-        })
-      ]
+            },
+          },
+        }),
+      ],
     })
 
     this._registerGlobalErrorListeners()
@@ -243,7 +243,7 @@ export class TracerBrowserSDK {
         traceId: span?.traceId,
         spanId: span?.spanId,
         traceFlags: span?.traceFlags,
-        traceState: span?.traceState
+        traceState: span?.traceState,
       } as any)
 
     const instrumentationScope =
@@ -254,7 +254,7 @@ export class TracerBrowserSDK {
     const normalizedScope = {
       name: instrumentationScope?.name || 'multiplayer-buffer',
       version: instrumentationScope?.version,
-      schemaUrl: instrumentationScope?.schemaUrl
+      schemaUrl: instrumentationScope?.schemaUrl,
     }
 
     const resource = span?.resource || { attributes: {}, asyncAttributesPending: false }
@@ -266,11 +266,11 @@ export class TracerBrowserSDK {
       spanContext: () => normalizedCtx,
       parentSpanContext: parentSpanId
         ? ({
-            traceId: normalizedCtx?.traceId,
-            spanId: parentSpanId,
-            traceFlags: normalizedCtx?.traceFlags,
-            traceState: normalizedCtx?.traceState
-          } as any)
+          traceId: normalizedCtx?.traceId,
+          spanId: parentSpanId,
+          traceFlags: normalizedCtx?.traceFlags,
+          traceState: normalizedCtx?.traceState,
+        } as any)
         : undefined,
       startTime: span?.startTime,
       endTime: span?.endTime ?? span?.startTime,
@@ -284,7 +284,7 @@ export class TracerBrowserSDK {
       droppedEventsCount: span?.droppedEventsCount || 0,
       droppedLinksCount: span?.droppedLinksCount || 0,
       resource,
-      instrumentationScope: normalizedScope as any
+      instrumentationScope: normalizedScope as any,
     } as any
   }
 
@@ -322,7 +322,7 @@ export class TracerBrowserSDK {
         if (this.sessionId?.length) {
           span.setAttribute(ATTR_MULTIPLAYER_SESSION_ID, this.sessionId)
         }
-      }
+      },
     }
   }
 

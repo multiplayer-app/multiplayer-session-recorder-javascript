@@ -5,7 +5,7 @@ import {
   MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
-  MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX
+  MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
 } from '../constants/constants.base'
 
 export interface SessionRecorderBrowserTraceExporterConfig {
@@ -50,7 +50,7 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       keepAlive = true,
       concurrencyLimit = 20,
       postMessageType = 'MULTIPLAYER_SESSION_DEBUGGER_LIB',
-      postMessageTargetOrigin = '*'
+      postMessageTargetOrigin = '*',
     } = config
 
     this.config = {
@@ -60,7 +60,7 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       headers,
       keepAlive,
       timeoutMillis,
-      concurrencyLimit
+      concurrencyLimit,
     }
     this.postMessageType = postMessageType
     this.postMessageTargetOrigin = postMessageTargetOrigin
@@ -108,8 +108,6 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       const traceId = span.spanContext().traceId
       return traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX)
     })
-    console.log('filteredSpans', filteredSpans.length)
-    console.log('spans', spans.length)
     this._export(filteredSpans, resultCallback)
   }
 
@@ -128,9 +126,9 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
         {
           action: 'traces',
           type: this.postMessageType,
-          payload: spans.map((span) => this.serializeSpan(span))
+          payload: spans.map((span) => this.serializeSpan(span)),
         },
-        this.postMessageTargetOrigin
+        this.postMessageTargetOrigin,
       )
       resultCallback({ code: 0 })
     } catch (e) {
@@ -149,7 +147,7 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
     const normalizedScope = {
       name: instrumentationScope?.name || 'unknown',
       version: instrumentationScope?.version,
-      schemaUrl: instrumentationScope?.schemaUrl
+      schemaUrl: instrumentationScope?.schemaUrl,
     }
     return {
       _spanContext: spanContext,
@@ -172,8 +170,8 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       instrumentationScope: normalizedScope,
       resource: {
         attributes: span.resource.attributes,
-        asyncAttributesPending: span.resource.asyncAttributesPending
-      }
+        asyncAttributesPending: span.resource.asyncAttributesPending,
+      },
     }
   }
 
@@ -183,11 +181,11 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       headers: {
         'Content-Type': 'application/json',
         ...(this.config.apiKey ? { Authorization: this.config.apiKey } : {}),
-        ...(this.config.headers || {})
+        ...(this.config.headers || {}),
       },
       timeoutMillis: this.config.timeoutMillis,
       keepAlive: this.config.keepAlive,
-      concurrencyLimit: this.config.concurrencyLimit
+      concurrencyLimit: this.config.concurrencyLimit,
     })
   }
 
