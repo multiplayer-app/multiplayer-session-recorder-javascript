@@ -567,7 +567,13 @@ class SessionRecorder
       return;
     }
     this._userAttributes = userAttributes;
-    this._socketService.setUser(this._userAttributes);
+
+    const data = {
+      userAttributes: this._userAttributes,
+      clientId: this._tracer.clientId,
+    };
+
+    this._socketService.setUser(data);
   }
 
   /**

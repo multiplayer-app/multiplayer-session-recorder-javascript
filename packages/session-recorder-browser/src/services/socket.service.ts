@@ -13,14 +13,13 @@ import {
   REMOTE_SESSION_RECORDING_START,
   REMOTE_SESSION_RECORDING_STOP,
   SESSION_STARTED_EVENT,
-  SESSION_SAVE_BUFFER_EVENT,
+  SESSION_SAVE_BUFFER_EVENT
 } from '../config'
 import {
   type ISession,
   type IUserAttributes,
-  ATTR_MULTIPLAYER_SESSION_CLIENT_ID,
+  ATTR_MULTIPLAYER_SESSION_CLIENT_ID
 } from '@multiplayer-app/session-recorder-common'
-
 
 const MAX_RECONNECTION_ATTEMPTS = 2
 
@@ -55,7 +54,7 @@ export class SocketService extends Observable<SocketServiceEvents> {
       apiKey: '',
       socketUrl: '',
       keepAlive: false,
-      usePostMessageFallback: false,
+      usePostMessageFallback: false
     }
   }
 
@@ -66,13 +65,9 @@ export class SocketService extends Observable<SocketServiceEvents> {
   public init(config: SocketServiceOptions): void {
     this.options = {
       ...this.options,
-      ...config,
+      ...config
     }
-    if (
-      this.options.keepAlive &&
-      this.options.socketUrl &&
-      this.options.apiKey
-    ) {
+    if (this.options.keepAlive && this.options.socketUrl && this.options.apiKey) {
       this._initConnection()
     }
   }
@@ -83,31 +78,22 @@ export class SocketService extends Observable<SocketServiceEvents> {
    */
   public updateConfigs(config: Partial<SocketServiceOptions>): void {
     // If any config changed, reconnect if connected
-    const hasChanges = Object.keys(config).some(
-      (key) => {
-        const typedKey = key as keyof SocketServiceOptions
-        return (
-          config[typedKey] !== undefined &&
-          config[typedKey] !== this.options[typedKey]
-        )
-      },
-    )
+    const hasChanges = Object.keys(config).some((key) => {
+      const typedKey = key as keyof SocketServiceOptions
+      return config[typedKey] !== undefined && config[typedKey] !== this.options[typedKey]
+    })
 
     if (hasChanges) {
       this.options = { ...this.options, ...config }
       if (this.socket?.connected) {
         this.close().then(() => {
-          if (this.options.keepAlive &&
-            this.options.socketUrl &&
-            this.options.apiKey
-          ) {
+          if (this.options.keepAlive && this.options.socketUrl && this.options.apiKey) {
             this._initConnection()
           }
         })
       }
     }
   }
-
 
   private _initConnection(): void {
     if (this.isConnecting || this.isConnected) return
@@ -118,12 +104,10 @@ export class SocketService extends Observable<SocketServiceEvents> {
       path: '/v0/radar/ws',
       auth: {
         'x-api-key': this.options.apiKey,
-        ...this.options.clientId
-          ? { [ATTR_MULTIPLAYER_SESSION_CLIENT_ID]: this.options.clientId }
-          : {},
+        ...(this.options.clientId ? { [ATTR_MULTIPLAYER_SESSION_CLIENT_ID]: this.options.clientId } : {})
       },
       reconnectionAttempts: 2,
-      transports: ['websocket'],
+      transports: ['websocket']
     })
 
     this.socket.on('ready', () => {
@@ -211,7 +195,7 @@ export class SocketService extends Observable<SocketServiceEvents> {
       projectId: session.project,
       workspaceId: session.workspace,
       debugSessionId: this.sessionId,
-      sessionType: session.creationType,
+      sessionType: session.creationType
     }
     this.emitSocketEvent(SESSION_SUBSCRIBE_EVENT, payload)
     // use long id instead of short id
@@ -227,10 +211,7 @@ export class SocketService extends Observable<SocketServiceEvents> {
     }
   }
 
-  public setUser(data: {
-    userAttributes: IUserAttributes | null,
-    clientId?: string
-  }): void {
+  public setUser(data: { userAttributes: IUserAttributes | null; clientId?: string }): void {
     this.emitSocketEvent(SOCKET_SET_USER_EVENT, data)
   }
 

@@ -460,7 +460,6 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       return
     }
     this._userAttributes = userAttributes
-    this._tracer.clientId
 
     const data = {
       userAttributes: this._userAttributes,
