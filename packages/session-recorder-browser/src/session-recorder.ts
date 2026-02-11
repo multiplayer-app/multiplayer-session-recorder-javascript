@@ -246,22 +246,15 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
 
   private _setupCrashBuffer(): void {
     if (this._configs.buffering?.enabled) {
-      const windowMinutes = this._configs.buffering.windowMinutes || 1
+      const windowMinutes = this._configs.buffering.windowMinutes || 0.5
       const windowMs = Math.max(10_000, windowMinutes * 60 * 1000)
       this._crashBuffer = new CrashBufferService(this._bufferDb, this._tabId, windowMs)
       this._recorder.setCrashBuffer(this._crashBuffer)
       this._tracer.setCrashBuffer(this._crashBuffer)
 
-      this._crashBuffer.setAttrs({
-        sessionAttributes: this.sessionAttributes,
-        resourceAttributes: getNavigatorInfo(),
-        userAttributes: this._userAttributes
-      })
-
       this._crashBuffer.on('error-span-appended', (payload) => {
         if (this.sessionState !== SessionState.stopped || this.sessionId) return
         if (!payload.span) return
-        console.log('error-span-appended', payload)
         this._createExceptionSession(payload.span)
       })
       this._registerCrashBufferLifecycleHandlers()
@@ -307,11 +300,14 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   }
 
   private _startBufferOnlyRecording(): void {
-    if (!this._configs?.buffering?.enabled) return
-    if (!this._crashBuffer) return
-    // Don’t start if a session is active.
-    if (this.sessionState !== SessionState.stopped || this.sessionId) return
-
+    if (
+      this.sessionId ||
+      !this._crashBuffer ||
+      !this._configs?.buffering?.enabled ||
+      this.sessionState !== SessionState.stopped
+    ) {
+      return
+    }
     void this._recorder.restart(null, SessionType.MANUAL)
   }
 
@@ -491,34 +487,33 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   }
 
   private async _flushBuffer(sessionId: string): Promise<any> {
-    if (!this._configs?.buffering?.enabled) return null
-    if (!this._crashBuffer) return null
-    if (this._isFlushingBuffer) return null
-    // Don’t flush while a live recording is active.
-    if (this.sessionState !== SessionState.stopped) return null
+    if (
+      !sessionId ||
+      !this._crashBuffer ||
+      this._isFlushingBuffer ||
+      !this._configs?.buffering?.enabled ||
+      this.sessionState !== SessionState.stopped
+    ) {
+      return null
+    }
 
     this._isFlushingBuffer = true
     try {
-      const snapshot = await this._crashBuffer.snapshot()
-      if (snapshot.rrwebEvents.length === 0 && snapshot.otelSpans.length === 0) {
+      const { events, spans, startedAt, stoppedAt } = await this._crashBuffer.snapshot()
+      if (events.length === 0 && spans.length === 0) {
         return null
       }
-      if (sessionId) {
-        const spans = snapshot.otelSpans.map((s) => s.span)
-        const events = snapshot.rrwebEvents.map((e) => e.event)
-        await Promise.all([
-          this._tracer.exportTraces(spans),
-          this._apiService.exportEvents(sessionId, { events }),
-          this._apiService.updateSessionAttributes(sessionId, {
-            name: this._getSessionName(),
-            // startedAt: new Date(snapshot.rrwebEvents[0].ts).toISOString(),
-            // stoppedAt: new Date().toISOString(),
-            sessionAttributes: this.sessionAttributes,
-            resourceAttributes: getNavigatorInfo(),
-            userAttributes: this._userAttributes || undefined
-          })
-        ])
-      }
+      await Promise.all([
+        this._tracer.exportTraces(spans.map((s) => s.span)),
+        this._apiService.exportEvents(sessionId, { events: events.map((e) => e.event) }),
+        this._apiService.updateSessionAttributes(sessionId, {
+          startedAt: new Date(startedAt).toISOString(),
+          stoppedAt: new Date(stoppedAt).toISOString(),
+          sessionAttributes: this.sessionAttributes,
+          resourceAttributes: getNavigatorInfo(),
+          userAttributes: this._userAttributes || undefined
+        })
+      ])
     } catch (_e) {
       // swallow: flush is best-effort; never throw into app code
     } finally {
@@ -704,19 +699,15 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     })
 
     this._socketService.on(SESSION_SAVE_BUFFER_EVENT, (payload: any) => {
-      if (!payload?.debugSession?._id) return
-      void this._flushBuffer(payload.debugSession._id)
+      this._flushBuffer(payload?.debugSession?._id)
     })
   }
 
   private async _createExceptionSession(span: any): Promise<void> {
     try {
       const session = await this._apiService.createErrorSession({ span })
-      console.log('====================================')
-      console.log(span)
-      console.log('====================================')
-      if (session) {
-        void this._flushBuffer(session._id)
+      if (session?._id) {
+        this._flushBuffer(session._id)
       }
     } catch (_ignored) {}
   }

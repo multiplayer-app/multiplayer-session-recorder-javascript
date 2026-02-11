@@ -155,11 +155,11 @@ export interface SessionRecorderOptions {
    * even if the user did not start a manual/continuous recording.
    */
   buffering?: {
-    /** Enable/disable buffering. @default true */
+    /** Enable/disable buffering. @default false */
     enabled?: boolean
-    /** Rolling window size (minutes). @default 1 */
+    /** Rolling window size (minutes). @default 0.5 */
     windowMinutes?: number
-    /** Full snapshot interval (ms) while buffering. @default 30000 */
+    /** Full snapshot interval (ms) while buffering. @default 20000 */
     snapshotIntervalMs?: number
   }
 }

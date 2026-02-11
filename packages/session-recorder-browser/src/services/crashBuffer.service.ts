@@ -3,12 +3,11 @@ import { EventType } from '@rrweb/types'
 import { IndexedDBService } from './indexedDb.service'
 import type {
   CrashBuffer,
-  CrashBufferAttrs,
   CrashBufferEventMap,
   CrashBufferEventName,
   CrashBufferOtelSpanBatchPayload,
   CrashBufferRrwebEventPayload,
-  CrashBufferSnapshot,
+  CrashBufferSnapshot
 } from '@multiplayer-app/session-recorder-common'
 
 export class CrashBufferService implements CrashBuffer {
@@ -24,7 +23,7 @@ export class CrashBufferService implements CrashBuffer {
   constructor(
     private readonly db: IndexedDBService,
     private readonly tabId: string,
-    private readonly windowMs: number,
+    private readonly windowMs: number
   ) {}
 
   private async _safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -33,15 +32,6 @@ export class CrashBufferService implements CrashBuffer {
     } catch (_e) {
       return fallback
     }
-  }
-
-  async setAttrs(attrs: CrashBufferAttrs): Promise<void> {
-    await this._safe(async () => {
-      await this.db.setAttrs({
-        tabId: this.tabId,
-        ...attrs,
-      })
-    }, undefined as any)
   }
 
   async appendEvent(payload: CrashBufferRrwebEventPayload, _windowMs?: number): Promise<void> {
@@ -62,7 +52,7 @@ export class CrashBufferService implements CrashBuffer {
         tabId: this.tabId,
         ts: payload.ts,
         isFullSnapshot: payload.isFullSnapshot,
-        event: payload.event,
+        event: payload.event
       })
     }, undefined as any)
 
@@ -92,7 +82,7 @@ export class CrashBufferService implements CrashBuffer {
         return {
           tabId: this.tabId,
           ts: p.ts,
-          span: p.span,
+          span: p.span
         }
       })
       await this.db.appendSpans(records)
@@ -132,78 +122,53 @@ export class CrashBufferService implements CrashBuffer {
   }
 
   async snapshot(_windowMs?: number, now: number = Date.now()): Promise<CrashBufferSnapshot> {
-    const toTs = now
-    const fromTs = Math.max(0, toTs - this.windowMs)
+    const stoppedAt = now
+    let startedAt = Math.max(0, stoppedAt - this.windowMs)
 
-    // Always include a full snapshot "anchor" if one exists at/before the window start.
-    const rrwebFromTs = await this._safe(async () => {
-      const anchor = await this.db.getLastRrwebFullSnapshotBefore(this.tabId, fromTs)
-      return typeof anchor?.ts === 'number' ? anchor.ts : fromTs
-    }, fromTs)
-
-    const [rrweb, spans, attrs] = await Promise.all([
-      this._safe(() => this.db.getRrwebEventsWindow(this.tabId, rrwebFromTs, toTs), []),
-      this._safe(() => this.db.getOtelSpansWindow(this.tabId, fromTs, toTs), []),
-      this._safe(() => this.db.getAttrs(this.tabId), null),
+    const [allEvents, allSpans] = await Promise.all([
+      this._safe(() => this.db.getRrwebEventsWindow(this.tabId, startedAt, stoppedAt), []),
+      this._safe(() => this.db.getOtelSpansWindow(this.tabId, startedAt, stoppedAt), [])
     ])
 
-    const rrwebSorted = rrweb
+    const eventsSorted = allEvents
       .sort((a, b) => a.ts - b.ts)
       .map((r) => ({ ts: r.ts, isFullSnapshot: r.isFullSnapshot, event: r.event }))
 
+    const payload: CrashBufferSnapshot = {
+      startedAt,
+      stoppedAt,
+      spans: [],
+      events: []
+    }
+
     // Hard guarantee: snapshot payload starts with Meta -> FullSnapshot (or is empty).
-    const firstFullSnapshotIdx = rrwebSorted.findIndex((e) => Boolean(e.isFullSnapshot))
-    if (firstFullSnapshotIdx < 0) {
-      return {
-        rrwebEvents: [],
-        otelSpans: [],
-        attrs: attrs
-          ? {
-            sessionAttributes: attrs.sessionAttributes,
-            resourceAttributes: attrs.resourceAttributes,
-            userAttributes: attrs.userAttributes,
-          }
-          : null,
-        windowMs: this.windowMs,
-        fromTs,
-        toTs,
-      }
+    const firstSnapshotIdx = eventsSorted.findIndex((e) => Boolean(e.isFullSnapshot))
+    if (firstSnapshotIdx < 0) {
+      return payload
     }
 
     // Prefer including the Meta event immediately preceding the first FullSnapshot.
-    let startIdx = firstFullSnapshotIdx
-    for (let i = firstFullSnapshotIdx - 1; i >= 0; i--) {
-      const t = rrwebSorted[i]?.event?.eventType
+    let startIdx = firstSnapshotIdx
+    for (let i = firstSnapshotIdx - 1; i >= 0; i--) {
+      const t = eventsSorted[i]?.event?.eventType
       if (t === EventType.Meta) {
         startIdx = i
         break
       }
     }
-    const rrwebEvents = rrwebSorted.slice(startIdx)
 
-    // Align spans with the rrweb replay start (Meta if present, otherwise FullSnapshot).
-    // Important: we return `fromTs` to consumers and many UIs compute relative offsets from it,
-    // so `fromTs` must match the first rrweb event timestamp we return.
-    const replayStartTs = rrwebEvents.length > 0 ? rrwebEvents[0].ts : fromTs
-    const otelSpans = spans
-      .filter((s) => typeof s?.ts === 'number' && s.ts >= replayStartTs)
+    const events = eventsSorted.slice(startIdx)
+    const replayStartedAt = events.length > 0 ? events[0].ts : startedAt
+    const spans = allSpans
+      .filter((s) => typeof s?.ts === 'number' && s.ts >= replayStartedAt)
       .sort((a, b) => a.ts - b.ts)
       .map((r) => ({ ts: r.ts, span: r.span }))
 
-    return {
-      rrwebEvents,
-      otelSpans,
-      attrs: attrs
-        ? {
-          sessionAttributes: attrs.sessionAttributes,
-          resourceAttributes: attrs.resourceAttributes,
-          userAttributes: attrs.userAttributes,
-        }
-        : null,
-      windowMs: this.windowMs,
-      fromTs: replayStartTs,
-      toTs,
-    }
+    payload.events = events
+    payload.spans = spans
+    payload.startedAt = replayStartedAt
+
+    return payload
   }
 
   async clear(): Promise<void> {
@@ -260,7 +225,7 @@ export class CrashBufferService implements CrashBuffer {
 
     this.pruneInFlight = this._safe(
       () => this.db.pruneOlderThanWithRrwebSnapshotAnchor(this.tabId, cutoff),
-      undefined as any,
+      undefined as any
     ).finally(() => {
       this.pruneInFlight = null
     })

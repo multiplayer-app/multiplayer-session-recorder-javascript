@@ -93,7 +93,8 @@ export class ApiService {
   async updateSessionAttributes(
     sessionId: string,
     requestBody: {
-      name?: string;
+      startedAt?: string;
+      stoppedAt?: string;
       userAttributes?: IUserAttributes;
       sessionAttributes?: ISessionAttributes;
       resourceAttributes?: IResourceAttributes;

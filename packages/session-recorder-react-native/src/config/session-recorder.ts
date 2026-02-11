@@ -87,8 +87,14 @@ export const getSessionRecorderConfig = (
     useWebsocket: isValidBoolean(c.useWebsocket, BASE_CONFIG.useWebsocket),
 
     buffering: {
-      enabled: isValidBoolean(c.buffering?.enabled, BASE_CONFIG.buffering.enabled),
-      windowMinutes: isValidNumber(c.buffering?.windowMinutes, BASE_CONFIG.buffering.windowMinutes),
+      enabled: isValidBoolean(
+        c.buffering?.enabled,
+        BASE_CONFIG.buffering.enabled
+      ),
+      windowMinutes: isValidNumber(
+        c.buffering?.windowMinutes,
+        BASE_CONFIG.buffering.windowMinutes
+      ),
     },
   };
 };

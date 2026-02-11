@@ -31,12 +31,10 @@ export type CrashBufferEventMap = {
 }
 
 export type CrashBufferSnapshot = {
-  rrwebEvents: CrashBufferRrwebEventPayload[]
-  otelSpans: CrashBufferOtelSpanPayload[]
-  attrs: CrashBufferAttrs | null
-  windowMs: number
-  fromTs: number
-  toTs: number
+  startedAt: number
+  stoppedAt: number
+  events: CrashBufferRrwebEventPayload[]
+  spans: CrashBufferOtelSpanPayload[]
 }
 
 /**
@@ -48,20 +46,13 @@ export type CrashBufferSnapshot = {
  * - `pruneOlderThan` is optional because browser implementations can handle pruning internally.
  */
 export interface CrashBuffer {
-  setAttrs(attrs: CrashBufferAttrs): Promise<void>
   appendEvent(payload: CrashBufferRrwebEventPayload, windowMs?: number): Promise<void>
   appendSpans(payload: CrashBufferOtelSpanBatchPayload, windowMs?: number): Promise<void>
   snapshot(windowMs?: number, now?: number): Promise<CrashBufferSnapshot>
   clear(): Promise<void>
   pruneOlderThan?(cutoffTs: number): Promise<void>
-  on?(
-    event: CrashBufferEventName,
-    listener: (payload: CrashBufferEventMap[CrashBufferEventName]) => void
-  ): () => void
-  off?(
-    event: CrashBufferEventName,
-    listener: (payload: CrashBufferEventMap[CrashBufferEventName]) => void
-  ): void
+  on?(event: CrashBufferEventName, listener: (payload: CrashBufferEventMap[CrashBufferEventName]) => void): () => void
+  off?(event: CrashBufferEventName, listener: (payload: CrashBufferEventMap[CrashBufferEventName]) => void): void
 }
 
 /**

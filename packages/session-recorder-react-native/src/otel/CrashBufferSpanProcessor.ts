@@ -1,9 +1,8 @@
-import { type Context, TraceFlags, SpanStatusCode } from '@opentelemetry/api';
+import { type Context } from '@opentelemetry/api';
 import {
   type ReadableSpan,
   type SpanProcessor,
   type Span,
-  BatchSpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
 import { MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX } from '@multiplayer-app/session-recorder-common';
 import type { CrashBuffer } from '@multiplayer-app/session-recorder-common';
@@ -14,17 +13,16 @@ import type { CrashBuffer } from '@multiplayer-app/session-recorder-common';
  */
 export class CrashBufferSpanProcessor implements SpanProcessor {
   constructor(
-    private readonly _exporter: BatchSpanProcessor,
     private readonly _crashBuffer: CrashBuffer | undefined,
     private readonly _serializeSpan: (span: ReadableSpan) => any
   ) {}
 
   forceFlush(): Promise<void> {
-    return this._exporter.forceFlush();
+    return Promise.resolve();
   }
 
   onStart(_span: Span, _parentContext: Context): void {
-    return this._exporter.onStart(_span, _parentContext);
+    return;
   }
 
   onEnd(span: ReadableSpan): void {
@@ -32,15 +30,12 @@ export class CrashBufferSpanProcessor implements SpanProcessor {
 
     const traceId = _spanContext.traceId;
 
-    // Never buffer/export unsampled spans.
-    if ((_spanContext.traceFlags & TraceFlags.SAMPLED) === 0) {
-      return;
-    }
+    // // Never buffer/export unsampled spans.
+    // if ((_spanContext.traceFlags & TraceFlags.SAMPLED) === 0) {
+    //   return
+    // }
 
-    if (
-      traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX) ||
-      span.status?.code === SpanStatusCode.ERROR
-    ) {
+    if (traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX)) {
       if (this._crashBuffer) {
         this._crashBuffer.appendSpans([
           {
@@ -51,11 +46,9 @@ export class CrashBufferSpanProcessor implements SpanProcessor {
       }
       return;
     }
-
-    this._exporter.onEnd(span);
   }
 
   shutdown(): Promise<void> {
-    return this._exporter.shutdown();
+    return Promise.resolve();
   }
 }

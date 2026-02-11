@@ -123,7 +123,7 @@ export class IndexedDBService {
     const db = await this.dbPromise
     const payload: CrashBufferAttrs = {
       ...attrs,
-      updatedAt: attrs.updatedAt ?? Date.now(),
+      updatedAt: attrs.updatedAt ?? Date.now()
     }
     return new Promise<void>((resolve, reject) => {
       const tx = db.transaction(attrsStore, 'readwrite')
@@ -369,8 +369,8 @@ export class IndexedDBService {
       typeof anchorMeta?.ts === 'number'
         ? Math.max(0, anchorMeta.ts - 1)
         : typeof anchor?.ts === 'number'
-          ? Math.max(0, anchor.ts - 1)
-          : cutoffTs
+        ? Math.max(0, anchor.ts - 1)
+        : cutoffTs
     const rrwebRange = IDBKeyRange.bound([tabId, 0], [tabId, rrwebCutoffTs])
     const spansRange = IDBKeyRange.bound([tabId, 0], [tabId, cutoffTs])
 
@@ -439,7 +439,7 @@ export class IndexedDBService {
           const r = attr.delete(tabId)
           r.onsuccess = () => res()
           r.onerror = () => rej(r.error)
-        }),
+        })
       ])
         .then(() => {
           // noop

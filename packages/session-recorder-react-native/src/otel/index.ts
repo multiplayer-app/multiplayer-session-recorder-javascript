@@ -4,7 +4,6 @@ import {
   type ExportResult,
 } from '@opentelemetry/core';
 import {
-  AlwaysOnSampler,
   BatchSpanProcessor,
   type ReadableSpan,
 } from '@opentelemetry/sdk-trace-base';
@@ -17,6 +16,7 @@ import {
   SessionRecorderBrowserTraceExporter,
   ATTR_MULTIPLAYER_SESSION_ID,
   MULTIPLAYER_TRACE_CLIENT_ID_LENGTH,
+  SessionRecorderTraceIdRatioBasedSampler,
 } from '@multiplayer-app/session-recorder-common';
 import { type TracerReactNativeConfig } from '../types';
 import { getInstrumentations } from './instrumentations';
@@ -39,7 +39,6 @@ export class TracerReactNativeSDK {
   private sessionId = '';
   private idGenerator?: SessionRecorderIdGenerator;
   private exporter?: SessionRecorderBrowserTraceExporter;
-  private batchSpanProcessor?: BatchSpanProcessor;
   private globalErrorHandlerRegistered = false;
   private crashBuffer?: CrashBufferService;
 
@@ -73,21 +72,25 @@ export class TracerReactNativeSDK {
       url: getExporterEndpoint(options.exporterEndpoint),
     });
 
-    this.batchSpanProcessor = new BatchSpanProcessor(this.exporter);
+    const resourceAttributes = resourceFromAttributes({
+      [SemanticAttributes.SEMRESATTRS_SERVICE_NAME]: application,
+      [SemanticAttributes.SEMRESATTRS_SERVICE_VERSION]: version,
+      [SemanticAttributes.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment,
+      ...getPlatformAttributes(),
+    });
+
+    SessionRecorderSdk.setResourceAttributes(resourceAttributes.attributes);
 
     this.tracerProvider = new WebTracerProvider({
-      resource: resourceFromAttributes({
-        [SemanticAttributes.SEMRESATTRS_SERVICE_NAME]: application,
-        [SemanticAttributes.SEMRESATTRS_SERVICE_VERSION]: version,
-        [SemanticAttributes.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment,
-        ...getPlatformAttributes(),
-      }),
+      resource: resourceAttributes,
       idGenerator: this.idGenerator,
-      sampler: new AlwaysOnSampler(),
+      sampler: new SessionRecorderTraceIdRatioBasedSampler(
+        this.config.sampleTraceRatio
+      ),
       spanProcessors: [
         this._getSpanSessionIdProcessor(),
+        new BatchSpanProcessor(this.exporter),
         new CrashBufferSpanProcessor(
-          this.batchSpanProcessor,
           this.crashBuffer,
           this.exporter.serializeSpan
         ),
@@ -131,99 +134,15 @@ export class TracerReactNativeSDK {
       return Promise.resolve();
     }
 
-    const toReadableSpanLike = (span: any): ReadableSpan => {
-      if (
-        span &&
-        typeof span.spanContext === 'function' &&
-        span.instrumentationScope
-      ) {
-        return span as ReadableSpan;
-      }
-      const spanContext =
-        typeof span?.spanContext === 'function'
-          ? span.spanContext()
-          : span?._spanContext;
-      const normalizedCtx =
-        spanContext ||
-        ({
-          traceId: span?.traceId,
-          spanId: span?.spanId,
-          traceFlags: span?.traceFlags,
-          traceState: span?.traceState,
-        } as any);
+    const readableSpans = spans.map((s: any) =>
+      TracerReactNativeSDK._toReadableSpanLike(s)
+    );
 
-      const instrumentationScope =
-        span?.instrumentationScope ||
-        span?.instrumentationLibrary ||
-        ({
-          name: 'multiplayer-buffer',
-          version: undefined,
-          schemaUrl: undefined,
-        } as any);
-
-      const normalizedScope = {
-        name: instrumentationScope?.name || 'multiplayer-buffer',
-        version: instrumentationScope?.version,
-        schemaUrl: instrumentationScope?.schemaUrl,
-      };
-
-      const resource = span?.resource || {
-        attributes: {},
-        asyncAttributesPending: false,
-      };
-      const parentSpanId = span?.parentSpanId;
-
-      return {
-        name: span?.name || '',
-        kind: span?.kind,
-        spanContext: () => normalizedCtx,
-        parentSpanContext: parentSpanId
-          ? ({
-              traceId: normalizedCtx?.traceId,
-              spanId: parentSpanId,
-              traceFlags: normalizedCtx?.traceFlags,
-              traceState: normalizedCtx?.traceState,
-            } as any)
-          : undefined,
-        startTime: span?.startTime,
-        endTime: span?.endTime ?? span?.startTime,
-        duration: span?.duration,
-        status: span?.status,
-        attributes: span?.attributes || {},
-        links: span?.links || [],
-        events: span?.events || [],
-        ended: typeof span?.ended === 'boolean' ? span.ended : true,
-        droppedAttributesCount: span?.droppedAttributesCount || 0,
-        droppedEventsCount: span?.droppedEventsCount || 0,
-        droppedLinksCount: span?.droppedLinksCount || 0,
-        resource,
-        instrumentationScope: normalizedScope as any,
-      } as any;
-    };
-
-    const readableSpans = spans.map((s: any) => toReadableSpanLike(s));
-
-    const CHUNK_SIZE = 50;
-    let result: ExportResult | undefined;
-    for (let i = 0; i < readableSpans.length; i += CHUNK_SIZE) {
-      result = await this.exporter.exportBuffer(
-        readableSpans.slice(i, i + CHUNK_SIZE)
-      );
-    }
-    return result;
-  }
-
-  private _getSpanSessionIdProcessor() {
-    return {
-      onStart: (span: any) => {
-        if (this.sessionId) {
-          span.setAttribute(ATTR_MULTIPLAYER_SESSION_ID, this.sessionId);
-        }
-      },
-      onEnd: () => {},
-      shutdown: () => Promise.resolve(),
-      forceFlush: () => Promise.resolve(),
-    };
+    return new Promise((resolve) => {
+      this.exporter?.exportBuffer(readableSpans, (result) => {
+        resolve(result);
+      });
+    });
   }
 
   start(sessionId: string, sessionType: SessionType): void {
@@ -266,6 +185,19 @@ export class TracerReactNativeSDK {
     SessionRecorderSdk.captureException(error, errorInfo);
   }
 
+  private _getSpanSessionIdProcessor() {
+    return {
+      onStart: (span: any) => {
+        if (this.sessionId) {
+          span.setAttribute(ATTR_MULTIPLAYER_SESSION_ID, this.sessionId);
+        }
+      },
+      onEnd: () => {},
+      shutdown: () => Promise.resolve(),
+      forceFlush: () => Promise.resolve(),
+    };
+  }
+
   private _registerGlobalErrorHandlers(): void {
     if (this.globalErrorHandlerRegistered) return;
 
@@ -293,5 +225,76 @@ export class TracerReactNativeSDK {
       });
       this.globalErrorHandlerRegistered = true;
     }
+  }
+
+  private static _toReadableSpanLike(span: any): ReadableSpan {
+    if (
+      span &&
+      typeof span.spanContext === 'function' &&
+      span.instrumentationScope
+    ) {
+      return span as ReadableSpan;
+    }
+
+    const spanContext =
+      typeof span?.spanContext === 'function'
+        ? span.spanContext()
+        : span?._spanContext;
+    const normalizedCtx =
+      spanContext ||
+      ({
+        traceId: span?.traceId,
+        spanId: span?.spanId,
+        traceFlags: span?.traceFlags,
+        traceState: span?.traceState,
+      } as any);
+
+    const instrumentationScope =
+      span?.instrumentationScope ||
+      span?.instrumentationLibrary ||
+      ({
+        name: 'multiplayer-buffer',
+        version: undefined,
+        schemaUrl: undefined,
+      } as any);
+
+    const normalizedScope = {
+      name: instrumentationScope?.name || 'multiplayer-buffer',
+      version: instrumentationScope?.version,
+      schemaUrl: instrumentationScope?.schemaUrl,
+    };
+
+    const resource = span?.resource || {
+      attributes: {},
+      asyncAttributesPending: false,
+    };
+    const parentSpanId = span?.parentSpanId;
+
+    return {
+      name: span?.name || '',
+      kind: span?.kind,
+      spanContext: () => normalizedCtx,
+      parentSpanContext: parentSpanId
+        ? ({
+            traceId: normalizedCtx?.traceId,
+            spanId: parentSpanId,
+            traceFlags: normalizedCtx?.traceFlags,
+            traceState: normalizedCtx?.traceState,
+          } as any)
+        : undefined,
+      startTime: span?.startTime,
+      endTime: span?.endTime ?? span?.startTime,
+      duration: span?.duration,
+      status: span?.status,
+      attributes: span?.attributes || {},
+      links: span?.links || [],
+      events: span?.events || [],
+      ended: typeof span?.ended === 'boolean' ? span.ended : true,
+      droppedAttributesCount: span?.droppedAttributesCount || 0,
+      droppedEventsCount: span?.droppedEventsCount || 0,
+      droppedLinksCount: span?.droppedLinksCount || 0,
+      resource,
+      instrumentationScope: normalizedScope as any,
+    } as any;
   }
 }

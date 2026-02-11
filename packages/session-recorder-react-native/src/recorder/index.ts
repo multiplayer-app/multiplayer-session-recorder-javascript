@@ -40,7 +40,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
     this.bufferingEnabled = Boolean(buffering?.enabled);
     this.bufferWindowMs = Math.max(
       10_000,
-      buffering?.windowMs || 1 * 60 * 1000
+      buffering?.windowMs || 0.5 * 60 * 1000
     );
     this.screenRecorder.init(config, this);
     this.navigationTracker.init(config, this.screenRecorder);

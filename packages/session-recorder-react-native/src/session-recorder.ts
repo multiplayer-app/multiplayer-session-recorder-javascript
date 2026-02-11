@@ -180,95 +180,32 @@ class SessionRecorder
     }
   }
 
-  public async flushBuffer(payload?: { reason?: string }): Promise<any> {
-    if (!this._configs?.buffering?.enabled) return null;
-    if (this._isFlushingBuffer) return null;
-    if (this.sessionState !== SessionState.stopped || this.sessionId)
-      return null;
-
-    const windowMs = Math.max(
-      10_000,
-      (this._configs.buffering.windowMinutes || 2) * 60 * 1000
-    );
-
-    this._isFlushingBuffer = true;
-    try {
-      const reason = payload?.reason || 'manual';
-      await this._crashBuffer.setAttrs({
-        sessionAttributes: this.sessionAttributes,
-        resourceAttributes: getNavigatorInfo(),
-        userAttributes: this._userAttributes,
-      });
-
-      const snapshot = await this._crashBuffer.snapshot(windowMs);
-      if (
-        snapshot.rrwebEvents.length === 0 &&
-        snapshot.otelSpans.length === 0
-      ) {
-        return null;
-      }
-
-      const request: StartSessionRequest = {
-        name: `${this._configs.application} ${getFormattedDate(new Date())}`,
-        stoppedAt: new Date().toISOString(),
-        sessionAttributes: this.sessionAttributes,
-        resourceAttributes: getNavigatorInfo(),
-        ...(this._userAttributes
-          ? { userAttributes: this._userAttributes }
-          : {}),
-        debugSessionData: {
-          meta: {
-            reason,
-            windowMs: snapshot.windowMs,
-            fromTs: snapshot.fromTs,
-            toTs: snapshot.toTs,
-          },
-          events: snapshot.rrwebEvents,
-          spans: snapshot.otelSpans.map((s) => s.span),
-          attrs: snapshot.attrs,
-        },
-      };
-
-      try {
-        const res = await this._apiService.startSession(request);
-        await this._crashBuffer.clear();
-        return res;
-      } catch (_e) {
-        // swallow: flush is best-effort; never throw into app code
-        return null;
-      }
-    } finally {
-      this._isFlushingBuffer = false;
-    }
-  }
-
   private async _flushBuffer(sessionId: string): Promise<any> {
-    if (!this._configs?.buffering?.enabled) return null;
-    if (this._isFlushingBuffer) return null;
-    if (this.sessionState !== SessionState.stopped || this.sessionId)
+    if (
+      !sessionId ||
+      !this._crashBuffer ||
+      this._isFlushingBuffer ||
+      !this._configs?.buffering?.enabled ||
+      this.sessionState !== SessionState.stopped
+    ) {
       return null;
-
-    const windowMs = Math.max(
-      10_000,
-      (this._configs.buffering.windowMinutes || 2) * 60 * 1000
-    );
+    }
 
     this._isFlushingBuffer = true;
     try {
-      const snapshot = await this._crashBuffer.snapshot(windowMs);
-      if (
-        snapshot.rrwebEvents.length === 0 &&
-        snapshot.otelSpans.length === 0
-      ) {
+      const { events, spans, startedAt, stoppedAt } =
+        await this._crashBuffer.snapshot();
+      if (events.length === 0 && spans.length === 0) {
         return null;
       }
-      const spans = snapshot.otelSpans.map((s) => s.span);
-      const events = snapshot.rrwebEvents.map((e) => e.event);
       await Promise.all([
-        this._tracer.exportTraces(spans),
-        this._apiService.exportEvents(sessionId, { events }),
+        this._tracer.exportTraces(spans.map((s) => s.span)),
+        this._apiService.exportEvents(sessionId, {
+          events: events.map((e) => e.event),
+        }),
         this._apiService.updateSessionAttributes(sessionId, {
-          name: this._getSessionName(),
+          startedAt: new Date(startedAt).toISOString(),
+          stoppedAt: new Date(stoppedAt).toISOString(),
           sessionAttributes: this.sessionAttributes,
           resourceAttributes: getNavigatorInfo(),
           userAttributes: this._userAttributes || undefined,
@@ -285,7 +222,7 @@ class SessionRecorder
   private async _createExceptionSession(span: any): Promise<void> {
     try {
       const session = await this._apiService.createErrorSession({ span });
-      if (session) {
+      if (session?._id) {
         void this._flushBuffer(session._id);
       }
     } catch (_ignored) {
@@ -341,7 +278,7 @@ class SessionRecorder
     const bufferEnabled = Boolean(this._configs.buffering?.enabled);
     const windowMs = Math.max(
       10_000,
-      (this._configs.buffering?.windowMinutes || 2) * 60 * 1000
+      (this._configs.buffering?.windowMinutes || 0.5) * 60 * 1000
     );
     this._tracer.setCrashBuffer(
       bufferEnabled ? this._crashBuffer : undefined,
@@ -365,8 +302,13 @@ class SessionRecorder
     );
 
     this._crashBuffer.on('error-span-appended', (payload) => {
-      if (this.sessionState !== SessionState.stopped || this.sessionId) return;
-      if (!payload.span) return;
+      if (
+        !payload.span ||
+        this.sessionId ||
+        this.sessionState !== SessionState.stopped
+      ) {
+        return;
+      }
       this._createExceptionSession(payload.span);
     });
 
@@ -387,20 +329,19 @@ class SessionRecorder
   }
 
   private _startBufferOnlyRecording(): void {
-    if (!this._configs?.buffering?.enabled) return;
-    if (this.sessionState !== SessionState.stopped || this.sessionId) return;
+    if (
+      this.sessionId ||
+      !this._crashBuffer ||
+      !this._configs?.buffering?.enabled ||
+      this.sessionState !== SessionState.stopped
+    ) {
+      return;
+    }
 
     const windowMs = Math.max(
       10_000,
-      (this._configs.buffering.windowMinutes || 2) * 60 * 1000
+      (this._configs.buffering.windowMinutes || 0.5) * 60 * 1000
     );
-
-    // Best-effort: persist current attrs so flush has context.
-    this._crashBuffer.setAttrs({
-      sessionAttributes: this.sessionAttributes,
-      resourceAttributes: getNavigatorInfo(),
-      userAttributes: this._userAttributes,
-    });
 
     // Wire buffer into tracer + recorder (only used when sessionId is null).
     this._tracer.setCrashBuffer(this._crashBuffer, windowMs);
@@ -448,9 +389,7 @@ class SessionRecorder
     });
 
     this._socketService.on(SESSION_SAVE_BUFFER_EVENT, (payload: any) => {
-      if (payload?.debugSession?._id) {
-        void this._flushBuffer(payload.debugSession._id);
-      }
+      this._flushBuffer(payload?.debugSession?._id);
     });
   }
 

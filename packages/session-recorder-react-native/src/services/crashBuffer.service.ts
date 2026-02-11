@@ -1,9 +1,14 @@
 import { Platform } from 'react-native';
+import { EventType } from '@rrweb/types';
 import type {
   CrashBufferEventMap,
   CrashBufferEventName,
   CrashBufferErrorSpanAppendedEvent,
   CrashBuffer,
+  CrashBufferRrwebEventPayload,
+  CrashBufferOtelSpanPayload,
+  CrashBufferOtelSpanBatchPayload,
+  CrashBufferSnapshot,
 } from '@multiplayer-app/session-recorder-common';
 import { SpanStatusCode } from '@opentelemetry/api';
 
@@ -43,15 +48,6 @@ const RECORD_PREFIX = 'mp_crash_buffer_rec_v1:';
 const randomId = (): string =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
-export type CrashBufferSnapshot = {
-  rrwebEvents: Array<{ ts: number; event: any }>;
-  otelSpans: Array<{ ts: number; span: any }>;
-  attrs: any | null;
-  windowMs: number;
-  fromTs: number;
-  toTs: number;
-};
-
 export class CrashBufferService implements CrashBuffer {
   private static instance: CrashBufferService | null = null;
 
@@ -59,7 +55,9 @@ export class CrashBufferService implements CrashBuffer {
   private indexLoaded = false;
   private lastPruneAt = 0;
   private opChain: Promise<any> = Promise.resolve();
-  private defaultWindowMs: number = 1 * 60 * 1000;
+  private defaultWindowMs: number = 0.5 * 60 * 1000;
+  private lastSeenEventTs: number = 0;
+  private requiresFullSnapshot = true;
   private listeners = new Map<
     CrashBufferEventName,
     Set<(payload: CrashBufferEventMap[CrashBufferEventName]) => void>
@@ -111,19 +109,46 @@ export class CrashBufferService implements CrashBuffer {
   }
 
   async appendEvent(
-    payload: { ts: number; event: any },
+    payload: CrashBufferRrwebEventPayload,
     windowMs?: number
   ): Promise<void> {
+    const ts = payload?.ts ?? Date.now();
+    this.lastSeenEventTs = Math.max(this.lastSeenEventTs, ts);
+
+    const rawEventType =
+      (payload as any)?.event?.eventType ?? (payload as any)?.event?.type;
+    const isFullSnapshot =
+      Boolean(payload.isFullSnapshot) ||
+      rawEventType === EventType.FullSnapshot;
+    const isMeta = rawEventType === EventType.Meta;
+
+    // While waiting for the first FullSnapshot, keep Meta but drop incrementals.
+    if (this.requiresFullSnapshot && !isFullSnapshot && !isMeta) {
+      return;
+    }
+
+    const record: CrashBufferRrwebEventPayload = {
+      ...payload,
+      ts,
+      isFullSnapshot,
+    };
+
+    if (isFullSnapshot && this.requiresFullSnapshot) {
+      this.requiresFullSnapshot = false;
+    } else if (isFullSnapshot) {
+      this.requiresFullSnapshot = false;
+    }
+
     return this.appendRecord(
       'rrweb',
-      payload.ts,
-      payload,
+      record.ts,
+      record,
       windowMs ?? this.defaultWindowMs
     );
   }
 
   async appendSpans(
-    payload: Array<{ ts: number; span: any }>,
+    payload: CrashBufferOtelSpanBatchPayload,
     windowMs?: number
   ): Promise<void> {
     if (!payload.length) return;
@@ -161,7 +186,7 @@ export class CrashBufferService implements CrashBuffer {
   }
 
   setDefaultWindowMs(windowMs: number): void {
-    this.defaultWindowMs = Math.max(10_000, windowMs || 1 * 60 * 1000);
+    this.defaultWindowMs = Math.max(10_000, windowMs || 0.5 * 60 * 1000);
   }
 
   on<E extends CrashBufferEventName>(
@@ -281,32 +306,60 @@ export class CrashBufferService implements CrashBuffer {
         }
       }
 
-      const rrwebEvents: Array<{ ts: number; event: any }> = [];
-      const otelSpans: Array<{ ts: number; span: any }> = [];
+      const allEvents: CrashBufferRrwebEventPayload[] = [];
+      const allSpans: CrashBufferOtelSpanPayload[] = [];
 
       for (const e of entries.sort((a, b) => a.ts - b.ts)) {
         const key = `${RECORD_PREFIX}${e.id}`;
         const payload = byKey.get(key);
         if (!payload) continue;
-        if (e.kind === 'rrweb') rrwebEvents.push(payload);
-        if (e.kind === 'span') otelSpans.push(payload);
+        if (e.kind === 'rrweb') allEvents.push(payload);
+        if (e.kind === 'span') allSpans.push(payload);
       }
 
-      let attrs: any | null = null;
-      try {
-        const raw = AsyncStorage ? await AsyncStorage.getItem(ATTRS_KEY) : null;
-        attrs = raw ? JSON.parse(raw) : null;
-      } catch (_e) {
-        attrs = null;
+      // Mirror browser semantics:
+      // - Ensure the rrweb stream starts at Meta -> FullSnapshot (or is empty).
+      // - Only include spans from the replayable window onward.
+      const eventsSorted = allEvents.slice().sort((a, b) => a.ts - b.ts);
+      const firstSnapshotIdx = eventsSorted.findIndex((e) => {
+        const t = (e as any)?.event?.eventType ?? (e as any)?.event?.type;
+        return t === EventType.FullSnapshot;
+      });
+
+      if (firstSnapshotIdx < 0) {
+        return {
+          events: [],
+          spans: [],
+          startedAt: fromTs,
+          stoppedAt: toTs,
+        };
       }
+
+      let startIdx = firstSnapshotIdx;
+      for (let i = firstSnapshotIdx - 1; i >= 0; i--) {
+        const t =
+          (eventsSorted[i] as any)?.event?.eventType ??
+          (eventsSorted[i] as any)?.event?.type;
+        if (t === EventType.Meta) {
+          startIdx = i;
+          break;
+        }
+      }
+
+      const rrwebEvents = eventsSorted.slice(startIdx);
+      const firstEvent = rrwebEvents[0];
+      const replayStartedAt =
+        typeof firstEvent?.ts === 'number' ? firstEvent.ts : fromTs;
+
+      const otelSpans = allSpans
+        .filter((s) => typeof s?.ts === 'number' && s.ts >= replayStartedAt)
+        .sort((a, b) => a.ts - b.ts);
 
       return {
-        rrwebEvents,
-        otelSpans,
-        attrs,
-        windowMs: effectiveWindowMs,
-        fromTs,
-        toTs,
+        spans: otelSpans,
+        events: rrwebEvents,
+        stoppedAt: toTs,
+        startedAt: replayStartedAt,
       };
     });
   }
@@ -317,6 +370,8 @@ export class CrashBufferService implements CrashBuffer {
       await this.ensureIndexLoaded();
       const keys = this.index.map((e) => `${RECORD_PREFIX}${e.id}`);
       this.index = [];
+      this.lastSeenEventTs = 0;
+      this.requiresFullSnapshot = true;
       try {
         await AsyncStorage.multiRemove([INDEX_KEY, ATTRS_KEY, ...keys]);
       } catch (_e) {
