@@ -11,16 +11,16 @@ type ExpressErrorMiddleware = (
 ) => void;
 
 interface MiddlewareError extends Error {
-    status?: number | string;
+  status?: number | string;
+  statusCode?: number | string;
+  status_code?: number | string;
+  output?: {
     statusCode?: number | string;
-    status_code?: number | string;
-    output?: {
-      statusCode?: number | string;
-    };
-  }
+  };
+}
 
 interface ExpressHandlerOptions {
-    shouldHandleError?(this: void, error: Error): boolean;
+  shouldHandleError?(this: void, error: Error): boolean;
 }
 
 function getStatusCodeFromResponse(error: MiddlewareError): number {
