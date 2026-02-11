@@ -202,7 +202,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
 
     // GC: remove orphaned crash buffers from old tabs.
     // Keep TTL large to avoid any accidental data loss.
-    void this._bufferDb.sweepStaleTabs(24 * 60 * 60 * 1000)
+    void this._bufferDb.sweepStaleTabs(10 * 60 * 60 * 1000)
 
     setMaxCapturingHttpPayloadSize(this._configs.maxCapturingHttpPayloadSize || DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE)
     setShouldRecordHttpData(this._configs.captureBody, this._configs.captureHeaders)

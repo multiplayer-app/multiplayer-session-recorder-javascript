@@ -41,11 +41,6 @@ export class CrashBufferService implements CrashBuffer {
     const isFullSnapshot = Boolean(payload.isFullSnapshot)
     const eventType = payload?.event?.eventType
     const isMeta = eventType === EventType.Meta
-    if (this.requiresFullSnapshot && !isFullSnapshot && !isMeta) {
-      // rrweb replayable prefix is Meta -> FullSnapshot.
-      // While waiting for the first FullSnapshot, we still keep the Meta event (but drop incrementals).
-      return
-    }
 
     await this._safe(async () => {
       await this.db.appendEvent({
@@ -56,12 +51,7 @@ export class CrashBufferService implements CrashBuffer {
       })
     }, undefined as any)
 
-    if (isFullSnapshot && this.requiresFullSnapshot) {
-      // Ensure this snapshot becomes the first replayable event.
-      // Keep Meta + FullSnapshot (if present) and prune everything older.
-      await this._safe(() => this.db.pruneOlderThanWithRrwebSnapshotAnchor(this.tabId, payload.ts), undefined as any)
-      this.requiresFullSnapshot = false
-    } else if (isFullSnapshot) {
+    if (isFullSnapshot) {
       this.requiresFullSnapshot = false
     }
 
@@ -125,8 +115,14 @@ export class CrashBufferService implements CrashBuffer {
     const stoppedAt = now
     let startedAt = Math.max(0, stoppedAt - this.windowMs)
 
+    // Always include a full snapshot "anchor" if one exists at/before the window start.
+    const firstSnapshotAt = await this._safe(async () => {
+      const anchor = await this.db.getLastRrwebFullSnapshotBefore(this.tabId, startedAt)
+      return typeof anchor?.ts === 'number' ? anchor.ts : startedAt
+    }, startedAt)
+
     const [allEvents, allSpans] = await Promise.all([
-      this._safe(() => this.db.getRrwebEventsWindow(this.tabId, startedAt, stoppedAt), []),
+      this._safe(() => this.db.getRrwebEventsWindow(this.tabId, firstSnapshotAt, stoppedAt), []),
       this._safe(() => this.db.getOtelSpansWindow(this.tabId, startedAt, stoppedAt), [])
     ])
 

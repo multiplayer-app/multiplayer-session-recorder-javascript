@@ -57,7 +57,7 @@ export class CrashBufferService implements CrashBuffer {
   private opChain: Promise<any> = Promise.resolve();
   private defaultWindowMs: number = 0.5 * 60 * 1000;
   private lastSeenEventTs: number = 0;
-  private requiresFullSnapshot = true;
+
   private listeners = new Map<
     CrashBufferEventName,
     Set<(payload: CrashBufferEventMap[CrashBufferEventName]) => void>
@@ -120,24 +120,12 @@ export class CrashBufferService implements CrashBuffer {
     const isFullSnapshot =
       Boolean(payload.isFullSnapshot) ||
       rawEventType === EventType.FullSnapshot;
-    const isMeta = rawEventType === EventType.Meta;
-
-    // While waiting for the first FullSnapshot, keep Meta but drop incrementals.
-    if (this.requiresFullSnapshot && !isFullSnapshot && !isMeta) {
-      return;
-    }
 
     const record: CrashBufferRrwebEventPayload = {
       ...payload,
       ts,
       isFullSnapshot,
     };
-
-    if (isFullSnapshot && this.requiresFullSnapshot) {
-      this.requiresFullSnapshot = false;
-    } else if (isFullSnapshot) {
-      this.requiresFullSnapshot = false;
-    }
 
     return this.appendRecord(
       'rrweb',
@@ -371,7 +359,6 @@ export class CrashBufferService implements CrashBuffer {
       const keys = this.index.map((e) => `${RECORD_PREFIX}${e.id}`);
       this.index = [];
       this.lastSeenEventTs = 0;
-      this.requiresFullSnapshot = true;
       try {
         await AsyncStorage.multiRemove([INDEX_KEY, ATTRS_KEY, ...keys]);
       } catch (_e) {
