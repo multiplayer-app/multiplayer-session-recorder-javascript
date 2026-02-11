@@ -209,6 +209,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
 
     this._setupCrashBuffer()
     this._tracer.init(this._configs)
+
     this._apiService.init(this._configs)
     this._sessionWidget.init(this._configs)
     this._socketService.init({
@@ -459,7 +460,14 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       return
     }
     this._userAttributes = userAttributes
-    this._socketService.setUser(this._userAttributes)
+    this._tracer.clientId
+
+    const data = {
+      userAttributes: this._userAttributes,
+      clientId: this._tracer.clientId
+    }
+
+    this._socketService.setUser(data)
   }
 
   /**

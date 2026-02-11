@@ -227,8 +227,11 @@ export class SocketService extends Observable<SocketServiceEvents> {
     }
   }
 
-  public setUser(userAttributes: IUserAttributes | null): void {
-    this.emitSocketEvent(SOCKET_SET_USER_EVENT, userAttributes)
+  public setUser(data: {
+    userAttributes: IUserAttributes | null,
+    clientId?: string
+  }): void {
+    this.emitSocketEvent(SOCKET_SET_USER_EVENT, data)
   }
 
   public close(): Promise<void> {
