@@ -76,7 +76,7 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
   useWebsocket: true,
 
   buffering: {
-    enabled: true,
+    enabled: false,
     windowMinutes: 0.5,
     snapshotIntervalMs: 20000
   }
