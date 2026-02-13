@@ -1,9 +1,11 @@
 import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base'
+
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import {
   MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
+  MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
 } from '../constants/constants.base'
 
 export interface SessionRecorderBrowserTraceExporterConfig {
@@ -56,8 +58,8 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       url,
       apiKey,
       headers,
-      timeoutMillis,
       keepAlive,
+      timeoutMillis,
       concurrencyLimit,
     }
     this.postMessageType = postMessageType
@@ -65,39 +67,48 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
 
     this.exporter = this._createExporter()
   }
-
-  export(
-    spans: ReadableSpan[],
-    resultCallback: (result: { code: number }) => void,
-  ): void {
-    // Filter spans to only include those with Multiplayer trace prefixes
-    const filteredSpans = spans.filter(span => {
-      const traceId = span.spanContext().traceId
-      return traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
-        traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
-    })
-
+  _export(spans: ReadableSpan[], resultCallback: (result: { code: number }) => void): void {
     // Only proceed if there are filtered spans
-    if (filteredSpans.length === 0) {
+    if (spans.length === 0) {
       resultCallback({ code: 0 })
       return
     }
 
     if (this.usePostMessage) {
-      this.exportViaPostMessage(filteredSpans, resultCallback)
+      this.exportViaPostMessage(spans, resultCallback)
       return
     }
 
-    this.exporter.export(filteredSpans, (result) => {
+    this.exporter.export(spans, (result) => {
       if (result.code === 0) {
         resultCallback(result)
       } else if (this.config.usePostMessageFallback) {
         this.usePostMessage = true
-        this.exportViaPostMessage(filteredSpans, resultCallback)
+        this.exportViaPostMessage(spans, resultCallback)
       } else {
         resultCallback(result)
       }
     })
+  }
+
+  export(spans: ReadableSpan[], resultCallback: (result: { code: number }) => void): void {
+    // Filter spans to only include those with Multiplayer trace prefixes
+    const filteredSpans = spans.filter((span) => {
+      const traceId = span.spanContext().traceId
+      return (
+        traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
+        traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
+      )
+    })
+    this._export(filteredSpans, resultCallback)
+  }
+
+  exportBuffer(spans: ReadableSpan[], resultCallback: (result: { code: number }) => void): void {
+    const filteredSpans = spans.filter((span) => {
+      const traceId = span.spanContext().traceId
+      return traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX)
+    })
+    this._export(filteredSpans, resultCallback)
   }
 
   shutdown(): Promise<void> {
@@ -115,7 +126,7 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
         {
           action: 'traces',
           type: this.postMessageType,
-          payload: spans.map(span => this._serializeSpan(span)),
+          payload: spans.map((span) => this.serializeSpan(span)),
         },
         this.postMessageTargetOrigin,
       )
@@ -125,10 +136,23 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
     }
   }
 
-  private _serializeSpan(span: ReadableSpan): any {
+  serializeSpan(span: ReadableSpan): any {
     const spanContext = span.spanContext()
+    const instrumentationScope: any =
+      // OTel SDK (modern)
+      (span as any).instrumentationScope ||
+        // Older SDKs
+        (span as any).instrumentationLibrary || { name: 'unknown', version: undefined, schemaUrl: undefined }
+
+    const normalizedScope = {
+      name: instrumentationScope?.name || 'unknown',
+      version: instrumentationScope?.version,
+      schemaUrl: instrumentationScope?.schemaUrl,
+    }
     return {
       _spanContext: spanContext,
+      traceId: spanContext.traceId,
+      spanId: spanContext.spanId,
       name: span.name,
       kind: span.kind,
       links: span.links,
@@ -143,6 +167,7 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       droppedAttributesCount: span.droppedAttributesCount,
       droppedEventsCount: span.droppedEventsCount,
       droppedLinksCount: span.droppedLinksCount,
+      instrumentationScope: normalizedScope,
       resource: {
         attributes: span.resource.attributes,
         asyncAttributesPending: span.resource.asyncAttributesPending,
@@ -155,7 +180,7 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
       url: this.config.url,
       headers: {
         'Content-Type': 'application/json',
-        ...(this.config.apiKey ? { 'Authorization': this.config.apiKey } : {}),
+        ...(this.config.apiKey ? { Authorization: this.config.apiKey } : {}),
         ...(this.config.headers || {}),
       },
       timeoutMillis: this.config.timeoutMillis,
@@ -166,7 +191,6 @@ export class SessionRecorderBrowserTraceExporter implements SpanExporter {
 
   setApiKey(apiKey: string): void {
     this.config.apiKey = apiKey
-
     this.exporter = this._createExporter()
   }
 }

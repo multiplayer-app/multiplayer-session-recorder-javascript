@@ -1,5 +1,5 @@
-import { SessionType } from "./session-type.enum";
-import { UserType } from "./user-type.enum";
+import { SessionType } from './session-type.enum'
+import { UserType } from './user-type.enum'
 
 export interface IResourceAttributes {
   browserInfo?: string;

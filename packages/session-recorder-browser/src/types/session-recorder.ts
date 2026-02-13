@@ -1,12 +1,7 @@
-
 import { Span } from '@opentelemetry/api'
 import { ISession, IUserAttributes, SessionType } from '@multiplayer-app/session-recorder-common'
 import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web'
-import type {
-  MaskTextFn,
-  MaskInputFn,
-  MaskInputOptions,
-} from 'rrweb-snapshot'
+import type { MaskTextFn, MaskInputFn, MaskInputOptions } from 'rrweb-snapshot'
 import type { maskTextClass } from '@rrweb/types'
 import { LogData } from '@rrweb/rrweb-plugin-console-record'
 import { Observable } from 'lib0/observable'
@@ -17,7 +12,7 @@ export enum WidgetButtonPlacement {
   topLeft = 'top-left',
   topRight = 'top-right',
   bottomLeft = 'bottom-left',
-  bottomRight = 'bottom-right',
+  bottomRight = 'bottom-right'
 }
 
 export interface SessionRecorderOptions {
@@ -126,14 +121,13 @@ export interface SessionRecorderOptions {
    */
   usePostMessageFallback?: boolean
 
-
   /** If true, captures body in traces
    *  @default true
-  */
+   */
   captureBody?: boolean
   /** If true, captures headers in traces
    *  @default true
-  */
+   */
   captureHeaders?: boolean
 
   /**
@@ -154,6 +148,20 @@ export interface SessionRecorderOptions {
    * @default true
    */
   useWebsocket?: boolean
+
+  /**
+   * (Optional) Client-side crash buffer configuration.
+   * When enabled, the SDK keeps a rolling window of recent rrweb events + traces
+   * even if the user did not start a manual/continuous recording.
+   */
+  buffering?: {
+    /** Enable/disable buffering. @default false */
+    enabled?: boolean
+    /** Rolling window size (minutes). @default 0.5 */
+    windowMinutes?: number
+    /** Full snapshot interval (ms) while buffering. @default 20000 */
+    snapshotIntervalMs?: number
+  }
 }
 
 /**
@@ -163,32 +171,30 @@ export interface MaskingConfig {
   // Recorder masking
   /** If true, masks all input fields in the recording
    * @default true
-  */
-  maskAllInputs?: boolean;
+   */
+  maskAllInputs?: boolean
   /** Class-based masking configuration - can be string or RegExp */
-  maskTextClass?: maskTextClass;
+  maskTextClass?: maskTextClass
   /** CSS selector for elements that should be masked */
-  maskTextSelector?: string;
+  maskTextSelector?: string
   /** Specific options for masking different types of inputs */
-  maskInputOptions?: MaskInputOptions;
+  maskInputOptions?: MaskInputOptions
   /** Custom function for input masking */
-  maskInput?: MaskInputFn;
+  maskInput?: MaskInputFn
   /** Custom function for text masking */
-  maskText?: MaskTextFn;
+  maskText?: MaskTextFn
   /** Custom function for console event masking */
-  maskConsoleEvent?: (payload: LogData) => LogData;
-
+  maskConsoleEvent?: (payload: LogData) => LogData
 
   // Span masking
   /** If true, enables masking for debug span payload in traces
    *  @default true
-  */
-  isContentMaskingEnabled?: boolean;
+   */
+  isContentMaskingEnabled?: boolean
   /** Custom function for masking body in traces */
-  maskBody?: (payload: any, span: Span) => any;
+  maskBody?: (payload: any, span: Span) => any
   /** Custom function for masking headers in traces */
-  maskHeaders?: (headers: any, span: any) => any;
-
+  maskHeaders?: (headers: any, span: any) => any
 
   /** List of body fields to mask in traces */
   maskBodyFieldsList?: string[]
@@ -218,7 +224,16 @@ export interface BaseConfig {
 /**
  * Configuration interface for the Tracer class
  */
-export type TracerBrowserMasking = Pick<MaskingConfig, 'isContentMaskingEnabled' | 'maskBody' | 'maskHeaders' | 'maskBodyFieldsList' | 'maskHeadersList' | 'headersToInclude' | 'headersToExclude'>;
+export type TracerBrowserMasking = Pick<
+  MaskingConfig,
+  | 'isContentMaskingEnabled'
+  | 'maskBody'
+  | 'maskHeaders'
+  | 'maskBodyFieldsList'
+  | 'maskHeadersList'
+  | 'headersToInclude'
+  | 'headersToExclude'
+>
 
 export interface TracerBrowserConfig extends BaseConfig {
   /** Application name */
@@ -236,14 +251,14 @@ export interface TracerBrowserConfig extends BaseConfig {
   /** Whether to schematize document span payload */
   schemifyDocSpanPayload: boolean
   /** Maximum size for capturing HTTP payload */
-  maxCapturingHttpPayloadSize: number,
+  maxCapturingHttpPayloadSize: number
   /** If true, captures body in traces
    *  @default true
-  */
+   */
   captureBody: boolean
   /** If true, captures headers in traces
    *  @default true
-  */
+   */
   captureHeaders: boolean
   /** Configuration for masking sensitive data in session recordings */
   masking: TracerBrowserMasking
@@ -252,7 +267,16 @@ export interface TracerBrowserConfig extends BaseConfig {
 /**
  * Configuration interface for the Recorder class
  */
-export type RecorderMasking = Pick<MaskingConfig, 'maskAllInputs' | 'maskTextClass' | 'maskTextSelector' | 'maskInputOptions' | 'maskInput' | 'maskText' | 'maskConsoleEvent'>;
+export type RecorderMasking = Pick<
+  MaskingConfig,
+  | 'maskAllInputs'
+  | 'maskTextClass'
+  | 'maskTextSelector'
+  | 'maskInputOptions'
+  | 'maskInput'
+  | 'maskText'
+  | 'maskConsoleEvent'
+>
 
 export interface RecorderConfig extends BaseConfig {
   /** Whether to enable canvas recording */
@@ -324,14 +348,14 @@ export interface WidgetTextOverridesConfig {
 /**
  * Configuration interface for the ApiService class
  */
-export interface ApiServiceConfig extends BaseConfig { }
+export interface ApiServiceConfig extends BaseConfig {}
 
-export interface SessionRecorderConfigs extends Required<SessionRecorderOptions> { }
+export interface SessionRecorderConfigs extends Required<SessionRecorderOptions> {}
 
 export enum SessionState {
   started = '2',
   paused = '1',
-  stopped = '0',
+  stopped = '0'
 }
 
 export type SessionRecorderEvents = 'state-change' | 'init' | 'error'
@@ -361,7 +385,6 @@ export interface ISessionRecorder extends Observable<SessionRecorderEvents> {
    * The current state of the session
    */
   readonly sessionState: SessionState | null
-
 
   /**
    * Session attributes for additional context
@@ -428,7 +451,6 @@ export interface ISessionRecorder extends Observable<SessionRecorderEvents> {
    * @param attributes - the attributes to set
    */
   setSessionAttributes(attributes: Record<string, any>): void
-
 
   /**
    * Set the user attributes

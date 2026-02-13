@@ -1,7 +1,10 @@
 import { type Span } from '@opentelemetry/api';
-import { type ISession, type SessionType, type IUserAttributes } from '@multiplayer-app/session-recorder-common';
+import {
+  type ISession,
+  type SessionType,
+  type IUserAttributes,
+} from '@multiplayer-app/session-recorder-common';
 import { type PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web';
-
 
 // WidgetButtonPlacement moved to configs.ts
 
@@ -157,11 +160,23 @@ export interface SessionRecorderOptions {
   };
 
   /**
-  * @description
-  * If true, webSocket will be used to manage remote recording sessions.
-  * @default true
-  */
-  useWebsocket?: boolean
+   * @description
+   * If true, webSocket will be used to manage remote recording sessions.
+   * @default true
+   */
+  useWebsocket?: boolean;
+
+  /**
+   * (Optional) Client-side crash buffer configuration.
+   * When enabled, the SDK keeps a rolling window of recent events + traces
+   * even if the user did not start a manual/continuous recording.
+   */
+  buffering?: {
+    /** Enable/disable buffering. @default false */
+    enabled?: boolean;
+    /** Rolling window size (minutes). @default 0.5 */
+    windowMinutes?: number;
+  };
 }
 
 /**

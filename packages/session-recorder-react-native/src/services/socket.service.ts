@@ -13,8 +13,13 @@ import {
   REMOTE_SESSION_RECORDING_START,
   REMOTE_SESSION_RECORDING_STOP,
   SESSION_STARTED_EVENT,
+  SESSION_SAVE_BUFFER_EVENT,
 } from '../config';
-import type { ISession, IUserAttributes } from '@multiplayer-app/session-recorder-common';
+import {
+  type ISession,
+  type IUserAttributes,
+  ATTR_MULTIPLAYER_SESSION_CLIENT_ID,
+} from '@multiplayer-app/session-recorder-common';
 
 const MAX_RECONNECTION_ATTEMPTS = 2;
 
@@ -22,12 +27,14 @@ export type SocketServiceEvents =
   | typeof SESSION_STOPPED_EVENT
   | typeof SESSION_AUTO_CREATED
   | typeof REMOTE_SESSION_RECORDING_START
-  | typeof REMOTE_SESSION_RECORDING_STOP;
+  | typeof REMOTE_SESSION_RECORDING_STOP
+  | typeof SESSION_SAVE_BUFFER_EVENT;
 
 export interface SocketServiceOptions {
   apiKey: string;
   socketUrl: string;
   keepAlive?: boolean;
+  clientId?: string;
 }
 
 export class SocketService extends Observable<SocketServiceEvents> {
@@ -72,15 +79,13 @@ export class SocketService extends Observable<SocketServiceEvents> {
    */
   public updateConfigs(config: Partial<SocketServiceOptions>): void {
     // If any config changed, reconnect if connected
-    const hasChanges = Object.keys(config).some(
-      (key) => {
-        const typedKey = key as keyof SocketServiceOptions;
-        return (
-          config[typedKey] !== undefined &&
-          config[typedKey] !== this.options[typedKey]
-        );
-      }
-    );
+    const hasChanges = Object.keys(config).some((key) => {
+      const typedKey = key as keyof SocketServiceOptions;
+      return (
+        config[typedKey] !== undefined &&
+        config[typedKey] !== this.options[typedKey]
+      );
+    });
 
     if (hasChanges) {
       this.options = { ...this.options, ...config };
@@ -106,6 +111,9 @@ export class SocketService extends Observable<SocketServiceEvents> {
       path: '/v0/radar/ws',
       auth: {
         'x-api-key': this.options.apiKey,
+        ...(this.options.clientId
+          ? { [ATTR_MULTIPLAYER_SESSION_CLIENT_ID]: this.options.clientId }
+          : {}),
       },
       reconnectionAttempts: 2,
       transports: ['websocket'],
@@ -146,6 +154,10 @@ export class SocketService extends Observable<SocketServiceEvents> {
     this.socket.on(REMOTE_SESSION_RECORDING_STOP, (data: any) => {
       this.emit(REMOTE_SESSION_RECORDING_STOP, [data]);
     });
+
+    this.socket.on(SESSION_SAVE_BUFFER_EVENT, (data: any) => {
+      this.emit(SESSION_SAVE_BUFFER_EVENT, [data]);
+    });
   }
 
   private checkReconnectionAttempts(): void {
@@ -156,10 +168,10 @@ export class SocketService extends Observable<SocketServiceEvents> {
 
   private emitSocketEvent(name: string, data: any): void {
     if (this.socket && this.isConnected) {
-      this.socket.emit(name, data)
+      this.socket.emit(name, data);
     } else {
-      this.queue.push({ data, name })
-      this._initConnection()
+      this.queue.push({ data, name });
+      this._initConnection();
     }
   }
 
@@ -174,11 +186,9 @@ export class SocketService extends Observable<SocketServiceEvents> {
     }
   }
 
-
   public send(event: any): void {
-    this.emitSocketEvent(SESSION_ADD_EVENT, event)
+    this.emitSocketEvent(SESSION_ADD_EVENT, event);
   }
-
 
   public subscribeToSession(session: ISession): void {
     this.sessionId = session.shortId || session._id;
@@ -188,22 +198,29 @@ export class SocketService extends Observable<SocketServiceEvents> {
       debugSessionId: this.sessionId,
       sessionType: session.creationType,
     };
-    this.emitSocketEvent(SESSION_SUBSCRIBE_EVENT, payload)
+    this.emitSocketEvent(SESSION_SUBSCRIBE_EVENT, payload);
     // use long id instead of short id
-    this.emitSocketEvent(SESSION_STARTED_EVENT, { debugSessionId: session._id })
+    this.emitSocketEvent(SESSION_STARTED_EVENT, {
+      debugSessionId: session._id,
+    });
   }
 
   public unsubscribeFromSession(stopSession?: boolean) {
     if (this.sessionId) {
-      this.emitSocketEvent(SESSION_UNSUBSCRIBE_EVENT, { debugSessionId: this.sessionId })
+      this.emitSocketEvent(SESSION_UNSUBSCRIBE_EVENT, {
+        debugSessionId: this.sessionId,
+      });
       if (stopSession) {
-        this.emitSocketEvent(SESSION_STOPPED_EVENT, {})
+        this.emitSocketEvent(SESSION_STOPPED_EVENT, {});
       }
     }
   }
 
-  public setUser(userAttributes: IUserAttributes | null): void {
-    this.emitSocketEvent(SOCKET_SET_USER_EVENT, userAttributes)
+  public setUser(data: {
+    userAttributes: IUserAttributes | null;
+    clientId?: string;
+  }): void {
+    this.emitSocketEvent(SOCKET_SET_USER_EVENT, data);
   }
 
   public close(): Promise<void> {

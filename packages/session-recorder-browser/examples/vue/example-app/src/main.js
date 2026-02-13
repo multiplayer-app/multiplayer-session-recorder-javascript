@@ -17,7 +17,10 @@ SessionRecorder.init({
   ],
   ignoreUrls: [
     // Third-party requests domains to ignore in session recordings
-  ]
+  ],
+  buffering: {
+    enabled: true
+  }
 })
 
 const app = createApp(App)

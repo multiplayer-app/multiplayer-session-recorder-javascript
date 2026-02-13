@@ -4,7 +4,7 @@ import { configs } from './configs'
 
 function _tryReadFetchBody({
   body,
-  url
+  url,
 }: {
   // eslint-disable-next-line
   body: BodyInit | null | undefined
@@ -201,8 +201,8 @@ if (typeof window !== 'undefined' && typeof window.fetch !== 'undefined') {
         const urlStr = inputIsRequest
           ? (input as Request).url
           : typeof input === 'string' || input instanceof URL
-          ? String(input)
-          : ''
+            ? String(input)
+            : ''
 
         // Only attempt to read the body from init (safe); avoid constructing/cloning Requests
         // If the caller passed a Request as input, we do not attempt to read its body here
@@ -212,7 +212,7 @@ if (typeof window !== 'undefined' && typeof window.fetch !== 'undefined') {
         if (!isNullish(candidateBody)) {
           const requestBody = _tryReadFetchBody({
             body: candidateBody,
-            url: urlStr
+            url: urlStr,
           })
 
           if (requestBody?.length && new Blob([requestBody]).size <= configs.maxCapturingHttpPayloadSize) {

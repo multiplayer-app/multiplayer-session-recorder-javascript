@@ -70,5 +70,11 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     widgetTextOverrides: getWidgetTextOverridesConfig(c.widgetTextOverrides, BASE_CONFIG.widgetTextOverrides),
 
     useWebsocket: isValidBoolean(c.useWebsocket, BASE_CONFIG.useWebsocket ?? false),
+
+    buffering: {
+      enabled: c.buffering?.enabled ?? BASE_CONFIG.buffering.enabled,
+      windowMinutes: c.buffering?.windowMinutes ?? BASE_CONFIG.buffering.windowMinutes,
+      snapshotIntervalMs: c.buffering?.snapshotIntervalMs ?? BASE_CONFIG.buffering.snapshotIntervalMs,
+    },
   }
 }

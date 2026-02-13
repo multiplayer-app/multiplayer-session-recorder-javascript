@@ -1,12 +1,26 @@
-import { isValidTraceId } from '@opentelemetry/api'
+
+import {
+  isValidTraceId,
+  Context,
+  SpanKind,
+  Attributes,
+  Link,
+} from '@opentelemetry/api'
 import {
   Sampler,
   SamplingDecision,
   SamplingResult,
 } from '@opentelemetry/sdk-trace-base'
 import {
+  ATTR_EXCEPTION_MESSAGE,
+  ATTR_EXCEPTION_STACKTRACE,
+  ATTR_EXCEPTION_TYPE,
+} from '@opentelemetry/semantic-conventions'
+import {
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
+  MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
+  // MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX,
 } from './constants/constants.base'
 
 export class SessionRecorderTraceIdRatioBasedSampler implements Sampler {
@@ -17,10 +31,25 @@ export class SessionRecorderTraceIdRatioBasedSampler implements Sampler {
     this._upperBound = Math.floor(this._ratio * 0xffffffff)
   }
 
-  shouldSample(context: unknown, traceId: string): SamplingResult {
+  shouldSample(
+    context: Context,
+    traceId: string,
+    spanName: string,
+    spanKind: SpanKind,
+    attributes: Attributes,
+    links: Link[],
+  ): SamplingResult {
+    if (attributes[ATTR_EXCEPTION_MESSAGE] || attributes[ATTR_EXCEPTION_STACKTRACE] || attributes[ATTR_EXCEPTION_TYPE]) {
+      return {
+        decision: SamplingDecision.RECORD_AND_SAMPLED,
+      }
+    }
+
     if (
       traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX)
       || traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
+      || traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX)
+      // || traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_SESSION_CACHE_PREFIX)
     ) {
       return {
         decision: SamplingDecision.RECORD_AND_SAMPLED,

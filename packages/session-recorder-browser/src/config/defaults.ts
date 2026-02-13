@@ -1,18 +1,10 @@
 import {
   SessionRecorderSdk,
   MULTIPLAYER_BASE_API_URL,
-  MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
+  MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL
 } from '@multiplayer-app/session-recorder-common'
-import {
-  MaskingConfig,
-  SessionRecorderConfigs,
-  WidgetButtonPlacement,
-  WidgetTextOverridesConfig,
-} from '../types'
-import {
-  OTEL_MP_SAMPLE_TRACE_RATIO,
-  DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
-} from './constants'
+import { MaskingConfig, SessionRecorderConfigs, WidgetButtonPlacement, WidgetTextOverridesConfig } from '../types'
+import { OTEL_MP_SAMPLE_TRACE_RATIO, DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE } from './constants'
 const { mask, sensitiveFields, sensitiveHeaders } = SessionRecorderSdk
 
 export const DEFAULT_MASKING_CONFIG: MaskingConfig = {
@@ -23,7 +15,7 @@ export const DEFAULT_MASKING_CONFIG: MaskingConfig = {
   maskBodyFieldsList: sensitiveFields,
   maskHeadersList: sensitiveHeaders,
   headersToInclude: [],
-  headersToExclude: [],
+  headersToExclude: []
 }
 
 export const DEFAULT_WIDGET_TEXT_CONFIG: WidgetTextOverridesConfig = {
@@ -39,14 +31,16 @@ export const DEFAULT_WIDGET_TEXT_CONFIG: WidgetTextOverridesConfig = {
   saveButtonText: 'Submit recording',
   cancelButtonText: 'Cancel recording',
   continuousOverlayTitle: 'Save time, skip the reproductions',
-  continuousOverlayDescription: 'We keep a rolling record of your recent activity. If something doesn’t work as expected, just save the recording and continue working. No need to worry about exceptions and errors - we automatically save recordings for those!',
+  continuousOverlayDescription:
+    'We keep a rolling record of your recent activity. If something doesn’t work as expected, just save the recording and continue working. No need to worry about exceptions and errors - we automatically save recordings for those!',
   saveLastSnapshotButtonText: 'Save recording',
   submitDialogTitle: 'Save recording',
-  submitDialogSubtitle: 'This full-stack session recording will be saved directly to your selected Multiplayer project. All data is automatically correlated end-to-end.',
+  submitDialogSubtitle:
+    'This full-stack session recording will be saved directly to your selected Multiplayer project. All data is automatically correlated end-to-end.',
   submitDialogCommentLabel: 'You can also add context, comments, or notes.',
   submitDialogCommentPlaceholder: 'Add a message...',
   submitDialogSubmitText: 'Save',
-  submitDialogCancelText: 'Cancel',
+  submitDialogCancelText: 'Cancel'
 }
 
 export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
@@ -80,4 +74,10 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
   widgetTextOverrides: DEFAULT_WIDGET_TEXT_CONFIG,
 
   useWebsocket: true,
+
+  buffering: {
+    enabled: false,
+    windowMinutes: 0.5,
+    snapshotIntervalMs: 20000
+  }
 }

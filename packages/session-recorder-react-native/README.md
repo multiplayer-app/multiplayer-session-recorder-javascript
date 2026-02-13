@@ -801,19 +801,22 @@ This is different from system-wide screen recording which would require permissi
 
 ### Optional Options
 
-| Option                         | Type    | Default | Description                            |
-| ------------------------------ | ------- | ------- | -------------------------------------- |
-| `recordGestures`               | boolean | true    | Enable gesture recording               |
-| `recordNavigation`             | boolean | true    | Enable navigation tracking             |
-| `recordScreen`                 | boolean | true    | Enable screen recording                |
-| `sampleTraceRatio`             | number  | 0.15    | Trace sampling ratio (0.0-1.0)         |
-| `captureBody`                  | boolean | true    | Capture request/response bodies        |
-| `captureHeaders`               | boolean | true    | Capture request/response headers       |
-| `masking`                      | object  | -       | Data masking configuration             |
-| `ignoreUrls`                   | array   | []      | URLs to exclude from monitoring        |
-| `propagateTraceHeaderCorsUrls` | array   | []      | URLs for CORS trace header propagation |
-| `showContinuousRecording`      | boolean | true    | Show continuous recording option       |
-| `widget`                       | object  | -       | Session widget configuration           |
+| Option                         | Type    | Default   | Description                                               |
+| ------------------------------ | ------- | --------- | --------------------------------------------------------- |
+| `recordGestures`               | boolean | true      | Enable gesture recording                                  |
+| `recordNavigation`             | boolean | true      | Enable navigation tracking                                |
+| `recordScreen`                 | boolean | true      | Enable screen recording                                   |
+| `sampleTraceRatio`             | number  | 0.15      | Trace sampling ratio (0.0-1.0)                            |
+| `buffering`                    | object  | see below | Crash buffer (rolling window when no recording is active) |
+| `captureBody`                  | boolean | true      | Capture request/response bodies                           |
+| `captureHeaders`               | boolean | true      | Capture request/response headers                          |
+| `masking`                      | object  | -         | Data masking configuration                                |
+| `ignoreUrls`                   | array   | []        | URLs to exclude from monitoring                           |
+| `propagateTraceHeaderCorsUrls` | array   | []        | URLs for CORS trace header propagation                    |
+| `showContinuousRecording`      | boolean | true      | Show continuous recording option                          |
+| `widget`                       | object  | -         | Session widget configuration                              |
+
+**Buffering** (`buffering.enabled: false`, `buffering.windowMinutes: 0.5` by default): when enabled, the SDK keeps a rolling window of recent events and traces even when no recording is active. The buffer is flushed into the session when the user starts a session or saves (e.g. on error).
 
 ## Advanced Configuration
 
@@ -831,6 +834,12 @@ SessionRecorder.init({
   recordGestures: true,
   recordNavigation: true,
   recordScreen: true, // Captures app UI automatically
+
+  // Crash buffer: rolling window when no recording is active (flushed when session starts/saves)
+  buffering: {
+    enabled: true,
+    windowMinutes: 1, // default: 1
+  },
 
   // Network monitoring
   // NOTE: if frontend domain doesn't match to backend one, set backend domain to `propagateTraceHeaderCorsUrls` parameter
