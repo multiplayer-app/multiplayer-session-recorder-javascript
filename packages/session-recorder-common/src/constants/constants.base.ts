@@ -104,6 +104,8 @@ export const ATTR_MULTIPLAYER_ISSUE_HASH = 'multiplayer.issue.hash'
 
 export const ATTR_MULTIPLAYER_ISSUE_COMPONENT_HASH = 'multiplayer.issue.component-hash'
 
+export const ATTR_MULTIPLAYER_ISSUE_TITLE_HASH = 'multiplayer.issue.title-hash'
+
 export const ATTR_MULTIPLAYER_USER_HASH = 'multiplayer.user.hash'
 
 export const MASK_PLACEHOLDER = '***MASKED***'
