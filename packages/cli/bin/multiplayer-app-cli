@@ -1,0 +1,114 @@
+#!/usr/bin/env node
+
+import yargs from 'yargs'
+import { hideBin } from 'yargs/helpers'
+import { create as createRelease } from '../src/commands/releases/create.js'
+import { create as createDeployment } from '../src/commands/deployments/create.js'
+import { upload as uploadSourcemap } from '../src/commands/sourcemaps/upload.js'
+
+function handleResult(err, response) {
+  if (err) {
+    if (err.status) console.error('Status Code:', err.status)
+    if (err.response) console.error(err.response.text)
+    else console.error(err.message)
+    process.exit(1)
+  } else {
+    console.log(JSON.stringify(response, null, 2))
+  }
+}
+
+yargs(hideBin(process.argv))
+  .command('releases', 'Manage releases', (yargs) => {
+    yargs.command(
+      'create',
+      'Create a release',
+      (yargs) => yargs
+        .option('apiKey', { describe: 'Multiplayer personal user API key (MULTIPLAYER_API_KEY)', type: 'string' })
+        .option('service', { describe: 'Service name (SERVICE_NAME)', type: 'string' })
+        .option('releaseVersion', { describe: 'Release version (RELEASE)', type: 'string' })
+        .option('commitHash', { describe: 'Commit hash (COMMIT_HASH)', type: 'string' })
+        .option('releaseNotes', { describe: '[Optional] Release notes (RELEASE_NOTES)', type: 'string' })
+        .option('baseUrl', { describe: '[Optional] Base URL (BASE_URL)', type: 'string' }),
+      (argv) => {
+
+        const options = {
+          apiKey: argv.apiKey || process.env.MULTIPLAYER_API_KEY,
+          service: argv.service || process.env.SERVICE_NAME,
+          release: argv.release || process.env.RELEASE,
+          commitHash: argv.commitHash || process.env.COMMIT_HASH,
+          releaseNotes: argv.releaseNotes || process.env.RELEASE_NOTES,
+          baseUrl: argv.baseUrl || process.env.BASE_URL,
+        }
+        if (!options.apiKey) return exitWithError('A Multiplayer personal user API key is required.', yargs)
+        if (!options.service) return exitWithError('A service name is required.', yargs)
+        if (!options.release) return exitWithError('A release is required.', yargs)
+        createRelease(options, handleResult)
+      },
+    )
+      .demandCommand()
+      .help()
+  })
+  .command('deployments', 'Manage deployments', (yargs) => {
+    yargs.command(
+      'create',
+      'Create a deployment',
+      (yargs) => yargs
+        .option('apiKey', { describe: 'Multiplayer personal user API key (MULTIPLAYER_API_KEY)', type: 'string' })
+        .option('service', { describe: 'Service name (SERVICE_NAME)', type: 'string' })
+        .option('release', { describe: 'Service release (RELEASE)', type: 'string' })
+        .option('environment', { describe: 'Environment name (ENVIRONMENT)', type: 'string' })
+        .option('baseUrl', { describe: '[Optional] Base URL (BASE_URL)', type: 'string' }),
+      (argv) => {
+        const options = {
+          apiKey: argv.apiKey || process.env.MULTIPLAYER_API_KEY,
+          service: argv.service || process.env.SERVICE_NAME,
+          release: argv.release || process.env.VERSION,
+          environment: argv.environment || process.env.ENVIRONMENT,
+          baseUrl: argv.baseUrl || process.env.BASE_URL,
+        }
+        if (!options.apiKey) return exitWithError('A Multiplayer personal user API key is required.', yargs)
+        if (!options.service) return exitWithError('A service name is required.', yargs)
+        if (!options.release) return exitWithError('A version is required.', yargs)
+        if (!options.environment) return exitWithError('A environment is required.', yargs)
+        createDeployment(options, handleResult)
+      },
+    )
+      .demandCommand()
+      .help()
+  })
+  .command('sourcemaps', 'Manage sourcemaps', (yargs) => {
+    yargs.command(
+      'upload <directories...>',
+      'Upload sourcemaps from a directory',
+      (yargs) => yargs
+        .positional('directories', { describe: 'Path to directory containing sourcemap files' })
+        .option('apiKey', { describe: 'Multiplayer personal user API key (MULTIPLAYER_API_KEY)', type: 'string' })
+        .option('service', { describe: 'Service name (SERVICE_NAME)', type: 'string' })
+        .option('release', { describe: 'Service release (RELEASE)', type: 'string' })
+        .option('baseUrl', { describe: '[Optional] Base URL (BASE_URL)', type: 'string' }),
+      (argv) => {
+        const options = {
+          apiKey: argv.apiKey || process.env.MULTIPLAYER_API_KEY,
+          service: argv.service || process.env.SERVICE_NAME,
+          release: argv.release || process.env.RELEASE,
+          baseUrl: argv.baseUrl || process.env.BASE_URL,
+        }
+        if (!options.apiKey) return exitWithError('A Multiplayer personal user API key is required.', yargs)
+        if (!options.service) return exitWithError('A service name is required.', yargs)
+        if (!options.release) return exitWithError('A release is required.', yargs)
+
+        uploadSourcemap(argv.directories, options, handleResult)
+      },
+    )
+      .demandCommand()
+      .help()
+  })
+  .demandCommand()
+  .help()
+  .parse()
+
+function exitWithError(message, yargsInstance) {
+  yargsInstance.showHelp()
+  console.error(message)
+  process.exit(1)
+}

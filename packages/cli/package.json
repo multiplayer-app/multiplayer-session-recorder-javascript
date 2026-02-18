@@ -1,0 +1,47 @@
+{
+  "name": "@multiplayer-app/cli",
+  "version": "1.3.35",
+  "description": "Multiplayer CLI",
+  "author": {
+    "name": "Multiplayer Software, Inc.",
+    "url": "https://www.multiplayer.app"
+  },
+  "private": false,
+  "bugs": {
+    "url": "https://github.com/multiplayer-app/multiplayer-session-recorder-javascript/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/multiplayer-app/multiplayer-session-recorder-javascript.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=18",
+    "npm": ">=8"
+  },
+  "keywords": [
+    "multiplayer",
+    "api",
+    "release",
+    "sourcemap",
+    "deployment"
+  ],
+  "main": "src/index.js",
+  "bin": {
+    "multiplayer-app-cli": "./bin/multiplayer-app-cli"
+  },
+  "scripts": {
+    "lint": "eslint src/**/*.js",
+    "preversion": "npm run lint",
+    "prepublishOnly": "npm run lint"
+  },
+  "dependencies": {
+    "jsonwebtoken": "9.0.3",
+    "superagent": "10.1.0",
+    "yargs": "16.0.3"
+  },
+  "devDependencies": {
+    "eslint": "9.30.1"
+  }
+}
