@@ -27,6 +27,7 @@ yargs(hideBin(process.argv))
         .option('service', { describe: 'Service name (SERVICE_NAME)', type: 'string' })
         .option('releaseVersion', { describe: 'Release version (RELEASE)', type: 'string' })
         .option('commitHash', { describe: 'Commit hash (COMMIT_HASH)', type: 'string' })
+        .option('repositoryUrl', { describe: 'Repository URL (REPOSITORY_URL)', type: 'string' })
         .option('releaseNotes', { describe: '[Optional] Release notes (RELEASE_NOTES)', type: 'string' })
         .option('baseUrl', { describe: '[Optional] Base URL (BASE_URL)', type: 'string' }),
       (argv) => {
@@ -36,6 +37,7 @@ yargs(hideBin(process.argv))
           service: argv.service || process.env.SERVICE_NAME,
           release: argv.release || process.env.RELEASE,
           commitHash: argv.commitHash || process.env.COMMIT_HASH,
+          repositoryUrl: argv.repositoryUrl || process.env.REPOSITORY_URL,
           releaseNotes: argv.releaseNotes || process.env.RELEASE_NOTES,
           baseUrl: argv.baseUrl || process.env.BASE_URL,
         }
