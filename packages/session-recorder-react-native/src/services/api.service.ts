@@ -78,7 +78,7 @@ export class ApiService {
    * @param request - Session create error span request data
    * @param signal - Optional AbortSignal for request cancellation
    */
-  async createErrorSession(
+  createErrorSession(
     request: CreateErrorSpanSessionRequest,
     signal?: AbortSignal
   ): Promise<any> {
@@ -90,9 +90,10 @@ export class ApiService {
     );
   }
 
-  async updateSessionAttributes(
+  updateSessionAttributes(
     sessionId: string,
     requestBody: {
+      name?: string;
       startedAt?: string;
       stoppedAt?: string;
       userAttributes?: IUserAttributes;
@@ -115,13 +116,108 @@ export class ApiService {
    * @param requestBody - Request body containing events
    * @param signal - Optional AbortSignal for request cancellation
    */
-  async exportEvents(
+  exportEvents(
     sessionId: string,
     requestBody: { events: eventWithTime[] },
     signal?: AbortSignal
   ): Promise<any> {
     return this.makeRequest(
       `/debug-sessions/${sessionId}/rrweb-events`,
+      'POST',
+      requestBody,
+      signal
+    );
+  }
+
+  /**
+   * Start a new debug session
+   * @param request - Session start request data
+   * @param signal - Optional AbortSignal for request cancellation
+   */
+  startSession(
+    request: StartSessionRequest,
+    signal?: AbortSignal
+  ): Promise<any> {
+    return this.makeRequest('/debug-sessions/start', 'POST', request, signal);
+  }
+
+  /**
+   * Stop an active debug session
+   * @param sessionId - ID of the session to stop
+   * @param request - Session stop request data
+   */
+  stopSession(sessionId: string, request: StopSessionRequest): Promise<any> {
+    return this.makeRequest(
+      `/debug-sessions/${sessionId}/stop`,
+      'PATCH',
+      request
+    );
+  }
+
+  /**
+   * Cancel an active debug session
+   * @param sessionId - ID of the session to cancel
+   */
+  cancelSession(sessionId: string): Promise<any> {
+    return this.makeRequest(`/debug-sessions/${sessionId}/cancel`, 'DELETE');
+  }
+
+  /**
+   * Start a new continuous debug session
+   * @param request - Session start request data
+   * @param signal - Optional AbortSignal for request cancellation
+   */
+  startContinuousDebugSession(
+    request: StartSessionRequest,
+    signal?: AbortSignal
+  ): Promise<any> {
+    return this.makeRequest(
+      '/continuous-debug-sessions/start',
+      'POST',
+      request,
+      signal
+    );
+  }
+
+  /**
+   * Save a continuous debug session
+   * @param sessionId - ID of the session to save
+   * @param request - Session save request data
+   * @param signal - Optional AbortSignal for request cancellation
+   */
+  saveContinuousDebugSession(
+    sessionId: string,
+    request: StartSessionRequest,
+    signal?: AbortSignal
+  ): Promise<any> {
+    return this.makeRequest(
+      `/continuous-debug-sessions/${sessionId}/save`,
+      'POST',
+      request,
+      signal
+    );
+  }
+
+  /**
+   * Stop an active continuous debug session
+   * @param sessionId - ID of the session to stop
+   */
+  stopContinuousDebugSession(sessionId: string): Promise<any> {
+    return this.makeRequest(
+      `/continuous-debug-sessions/${sessionId}/cancel`,
+      'DELETE'
+    );
+  }
+
+  /**
+   * Check debug session should be started remotely
+   */
+  checkRemoteSession(
+    requestBody: CheckRemoteSessionRequest,
+    signal?: AbortSignal
+  ): Promise<{ state: 'START' | 'STOP' }> {
+    return this.makeRequest(
+      '/remote-debug-session/check',
       'POST',
       requestBody,
       signal
@@ -172,113 +268,5 @@ export class ApiService {
       }
       throw new Error('Error making request: ' + error.message);
     }
-  }
-
-  /**
-   * Start a new debug session
-   * @param request - Session start request data
-   * @param signal - Optional AbortSignal for request cancellation
-   */
-  async startSession(
-    request: StartSessionRequest,
-    signal?: AbortSignal
-  ): Promise<any> {
-    try {
-      const res = await this.makeRequest(
-        '/debug-sessions/start',
-        'POST',
-        request,
-        signal
-      );
-      return res;
-    } catch (error: any) {
-      throw error;
-    }
-  }
-
-  /**
-   * Stop an active debug session
-   * @param sessionId - ID of the session to stop
-   * @param request - Session stop request data
-   */
-  async stopSession(
-    sessionId: string,
-    request: StopSessionRequest
-  ): Promise<any> {
-    return this.makeRequest(
-      `/debug-sessions/${sessionId}/stop`,
-      'PATCH',
-      request
-    );
-  }
-
-  /**
-   * Cancel an active debug session
-   * @param sessionId - ID of the session to cancel
-   */
-  async cancelSession(sessionId: string): Promise<any> {
-    return this.makeRequest(`/debug-sessions/${sessionId}/cancel`, 'DELETE');
-  }
-
-  /**
-   * Start a new continuous debug session
-   * @param request - Session start request data
-   * @param signal - Optional AbortSignal for request cancellation
-   */
-  async startContinuousDebugSession(
-    request: StartSessionRequest,
-    signal?: AbortSignal
-  ): Promise<any> {
-    return this.makeRequest(
-      '/continuous-debug-sessions/start',
-      'POST',
-      request,
-      signal
-    );
-  }
-
-  /**
-   * Save a continuous debug session
-   * @param sessionId - ID of the session to save
-   * @param request - Session save request data
-   * @param signal - Optional AbortSignal for request cancellation
-   */
-  async saveContinuousDebugSession(
-    sessionId: string,
-    request: StartSessionRequest,
-    signal?: AbortSignal
-  ): Promise<any> {
-    return this.makeRequest(
-      `/continuous-debug-sessions/${sessionId}/save`,
-      'POST',
-      request,
-      signal
-    );
-  }
-
-  /**
-   * Stop an active continuous debug session
-   * @param sessionId - ID of the session to stop
-   */
-  async stopContinuousDebugSession(sessionId: string): Promise<any> {
-    return this.makeRequest(
-      `/continuous-debug-sessions/${sessionId}/cancel`,
-      'DELETE'
-    );
-  }
-
-  /**
-   * Check debug session should be started remotely
-   */
-  async checkRemoteSession(
-    requestBody: CheckRemoteSessionRequest,
-    signal?: AbortSignal
-  ): Promise<{ state: 'START' | 'STOP' }> {
-    return this.makeRequest(
-      '/remote-debug-session/check',
-      'POST',
-      requestBody,
-      signal
-    );
   }
 }

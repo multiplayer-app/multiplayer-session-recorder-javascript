@@ -16,9 +16,7 @@ SessionRecorder.init({
   ignoreUrls: [
     // Third-party requests domains to ignore in session recordings
   ],
-  buffering: {
-    enabled: true,
-  },
+  buffering: { enabled: true },
 });
 
 bootstrapApplication(AppComponent, appConfig).catch((err) =>

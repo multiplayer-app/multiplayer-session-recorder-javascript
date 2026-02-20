@@ -176,6 +176,8 @@ export interface SessionRecorderOptions {
     enabled?: boolean;
     /** Rolling window size (minutes). @default 0.5 */
     windowMinutes?: number;
+    /** Force a fresh full snapshot at this interval (ms). @default 20000 */
+    snapshotIntervalMs?: number;
   };
 }
 

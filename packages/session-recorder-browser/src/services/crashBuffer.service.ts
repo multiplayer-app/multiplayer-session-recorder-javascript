@@ -39,8 +39,6 @@ export class CrashBufferService implements CrashBuffer {
     if (!this.isActive) return
 
     const isFullSnapshot = Boolean(payload.isFullSnapshot)
-    const eventType = payload?.event?.eventType
-    const isMeta = eventType === EventType.Meta
 
     await this._safe(async () => {
       await this.db.appendEvent({

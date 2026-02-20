@@ -22,8 +22,11 @@ const isWeb = Platform.OS === 'web';
 export class ScreenRecorder implements EventRecorder {
   private config?: RecorderConfig;
   private isRecording = false;
+  private isBufferOnlyMode = false;
+  private needsFullSnapshot = true;
   private events: ScreenEvent[] = [];
   private captureInterval?: any;
+  private bufferSnapshotInterval?: any;
   private captureCount: number = 0;
   private maxCaptures: number = 100; // Limit captures to prevent memory issues
   private captureQuality: number = 0.2;
@@ -57,38 +60,55 @@ export class ScreenRecorder implements EventRecorder {
 
   start(): void {
     this.isRecording = true;
+    this.needsFullSnapshot = true;
     this.events = [];
     this.captureCount = 0;
     this.lastScreenCapture = null;
     this.lastScreenHash = null;
     this.currentImageNodeId = null; // Reset image node ID for new session
     logger.info('ScreenRecorder', 'Screen recording started');
-    // Emit screen recording started meta event
-
-    this.recordEvent(createRecordingMetaEvent());
 
     this._startPeriodicCapture();
-
+    this._startBufferSnapshotInterval();
     // Capture initial screen immediately
     this._captureScreen();
-
-    // Screen recording started
   }
 
   stop(): void {
     this.isRecording = false;
     this._stopPeriodicCapture();
+    this._stopBufferSnapshotInterval();
     // Screen recording stopped
   }
 
   pause(): void {
     this.isRecording = false;
     this._stopPeriodicCapture();
+    this._stopBufferSnapshotInterval();
   }
 
   resume(): void {
     this.isRecording = true;
-    // this._startPeriodicCapture()
+    this._startPeriodicCapture();
+    this._startBufferSnapshotInterval();
+  }
+
+  /**
+   * Enables behavior specific to crash-buffer-only mode.
+   * In this mode we periodically force a full snapshot anchor for replayability.
+   */
+  setBufferOnlyMode(enabled: boolean): void {
+    this.isBufferOnlyMode = enabled;
+    if (!enabled) {
+      this.needsFullSnapshot = false;
+      this._stopBufferSnapshotInterval();
+      return;
+    }
+
+    this.needsFullSnapshot = true;
+    if (this.isRecording) {
+      this._startBufferSnapshotInterval();
+    }
   }
 
   private _getScreenDimensions(): void {
@@ -118,6 +138,29 @@ export class ScreenRecorder implements EventRecorder {
     }
   }
 
+  private _startBufferSnapshotInterval(): void {
+    this._stopBufferSnapshotInterval();
+    if (!this.isBufferOnlyMode) {
+      return;
+    }
+
+    const configuredInterval =
+      this.config?.buffering?.snapshotIntervalMs || 20000;
+    const intervalMs = Math.max(5000, configuredInterval);
+    this.bufferSnapshotInterval = setInterval(() => {
+      // Force a fresh full snapshot anchor in buffer-only mode.
+      this.needsFullSnapshot = true;
+      void this._captureScreen();
+    }, intervalMs);
+  }
+
+  private _stopBufferSnapshotInterval(): void {
+    if (this.bufferSnapshotInterval) {
+      clearInterval(this.bufferSnapshotInterval);
+      this.bufferSnapshotInterval = undefined;
+    }
+  }
+
   private async _captureScreen(timestamp?: number): Promise<void> {
     if (!this.isRecording || this.captureCount >= this.maxCaptures) return;
 
@@ -131,8 +174,13 @@ export class ScreenRecorder implements EventRecorder {
           : true;
 
         if (hasChanged) {
-          // Use incremental snapshot if we have an existing image node, otherwise create full snapshot
-          if (this.currentImageNodeId !== null && this.lastScreenCapture) {
+          // Keep replay segments anchored: buffer-only mode can force a full snapshot.
+          const shouldEmitFullSnapshot =
+            this.needsFullSnapshot ||
+            this.currentImageNodeId === null ||
+            !this.lastScreenCapture;
+
+          if (!shouldEmitFullSnapshot) {
             const success = this.updateScreenWithIncrementalSnapshot(
               base64Image,
               timestamp
@@ -140,10 +188,12 @@ export class ScreenRecorder implements EventRecorder {
             if (!success) {
               // Fallback to full snapshot if incremental update fails
               this._createAndEmitFullSnapshotEvent(base64Image, timestamp);
+              this.needsFullSnapshot = false;
             }
           } else {
-            // First capture or no existing image node - create full snapshot
+            // First capture, forced anchor, or no existing image node.
             this._createAndEmitFullSnapshotEvent(base64Image, timestamp);
+            this.needsFullSnapshot = false;
           }
 
           this.lastScreenCapture = base64Image;
@@ -173,10 +223,12 @@ export class ScreenRecorder implements EventRecorder {
           'ScreenRecorder',
           'Using native masking for screen capture'
         );
-        const recordingImage = await screenRecordingService.captureMaskedScreen({
-          quality: this.captureQuality,
-          scale: this.captureScale,
-        });
+        const recordingImage = await screenRecordingService.captureMaskedScreen(
+          {
+            quality: this.captureQuality,
+            scale: this.captureScale,
+          }
+        );
 
         if (recordingImage) {
           return recordingImage;
@@ -187,8 +239,6 @@ export class ScreenRecorder implements EventRecorder {
           'Native masking failed, falling back to view-shot'
         );
       }
-
-
 
       // // Fallback to react-native-view-shot
       if (!this.viewShotRef) {
@@ -230,6 +280,9 @@ export class ScreenRecorder implements EventRecorder {
     timestamp?: number
   ): void {
     if (!this.screenDimensions) return;
+
+    // Keep replay anchors valid: each full snapshot is explicitly preceded by meta.
+    this.recordEvent(createRecordingMetaEvent());
 
     // Use the new createFullSnapshot method
     const fullSnapshotEvent = this.createFullSnapshot(base64Image, timestamp);
@@ -399,8 +452,6 @@ export class ScreenRecorder implements EventRecorder {
       // Failed to record error span - silently continue
     }
   }
-
-
 
   // Configuration methods
   setCaptureInterval(intervalMs: number): void {

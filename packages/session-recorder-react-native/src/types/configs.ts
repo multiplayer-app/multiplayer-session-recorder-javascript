@@ -107,6 +107,12 @@ export interface RecorderConfig extends BaseConfig {
   recordNavigation?: boolean;
   /** Whether to record screen */
   recordScreen?: boolean;
+  /** Buffering options used by recorder runtime behavior */
+  buffering?: {
+    enabled?: boolean;
+    windowMinutes?: number;
+    snapshotIntervalMs?: number;
+  };
   /** Configuration for masking sensitive data in screen recordings */
   masking?: RecorderMaskingConfig;
 }

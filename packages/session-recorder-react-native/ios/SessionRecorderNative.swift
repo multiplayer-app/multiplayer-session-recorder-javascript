@@ -69,7 +69,8 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
 
       let renderer = UIGraphicsImageRenderer(size: window.bounds.size, format: rendererFormat)
       let image = renderer.image { _ in
-        window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
+        // Wait for the latest committed frame; `false` can capture a blank pre-render frame.
+        window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
       }
 
       // Apply masking to sensitive elements
@@ -122,7 +123,8 @@ class SessionRecorderNative: RCTEventEmitter, UIGestureRecognizerDelegate {
 
       let renderer = UIGraphicsImageRenderer(size: window.bounds.size, format: rendererFormat)
       let image = renderer.image { _ in
-        window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
+        // Wait for the latest committed frame; `false` can capture a blank pre-render frame.
+        window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
       }
 
       // Apply masking with custom options

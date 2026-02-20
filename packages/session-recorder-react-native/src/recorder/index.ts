@@ -1,19 +1,21 @@
+import { EventType, type eventWithTime } from '@rrweb/types';
 import { SessionType } from '@multiplayer-app/session-recorder-common';
-// import { pack } from '@rrweb/packer' // Removed to avoid blob creation issues in Hermes
+
+import { logger } from '../utils';
+import { type RecorderConfig, type EventRecorder } from '../types';
 import { SocketService } from '../services/socket.service';
 import { CrashBufferService } from '../services/crashBuffer.service';
-import { logger } from '../utils';
+
 import { ScreenRecorder } from './screenRecorder';
 import { GestureRecorder } from './gestureRecorder';
-import { NavigationTracker } from './navigationTracker';
-import { type RecorderConfig, type EventRecorder } from '../types';
-import { type eventWithTime } from '@rrweb/types';
+import { NavigationRecorder } from './navigationRecorder';
+
 export class RecorderReactNativeSDK implements EventRecorder {
   private isRecording = false;
   private config?: RecorderConfig;
   private screenRecorder: ScreenRecorder;
   private gestureRecorder: GestureRecorder;
-  private navigationTracker: NavigationTracker;
+  private navigationRecorder: NavigationRecorder;
   private recordedEvents: eventWithTime[] = [];
   private socketService!: SocketService;
   private crashBuffer?: CrashBufferService;
@@ -25,7 +27,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
   constructor() {
     this.screenRecorder = new ScreenRecorder();
     this.gestureRecorder = new GestureRecorder();
-    this.navigationTracker = new NavigationTracker();
+    this.navigationRecorder = new NavigationRecorder();
   }
 
   init(
@@ -43,7 +45,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
       buffering?.windowMs || 0.5 * 60 * 1000
     );
     this.screenRecorder.init(config, this);
-    this.navigationTracker.init(config, this.screenRecorder);
+    this.navigationRecorder.init(config, this.screenRecorder);
     this.gestureRecorder.init(config, this, this.screenRecorder);
   }
 
@@ -61,6 +63,9 @@ export class RecorderReactNativeSDK implements EventRecorder {
     // Emit recording started meta event
 
     if (this.config.recordScreen) {
+      this.screenRecorder.setBufferOnlyMode(
+        !sessionId && this.bufferingEnabled
+      );
       this.screenRecorder.start();
     }
 
@@ -69,20 +74,20 @@ export class RecorderReactNativeSDK implements EventRecorder {
     }
 
     if (this.config.recordNavigation) {
-      this.navigationTracker.start();
+      this.navigationRecorder.start();
     }
   }
 
   stop(): void {
     this.isRecording = false;
     this.gestureRecorder.stop();
-    this.navigationTracker.stop();
+    this.navigationRecorder.stop();
     this.screenRecorder.stop();
     this.socketService?.close();
   }
 
   setNavigationRef(ref: any): void {
-    this.navigationTracker.setNavigationRef(ref);
+    this.navigationRecorder.setNavigationRef(ref);
   }
 
   /**
@@ -105,7 +110,15 @@ export class RecorderReactNativeSDK implements EventRecorder {
     // Buffer-only mode (no active debug session): persist locally.
     if (!this.sessionId && this.crashBuffer && this.bufferingEnabled) {
       void this.crashBuffer.appendEvent(
-        { ts: event.timestamp, event },
+        {
+          ts: event.timestamp,
+          isFullSnapshot: event.type === EventType.FullSnapshot,
+          event: {
+            event: event,
+            eventType: event.type,
+            timestamp: event.timestamp,
+          },
+        },
         this.bufferWindowMs
       );
       return;

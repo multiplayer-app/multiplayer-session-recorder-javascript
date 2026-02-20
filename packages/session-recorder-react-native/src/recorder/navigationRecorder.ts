@@ -2,7 +2,7 @@ import { type NavigationEvent, type RecorderConfig } from '../types';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { logger } from '../utils';
 
-export class NavigationTracker {
+export class NavigationRecorder {
   private config?: RecorderConfig;
   private isRecording = false;
   private navigationRef: any = null;
@@ -15,13 +15,22 @@ export class NavigationTracker {
   init(config: RecorderConfig, screenRecorder?: any): void {
     this.config = config;
     this.screenRecorder = screenRecorder;
-    logger.info('NavigationTracker', 'Navigation tracker initialized', {
+    logger.info('NavigationRecorder', 'Navigation tracker initialized', {
       config: this.config,
       screenRecorder: this.screenRecorder,
     });
   }
 
   setNavigationRef(ref: any): void {
+    if (this.navigationRef === ref) {
+      return;
+    }
+
+    // Clean up listeners attached to the previous ref before switching.
+    if (this.isRecording && this.navigationRef) {
+      this._removeNavigationListener();
+    }
+
     this.navigationRef = ref;
     if (this.isRecording) {
       this._setupNavigationListener();
@@ -29,10 +38,11 @@ export class NavigationTracker {
   }
 
   start(): void {
-    logger.info('NavigationTracker', 'Navigation tracking started');
+    logger.info('NavigationRecorder', 'Navigation tracking started');
     this.isRecording = true;
     this.navigationStack = [];
     this.navigationStartTime = Date.now();
+
     this._setupNavigationListener();
     // Navigation tracking started
   }
@@ -53,6 +63,8 @@ export class NavigationTracker {
   }
 
   private _setupNavigationListener(): void {
+    // Ensure we never accumulate duplicate listeners across restarts.
+    this._removeNavigationListener();
     if (!this.navigationRef) {
       // Navigation ref not set - silently continue
       return;
@@ -104,8 +116,8 @@ export class NavigationTracker {
     try {
       // Remove all listeners
       this.navigationListeners.forEach((listener, _) => {
-        if (listener && typeof listener.remove === 'function') {
-          listener.remove();
+        if (listener && typeof listener === 'function') {
+          listener();
         }
       });
       this.navigationListeners.clear();

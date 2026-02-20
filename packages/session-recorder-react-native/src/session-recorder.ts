@@ -192,12 +192,14 @@ class SessionRecorder
     }
 
     this._isFlushingBuffer = true;
+
     try {
       const { events, spans, startedAt, stoppedAt } =
         await this._crashBuffer.snapshot();
       if (events.length === 0 && spans.length === 0) {
         return null;
       }
+
       await Promise.all([
         this._tracer.exportTraces(spans.map((s) => s.span)),
         this._apiService.exportEvents(sessionId, {

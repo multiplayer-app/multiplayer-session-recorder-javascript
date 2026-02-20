@@ -108,5 +108,6 @@ export const BASE_CONFIG: SessionRecorderConfigs = {
   buffering: {
     enabled: false,
     windowMinutes: 0.5,
+    snapshotIntervalMs: 20000,
   },
 };

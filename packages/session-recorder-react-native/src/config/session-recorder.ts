@@ -95,6 +95,10 @@ export const getSessionRecorderConfig = (
         c.buffering?.windowMinutes,
         BASE_CONFIG.buffering.windowMinutes
       ),
+      snapshotIntervalMs: isValidNumber(
+        c.buffering?.snapshotIntervalMs,
+        BASE_CONFIG.buffering.snapshotIntervalMs
+      ),
     },
   };
 };
