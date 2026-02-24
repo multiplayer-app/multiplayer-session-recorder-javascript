@@ -47,6 +47,7 @@ export class SocketService extends Observable<SocketServiceEvents> {
   private sessionId: string | null = null
   private options: SocketServiceOptions
   private usePostMessage: boolean = false
+  private isInitialized: boolean = false
 
   constructor() {
     super()
@@ -67,6 +68,7 @@ export class SocketService extends Observable<SocketServiceEvents> {
       ...this.options,
       ...config
     }
+    this.isInitialized = true
     if (this.options.keepAlive && this.options.socketUrl && this.options.apiKey) {
       this._initConnection()
     }
@@ -96,7 +98,7 @@ export class SocketService extends Observable<SocketServiceEvents> {
   }
 
   private _initConnection(): void {
-    if (this.isConnecting || this.isConnected) return
+    if (this.isConnecting || this.isConnected || !this.isInitialized) return
     this.attempts++
     this.isConnecting = true
     this.usePostMessage = false
