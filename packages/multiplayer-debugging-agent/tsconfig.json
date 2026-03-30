@@ -1,0 +1,23 @@
+{
+  "extends": "@sindresorhus/tsconfig",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
+    "sourceMap": true,
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "jsxImportSource": "react",
+    "types": ["node"],
+    "skipLibCheck": true,
+    "target": "ES2022"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

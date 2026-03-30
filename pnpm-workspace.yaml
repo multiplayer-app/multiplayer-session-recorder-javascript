@@ -1,0 +1,6 @@
+packages:
+  - 'packages/*'
+
+linkWorkspacePackages: deep
+# shamefullyHoist: true
+nodeLinker: hoisted
