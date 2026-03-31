@@ -23,6 +23,10 @@
     "noUnusedParameters": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
+    "types": [
+      "jest",
+      "react"
+    ],
     "strict": true,
     "target": "ESNext",
     "verbatimModuleSyntax": true

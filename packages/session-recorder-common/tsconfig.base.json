@@ -23,6 +23,9 @@
     "strictNullChecks": true,
     "target": "es2017",
     "useUnknownInCatchVariables": false,
+    "types": [
+      "node"
+    ],
     "lib": [
       "es2017",
       "dom",

@@ -57,6 +57,7 @@
     "to-json-schema": "^0.2.5"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "@types/to-json-schema": "0.2.4",
     "typescript": "5.8.3"
   }

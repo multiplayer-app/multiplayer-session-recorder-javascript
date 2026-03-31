@@ -20,6 +20,9 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "sourceMap": true,
+    "types": [
+      "node"
+    ],
     "target": "ES2018",
     "downlevelIteration": true,
     "strict": true,
