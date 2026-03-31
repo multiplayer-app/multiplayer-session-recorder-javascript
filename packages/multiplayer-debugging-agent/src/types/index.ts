@@ -63,13 +63,7 @@ export interface Issue {
   updatedAt?: string
 }
 
-export type IssueStatus =
-  | 'pending'
-  | 'analyzing'
-  | 'applying'
-  | 'pushing'
-  | 'done'
-  | 'failed'
+export type IssueStatus = 'pending' | 'analyzing' | 'applying' | 'pushing' | 'done' | 'failed'
 
 export interface ActiveIssue {
   issue: Issue
@@ -143,6 +137,7 @@ export interface AgentAttachment {
 }
 
 export interface AgentMessage {
+  id?: string
   _id?: string
   chat: string
   role: AgentMessageRole

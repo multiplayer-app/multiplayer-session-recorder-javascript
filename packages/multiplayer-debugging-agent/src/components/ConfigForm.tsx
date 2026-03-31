@@ -1,6 +1,7 @@
-import { useState, type FC } from 'react'
-import { Box, Text, useInput } from 'ink'
-import TextInput from 'ink-text-input'
+import { useState, type ReactElement } from 'react'
+import { stringFromInputSubmit, type InputSubmitPayload } from '../lib/inputSubmit.js'
+import { tuiAttrs } from '../lib/tuiAttrs.js'
+import { useKeyboard } from '@opentui/react'
 import * as fs from 'fs'
 import * as path from 'path'
 import { AgentConfig } from '../types/index.js'
@@ -14,27 +15,23 @@ interface Field {
 }
 
 const FIELDS: Field[] = [
-  { key: 'apiKey', label: 'Project API key', placeholder: 'eyJ...', secret: true },
-  { key: 'dir', label: 'Project directory', placeholder: process.cwd() },
-  { key: 'model', label: 'AI model', placeholder: 'claude-sonnet-4-6 or gpt-4o' },
-  { key: 'modelKey', label: 'AI API key', placeholder: 'sk-...', secret: true },
-  { key: 'modelUrl', label: 'AI base URL (optional)', placeholder: 'leave empty for default' },
+  { key: 'apiKey',    label: 'Project API key',          placeholder: 'eyJ...',                 secret: true },
+  { key: 'dir',       label: 'Project directory',        placeholder: process.cwd() },
+  { key: 'model',     label: 'AI model',                 placeholder: 'claude-sonnet-4-6 or gpt-4o' },
+  { key: 'modelKey',  label: 'AI API key',               placeholder: 'sk-...',                 secret: true },
+  { key: 'modelUrl',  label: 'AI base URL (optional)',   placeholder: 'leave empty for default' },
 ]
 
 const isClaudeModel = (model?: string): boolean => !!(model?.startsWith('claude'))
 
 const MODEL_OPTIONS = [
-  { label: 'claude-sonnet-4-6', value: 'claude-sonnet-4-6' },
-  { label: 'claude-opus-4-6', value: 'claude-opus-4-6' },
-  { label: 'claude-haiku-4-5-20251001', value: 'claude-haiku-4-5-20251001' },
-  { label: 'gpt-4o', value: 'gpt-4o' },
-  { label: 'gpt-4o-mini', value: 'gpt-4o-mini' },
-  { label: 'Custom...', value: '__custom__' },
+  { label: 'claude-sonnet-4-6',          value: 'claude-sonnet-4-6' },
+  { label: 'claude-opus-4-6',            value: 'claude-opus-4-6' },
+  { label: 'claude-haiku-4-5-20251001',  value: 'claude-haiku-4-5-20251001' },
+  { label: 'gpt-4o',                     value: 'gpt-4o' },
+  { label: 'gpt-4o-mini',               value: 'gpt-4o-mini' },
+  { label: 'Custom...',                  value: '__custom__' },
 ]
-
-interface DirSelectProps {
-  onSelect: (value: string) => void
-}
 
 function readDirs(dirPath: string): string[] {
   try {
@@ -51,31 +48,30 @@ function readDirs(dirPath: string): string[] {
 const CONFIRM_ITEM = '__confirm__'
 const UP_ITEM = '__up__'
 
-const DirSelect: FC<DirSelectProps> = ({ onSelect }) => {
+interface DirSelectProps {
+  onSelect: (value: string) => void
+}
+
+function DirSelect({ onSelect }: DirSelectProps): ReactElement {
   const [currentPath, setCurrentPath] = useState(process.cwd())
   const [selectedIndex, setSelectedIndex] = useState(0)
 
   const subdirs = readDirs(currentPath)
   const isRoot = currentPath === path.parse(currentPath).root
-  const items = [
-    CONFIRM_ITEM,
-    ...(isRoot ? [] : [UP_ITEM]),
-    ...subdirs,
-  ]
+  const items = [CONFIRM_ITEM, ...(isRoot ? [] : [UP_ITEM]), ...subdirs]
 
-  useInput((_, key) => {
-    if (key.upArrow) {
+  useKeyboard(({ name }) => {
+    if (name === 'up') {
       setSelectedIndex((i) => Math.max(0, i - 1))
-    } else if (key.downArrow) {
+    } else if (name === 'down') {
       setSelectedIndex((i) => Math.min(items.length - 1, i + 1))
-    } else if (key.return) {
+    } else if (name === 'return') {
       const item = items[selectedIndex]
       if (!item) return
       if (item === CONFIRM_ITEM) {
         onSelect(currentPath)
       } else if (item === UP_ITEM) {
-        const parent = path.dirname(currentPath)
-        setCurrentPath(parent)
+        setCurrentPath(path.dirname(currentPath))
         setSelectedIndex(0)
       } else {
         setCurrentPath(path.join(currentPath, item))
@@ -85,102 +81,97 @@ const DirSelect: FC<DirSelectProps> = ({ onSelect }) => {
   })
 
   return (
-    <Box flexDirection="column">
-      <Box marginBottom={1}>
-        <Text dimColor>{currentPath}</Text>
-      </Box>
+    <box flexDirection="column">
+      <box marginBottom={1}>
+        <text attributes={tuiAttrs({ dim: true })}>{currentPath}</text>
+      </box>
       {items.map((item, i) => {
         const isActive = i === selectedIndex
         let label: string
         let color: string | undefined
         if (item === CONFIRM_ITEM) {
           label = 'Use this directory'
-          color = isActive ? 'green' : undefined
+          color = isActive ? '#10b981' : undefined
         } else if (item === UP_ITEM) {
           label = '../'
-          color = isActive ? 'cyan' : undefined
+          color = isActive ? '#22d3ee' : undefined
         } else {
           label = `${item}/`
-          color = isActive ? 'cyan' : undefined
+          color = isActive ? '#22d3ee' : undefined
         }
         return (
-          <Box key={item}>
-            <Text color={color} bold={isActive}>
-              {isActive ? '> ' : '  '}
-              {label}
-            </Text>
-          </Box>
+          <box key={item}>
+            <text fg={color} attributes={tuiAttrs({ bold: isActive })}>
+              {isActive ? '❯ ' : '  '}{label}
+            </text>
+          </box>
         )
       })}
-      <Box marginTop={1}>
-        <Text dimColor>↑↓ navigate · Enter confirm/open</Text>
-      </Box>
-    </Box>
-  )
+      <box marginTop={1}>
+        <text attributes={tuiAttrs({ dim: true })}>↑↓ navigate · Enter confirm/open</text>
+      </box>
+    </box>
+  ) as ReactElement
 }
 
 interface ModelSelectProps {
   onSelect: (value: string) => void
 }
 
-const ModelSelect: FC<ModelSelectProps> = ({ onSelect }: ModelSelectProps) => {
+function ModelSelect({ onSelect }: ModelSelectProps): ReactElement {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [customMode, setCustomMode] = useState(false)
   const [customValue, setCustomValue] = useState('')
 
-  useInput((_, key) => {
+  useKeyboard(({ name }) => {
     if (customMode) return
-
-    if (key.upArrow) {
-      setSelectedIndex((i: number) => Math.max(0, i - 1))
-    } else if (key.downArrow) {
-      setSelectedIndex((i: number) => Math.min(MODEL_OPTIONS.length - 1, i + 1))
-    } else if (key.return) {
+    if (name === 'up') {
+      setSelectedIndex((i) => Math.max(0, i - 1))
+    } else if (name === 'down') {
+      setSelectedIndex((i) => Math.min(MODEL_OPTIONS.length - 1, i + 1))
+    } else if (name === 'return') {
       const option = MODEL_OPTIONS[selectedIndex]
       if (!option) return
-      if (option.value === '__custom__') {
-        setCustomMode(true)
-      } else {
-        onSelect(option.value)
-      }
+      if (option.value === '__custom__') setCustomMode(true)
+      else onSelect(option.value)
     }
   })
 
   if (customMode) {
     return (
-      <Box>
-        <Text color="yellow">{'> '}</Text>
-        <TextInput
+      <box flexDirection="row" gap={1}>
+        <text fg="#f59e0b">❯</text>
+        <input
+          width={40}
           value={customValue}
-          onChange={setCustomValue}
-          onSubmit={(v: string) => {
-            const trimmed = v.trim()
-            if (trimmed) onSelect(trimmed)
+          onInput={setCustomValue}
+          onSubmit={(p) => {
+            const t = stringFromInputSubmit(p, customValue).trim()
+            if (t) onSelect(t)
           }}
           placeholder="Enter model name"
         />
-      </Box>
-    )
+      </box>
+    ) as ReactElement
   }
 
   return (
-    <Box flexDirection="column">
+    <box flexDirection="column">
       {MODEL_OPTIONS.map((option, i) => {
         const isActive = i === selectedIndex
         return (
-          <Box key={option.value}>
-            <Text color={isActive ? 'cyan' : undefined} bold={isActive}>
-              {isActive ? '> ' : '  '}
-              {option.label}
-            </Text>
-          </Box>
+          <box key={option.value}>
+            <text fg={isActive ? '#22d3ee' : undefined} attributes={tuiAttrs({ bold: isActive })}>
+              {isActive ? '❯ ' : '  '}{option.label}
+            </text>
+          </box>
         )
       })}
-      <Box marginTop={1}>
-        <Text dimColor>↑↓ navigate · Enter select</Text>
-      </Box>
-    </Box>
-  )
+      <box marginTop={1}>
+        <text attributes={tuiAttrs({ dim: true })}>↑↓ navigate · Enter select</text>
+      </box>
+    </box>
+  ) as ReactElement
 }
 
 interface Props {
@@ -188,7 +179,7 @@ interface Props {
   onComplete: (config: AgentConfig) => void
 }
 
-export const ConfigForm: FC<Props> = ({ initial, onComplete }) => {
+export function ConfigForm({ initial, onComplete }: Props): ReactElement | null {
   const missing = FIELDS.filter((f) => {
     if (f.key === 'modelUrl') return false
     if (f.key === 'modelKey' && isClaudeModel(initial.model)) return false
@@ -207,7 +198,6 @@ export const ConfigForm: FC<Props> = ({ initial, onComplete }) => {
   }
 
   const currentField = missing[step]
-
   if (!currentField) return null
 
   const advance = (value: string | undefined, extra?: Partial<AgentConfig>) => {
@@ -217,19 +207,16 @@ export const ConfigForm: FC<Props> = ({ initial, onComplete }) => {
     setValidationError(null)
 
     let nextStep = step + 1
-    // Skip modelKey when a Claude model is selected (uses preinstalled agent)
     if (currentField.key === 'model' && isClaudeModel(value) && missing[nextStep]?.key === 'modelKey') {
       nextStep++
     }
 
-    if (nextStep >= missing.length) {
-      onComplete(updated as AgentConfig)
-    } else {
-      setStep(nextStep)
-    }
+    if (nextStep >= missing.length) onComplete(updated as AgentConfig)
+    else setStep(nextStep)
   }
 
-  const handleSubmit = (value: string) => {
+  const handleSubmit = (payload: InputSubmitPayload) => {
+    const value = stringFromInputSubmit(payload, currentInput)
     const trimmed = value.trim()
     if (!trimmed && currentField.key !== 'modelUrl') return
 
@@ -238,14 +225,8 @@ export const ConfigForm: FC<Props> = ({ initial, onComplete }) => {
       setValidating(true)
       setValidationError(null)
       validateApiKey(url, trimmed)
-        .then(({ workspace, project }) => {
-          setValidating(false)
-          advance(trimmed, { workspace, project })
-        })
-        .catch((err: Error) => {
-          setValidating(false)
-          setValidationError(err.message)
-        })
+        .then(({ workspace, project }) => { setValidating(false); advance(trimmed, { workspace, project }) })
+        .catch((err: Error) => { setValidating(false); setValidationError(err.message) })
       return
     }
 
@@ -253,37 +234,37 @@ export const ConfigForm: FC<Props> = ({ initial, onComplete }) => {
   }
 
   return (
-    <Box flexDirection="column" padding={1}>
-      <Box marginBottom={1}>
-        <Text dimColor>
+    <box flexDirection="column" padding={1}>
+      <box marginBottom={1}>
+        <text attributes={tuiAttrs({ dim: true })}>
           Step {step + 1}/{missing.length}: {currentField.label}
-        </Text>
-      </Box>
+        </text>
+      </box>
 
       {validationError && (
-        <Box marginBottom={1}>
-          <Text color="red">✗ {validationError}</Text>
-        </Box>
+        <box marginBottom={1}>
+          <text fg="#ef4444">✗ {validationError}</text>
+        </box>
       )}
 
       {currentField.key === 'dir' ? (
-        <DirSelect onSelect={(v: string) => advance(v)} />
+        <DirSelect onSelect={(v) => advance(v)} />
       ) : currentField.key === 'model' ? (
-        <ModelSelect onSelect={(v: string) => advance(v)} />
+        <ModelSelect onSelect={(v) => advance(v)} />
       ) : validating ? (
-        <Text color="yellow">Validating API key...</Text>
+        <text fg="#f59e0b">◌ Validating API key...</text>
       ) : (
-        <Box>
-          <Text color="yellow">{'> '}</Text>
-          <TextInput
+        <box flexDirection="row" gap={1}>
+          <text fg="#f59e0b">❯</text>
+          <input
+            width={50}
             value={currentInput}
-            onChange={setCurrentInput}
+            onInput={setCurrentInput}
             onSubmit={handleSubmit}
             placeholder={currentField.placeholder}
-            mask={currentField.secret ? '*' : undefined}
           />
-        </Box>
+        </box>
       )}
-    </Box>
-  )
+    </box>
+  ) as ReactElement
 }

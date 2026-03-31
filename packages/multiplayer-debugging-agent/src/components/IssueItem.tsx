@@ -1,5 +1,6 @@
 import React from 'react'
-import { Box, Text } from 'ink'
+import { tuiAttrs } from '../lib/tuiAttrs.js'
+import { collapseForSingleLine } from '../lib/formatDisplay.js'
 import { ActiveIssue } from '../types/index.js'
 
 interface Props {
@@ -7,50 +8,51 @@ interface Props {
 }
 
 const statusLabel: Record<string, { label: string; color: string }> = {
-  pending:   { label: 'PENDING',   color: 'gray' },
-  analyzing: { label: 'ANALYZING', color: 'cyan' },
-  applying:  { label: 'APPLYING',  color: 'yellow' },
-  pushing:   { label: 'PUSHING',   color: 'yellow' },
-  done:      { label: 'DONE',      color: 'green' },
-  failed:    { label: 'FAILED',    color: 'red' },
+  pending:   { label: 'PENDING',   color: '#6b7280' },
+  analyzing: { label: 'ANALYZING', color: '#22d3ee' },
+  applying:  { label: 'APPLYING',  color: '#f59e0b' },
+  pushing:   { label: 'PUSHING',   color: '#f59e0b' },
+  done:      { label: 'DONE',      color: '#10b981' },
+  failed:    { label: 'FAILED',    color: '#ef4444' },
 }
 
 export const IssueItem: React.FC<Props> = ({ activeIssue }) => {
   const { issue, status, branchName, error } = activeIssue
-  const { label, color } = statusLabel[status] ?? { label: status.toUpperCase(), color: 'white' }
+  const { label, color } = statusLabel[status] ?? { label: status.toUpperCase(), color: '#f8fafc' }
 
   const elapsed = Math.round((Date.now() - activeIssue.startedAt.getTime()) / 1000)
 
   return (
-    <Box
+    <box
       flexDirection="column"
-      borderStyle="single"
-      borderColor={color as any}
-      paddingX={1}
+      border={true}
+      borderStyle="rounded"
+      borderColor={color}
+      padding={1}
       marginBottom={1}
     >
-      <Box flexDirection="row" gap={1}>
-        <Text bold color={color as any}>[{label}]</Text>
-        <Text bold>{issue.title}</Text>
-      </Box>
-      <Box flexDirection="row" gap={2}>
-        <Text dimColor>category: {issue.category}</Text>
-        <Text dimColor>service: {issue.service.serviceName}</Text>
+      <box flexDirection="row" gap={1}>
+        <text fg={color} attributes={tuiAttrs({ bold: true })}>[{label}]</text>
+        <text attributes={tuiAttrs({ bold: true })}>{collapseForSingleLine(issue.title)}</text>
+      </box>
+      <box flexDirection="row" gap={2}>
+        <text attributes={tuiAttrs({ dim: true })}>category: {issue.category}</text>
+        <text attributes={tuiAttrs({ dim: true })}>service: {issue.service.serviceName}</text>
         {issue.metadata.filename && (
-          <Text dimColor>file: {issue.metadata.filename}</Text>
+          <text attributes={tuiAttrs({ dim: true })}>file: {issue.metadata.filename}</text>
         )}
-        <Text dimColor>{elapsed}s</Text>
-      </Box>
+        <text attributes={tuiAttrs({ dim: true })}>{elapsed}s</text>
+      </box>
       {branchName && (
-        <Box>
-          <Text color="green">branch: {branchName}</Text>
-        </Box>
+        <box>
+          <text fg="#10b981">branch: {branchName}</text>
+        </box>
       )}
       {error && (
-        <Box>
-          <Text color="red">error: {error}</Text>
-        </Box>
+        <box>
+          <text fg="#ef4444">error: {error}</text>
+        </box>
       )}
-    </Box>
+    </box>
   )
 }

@@ -1,38 +1,44 @@
-import React from 'react'
-import { Box, Text } from 'ink'
+import type { ReactElement } from 'react'
+import { tuiAttrs } from '../lib/tuiAttrs.js'
 import { LogEntry } from '../types/index.js'
 
 interface Props {
   logs: LogEntry[]
+  /** When set, only the last N lines are shown; otherwise all entries (for scroll containers). */
   maxLines?: number
+  /** When false, omit the banner (use inside a titled panel). */
+  showTitle?: boolean
 }
 
 const levelColor: Record<string, string> = {
-  info: 'white',
-  error: 'red',
-  debug: 'gray',
+  info:  '#f8fafc',
+  error: '#ef4444',
+  debug: '#6b7280',
 }
 
-export const LogOutput: React.FC<Props> = ({ logs, maxLines = 10 }) => {
-  const visible = logs.slice(-maxLines)
+/** Return narrowed to ReactElement — OpenTUI JSX is typed as ReactNode (TS2786 under React 19). */
+export function LogOutput({ logs, maxLines, showTitle = true }: Props): ReactElement {
+  const visible = maxLines != null ? logs.slice(-maxLines) : logs
 
   return (
-    <Box flexDirection="column" marginTop={1}>
-      <Text dimColor bold>── Logs ──────────────────────────────────────</Text>
+    <box flexDirection="column" gap={0}>
+      {showTitle && (
+        <text attributes={tuiAttrs({ dim: true, bold: true })}>── Logs ──────────────────────────────────────</text>
+      )}
       {visible.length === 0 && (
-        <Text dimColor>  (no logs yet)</Text>
+        <text attributes={tuiAttrs({ dim: true })}>{showTitle ? '  (no logs yet)' : '(no activity yet)'}</text>
       )}
       {visible.map((entry, i) => {
         const ts = entry.timestamp.toTimeString().slice(0, 8)
-        const color = levelColor[entry.level] ?? 'white'
+        const color = levelColor[entry.level] ?? '#f8fafc'
         return (
-          <Box key={i} flexDirection="row" gap={1}>
-            <Text dimColor>{ts}</Text>
-            <Text color={color as any}>[{entry.level.toUpperCase()}]</Text>
-            <Text color={color as any}>{entry.message}</Text>
-          </Box>
+          <box key={`${entry.timestamp.getTime()}-${i}`} flexDirection="row" gap={1}>
+            <text attributes={tuiAttrs({ dim: true })}>{ts}</text>
+            <text fg={color}>[{entry.level.toUpperCase()}]</text>
+            <text fg={color}>{entry.message}</text>
+          </box>
         )
       })}
-    </Box>
-  )
+    </box>
+  ) as ReactElement
 }

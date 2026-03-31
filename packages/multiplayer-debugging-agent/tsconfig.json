@@ -3,20 +3,19 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "lib": ["DOM", "DOM.Iterable", "ES2023"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "sourceMap": true,
     "jsx": "react-jsx",
-    "esModuleInterop": true,
+    "jsxImportSource": "@opentui/react",
     "isolatedModules": true,
     "noPropertyAccessFromIndexSignature": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "jsxImportSource": "react",
     "types": ["node"],
-    "skipLibCheck": true,
-    "target": "ES2022"
+    "skipLibCheck": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

@@ -1,5 +1,6 @@
-import React from 'react'
-import { Box, Text, useInput } from 'ink'
+import React, { type ReactElement } from 'react'
+import { tuiAttrs } from '../../lib/tuiAttrs.js'
+import { useKeyboard } from '@opentui/react'
 import type { AgentConfig } from '../../types/index.js'
 
 interface Props {
@@ -7,31 +8,37 @@ interface Props {
   onComplete: (updates: Partial<AgentConfig>) => void
 }
 
-export const WorkspaceStep: React.FC<Props> = ({ config, onComplete }) => {
-  useInput((_, key) => {
-    if (key.return) {
-      onComplete({})
-    }
+export function WorkspaceStep({ config, onComplete }: Props): ReactElement {
+  useKeyboard(({ name }) => {
+    if (name === 'return') onComplete({})
   })
 
   return (
-    <Box flexDirection="column" gap={1}>
-      <Text dimColor>Confirm detected workspace/project before proceeding.</Text>
-      <Box flexDirection="column" gap={0} marginTop={1} borderStyle="single" borderColor="gray" paddingX={1}>
-        <Box gap={2}>
-          <Text dimColor>Workspace:</Text>
-          <Text color="cyan">{config.workspace ?? '—'}</Text>
-        </Box>
-        <Box gap={2}>
-          <Text dimColor>Project:  </Text>
-          <Text color="cyan">{config.project ?? '—'}</Text>
-        </Box>
-        <Box gap={2}>
-          <Text dimColor>URL:      </Text>
-          <Text>{config.url}</Text>
-        </Box>
-      </Box>
-      <Text dimColor>Press Enter to accept</Text>
-    </Box>
-  )
+    <box flexDirection="column" gap={1}>
+      <text attributes={tuiAttrs({ dim: true })}>Confirm detected workspace/project before proceeding.</text>
+      <box
+        flexDirection="column"
+        border={true}
+        borderStyle="rounded"
+        borderColor="#374151"
+        padding={1}
+        marginTop={1}
+        gap={0}
+      >
+        <box flexDirection="row" gap={2}>
+          <text attributes={tuiAttrs({ dim: true })}>Workspace:</text>
+          <text fg="#22d3ee">{config.workspace ?? '—'}</text>
+        </box>
+        <box flexDirection="row" gap={2}>
+          <text attributes={tuiAttrs({ dim: true })}>Project:  </text>
+          <text fg="#22d3ee">{config.project ?? '—'}</text>
+        </box>
+        <box flexDirection="row" gap={2}>
+          <text attributes={tuiAttrs({ dim: true })}>URL:      </text>
+          <text>{config.url}</text>
+        </box>
+      </box>
+      <text attributes={tuiAttrs({ dim: true })}>Press Enter to accept</text>
+    </box>
+  ) as ReactElement
 }

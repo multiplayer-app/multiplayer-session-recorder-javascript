@@ -1,267 +1,335 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { Box, Text, useInput, useStdout } from "ink";
-import type { RuntimeState, SessionDetail } from "../../runtime/types.js";
-import type { AgentConfig } from "../../types/index.js";
-import { SessionListPane } from "../panes/SessionListPane.js";
-import {
-  SessionDetailPane,
-  getSessionDisplayRowCount,
-} from "../panes/SessionDetailPane.js";
-import { FooterHints } from "../panes/FooterHints.js";
+import { useState, useCallback, useEffect, useMemo, type ReactElement } from 'react'
+import { tuiAttrs } from '../../lib/tuiAttrs.js'
+import type { KeyEvent, MouseEvent } from '@opentui/core'
+import { MouseButton } from '@opentui/core'
+import { useKeyboard, useTerminalDimensions } from '@opentui/react'
+import type { RuntimeState, SessionDetail } from '../../runtime/types.js'
+import type { AgentConfig, LogEntry } from '../../types/index.js'
+import { LogOutput } from '../LogOutput.js'
+import { SessionListPane } from '../panes/SessionListPane.js'
+import { SessionDetailPane } from '../panes/SessionDetailPane.js'
+import { FooterHints, type FooterHintItem } from '../panes/FooterHints.js'
 
-type ConnectionState = RuntimeState["connection"];
+type ConnectionState = RuntimeState['connection']
 
-const CONNECTION_BADGE: Record<
-  ConnectionState,
-  { symbol: string; color: string }
-> = {
-  idle: { symbol: "○", color: "gray" },
-  connecting: { symbol: "○", color: "yellow" },
-  connected: { symbol: "●", color: "green" },
-  disconnected: { symbol: "○", color: "gray" },
-  error: { symbol: "✕", color: "red" },
-};
-
-interface Props {
-  state: RuntimeState;
-  config: AgentConfig;
-  sessionDetails: Map<string, SessionDetail>;
-  onQuitRequest: () => void;
-  onLoadMessages: (chatId: string) => void;
+const CONNECTION_BADGE: Record<ConnectionState, { symbol: string; color: string }> = {
+  idle: { symbol: '○', color: '#6b7280' },
+  connecting: { symbol: '◌', color: '#f59e0b' },
+  connected: { symbol: '●', color: '#10b981' },
+  disconnected: { symbol: '○', color: '#6b7280' },
+  error: { symbol: '✕', color: '#ef4444' }
 }
 
-// Static arrays — defined at module level so they are not recreated on every render
-const LIST_HINTS = [
-  { key: "↑↓", label: "navigate" },
-  { key: "Tab/↵", label: "view session" },
-  { key: "q", label: "quit" },
-];
-const DETAIL_HINTS = [
-  { key: "↑↓/j/k", label: "scroll" },
-  { key: "u/d", label: "half page" },
-  { key: "g/f", label: "top/latest" },
-  { key: "Tab/Esc", label: "sessions" },
-  { key: "q", label: "quit" },
-];
+interface Props {
+  state: RuntimeState
+  config: AgentConfig
+  sessionDetails: Map<string, SessionDetail>
+  agentLogs: LogEntry[]
+  onQuitRequest: () => void
+  onLoadMessages: (chatId: string, before?: string) => void
+  /** When true (e.g. quit dialog open), ignore keys so the overlay handles them. */
+  suspendKeyboard?: boolean
+}
 
-export const DashboardScreen: React.FC<Props> = ({
+export function DashboardScreen({
   state,
   config,
   sessionDetails,
+  agentLogs,
   onQuitRequest,
   onLoadMessages,
-}) => {
-  const { stdout } = useStdout();
-  const [rows, setRows] = useState(stdout.rows);
-  const [columns, setColumns] = useState(stdout.columns);
-
-  useEffect(() => {
-    const onResize = () => {
-      setRows(process.stdout.rows);
-      setColumns(process.stdout.columns);
-    };
-    stdout.on("resize", onResize);
-    return () => {
-      stdout.off("resize", onResize);
-    };
-  }, [stdout]);
+  suspendKeyboard = false
+}: Props): ReactElement {
+  const { width: columns, height: rows } = useTerminalDimensions()
 
   // sidebar(32) + its border(1) + pane border(1) + pane padding(1+1) + pane border(1) = 37
-  const contentWidth = Math.max(20, (columns || 120) - 37);
+  const contentWidth = Math.max(20, columns - 37)
 
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [focusedPane, setFocusedPane] = useState<"list" | "detail">("list");
-  const [msgScrollOffset, setMsgScrollOffset] = useState(0);
-  const [followTail, setFollowTail] = useState(true);
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [focusedPane, setFocusedPane] = useState<'list' | 'detail' | 'logs'>('list')
+  const [showAgentLogs, setShowAgentLogs] = useState(false)
 
-  const clampedIndex = Math.min(
-    selectedIndex,
-    Math.max(0, state.sessions.length - 1)
-  );
-  const selectedSession = state.sessions[clampedIndex];
-  const selectedDetail = selectedSession
-    ? sessionDetails.get(selectedSession.chatId) ?? null
-    : null;
+  const toggleAgentLogs = useCallback(() => {
+    setShowAgentLogs((show) => {
+      if (show) {
+        setFocusedPane((fp) => (fp === 'logs' ? 'list' : fp))
+      } else {
+        setFocusedPane('logs')
+      }
+      return !show
+    })
+  }, [])
 
-  const visibleRowCount = Math.max(4, rows - 12);
-  const pageSize = Math.max(3, Math.floor(visibleRowCount / 2));
+  const logBlockHeight = Math.min(28, Math.max(8, rows - 10))
 
-  // Memoize the row count so parseBlocks is not re-run on every keypress
-  const totalDetailRows = useMemo(
-    () => getSessionDisplayRowCount(selectedDetail, contentWidth),
-    [selectedDetail, contentWidth]
-  );
+  const clampedIndex = Math.min(selectedIndex, Math.max(0, state.sessions.length - 1))
+  const selectedSession = state.sessions[clampedIndex]
+  const selectedDetail = selectedSession ? (sessionDetails.get(selectedSession.chatId) ?? null) : null
 
-  // Synchronous state adjustment when switching sessions.
-  // Effects fire AFTER Ink writes a frame, so correcting scroll offset in an
-  // effect causes one visible frame with the new session's content at the old
-  // session's scroll position (the blink). By adjusting state during render,
-  // React discards the stale render and restarts — no intermediate frame is
-  // written to the terminal.
-  const prevSessionRef = useRef(clampedIndex);
-  if (prevSessionRef.current !== clampedIndex) {
-    prevSessionRef.current = clampedIndex;
-    setFollowTail(true);
-    setMsgScrollOffset(Math.max(0, totalDetailRows - visibleRowCount));
-  }
+  const listHints = useMemo((): FooterHintItem[] => {
+    const scrollListHints: FooterHintItem[] =
+      state.sessions.length > 0
+        ? [
+            { id: 'list-page', keys: 'PgUp/Dn', label: 'Scroll list' },
+            { id: 'list-ends', keys: 'Hm/End', label: 'List ends' }
+          ]
+        : []
+    return [
+      { id: 'nav', keys: '↑↓', label: 'Move' },
+      ...scrollListHints,
+      { id: 'detail', keys: 'Tab/↵', label: 'Detail' },
+      {
+        id: 'logs',
+        keys: 'l',
+        label: showAgentLogs ? 'Hide logs' : 'Show logs',
+        onPress: toggleAgentLogs
+      },
+      {
+        id: 'quit',
+        keys: 'q',
+        label: 'Quit',
+        alt: 'q / Ctrl+C',
+        onPress: () => onQuitRequest()
+      }
+    ]
+  }, [showAgentLogs, onQuitRequest, state.sessions.length, toggleAgentLogs])
 
-  // Fetch messages for the newly selected session (side-effect, must stay in useEffect).
+  const detailHints = useMemo((): FooterHintItem[] => {
+    return [
+      { id: 'scroll', keys: '↑↓·jk·wheel', label: 'Scroll' },
+      { id: 'page', keys: 'PgUp/Dn', label: 'Page' },
+      { id: 'ends', keys: 'Hm/End', label: 'Ends' },
+      {
+        id: 'sessions',
+        keys: 'Tab/Esc',
+        label: showAgentLogs ? 'List · logs' : 'List'
+      },
+      {
+        id: 'logs',
+        keys: 'l',
+        label: showAgentLogs ? 'Hide logs' : 'Show logs',
+        onPress: toggleAgentLogs
+      },
+      {
+        id: 'quit',
+        keys: 'q',
+        label: 'Quit',
+        alt: 'q / Ctrl+C',
+        onPress: () => onQuitRequest()
+      }
+    ]
+  }, [showAgentLogs, onQuitRequest, toggleAgentLogs])
+
+  const logsHints = useMemo((): FooterHintItem[] => {
+    return [
+      { id: 'scroll', keys: '↑↓·jk·wheel', label: 'Scroll logs' },
+      { id: 'page', keys: 'PgUp/Dn', label: 'Page' },
+      { id: 'ends', keys: 'Hm/End', label: 'Ends' },
+      {
+        id: 'focus',
+        keys: 'Tab',
+        label: showAgentLogs ? 'List · detail · logs' : 'List · detail'
+      },
+      { id: 'back', keys: 'Esc', label: 'List' },
+      {
+        id: 'logs',
+        keys: 'l',
+        label: 'Hide logs',
+        onPress: toggleAgentLogs
+      },
+      {
+        id: 'quit',
+        keys: 'q',
+        label: 'Quit',
+        alt: 'q / Ctrl+C',
+        onPress: () => onQuitRequest()
+      }
+    ]
+  }, [showAgentLogs, onQuitRequest, toggleAgentLogs])
+
   useEffect(() => {
-    const session = state.sessions[clampedIndex];
-    if (session) {
-      onLoadMessages(session.chatId);
-    }
-  }, [clampedIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+    const session = state.sessions[clampedIndex]
+    if (session) onLoadMessages(session.chatId)
+  }, [clampedIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When new messages arrive for the current session, keep tail-follow active.
-  useEffect(() => {
-    if (followTail && totalDetailRows > 0) {
-      setMsgScrollOffset(Math.max(0, totalDetailRows - visibleRowCount));
-    }
-  }, [selectedDetail, followTail, visibleRowCount, totalDetailRows]);
-
-  const scrollDetail = useCallback(
-    (delta: number) => {
-      const maxOffset = Math.max(0, totalDetailRows - visibleRowCount);
-      setMsgScrollOffset((current) => {
-        const next = Math.max(0, Math.min(maxOffset, current + delta));
-        setFollowTail(next >= maxOffset);
-        return next;
-      });
-    },
-    [totalDetailRows, visibleRowCount]
-  );
-
-  const jumpToBottom = useCallback(() => {
-    setMsgScrollOffset(Math.max(0, totalDetailRows - visibleRowCount));
-    setFollowTail(true);
-  }, [totalDetailRows, visibleRowCount]);
-
-  useInput(
+  useKeyboard(
     useCallback(
-      (input, key) => {
-        if (key.tab) {
-          setFocusedPane((p) => (p === "list" ? "detail" : "list"));
-          return;
+      (key: KeyEvent) => {
+        if (suspendKeyboard) return
+        const { name } = key
+        if (name === 'tab') {
+          setFocusedPane((p) => {
+            if (!showAgentLogs) {
+              return p === 'list' ? 'detail' : 'list'
+            }
+            if (p === 'list') return 'detail'
+            if (p === 'detail') return 'logs'
+            return 'list'
+          })
+          key.stopPropagation()
+          return
         }
 
-        if (focusedPane === "list") {
-          if (key.upArrow) {
-            setSelectedIndex((i) => Math.max(0, i - 1));
-          } else if (key.downArrow) {
-            setSelectedIndex((i) => Math.min(state.sessions.length - 1, i + 1));
-          } else if (key.return && selectedDetail) {
-            setFocusedPane("detail");
-          }
-        } else {
-          // detail pane: up/down scrolls messages
-          const maxOffset = Math.max(0, totalDetailRows - visibleRowCount);
-          if (key.upArrow || input === "k") {
-            scrollDetail(-1);
-          } else if (key.downArrow || input === "j") {
-            scrollDetail(1);
-          } else if (input === "u") {
-            scrollDetail(-pageSize);
-          } else if (input === "d") {
-            scrollDetail(pageSize);
-          } else if (input === "g") {
-            setMsgScrollOffset(0);
-            setFollowTail(false);
-          } else if (input === "G" || input === "f") {
-            jumpToBottom();
-          } else if (key.escape) {
-            setFocusedPane("list");
-          } else if (msgScrollOffset >= maxOffset) {
-            setFollowTail(true);
-          }
+        if (name === 'l' || name === 'L') {
+          toggleAgentLogs()
+          key.stopPropagation()
+          return
         }
 
-        if (input === "q" || input === "Q") {
-          onQuitRequest();
+        if (focusedPane === 'list') {
+          if (name === 'up') {
+            setSelectedIndex((i) => Math.max(0, i - 1))
+            key.stopPropagation()
+          } else if (name === 'down') {
+            setSelectedIndex((i) => Math.min(state.sessions.length - 1, i + 1))
+            key.stopPropagation()
+          } else if (name === 'return' && selectedDetail) {
+            setFocusedPane('detail')
+            key.stopPropagation()
+          }
+        } else if (name === 'escape') {
+          setFocusedPane('list')
+          key.stopPropagation()
+        }
+        // Detail / logs: focused <scrollbox> handles ↑↓ j/k PgUp/Dn Home/End + wheel
+
+        if (name === 'q' || name === 'Q') {
+          onQuitRequest()
+          key.stopPropagation()
         }
       },
       [
+        suspendKeyboard,
         focusedPane,
         state.sessions.length,
         selectedDetail,
-        totalDetailRows,
         onQuitRequest,
-        jumpToBottom,
-        msgScrollOffset,
-        pageSize,
-        scrollDetail,
-        visibleRowCount,
+        showAgentLogs,
+        toggleAgentLogs
       ]
     )
-  );
+  )
 
-  const { symbol, color } = CONNECTION_BADGE[state.connection];
-  const activeCount = state.sessions.filter(
-    (s) => !["done", "failed", "aborted"].includes(s.status)
-  ).length;
+  const handleLogDockMouseUp = useCallback((e: MouseEvent) => {
+    if (e.button !== MouseButton.LEFT) return
+    e.stopPropagation()
+    setFocusedPane('logs')
+  }, [])
+
+  const { symbol, color } = CONNECTION_BADGE[state.connection]
+  const activeCount = state.sessions.filter((s) => !['done', 'failed', 'aborted'].includes(s.status)).length
 
   return (
-    <Box flexDirection="column" height={rows}>
-      {/* Header — flat Box row so ink computes height correctly */}
-      <Box
-        borderStyle="round"
-        borderColor="gray"
-        paddingX={1}
-        flexDirection="row"
+    <box flexDirection='column' height={rows} gap={0}>
+      {/* Header */}
+      <box
+        border={true}
+        borderStyle='rounded'
+        borderColor='#374151'
+        padding={1}
+        flexDirection='row'
         flexShrink={0}
+        gap={2}
       >
-        <Text color="#493bff" bold>
-          MULTIPLAYER
-        </Text>
-        <Text dimColor> | </Text>
-        <Text color={color as any}>
+        <text fg='#6366f1' attributes={tuiAttrs({ bold: true })}>
+          ◆ MULTIPLAYER
+        </text>
+        <text attributes={tuiAttrs({ dim: true })}>│</text>
+        <text fg={color}>
           {symbol} {state.connection}
-        </Text>
-        {state.connectionError && (
-          <Text color="red"> {state.connectionError}</Text>
-        )}
+        </text>
+        {state.connectionError && <text fg='#ef4444'>{state.connectionError}</text>}
         {config.workspace && (
           <>
-            <Text dimColor> | workspace: </Text>
-            <Text>{config.workspace.slice(-8)}</Text>
+            <text attributes={tuiAttrs({ dim: true })}>│ workspace:</text>
+            <text>{config.workspace.slice(-8)}</text>
           </>
         )}
         {config.project && (
           <>
-            <Text dimColor> project: </Text>
-            <Text>{config.project.slice(-8)}</Text>
+            <text attributes={tuiAttrs({ dim: true })}>project:</text>
+            <text>{config.project.slice(-8)}</text>
           </>
         )}
-        <Text dimColor> | model: </Text>
-        <Text>{config.model}</Text>
-        <Text dimColor> | </Text>
+        <text attributes={tuiAttrs({ dim: true })}>│ model:</text>
+        <text>{config.model}</text>
+        <text attributes={tuiAttrs({ dim: true })}>│</text>
         {activeCount > 0 && (
           <>
-            <Text color="yellow">{activeCount} active</Text>
-            <Text dimColor> | </Text>
+            <text fg='#f59e0b'>{activeCount} active</text>
+            <text attributes={tuiAttrs({ dim: true })}>│</text>
           </>
         )}
-        <Text color="green">{state.resolvedCount} resolved</Text>
-      </Box>
+        <text fg='#10b981'>{state.resolvedCount} resolved</text>
+      </box>
 
-      {/* Body: two panes */}
-      <Box flexDirection="row" flexGrow={1}>
+      {/* Body: two panes side by side */}
+      <box flexDirection='row' flexGrow={1} gap={1}>
         <SessionListPane
           sessions={state.sessions}
           selectedIndex={clampedIndex}
-          isFocused={focusedPane === "list"}
+          isFocused={focusedPane === 'list'}
+          onSelectSession={(index) => {
+            setSelectedIndex(index)
+            setFocusedPane('list')
+          }}
         />
         <SessionDetailPane
           session={selectedDetail}
-          scrollOffset={msgScrollOffset}
-          visibleMessageCount={visibleRowCount}
           contentWidth={contentWidth}
-          isFocused={focusedPane === "detail"}
+          isFocused={focusedPane === 'detail'}
+          onRequestFocus={() => setFocusedPane('detail')}
+          onRequestLoadMore={() =>
+            selectedDetail?.messages[0]?.id &&
+            onLoadMessages(selectedSession?.chatId ?? '', selectedDetail?.messages[0]?.id)
+          }
         />
-      </Box>
+      </box>
+
+      {/* Runtime logs (TUI only — headless still uses JSON lines on stdout/stderr) */}
+      {showAgentLogs && (
+        <box
+          border={true}
+          borderStyle='rounded'
+          borderColor='#374151'
+          padding={1}
+          flexShrink={0}
+          flexDirection='column'
+          gap={1}
+          height={logBlockHeight}
+          onMouseUp={handleLogDockMouseUp}
+        >
+          <text flexShrink={0} attributes={tuiAttrs({ dim: true, bold: true })}>
+            Logs
+          </text>
+          <scrollbox
+            flexGrow={1}
+            scrollY
+            focused={focusedPane === 'logs'}
+            stickyScroll
+            stickyStart='bottom'
+            onMouseUp={handleLogDockMouseUp}
+            style={{
+              wrapperOptions: { flexGrow: 1 },
+              viewportOptions: { flexGrow: 1 },
+              scrollbarOptions: {
+                showArrows: true,
+                trackOptions: {
+                  foregroundColor: '#a78bfa',
+                  backgroundColor: '#374151'
+                }
+              }
+            }}
+          >
+            <LogOutput logs={agentLogs} showTitle={false} />
+          </scrollbox>
+        </box>
+      )}
 
       {/* Footer */}
-      <FooterHints hints={focusedPane === "list" ? LIST_HINTS : DETAIL_HINTS} />
-    </Box>
-  );
-};
+      <FooterHints
+        hints={focusedPane === 'list' ? listHints : focusedPane === 'detail' ? detailHints : logsHints}
+      />
+    </box>
+  ) as ReactElement
+}

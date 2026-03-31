@@ -1,6 +1,6 @@
-#!/usr/bin/env node
-import 'dotenv/config'
-import { render } from 'ink'
+#!/usr/bin/env bun
+import { createCliRenderer } from '@opentui/core'
+import { createRoot } from '@opentui/react'
 import React from 'react'
 import { App } from './App.js'
 import { parseFlags, isCompleteConfig } from './cli/flags.js'
@@ -30,11 +30,10 @@ if (firstArg && CLI_SUBCOMMANDS.has(firstArg)) {
   }
 
   if (mode === 'headless') {
-    // Headless mode: validate config completeness and run without TUI
     if (!isCompleteConfig(initialConfig)) {
       process.stderr.write(
         'headless mode requires a complete config via flags or environment variables.\n' +
-        'Required: --api-key, --dir, --model (and --model-key for non-Claude models)\n'
+          'Required: --api-key, --dir, --model (and --model-key for non-Claude models)\n'
       )
       process.exit(1)
     }
@@ -60,8 +59,6 @@ if (firstArg && CLI_SUBCOMMANDS.has(firstArg)) {
       process.exit(0)
     })
 
-    // SIGTERM: finish active sessions before exiting (graceful k8s pod shutdown)
-    // SIGINT (Ctrl-C): stop immediately
     process.on('SIGTERM', () => {
       logger('info', 'SIGTERM received — waiting for active sessions to complete')
       controller.quit('after-current')
@@ -70,16 +67,28 @@ if (firstArg && CLI_SUBCOMMANDS.has(firstArg)) {
 
     controller.connect()
   } else {
-    // TUI mode (default when no arguments given)
-    const { waitUntilExit } = render(React.createElement(App, { initialConfig, profileName }))
+    void (async () => {
+      const renderer = await createCliRenderer({
+        exitOnCtrlC: false,
+        targetFps: 60,
+        screenMode: 'alternate-screen',
+        consoleMode: 'console-overlay',
+      })
 
-    process.on('SIGINT', () => process.exit(0))
-    process.on('SIGTERM', () => process.exit(0))
+      const exitApp = () => {
+        // stop() only halts the loop; destroy() restores tty (raw mode, mouse, alt screen).
+        renderer.destroy()
+        process.exit(0)
+      }
 
-    waitUntilExit().then(() => {
-      // Clear the terminal after TUI exits
-      process.stdout.write('\x1b[2J\x1b[H')
-      process.exit(0)
-    })
+      process.on('SIGINT', exitApp)
+      process.on('SIGTERM', exitApp)
+
+      createRoot(renderer).render(
+        React.createElement(App, { initialConfig, profileName, onExit: exitApp })
+      )
+
+      renderer.start()
+    })()
   }
 }

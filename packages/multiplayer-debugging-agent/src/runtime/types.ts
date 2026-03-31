@@ -1,14 +1,8 @@
-import type { AgentMessage, AgentToolCall } from '../types/index.js'
+import type { AgentAttachment, AgentMessage, AgentToolCall } from '../types/index.js'
 
 export type RuntimeMode = 'tui' | 'headless'
 
-export type StartupStep =
-  | 'api-key'
-  | 'workspace'
-  | 'directory'
-  | 'model'
-  | 'rate-limits'
-  | 'connecting'
+export type StartupStep = 'api-key' | 'workspace' | 'directory' | 'model' | 'rate-limits' | 'connecting'
 
 export type ConnectionState = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error'
 
@@ -33,12 +27,15 @@ export interface SessionMessage {
   role: AgentMessage['role']
   content: string
   activity?: string
+  agentName?: string
+  attachments?: AgentAttachment[]
   toolCalls?: AgentToolCall[]
   createdAt: Date
 }
 
 export interface SessionDetail extends SessionSummary {
   messages: SessionMessage[]
+  hasMore?: boolean
 }
 
 export interface RateLimitState {

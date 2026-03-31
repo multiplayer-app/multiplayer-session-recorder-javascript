@@ -1,82 +1,165 @@
-import React, { useState, useLayoutEffect } from "react";
-import { Box, Text, useInput } from "ink";
-import type { QuitMode } from "../../runtime/types.js";
+import { useState, type ReactElement } from 'react'
+import type { KeyEvent, MouseEvent } from '@opentui/core'
+import { MouseButton, RGBA } from '@opentui/core'
+import { tuiAttrs } from '../../lib/tuiAttrs.js'
+import { useKeyboard, useTerminalDimensions } from '@opentui/react'
+import type { QuitMode } from '../../runtime/types.js'
 
-type Option = QuitMode | "cancel";
+type Option = QuitMode | 'cancel'
 
-const OPTIONS: { value: Option; label: string; description: string }[] = [
+const QUIT_BACKDROP_BG = RGBA.fromInts(10, 10, 12, 150)
+
+/** Selection border + key hints (FooterHints-style) */
+const ACCENT = { keys: '#22d3ee' } as const
+
+const OPTIONS: { value: Option; digit: string; label: string; description: string }[] = [
   {
-    value: "now",
-    label: "Quit now",
-    description: "Stop immediately, abandoning any active sessions",
+    value: 'now',
+    digit: '1',
+    label: 'Quit now',
+    description: 'Stop immediately — active sessions are abandoned'
   },
   {
-    value: "after-current",
-    label: "Quit after current sessions",
-    description: "Wait for active sessions to finish, then exit",
+    value: 'after-current',
+    digit: '2',
+    label: 'Quit when idle',
+    description: 'Finish active sessions, then exit'
   },
   {
-    value: "cancel",
-    label: "Cancel",
-    description: "Return to dashboard",
-  },
-];
+    value: 'cancel',
+    digit: '3',
+    label: 'Cancel',
+    description: 'Return to the dashboard'
+  }
+]
 
 interface Props {
-  onQuit: (mode: QuitMode) => void;
-  onCancel: () => void;
+  onQuit: (mode: QuitMode) => void
+  onCancel: () => void
 }
 
-export const QuitScreen: React.FC<Props> = ({ onQuit, onCancel }) => {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [ready, setReady] = useState(false);
+function applyOption(opt: (typeof OPTIONS)[number], onQuit: (mode: QuitMode) => void, onCancel: () => void): void {
+  if (opt.value === 'cancel') onCancel()
+  else onQuit(opt.value)
+}
 
-  useLayoutEffect(() => {
-    console.clear();
-    setReady(true);
-  }, []);
+export function QuitScreen({ onQuit, onCancel }: Props): ReactElement {
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const { width, height } = useTerminalDimensions()
 
-  useInput((input, key) => {
-    if (key.upArrow) {
-      setSelectedIndex((i) => Math.max(0, i - 1));
-    } else if (key.downArrow) {
-      setSelectedIndex((i) => Math.min(OPTIONS.length - 1, i + 1));
-    } else if (key.return) {
-      const opt = OPTIONS[selectedIndex];
-      if (!opt) return;
-      if (opt.value === "cancel") {
-        onCancel();
-      } else {
-        onQuit(opt.value);
+  const runOption = (index: number) => {
+    const opt = OPTIONS[index]
+    if (opt) applyOption(opt, onQuit, onCancel)
+  }
+
+  useKeyboard((key: KeyEvent) => {
+    const { name } = key
+    if (name === 'up') {
+      setSelectedIndex((i) => Math.max(0, i - 1))
+      key.stopPropagation()
+    } else if (name === 'down') {
+      setSelectedIndex((i) => Math.min(OPTIONS.length - 1, i + 1))
+      key.stopPropagation()
+    } else if (name === 'return') {
+      runOption(selectedIndex)
+      key.stopPropagation()
+    } else if (name === 'escape' || name === 'q') {
+      onCancel()
+      key.stopPropagation()
+    } else {
+      const n = OPTIONS.findIndex((o) => o.digit === name)
+      if (n >= 0) {
+        setSelectedIndex(n)
+        runOption(n)
+        key.stopPropagation()
       }
-    } else if (key.escape || input === "q") {
-      onCancel();
     }
-  });
+  })
 
-  if (!ready) return null;
+  const rowMouseUp = (index: number) => (e: MouseEvent) => {
+    if (e.button !== MouseButton.LEFT) return
+    e.stopPropagation()
+    setSelectedIndex(index)
+    runOption(index)
+  }
+
+  const backdropMouseUp = (e: MouseEvent) => {
+    if (e.button !== MouseButton.LEFT) return
+    e.stopPropagation()
+    onCancel()
+  }
+
+  const dialogMouseUp = (e: MouseEvent) => {
+    e.stopPropagation()
+  }
 
   return (
-    <Box flexDirection="column" paddingX={2} paddingY={1} gap={1}>
-      <Text bold>Quit Multiplayer Debugging Agent?</Text>
-      <Box flexDirection="column" gap={0} marginTop={1}>
-        {OPTIONS.map((opt, i) => {
-          const isSelected = i === selectedIndex;
-          return (
-            <Box key={opt.value} flexDirection="column" marginBottom={1}>
-              <Box gap={2}>
-                <Text color={isSelected ? "cyan" : undefined} bold={isSelected}>
-                  {isSelected ? ">" : " "} {opt.label}
-                </Text>
-              </Box>
-              <Box paddingLeft={3}>
-                <Text dimColor>{opt.description}</Text>
-              </Box>
-            </Box>
-          );
-        })}
-      </Box>
-      <Text dimColor>↑↓ navigate · Enter select · Esc cancel</Text>
-    </Box>
-  );
-};
+    <box
+      position='absolute'
+      top={0}
+      left={0}
+      width={width}
+      height={height}
+      alignItems='center'
+      paddingTop={height / 4}
+      backgroundColor={QUIT_BACKDROP_BG}
+      onMouseUp={backdropMouseUp}
+    >
+      <box
+        flexDirection='column'
+        width={68}
+        maxWidth={width - 2}
+        minWidth={52}
+        backgroundColor='#262626'
+        paddingLeft={2}
+        paddingRight={2}
+        paddingTop={1}
+        paddingBottom={1}
+        gap={0}
+        onMouseUp={dialogMouseUp}
+      >
+        <text fg='#e5e5e5' attributes={tuiAttrs({ bold: true })}>
+          Quit Multiplayer Debugging Agent?
+        </text>
+        <text attributes={tuiAttrs({ dim: true })}>Choose how to exit — or press Esc to go back.</text>
+
+        <box flexDirection='column' gap={0} marginTop={1}>
+          {OPTIONS.map((opt, i) => {
+            const isSelected = i === selectedIndex
+            return (
+              <box
+                key={opt.value}
+                flexDirection='column'
+                border={true}
+                borderStyle='rounded'
+                borderColor={isSelected ? ACCENT.keys : '#374151'}
+                paddingLeft={1}
+                paddingRight={1}
+                paddingTop={0}
+                paddingBottom={0}
+                gap={0}
+                onMouseUp={rowMouseUp(i)}
+              >
+                <text fg={isSelected ? '#fafafa' : '#a1a1aa'} attributes={tuiAttrs({ bold: isSelected })}>
+                  {opt.label}
+                </text>
+                <text attributes={tuiAttrs({ dim: true })}>{opt.description}</text>
+              </box>
+            )
+          })}
+        </box>
+
+        <box marginTop={1} flexDirection='row' flexWrap='wrap' gap={0}>
+          <text fg={ACCENT.keys} attributes={tuiAttrs({ bold: true })}>
+            ↑↓
+          </text>
+          <text attributes={tuiAttrs({ dim: true })}> move · </text>
+          <text fg={ACCENT.keys} attributes={tuiAttrs({ bold: true })}>
+            Enter
+          </text>
+          <text attributes={tuiAttrs({ dim: true })}> select · click row · outside: cancel</text>
+        </box>
+      </box>
+    </box>
+  ) as ReactElement
+}

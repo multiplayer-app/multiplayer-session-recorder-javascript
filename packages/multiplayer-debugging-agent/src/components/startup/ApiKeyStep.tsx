@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
-import { Box, Text } from 'ink'
-import TextInput from 'ink-text-input'
+import React, { useState, type ReactElement } from 'react'
+import { stringFromInputSubmit } from '../../lib/inputSubmit.js'
+import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { validateApiKey } from '../../services/radar.service.js'
 import type { AgentConfig } from '../../types/index.js'
 
@@ -9,7 +9,7 @@ interface Props {
   onComplete: (updates: Partial<AgentConfig>) => void
 }
 
-export const ApiKeyStep: React.FC<Props> = ({ config, onComplete }) => {
+export function ApiKeyStep({ config, onComplete }: Props): ReactElement {
   const [value, setValue] = useState(config.apiKey ?? '')
   const [validating, setValidating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -34,31 +34,39 @@ export const ApiKeyStep: React.FC<Props> = ({ config, onComplete }) => {
   }
 
   return (
-    <Box flexDirection="column" gap={1}>
-      <Text dimColor>
+    <box flexDirection="column" gap={1}>
+      <text attributes={tuiAttrs({ dim: true })}>
         Enter your Multiplayer project API key. We validate immediately and auto-load workspace/project.
-      </Text>
-      <Text dimColor>Format usually starts with `eyJ...`</Text>
+      </text>
+      <text attributes={tuiAttrs({ dim: true })}>Format usually starts with <span fg="#f59e0b">`eyJ...`</span></text>
       {error && (
-        <Box>
-          <Text color="red">✗ {error}</Text>
-        </Box>
+        <box>
+          <text fg="#ef4444">✗ {error}</text>
+        </box>
       )}
       {validating ? (
-        <Text color="yellow">○ Validating API key...</Text>
+        <text fg="#f59e0b">◌ Validating API key...</text>
       ) : (
-        <Box>
-          <Text color="cyan">{'› '}</Text>
-          <TextInput
+        <box
+          border={true}
+          borderStyle="rounded"
+          borderColor="#22d3ee"
+          padding={1}
+          flexDirection="row"
+          gap={1}
+        >
+          <text fg="#22d3ee">❯</text>
+          <input
+            width={50}
             value={value}
-            onChange={setValue}
-            onSubmit={handleSubmit}
+            onInput={setValue}
+            onSubmit={(p) => handleSubmit(stringFromInputSubmit(p, value))}
             placeholder="eyJ..."
-            mask="*"
+            focusedBackgroundColor="transparent"
           />
-        </Box>
+        </box>
       )}
-      <Text dimColor>Press Enter to continue</Text>
-    </Box>
-  )
+      <text attributes={tuiAttrs({ dim: true })}>Press Enter to continue</text>
+    </box>
+  ) as ReactElement
 }

@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react'
-import { Box, Text, useInput, useStdout } from 'ink'
+import React, { useMemo, useState, type ReactElement } from 'react'
+import { tuiAttrs } from '../../lib/tuiAttrs.js'
+import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import fs from 'fs'
 import path from 'path'
 import type { AgentConfig } from '../../types/index.js'
@@ -34,8 +35,8 @@ interface Props {
   onComplete: (updates: Partial<AgentConfig>) => void
 }
 
-export const DirectoryStep: React.FC<Props> = ({ config, onComplete }) => {
-  const { stdout } = useStdout()
+export function DirectoryStep({ config, onComplete }: Props): ReactElement {
+  const { width: cols, height: rows } = useTerminalDimensions()
   const [currentPath, setCurrentPath] = useState(config.dir ?? process.cwd())
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [validating, setValidating] = useState(false)
@@ -47,10 +48,6 @@ export const DirectoryStep: React.FC<Props> = ({ config, onComplete }) => {
     () => [CONFIRM_ITEM, ...(isRoot ? [] : [UP_ITEM]), ...subdirs],
     [isRoot, subdirs]
   )
-  const rows = stdout.rows || 30
-  const cols = stdout.columns || 100
-  // Keep total screen height below terminal rows to avoid frame spill/scrollback duplication.
-  // This screen also includes logo, step panels, metadata box and hints outside this list.
   const reservedRows = 30
   const maxVisibleItems = Math.max(6, rows - reservedRows)
   const windowStart = Math.max(0, Math.min(
@@ -67,31 +64,31 @@ export const DirectoryStep: React.FC<Props> = ({ config, onComplete }) => {
   const bottomHiddenCount = Math.max(0, items.length - (windowStart + visibleItems.length))
   const safePath = truncateMiddle(currentPath, Math.max(30, cols - 8))
 
-  useInput((_, key) => {
+  useKeyboard(({ name }) => {
     if (validating) return
 
-    if (key.upArrow) {
+    if (name === 'up') {
       setSelectedIndex((i) => Math.max(0, i - 1))
-    } else if (key.downArrow) {
+    } else if (name === 'down') {
       setSelectedIndex((i) => Math.min(items.length - 1, i + 1))
-    } else if (key.pageUp) {
+    } else if (name === 'pageup') {
       setSelectedIndex((i) => Math.max(0, i - Math.max(3, Math.floor(maxVisibleItems / 2))))
-    } else if (key.pageDown) {
+    } else if (name === 'pagedown') {
       setSelectedIndex((i) => Math.min(items.length - 1, i + Math.max(3, Math.floor(maxVisibleItems / 2))))
-    } else if (key.leftArrow) {
+    } else if (name === 'left') {
       if (!isRoot) {
         setCurrentPath(path.dirname(currentPath))
         setSelectedIndex(0)
         setError(null)
       }
-    } else if (key.rightArrow) {
+    } else if (name === 'right') {
       const item = items[selectedIndex]
       if (item && item !== CONFIRM_ITEM && item !== UP_ITEM) {
         setCurrentPath(path.join(currentPath, item))
         setSelectedIndex(0)
         setError(null)
       }
-    } else if (key.return) {
+    } else if (name === 'return') {
       const item = items[selectedIndex]
       if (!item) return
 
@@ -101,16 +98,10 @@ export const DirectoryStep: React.FC<Props> = ({ config, onComplete }) => {
         GitService.isGitRepo(currentPath)
           .then((isGit) => {
             setValidating(false)
-            if (!isGit) {
-              setError(`Not a git repository: ${currentPath}`)
-              return
-            }
+            if (!isGit) { setError(`Not a git repository: ${currentPath}`); return }
             onComplete({ dir: currentPath })
           })
-          .catch((err: Error) => {
-            setValidating(false)
-            setError(err.message)
-          })
+          .catch((err: Error) => { setValidating(false); setError(err.message) })
       } else if (item === UP_ITEM) {
         setCurrentPath(path.dirname(currentPath))
         setSelectedIndex(0)
@@ -124,31 +115,21 @@ export const DirectoryStep: React.FC<Props> = ({ config, onComplete }) => {
   })
 
   return (
-    <Box flexDirection="column">
-      <Text bold>Project Directory</Text>
-      <Text dimColor>Select the git repository root for your project.</Text>
-      <Box flexDirection="column" marginTop={1}>
-        <Box>
-          <Text dimColor>{safePath}</Text>
-        </Box>
-        <Box>
-          <Text dimColor>
-            {subdirs.length} folders in this directory
-            {items.length > maxVisibleItems ? ` · showing ${visibleItems.length}` : ''}
-          </Text>
-        </Box>
-        {error && (
-          <Box>
-            <Text color="red">✗ {error}</Text>
-          </Box>
-        )}
+    <box flexDirection="column">
+      <text attributes={tuiAttrs({ bold: true })}>Project Directory</text>
+      <text attributes={tuiAttrs({ dim: true })}>Select the git repository root for your project.</text>
+      <box flexDirection="column" marginTop={1}>
+        <text attributes={tuiAttrs({ dim: true })}>{safePath}</text>
+        <text attributes={tuiAttrs({ dim: true })}>
+          {subdirs.length} folders in this directory
+          {items.length > maxVisibleItems ? ` · showing ${visibleItems.length}` : ''}
+        </text>
+        {error && <text fg="#ef4444">✗ {error}</text>}
         {validating ? (
-          <Text color="yellow">○ Checking git repository...</Text>
+          <text fg="#f59e0b">◌ Checking git repository...</text>
         ) : (
-          <Box flexDirection="column">
-            {hasAbove && (
-              <Text dimColor>… {topHiddenCount} more above</Text>
-            )}
+          <box flexDirection="column">
+            {hasAbove && <text attributes={tuiAttrs({ dim: true })}>… {topHiddenCount} more above</text>}
             {visibleItems.map((item, localIndex) => {
               const i = windowStart + localIndex
               const isActive = i === selectedIndex
@@ -156,31 +137,28 @@ export const DirectoryStep: React.FC<Props> = ({ config, onComplete }) => {
               let color: string | undefined
               if (item === CONFIRM_ITEM) {
                 label = 'Use this directory'
-                color = isActive ? 'green' : undefined
+                color = isActive ? '#10b981' : undefined
               } else if (item === UP_ITEM) {
                 label = '../'
-                color = isActive ? 'cyan' : undefined
+                color = isActive ? '#22d3ee' : undefined
               } else {
                 label = `${item}/`
-                color = isActive ? 'cyan' : undefined
+                color = isActive ? '#22d3ee' : undefined
               }
               const clipped = truncateMiddle(label, Math.max(20, cols - 8))
               return (
-                <Box key={`${item}-${i}`}>
-                  <Text color={color as any} bold={isActive}>
-                    {isActive ? '> ' : '  '}
-                    {clipped}
-                  </Text>
-                </Box>
+                <box key={`${item}-${i}`}>
+                  <text fg={color} attributes={tuiAttrs({ bold: isActive })}>
+                    {isActive ? '❯ ' : '  '}{clipped}
+                  </text>
+                </box>
               )
             })}
-            {hasBelow && (
-              <Text dimColor>… {bottomHiddenCount} more below</Text>
-            )}
-          </Box>
+            {hasBelow && <text attributes={tuiAttrs({ dim: true })}>… {bottomHiddenCount} more below</text>}
+          </box>
         )}
-      </Box>
-      <Text dimColor>↑↓ move · ←→ navigate dirs · PgUp/PgDn jump · Enter open/confirm · Esc back</Text>
-    </Box>
-  )
+      </box>
+      <text attributes={tuiAttrs({ dim: true })}>↑↓ move · ←→ navigate dirs · PgUp/PgDn jump · Enter open/confirm · Esc back</text>
+    </box>
+  ) as ReactElement
 }

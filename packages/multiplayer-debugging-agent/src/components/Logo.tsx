@@ -1,15 +1,12 @@
-import React, { useState, useEffect } from 'react'
-import { Box, Text, useStdout } from 'ink'
+import React, { type ReactElement } from 'react'
+import { tuiAttrs } from '../lib/tuiAttrs.js'
+import { useTerminalDimensions } from '@opentui/react'
 
-const WORDMARK_LARGE = [
-  '███╗   ███╗██╗   ██╗██╗   ████████╗██╗██████╗ ██╗      █████╗ ██╗   ██╗███████╗██████╗ ',
-  '████╗ ████║██║   ██║██║   ╚══██╔══╝██║██╔══██╗██║     ██╔══██╗╚██╗ ██╔╝██╔════╝██╔══██╗',
-  '██╔████╔██║██║   ██║██║      ██║   ██║██████╔╝██║     ███████║ ╚████╔╝ █████╗  ██████╔╝',
-  '██║╚██╔╝██║██║   ██║██║      ██║   ██║██╔═══╝ ██║     ██╔══██║  ╚██╔╝  ██╔══╝  ██╔══██╗',
-  '██║ ╚═╝ ██║╚██████╔╝███████╗ ██║   ██║██║     ███████╗██║  ██║   ██║   ███████╗██║  ██║',
-  '╚═╝     ╚═╝ ╚═════╝ ╚══════╝ ╚═╝   ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝',
-]
+/** multiplayer.app brand (logo / CTAs) */
+const BRAND_PRIMARY = '#473cfb'
+const BRAND_ACCENT = '#00eaf6'
 
+// Fallback compact wordmark for narrow terminals
 const WORDMARK_COMPACT = [
   '█   █ █   █ █     █████ █████ ████  █      ███  █   █ █████ ████ ',
   '██ ██ █   █ █       █     █   █   █ █     █   █ █   █ █     █   █',
@@ -23,36 +20,35 @@ const WORDMARK_COMPACT = [
 function center(input: string, width: number): string {
   if (input.length >= width) return input
   const padLeft = Math.floor((width - input.length) / 2)
-  const padRight = width - input.length - padLeft
-  return `${' '.repeat(padLeft)}${input}${' '.repeat(padRight)}`
+  return `${' '.repeat(padLeft)}${input}`
 }
 
-function rowWidth(rows: string[]): number {
-  return rows.reduce((max, line) => Math.max(max, line.length), 0)
-}
+export function Logo(): ReactElement {
+  const { width } = useTerminalDimensions()
 
-export const Logo: React.FC = () => {
-  const { stdout } = useStdout()
-  const [columns, setColumns] = useState(stdout.columns)
+  // ASCIIFont "multiplayer" — use for wide terminals
+  const useAsciiFont = width >= 100
 
-  useEffect(() => {
-    const onResize = () => setColumns(process.stdout.columns)
-    stdout.on('resize', onResize)
-    return () => { stdout.off('resize', onResize) }
-  }, [stdout])
+  if (useAsciiFont) {
+    return (
+      <box flexDirection="column" alignItems="center" marginTop={1} marginBottom={1}>
+        <ascii-font font="block" color={BRAND_PRIMARY} text="MULTIPLAYER" />
+        <text fg={BRAND_ACCENT} attributes={tuiAttrs({ dim: true })}>
+          {center('Automated issue triage, patching, and PR workflow', Math.min(width - 4, 80))}
+        </text>
+      </box>
+    ) as ReactElement
+  }
 
-  const maxInnerWidth = Math.max(48, (columns || 100) - 8)
-  const wordmarkRows =
-    rowWidth(WORDMARK_LARGE) <= maxInnerWidth ? WORDMARK_LARGE : WORDMARK_COMPACT
-
-  const footnote = center('Automated issue triage, patching, and PR workflow', maxInnerWidth)
-
+  const maxWidth = Math.max(48, width - 8)
   return (
-    <Box marginTop={2} marginBottom={1} flexDirection="column" alignSelf="center">
-      {wordmarkRows.map((line, i) => (
-        <Text key={i} color="#5a65ff">{center(line, maxInnerWidth)}</Text>
+    <box flexDirection="column" alignItems="center" marginTop={1} marginBottom={1}>
+      {WORDMARK_COMPACT.map((line, i) => (
+        <text key={i} fg={BRAND_PRIMARY}>{center(line, maxWidth)}</text>
       ))}
-      <Text color="#4ee4ff">{footnote}</Text>
-    </Box>
-  )
+      <text fg={BRAND_ACCENT} attributes={tuiAttrs({ dim: true })}>
+        {center('Automated issue triage, patching, and PR workflow', maxWidth)}
+      </text>
+    </box>
+  ) as ReactElement
 }

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Box, Text } from 'ink'
+import { tuiAttrs } from '../lib/tuiAttrs.js'
 
 type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error'
 
@@ -12,10 +12,10 @@ interface Props {
 }
 
 const stateLabel: Record<ConnectionState, { symbol: string; color: string }> = {
-  connecting: { symbol: '○', color: 'yellow' },
-  connected:  { symbol: '●', color: 'green' },
-  disconnected: { symbol: '○', color: 'gray' },
-  error:      { symbol: '✕', color: 'red' },
+  connecting:   { symbol: '◌', color: '#f59e0b' },
+  connected:    { symbol: '●', color: '#10b981' },
+  disconnected: { symbol: '○', color: '#6b7280' },
+  error:        { symbol: '✕', color: '#ef4444' },
 }
 
 export const StatusBar: React.FC<Props> = ({
@@ -28,35 +28,36 @@ export const StatusBar: React.FC<Props> = ({
   const { symbol, color } = stateLabel[connectionState]
 
   return (
-    <Box
-      borderStyle="round"
-      borderColor="gray"
-      paddingX={1}
+    <box
+      border={true}
+      borderStyle="rounded"
+      borderColor="#374151"
+      padding={1}
       flexDirection="row"
       gap={2}
     >
-      <Text color={color as any}>{symbol} {connectionState}</Text>
+      <text fg={color}>{symbol} {connectionState}</text>
       {workspace && (
         <>
-          <Text dimColor>|</Text>
-          <Text dimColor>workspace: </Text>
-          <Text>{workspace.slice(-8)}</Text>
+          <text attributes={tuiAttrs({ dim: true })}>│</text>
+          <text attributes={tuiAttrs({ dim: true })}>workspace: </text>
+          <text>{workspace.slice(-8)}</text>
         </>
       )}
       {project && (
         <>
-          <Text dimColor>project: </Text>
-          <Text>{project.slice(-8)}</Text>
+          <text attributes={tuiAttrs({ dim: true })}>project: </text>
+          <text>{project.slice(-8)}</text>
         </>
       )}
-      <Text dimColor>|</Text>
+      <text attributes={tuiAttrs({ dim: true })}>│</text>
       {activeCount > 0 && (
         <>
-          <Text color="yellow">{activeCount} fixing</Text>
-          <Text dimColor>|</Text>
+          <text fg="#f59e0b">{activeCount} fixing</text>
+          <text attributes={tuiAttrs({ dim: true })}>│</text>
         </>
       )}
-      <Text color="green">{resolvedCount} resolved</Text>
-    </Box>
+      <text fg="#10b981">{resolvedCount} resolved</text>
+    </box>
   )
 }
