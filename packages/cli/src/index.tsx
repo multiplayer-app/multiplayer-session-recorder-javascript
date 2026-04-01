@@ -6,7 +6,7 @@ import { App } from './App.js'
 import { parseFlags, isCompleteConfig } from './cli/flags.js'
 import { runCli } from './commands/cli.js'
 import { RuntimeController } from './runtime/controller.js'
-import { decodeApiKeyPayload } from './services/radar.service.js'
+import { decodeApiKeyPayload, validateApiKey } from './services/radar.service.js'
 import { startHealthServer } from './services/health.service.js'
 import type { AgentConfig } from './types/index.js'
 
@@ -47,25 +47,34 @@ if (firstArg && CLI_SUBCOMMANDS.has(firstArg)) {
 
     logger('info', `Using profile: ${profileName}`)
 
-    const controller = new RuntimeController(config, logger)
+    void (async () => {
+      try {
+        await validateApiKey(config.url, config.apiKey)
+      } catch (err: unknown) {
+        process.stderr.write(`API key validation failed: ${(err as Error).message}\n`)
+        process.exit(1)
+      }
 
-    if (healthPort) {
-      const healthServer = startHealthServer(healthPort, controller)
-      logger('info', `Health server listening on port ${healthPort}`)
-      controller.on('quit', () => healthServer.close())
-    }
+      const controller = new RuntimeController(config, logger)
 
-    controller.on('quit', () => {
-      process.exit(0)
-    })
+      if (healthPort) {
+        const healthServer = startHealthServer(healthPort, controller)
+        logger('info', `Health server listening on port ${healthPort}`)
+        controller.on('quit', () => healthServer.close())
+      }
 
-    process.on('SIGTERM', () => {
-      logger('info', 'SIGTERM received — waiting for active sessions to complete')
-      controller.quit('after-current')
-    })
-    process.on('SIGINT', () => controller.quit('now'))
+      controller.on('quit', () => {
+        process.exit(0)
+      })
 
-    controller.connect()
+      process.on('SIGTERM', () => {
+        logger('info', 'SIGTERM received — waiting for active sessions to complete')
+        controller.quit('after-current')
+      })
+      process.on('SIGINT', () => controller.quit('now'))
+
+      controller.connect()
+    })()
   } else {
     void (async () => {
       const renderer = await createCliRenderer({

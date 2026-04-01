@@ -4,6 +4,7 @@ import { useKeyboard } from '@opentui/react'
 import type { AgentConfig } from '../../types/index.js'
 import * as AiService from '../../services/ai.service.js'
 import * as GitService from '../../services/git.service.js'
+import { validateApiKey } from '../../services/radar.service.js'
 
 interface Props {
   config: AgentConfig
@@ -11,10 +12,10 @@ interface Props {
   onBack?: () => void
 }
 
-type Status = 'checking-git' | 'checking-ai' | 'done' | 'error'
+type Status = 'checking-api-key' | 'checking-git' | 'checking-ai' | 'done' | 'error'
 
 export function ConnectingStep({ config, onComplete, onBack }: Props): ReactElement {
-  const [status, setStatus] = useState<Status>('checking-git')
+  const [status, setStatus] = useState<Status>('checking-api-key')
   const [error, setError] = useState<string | null>(null)
   const [runId, setRunId] = useState(0)
 
@@ -22,7 +23,7 @@ export function ConnectingStep({ config, onComplete, onBack }: Props): ReactElem
     if (name === 'escape' && status === 'error') onBack?.()
     if (name === 'return' && status === 'error') {
       setError(null)
-      setStatus('checking-git')
+      setStatus('checking-api-key')
       setRunId((v) => v + 1)
     }
   })
@@ -32,6 +33,10 @@ export function ConnectingStep({ config, onComplete, onBack }: Props): ReactElem
 
     const run = async () => {
       try {
+        if (cancelled) return
+        setStatus('checking-api-key')
+        await validateApiKey(config.url, config.apiKey)
+
         if (cancelled) return
         setStatus('checking-git')
         const isGit = await GitService.isGitRepo(config.dir)
@@ -62,12 +67,25 @@ export function ConnectingStep({ config, onComplete, onBack }: Props): ReactElem
     return () => { cancelled = true }
   }, [runId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const apiKeyPassed = status !== 'checking-api-key' && !(status === 'error' && !error?.includes('git') && !error?.includes('AI') && !error?.includes('model'))
+  const apiKeyColor =
+    status === 'checking-api-key' ? '#f59e0b'
+    : status === 'error' && !apiKeyPassed ? '#ef4444'
+    : '#10b981'
+  const apiKeySymbol =
+    status === 'checking-api-key' ? '◌'
+    : status === 'error' && !apiKeyPassed ? '✕'
+    : '✓'
+
+  const gitStarted = status !== 'checking-api-key' && status !== 'error' || (status === 'error' && (error?.includes('git') || apiKeyPassed))
   const gitColor =
-    status === 'checking-git' ? '#f59e0b'
+    !gitStarted ? '#6b7280'
+    : status === 'checking-git' ? '#f59e0b'
     : status === 'error' && error?.includes('git') ? '#ef4444'
     : '#10b981'
   const gitSymbol =
-    status === 'checking-git' ? '◌'
+    !gitStarted ? '·'
+    : status === 'checking-git' ? '◌'
     : status === 'error' && error?.includes('git') ? '✕'
     : '✓'
 
@@ -76,11 +94,16 @@ export function ConnectingStep({ config, onComplete, onBack }: Props): ReactElem
       <text attributes={tuiAttrs({ bold: true })}>Starting Agent</text>
       <box flexDirection="column" marginTop={1} gap={0}>
         <box gap={2}>
+          <text fg={apiKeyColor}>{apiKeySymbol}</text>
+          <text>API key</text>
+          {status === 'checking-api-key' && <text attributes={tuiAttrs({ dim: true })}>validating...</text>}
+        </box>
+        <box gap={2}>
           <text fg={gitColor}>{gitSymbol}</text>
           <text>Git repository</text>
           {status === 'checking-git' && <text attributes={tuiAttrs({ dim: true })}>checking...</text>}
         </box>
-        {status !== 'checking-git' && (
+        {status !== 'checking-api-key' && status !== 'checking-git' && (
           <box gap={2}>
             <text fg={status === 'checking-ai' ? '#f59e0b' : status === 'error' ? '#ef4444' : '#10b981'}>
               {status === 'checking-ai' ? '◌' : status === 'error' ? '✕' : '✓'}

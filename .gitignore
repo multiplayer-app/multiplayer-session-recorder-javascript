@@ -61,3 +61,4 @@ ios/Pods/
 ios/Podfile.lock
 *.ipa
 .turbo
+.multiplayer

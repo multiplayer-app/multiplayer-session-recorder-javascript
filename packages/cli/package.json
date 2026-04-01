@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/cli",
-  "version": "1.3.36",
+  "version": "2.0.0",
   "description": "Multiplayer CLI",
   "main": "dist/index.js",
   "bin": {
@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts --config eslint.config.js"
   },
+  "license": "MIT",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.2.73",
     "@anthropic-ai/sdk": "^0.78.0",

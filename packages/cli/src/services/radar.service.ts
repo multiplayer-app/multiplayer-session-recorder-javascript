@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client'
 import jwt from 'jsonwebtoken'
-import * as fs from 'fs'
 import { URL } from 'url'
+import { createApiService } from './api.service.js'
 import {
   AgentConfig,
   AgentMessage,
@@ -331,14 +331,15 @@ export const validateApiKey = async (url: string, apiKey: string): Promise<{ wor
     throw new Error('Invalid API key')
   }
 
-  const base = url.replace(/\/$/, '')
-  const res = await fetch(`${base}/api/workspaces/${payload.workspace}/projects/${payload.project}`, {
-    headers: { 'x-api-key': apiKey },
-  })
+  const api = createApiService({ url, apiKey })
+  const project = await api.fetchProject(payload.workspace, payload.project)
 
-  if (!res.ok) {
-    throw new Error(`API key validation failed (${res.status})`)
+  if (!project) {
+    throw new Error('API key validation failed: workspace or project not found')
   }
 
-  return { workspace: payload.workspace, project: payload.project }
+  return {
+    workspace: payload.workspace,
+    project: payload.project
+  }
 }

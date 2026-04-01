@@ -21,7 +21,7 @@ export function parseFlags(argv: string[]): ParsedFlags {
     .version('0.0.1')
     .option('--headless', 'Run without TUI (structured log output, requires full config); also set via MULTIPLAYER_HEADLESS=true')
     .option('--profile <name>', 'Config profile to use from .multiplayer/config (default: "default"); also set via MULTIPLAYER_PROFILE')
-    .option('--url <url>', 'Multiplayer base API URL', API_URL)
+    .option('--url <url>', 'Multiplayer base API URL')
     .option('--api-key <key>', 'Multiplayer API key')
     .option('--name <name>', 'Agent name (defaults to hostname)')
     .option('--dir <path>', 'Project directory (must be a git repo)')

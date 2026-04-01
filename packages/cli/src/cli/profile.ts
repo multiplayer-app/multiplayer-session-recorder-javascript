@@ -90,9 +90,23 @@ function iniToProfileConfig(raw: Record<string, string>): ProfileConfig {
  * Returns the path of the first file found, or undefined.
  */
 function findConfigFile(projectDir?: string): string | undefined {
+  // Walk up from dir, collecting candidate paths
+  function ancestorCandidates(dir: string): string[] {
+    const result: string[] = []
+    let current = path.resolve(dir)
+    const home = os.homedir()
+    while (true) {
+      result.push(path.join(current, '.multiplayer', 'config'))
+      const parent = path.dirname(current)
+      if (parent === current || current === home) break
+      current = parent
+    }
+    return result
+  }
+
   const candidates = [
     projectDir ? path.join(projectDir, '.multiplayer', 'config') : undefined,
-    path.join(process.cwd(), '.multiplayer', 'config'),
+    ...ancestorCandidates(process.cwd()),
     path.join(os.homedir(), '.multiplayer', 'config'),
   ].filter(Boolean) as string[]
 
