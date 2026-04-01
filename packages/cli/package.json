@@ -28,12 +28,15 @@
     "socket.io-client": "4.8.3",
     "superagent": "10.3.0"
   },
+  "overrides": {
+    "react": "19.2.4"
+  },
   "devDependencies": {
     "@sindresorhus/tsconfig": "^8.1.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "25.5.0",
     "@types/react": "19.2.14",
-    "@types/superagent": "^8.1.9",
+    "@types/superagent": "8.1.9",
     "typescript": "6.0.2"
   }
 }

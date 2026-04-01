@@ -1,0 +1,19 @@
+# Ignore source TypeScript files
+*.ts
+# But include generated declaration files
+!*.d.ts
+
+node_modules/
+src/
+test/
+gulpfile.js
+tsconfig.json
+tslint.json
+.prettierrc
+.eslintrc.json
+tsup.config.ts
+bun.lock
+
+.git/
+.npmrc
+npm-debug.log
