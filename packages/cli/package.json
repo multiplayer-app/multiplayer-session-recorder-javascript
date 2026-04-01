@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/cli",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Multiplayer CLI",
   "main": "dist/index.js",
   "bin": {
@@ -11,7 +11,8 @@
     "start": "bun dist/index.js",
     "dev": "bun src/index.tsx",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/**/*.ts --config eslint.config.js"
+    "lint": "eslint src/**/*.ts --config eslint.config.js",
+    "prepublishOnly": "npm run build"
   },
   "license": "MIT",
   "dependencies": {
