@@ -49,4 +49,6 @@ export interface RuntimeState {
   sessions: SessionSummary[]
   resolvedCount: number
   rateLimitState: RateLimitState
+  workspaceDisplayName?: string
+  projectDisplayName?: string
 }

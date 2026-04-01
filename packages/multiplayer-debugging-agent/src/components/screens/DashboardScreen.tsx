@@ -12,6 +12,9 @@ import { FooterHints, type FooterHintItem } from '../panes/FooterHints.js'
 
 type ConnectionState = RuntimeState['connection']
 
+/** Below this width, stack sessions vs detail and use a multi-line header. */
+const NARROW_COLUMNS = 80
+
 const CONNECTION_BADGE: Record<ConnectionState, { symbol: string; color: string }> = {
   idle: { symbol: '○', color: '#6b7280' },
   connecting: { symbol: '◌', color: '#f59e0b' },
@@ -41,13 +44,19 @@ export function DashboardScreen({
   suspendKeyboard = false
 }: Props): ReactElement {
   const { width: columns, height: rows } = useTerminalDimensions()
+  const isNarrow = columns < NARROW_COLUMNS
 
-  // sidebar(32) + its border(1) + pane border(1) + pane padding(1+1) + pane border(1) = 37
-  const contentWidth = Math.max(20, columns - 37)
+  // Wide: sidebar(32) + borders/padding ≈ 37. Narrow: single pane — borders/padding only.
+  const contentWidth = isNarrow
+    ? Math.max(20, columns - 8)
+    : Math.max(20, columns - 37)
+  const listFluidTextWidth = Math.max(16, columns - 10)
 
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [focusedPane, setFocusedPane] = useState<'list' | 'detail' | 'logs'>('list')
   const [showAgentLogs, setShowAgentLogs] = useState(false)
+  /** Narrow layout: when detail is loaded, true = detail pane, false = session list. */
+  const [narrowShowsDetail, setNarrowShowsDetail] = useState(false)
 
   const toggleAgentLogs = useCallback(() => {
     setShowAgentLogs((show) => {
@@ -66,6 +75,36 @@ export function DashboardScreen({
   const selectedSession = state.sessions[clampedIndex]
   const selectedDetail = selectedSession ? (sessionDetails.get(selectedSession.chatId) ?? null) : null
 
+  const showListPane = !isNarrow || !selectedDetail || !narrowShowsDetail
+  const showDetailPane = !isNarrow || Boolean(selectedDetail && narrowShowsDetail)
+
+  useEffect(() => {
+    if (!selectedDetail) {
+      setNarrowShowsDetail(false)
+      return
+    }
+    setNarrowShowsDetail(true)
+  }, [selectedDetail?.chatId])
+
+  const toggleNarrowStack = useCallback(() => {
+    if (!isNarrow || !selectedDetail) return
+    setNarrowShowsDetail((show) => {
+      const next = !show
+      setFocusedPane((fp) => (fp === 'logs' ? fp : next ? 'detail' : 'list'))
+      return next
+    })
+  }, [isNarrow, selectedDetail])
+
+  const stackToggleHint = useMemo((): FooterHintItem | null => {
+    if (!isNarrow || !selectedDetail) return null
+    return {
+      id: 'stack',
+      keys: 'v',
+      label: narrowShowsDetail ? 'Sessions' : 'Detail',
+      onPress: toggleNarrowStack
+    }
+  }, [isNarrow, selectedDetail?.chatId, narrowShowsDetail, toggleNarrowStack])
+
   const listHints = useMemo((): FooterHintItem[] => {
     const scrollListHints: FooterHintItem[] =
       state.sessions.length > 0
@@ -78,6 +117,7 @@ export function DashboardScreen({
       { id: 'nav', keys: '↑↓', label: 'Move' },
       ...scrollListHints,
       { id: 'detail', keys: 'Tab/↵', label: 'Detail' },
+      ...(stackToggleHint ? [stackToggleHint] : []),
       {
         id: 'logs',
         keys: 'l',
@@ -92,7 +132,13 @@ export function DashboardScreen({
         onPress: () => onQuitRequest()
       }
     ]
-  }, [showAgentLogs, onQuitRequest, state.sessions.length, toggleAgentLogs])
+  }, [
+    showAgentLogs,
+    onQuitRequest,
+    state.sessions.length,
+    toggleAgentLogs,
+    stackToggleHint
+  ])
 
   const detailHints = useMemo((): FooterHintItem[] => {
     return [
@@ -104,6 +150,7 @@ export function DashboardScreen({
         keys: 'Tab/Esc',
         label: showAgentLogs ? 'List · logs' : 'List'
       },
+      ...(stackToggleHint ? [stackToggleHint] : []),
       {
         id: 'logs',
         keys: 'l',
@@ -118,7 +165,7 @@ export function DashboardScreen({
         onPress: () => onQuitRequest()
       }
     ]
-  }, [showAgentLogs, onQuitRequest, toggleAgentLogs])
+  }, [showAgentLogs, onQuitRequest, toggleAgentLogs, stackToggleHint])
 
   const logsHints = useMemo((): FooterHintItem[] => {
     return [
@@ -131,6 +178,7 @@ export function DashboardScreen({
         label: showAgentLogs ? 'List · detail · logs' : 'List · detail'
       },
       { id: 'back', keys: 'Esc', label: 'List' },
+      ...(stackToggleHint ? [stackToggleHint] : []),
       {
         id: 'logs',
         keys: 'l',
@@ -145,7 +193,7 @@ export function DashboardScreen({
         onPress: () => onQuitRequest()
       }
     ]
-  }, [showAgentLogs, onQuitRequest, toggleAgentLogs])
+  }, [showAgentLogs, onQuitRequest, toggleAgentLogs, stackToggleHint])
 
   useEffect(() => {
     const session = state.sessions[clampedIndex]
@@ -158,15 +206,32 @@ export function DashboardScreen({
         if (suspendKeyboard) return
         const { name } = key
         if (name === 'tab') {
-          setFocusedPane((p) => {
-            if (!showAgentLogs) {
-              return p === 'list' ? 'detail' : 'list'
+          if (showAgentLogs) {
+            const next =
+              focusedPane === 'list' ? 'detail' : focusedPane === 'detail' ? 'logs' : 'list'
+            if (isNarrow && selectedDetail) {
+              if (next === 'detail') setNarrowShowsDetail(true)
+              if (next === 'list') setNarrowShowsDetail(false)
             }
-            if (p === 'list') return 'detail'
-            if (p === 'detail') return 'logs'
-            return 'list'
-          })
+            setFocusedPane(next)
+          } else if (isNarrow && selectedDetail) {
+            setNarrowShowsDetail((show) => {
+              const next = !show
+              setFocusedPane(next ? 'detail' : 'list')
+              return next
+            })
+          } else if (!isNarrow) {
+            setFocusedPane((p) => (p === 'list' ? 'detail' : 'list'))
+          }
           key.stopPropagation()
+          return
+        }
+
+        if (name === 'v' || name === 'V') {
+          if (isNarrow && selectedDetail) {
+            toggleNarrowStack()
+            key.stopPropagation()
+          }
           return
         }
 
@@ -184,10 +249,12 @@ export function DashboardScreen({
             setSelectedIndex((i) => Math.min(state.sessions.length - 1, i + 1))
             key.stopPropagation()
           } else if (name === 'return' && selectedDetail) {
+            if (isNarrow) setNarrowShowsDetail(true)
             setFocusedPane('detail')
             key.stopPropagation()
           }
         } else if (name === 'escape') {
+          if (isNarrow && selectedDetail) setNarrowShowsDetail(false)
           setFocusedPane('list')
           key.stopPropagation()
         }
@@ -205,7 +272,9 @@ export function DashboardScreen({
         selectedDetail,
         onQuitRequest,
         showAgentLogs,
-        toggleAgentLogs
+        toggleAgentLogs,
+        isNarrow,
+        toggleNarrowStack
       ]
     )
   )
@@ -219,18 +288,69 @@ export function DashboardScreen({
   const { symbol, color } = CONNECTION_BADGE[state.connection]
   const activeCount = state.sessions.filter((s) => !['done', 'failed', 'aborted'].includes(s.status)).length
 
-  return (
-    <box flexDirection='column' height={rows} gap={0}>
-      {/* Header */}
-      <box
-        border={true}
-        borderStyle='rounded'
-        borderColor='#374151'
-        padding={1}
-        flexDirection='row'
-        flexShrink={0}
-        gap={2}
-      >
+  const headerWorkspaceLabel =
+    state.workspaceDisplayName?.trim() ||
+    config.workspaceDisplayName?.trim() ||
+    (config.workspace ? config.workspace.slice(-8) : '')
+  const headerProjectLabel =
+    state.projectDisplayName?.trim() ||
+    config.projectDisplayName?.trim() ||
+    (config.project ? config.project.slice(-8) : '')
+
+  const headerWide = (
+    <box
+      border={true}
+      borderStyle='rounded'
+      borderColor='#374151'
+      padding={1}
+      flexDirection='row'
+      flexShrink={0}
+      gap={2}
+    >
+      <text fg='#6366f1' attributes={tuiAttrs({ bold: true })}>
+        ◆ MULTIPLAYER
+      </text>
+      <text attributes={tuiAttrs({ dim: true })}>│</text>
+      <text fg={color}>
+        {symbol} {state.connection}
+      </text>
+      {state.connectionError && <text fg='#ef4444'>{state.connectionError}</text>}
+      {config.workspace && (
+        <>
+          <text attributes={tuiAttrs({ dim: true })}>│ workspace:</text>
+          <text>{headerWorkspaceLabel}</text>
+        </>
+      )}
+      {config.project && (
+        <>
+          <text attributes={tuiAttrs({ dim: true })}>project:</text>
+          <text>{headerProjectLabel}</text>
+        </>
+      )}
+      <text attributes={tuiAttrs({ dim: true })}>│ model:</text>
+      <text>{config.model}</text>
+      <text attributes={tuiAttrs({ dim: true })}>│</text>
+      {activeCount > 0 && (
+        <>
+          <text fg='#f59e0b'>{activeCount} active</text>
+          <text attributes={tuiAttrs({ dim: true })}>│</text>
+        </>
+      )}
+      <text fg='#10b981'>{state.resolvedCount} resolved</text>
+    </box>
+  )
+
+  const headerNarrow = (
+    <box
+      border={true}
+      borderStyle='rounded'
+      borderColor='#374151'
+      padding={1}
+      flexDirection='column'
+      flexShrink={0}
+      gap={1}
+    >
+      <box flexDirection='row' flexWrap='wrap' gap={2}>
         <text fg='#6366f1' attributes={tuiAttrs({ bold: true })}>
           ◆ MULTIPLAYER
         </text>
@@ -238,52 +358,74 @@ export function DashboardScreen({
         <text fg={color}>
           {symbol} {state.connection}
         </text>
-        {state.connectionError && <text fg='#ef4444'>{state.connectionError}</text>}
-        {config.workspace && (
-          <>
-            <text attributes={tuiAttrs({ dim: true })}>│ workspace:</text>
-            <text>{config.workspace.slice(-8)}</text>
-          </>
-        )}
-        {config.project && (
-          <>
-            <text attributes={tuiAttrs({ dim: true })}>project:</text>
-            <text>{config.project.slice(-8)}</text>
-          </>
-        )}
-        <text attributes={tuiAttrs({ dim: true })}>│ model:</text>
+        {state.connectionError ? <text fg='#ef4444'>{state.connectionError}</text> : null}
+      </box>
+      {(config.workspace || config.project) && (
+        <box flexDirection='row' flexWrap='wrap' gap={2}>
+          {config.workspace ? (
+            <>
+              <text attributes={tuiAttrs({ dim: true })}>workspace:</text>
+              <text>{headerWorkspaceLabel}</text>
+            </>
+          ) : null}
+          {config.workspace && config.project ? <text attributes={tuiAttrs({ dim: true })}>│</text> : null}
+          {config.project ? (
+            <>
+              <text attributes={tuiAttrs({ dim: true })}>project:</text>
+              <text>{headerProjectLabel}</text>
+            </>
+          ) : null}
+        </box>
+      )}
+      <box flexDirection='row' flexWrap='wrap' gap={2}>
+        <text attributes={tuiAttrs({ dim: true })}>model:</text>
         <text>{config.model}</text>
-        <text attributes={tuiAttrs({ dim: true })}>│</text>
-        {activeCount > 0 && (
+        {activeCount > 0 ? (
           <>
-            <text fg='#f59e0b'>{activeCount} active</text>
             <text attributes={tuiAttrs({ dim: true })}>│</text>
+            <text fg='#f59e0b'>{activeCount} active</text>
           </>
-        )}
+        ) : null}
+        <text attributes={tuiAttrs({ dim: true })}>│</text>
         <text fg='#10b981'>{state.resolvedCount} resolved</text>
       </box>
+    </box>
+  )
 
-      {/* Body: two panes side by side */}
-      <box flexDirection='row' flexGrow={1} gap={1}>
-        <SessionListPane
-          sessions={state.sessions}
-          selectedIndex={clampedIndex}
-          isFocused={focusedPane === 'list'}
-          onSelectSession={(index) => {
-            setSelectedIndex(index)
-            setFocusedPane('list')
-          }}
-        />
-        <SessionDetailPane
-          session={selectedDetail}
-          contentWidth={contentWidth}
-          isFocused={focusedPane === 'detail'}
-          onRequestFocus={() => setFocusedPane('detail')}
-          onRequestLoadMore={() =>
-            selectedDetail?.messages[0]?.id &&
-            onLoadMessages(selectedSession?.chatId ?? '', selectedDetail?.messages[0]?.id)
-          }
-        />
+  return (
+    <box flexDirection='column' height={rows} gap={0}>
+      {isNarrow ? headerNarrow : headerWide}
+
+      <box
+        flexDirection='row'
+        flexGrow={1}
+        gap={showListPane && showDetailPane ? 1 : 0}
+      >
+        {showListPane ? (
+          <SessionListPane
+            sessions={state.sessions}
+            selectedIndex={clampedIndex}
+            isFocused={focusedPane === 'list'}
+            layout={isNarrow ? 'fluid' : 'sidebar'}
+            fluidTextWidth={listFluidTextWidth}
+            onSelectSession={(index) => {
+              setSelectedIndex(index)
+              setFocusedPane('list')
+            }}
+          />
+        ) : null}
+        {showDetailPane ? (
+          <SessionDetailPane
+            session={selectedDetail}
+            contentWidth={contentWidth}
+            isFocused={focusedPane === 'detail'}
+            onRequestFocus={() => setFocusedPane('detail')}
+            onRequestLoadMore={() =>
+              selectedDetail?.messages[0]?.id &&
+              onLoadMessages(selectedSession?.chatId ?? '', selectedDetail?.messages[0]?.id)
+            }
+          />
+        ) : null}
       </box>
 
       {/* Runtime logs (TUI only — headless still uses JSON lines on stdout/stderr) */}

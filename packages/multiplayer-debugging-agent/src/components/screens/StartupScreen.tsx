@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useEffect, useLayoutEffect, type ReactElement } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, type ReactElement } from 'react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { useKeyboard } from '@opentui/react'
 import type { AgentConfig } from '../../types/index.js'
+import { createApiService } from '../../services/api.service.js'
 import { Logo } from '../Logo.js'
 import { ApiKeyStep } from '../startup/ApiKeyStep.js'
 import { WorkspaceStep } from '../startup/WorkspaceStep.js'
@@ -33,6 +34,13 @@ const STEP_SHORT: Record<StepId, string> = {
 }
 
 const STEP_PANEL_WIDTH = 24
+const DEFAULT_API_URL = 'https://api.multiplayer.app/v0'
+
+function compactContextLabel(name: string | undefined, id: string | undefined): string {
+  const raw = (name?.trim() || id || '—').trim()
+  if (raw === '—') return raw
+  return raw.length > 26 ? `${raw.slice(0, 12)}…${raw.slice(-11)}` : raw
+}
 
 function canSkip(step: StepId, config: Partial<AgentConfig>): boolean {
   switch (step) {
@@ -79,6 +87,43 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
     return () => { process.stdout.off('resize', onResize) }
   }, [])
 
+  useEffect(() => {
+    const url = config.url || DEFAULT_API_URL
+    const apiKey = config.apiKey?.trim()
+    const { workspace, project } = config
+    if (!apiKey || !workspace || !project) return
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const api = createApiService({ url, apiKey })
+        const [ws, proj] = await Promise.all([
+          api.fetchWorkspace(workspace),
+          api.fetchProject(workspace, project)
+        ])
+        if (cancelled) return
+        const workspaceDisplayName = ws?.name?.trim()
+        const projectDisplayName = proj?.name?.trim()
+        if (!workspaceDisplayName && !projectDisplayName) return
+
+        setConfig((c) => {
+          if (c.apiKey?.trim() !== apiKey || c.workspace !== workspace || c.project !== project) return c
+          return {
+            ...c,
+            ...(workspaceDisplayName ? { workspaceDisplayName } : {}),
+            ...(projectDisplayName ? { projectDisplayName } : {})
+          }
+        })
+      } catch {
+        // non-fatal — keep showing ids
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [config.apiKey, config.workspace, config.project, config.url])
+
   const advance = useCallback((updates: Partial<AgentConfig>) => {
     const next = { ...config, ...updates }
     setConfig(next)
@@ -116,6 +161,8 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
   const compactDir = config.dir
     ? config.dir.length > 30 ? `${config.dir.slice(0, 14)}…${config.dir.slice(-14)}` : config.dir
     : '—'
+  const setupWorkspaceLabel = compactContextLabel(config.workspaceDisplayName, config.workspace)
+  const setupProjectLabel = compactContextLabel(config.projectDisplayName, config.project)
 
   if (!ready) return null
 
@@ -158,19 +205,32 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
             <text attributes={tuiAttrs({ dim: true })}>{label.description}</text>
           </box>
 
-          {/* Config status bar */}
           <box
             border={true}
             borderStyle="single"
             borderColor="#374151"
-            padding={1}
+            padding={0}
             marginBottom={1}
+            flexDirection="column"
+            gap={1}
           >
+            <box flexDirection="row" flexWrap="wrap">
+              <text attributes={tuiAttrs({ dim: true })}>API key </text>
+              <text attributes={tuiAttrs({ bold: true })}>{maskedApiKey}</text>
+              <text attributes={tuiAttrs({ dim: true })}>  ·  Workspace </text>
+              <text attributes={tuiAttrs({ bold: true })}>{setupWorkspaceLabel}</text>
+              <text attributes={tuiAttrs({ dim: true })}> / </text>
+              <text attributes={tuiAttrs({ bold: true })}>{setupProjectLabel}</text>
+            </box>
+            <box flexDirection="row" flexWrap="wrap">
+              <text attributes={tuiAttrs({ dim: true })}>Dir </text>
+              <text>{compactDir}</text>
+              <text attributes={tuiAttrs({ dim: true })}>  ·  Model </text>
+              <text attributes={tuiAttrs({ bold: true })}>{config.model ?? '—'}</text>
+              <text attributes={tuiAttrs({ dim: true })}> ({provider})  ·  Concurrency </text>
+              <text attributes={tuiAttrs({ bold: true })}>{config.maxConcurrentIssues ?? '—'}</text>
+            </box>
             <text attributes={tuiAttrs({ dim: true })}>
-              API key {maskedApiKey}  ·  Workspace {config.workspace ?? '—'} / {config.project ?? '—'}
-              {'\n'}
-              Dir {compactDir}  ·  Model {config.model ?? '—'} ({provider})  ·  Concurrency {config.maxConcurrentIssues ?? '—'}
-              {'\n'}
               Profile {profileName ?? 'default'}  ·  Enter confirm  ·  Esc back  ·  Ctrl+C quit
             </text>
           </box>

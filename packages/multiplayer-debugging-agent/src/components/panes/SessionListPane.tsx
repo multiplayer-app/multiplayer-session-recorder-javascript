@@ -23,6 +23,10 @@ interface Props {
   isFocused: boolean
   /** Primary click on a row selects that session (terminal mouse reporting). */
   onSelectSession?: (index: number) => void
+  /** Fixed sidebar (default) vs full-width row for stacked / narrow layouts. */
+  layout?: 'sidebar' | 'fluid'
+  /** Inner text width for session titles when `layout="fluid"` (parent supplies terminal-derived value). */
+  fluidTextWidth?: number
 }
 
 const SCROLLBAR_STYLE = {
@@ -37,9 +41,17 @@ const SCROLLBAR_STYLE = {
   },
 } as const
 
-function SessionListPaneImpl({ sessions, selectedIndex, isFocused, onSelectSession }: Props): ReactElement {
+function SessionListPaneImpl({
+  sessions,
+  selectedIndex,
+  isFocused,
+  onSelectSession,
+  layout = 'sidebar',
+  fluidTextWidth
+}: Props): ReactElement {
   const borderColor = isFocused ? '#22d3ee' : '#374151'
-  const contentWidth = SIDEBAR_WIDTH - 4 // border(2) + padding(2)
+  const sidebarInner = SIDEBAR_WIDTH - 4 // border(2) + padding(2)
+  const contentWidth = layout === 'fluid' ? Math.max(16, fluidTextWidth ?? sidebarInner) : sidebarInner
   const rowTextWidth = Math.max(12, contentWidth - 5) // arrow + status + gaps
   const listScrollRef = useRef<ScrollBoxRenderable | null>(null)
 
@@ -81,9 +93,9 @@ function SessionListPaneImpl({ sessions, selectedIndex, isFocused, onSelectSessi
       borderStyle="rounded"
       borderColor={borderColor}
       padding={1}
-      width={SIDEBAR_WIDTH}
-      flexShrink={0}
-      overflow="hidden"
+      {...(layout === 'fluid'
+        ? { flexGrow: 1, flexShrink: 1, minWidth: 24, overflow: 'hidden' as const }
+        : { width: SIDEBAR_WIDTH, flexShrink: 0, overflow: 'hidden' as const })}
     >
       <box marginBottom={1} flexShrink={0}>
         <text attributes={tuiAttrs({ bold: true, dim: true })}>{title}</text>

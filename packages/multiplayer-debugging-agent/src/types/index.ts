@@ -3,6 +3,10 @@ export interface AgentConfig {
   apiKey: string
   workspace?: string
   project?: string
+  /** Human-readable name from GET /v0/api/workspaces/:id (optional, for UI) */
+  workspaceDisplayName?: string
+  /** Human-readable name from GET /v0/api/.../projects/:id (optional, for UI) */
+  projectDisplayName?: string
   name?: string
   dir: string
   model: string

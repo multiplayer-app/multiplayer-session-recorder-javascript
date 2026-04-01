@@ -11,6 +11,7 @@ import {
   ResolveIssuePayload
 } from '../types/index.js'
 import { createRadarService, RadarService } from '../services/radar.service.js'
+import { createApiService } from '../services/api.service.js'
 import * as GitService from '../services/git.service.js'
 import * as AiService from '../services/ai.service.js'
 import * as PrService from '../services/pr.service.js'
@@ -112,7 +113,13 @@ export class RuntimeController extends EventEmitter {
   constructor(config: AgentConfig, logger?: Logger) {
     super()
     this._config = config
-    this._state = initialRuntimeState(config.maxConcurrentIssues)
+    this._state = {
+      ...initialRuntimeState(config.maxConcurrentIssues),
+      ...(config.workspaceDisplayName?.trim()
+        ? { workspaceDisplayName: config.workspaceDisplayName.trim() }
+        : {}),
+      ...(config.projectDisplayName?.trim() ? { projectDisplayName: config.projectDisplayName.trim() } : {})
+    }
     this.log =
       logger ??
       ((level, msg) => {
@@ -220,6 +227,43 @@ export class RuntimeController extends EventEmitter {
     radar.onSessionStart((payload) => {
       this.restoreChat(payload)
     })
+
+    void this.loadWorkspaceProjectDisplayNames()
+  }
+
+  private async loadWorkspaceProjectDisplayNames(): Promise<void> {
+    const workspaceId = this._config.workspace
+    const projectId = this._config.project
+    if (!workspaceId || !projectId || !this._config.apiKey) return
+
+    if (
+      this._config.workspaceDisplayName?.trim() &&
+      this._config.projectDisplayName?.trim()
+    ) {
+      return
+    }
+
+    try {
+      const api = createApiService(this._config)
+      const [ws, proj] = await Promise.all([
+        api.fetchWorkspace(workspaceId),
+        api.fetchProject(workspaceId, projectId)
+      ])
+      const workspaceDisplayName = ws?.name?.trim()
+      const projectDisplayName = proj?.name?.trim()
+      if (!workspaceDisplayName && !projectDisplayName) return
+
+      this.setState({
+        ...this._state,
+        ...(workspaceDisplayName ? { workspaceDisplayName } : {}),
+        ...(projectDisplayName ? { projectDisplayName } : {})
+      })
+    } catch (err: unknown) {
+      this.log(
+        'debug',
+        `Could not load workspace/project labels: ${err instanceof Error ? err.message : String(err)}`
+      )
+    }
   }
 
   disconnect(): void {
