@@ -1,10 +1,17 @@
 import { Command, CommanderError } from 'commander'
+import fs from 'fs'
+import path from 'path'
 import os from 'os'
 import type { RuntimeMode } from '../runtime/types.js'
 import type { AgentConfig } from '../types/index.js'
 import { loadProfile } from './profile.js'
 import { API_URL, DEFAULT_MAX_CONCURRENT } from '../config.js'
-import pkg from '../../package.json' with { type: 'json' }
+
+function getVersion(): string {
+  const pkgPath = path.resolve(import.meta.dirname, '..', 'package.json')
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
+  return pkg.version
+}
 
 export interface ParsedFlags {
   mode: RuntimeMode
@@ -19,7 +26,7 @@ export function parseFlags(argv: string[]): ParsedFlags {
   program
     .name('multiplayer')
     .description('Multiplayer debugging agent — automatically resolves issues using AI')
-    .version(pkg.version)
+    .version(getVersion())
     .option('--headless', 'Run without TUI (structured log output, requires full config); also set via MULTIPLAYER_HEADLESS=true')
     .option('--profile <name>', 'Config profile to use from .multiplayer/config (default: "default"); also set via MULTIPLAYER_PROFILE')
     .option('--url <url>', 'Multiplayer base API URL')
