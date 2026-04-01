@@ -7,19 +7,14 @@ import path from 'path'
 import os from 'os'
 import { exec } from 'child_process'
 import { promisify } from 'util'
-import {
-  Issue,
-  FilePatch,
-  Release,
-  ConversationMessage,
-} from '../types/index.js'
+import { Issue, FilePatch, Release, ConversationMessage } from '../types/index.js'
 import { MAX_FILE_SIZE, MAX_FILES_TO_READ } from '../config.js'
 
 const execAsync = promisify(exec)
 
 export interface McpConfig {
-  apiKey: string;
-  apiUrl: string;
+  apiKey: string
+  apiUrl: string
 }
 
 // ─── Provider requirement checks ─────────────────────────────────────────────
@@ -28,9 +23,7 @@ export const checkClaudeRequirements = async (): Promise<void> => {
   try {
     await execAsync('claude --version', { timeout: 5000 })
   } catch {
-    throw new Error(
-      'Claude CLI is not installed. Install it with:\n  npm install -g @anthropic-ai/claude-code',
-    )
+    throw new Error('Claude CLI is not installed. Install it with:\n  npm install -g @anthropic-ai/claude-code')
   }
 
   const hasEnvKey = !!process.env.ANTHROPIC_API_KEY
@@ -43,33 +36,24 @@ export const checkClaudeRequirements = async (): Promise<void> => {
   })()
 
   if (!hasEnvKey && !hasConfigFile) {
-    throw new Error(
-      'Claude CLI is not authenticated. Run:\n  claude auth login',
-    )
+    throw new Error('Claude CLI is not authenticated. Run:\n  claude auth login')
   }
 }
 
-export const checkOpenAiRequirements = async (
-  apiKey: string,
-  baseUrl?: string,
-): Promise<void> => {
+export const checkOpenAiRequirements = async (apiKey: string, baseUrl?: string): Promise<void> => {
   if (!apiKey) {
     throw new Error('AI API key is required for OpenAI-compatible models')
   }
   const client = new OpenAI({
     apiKey,
-    ...(baseUrl ? { baseURL: baseUrl } : {}),
+    ...(baseUrl ? { baseURL: baseUrl } : {})
   })
   try {
     await client.models.list()
   } catch (err: any) {
     const msg: string = err?.message || String(err)
     const lower = msg.toLowerCase()
-    if (
-      lower.includes('401') ||
-      lower.includes('incorrect api key') ||
-      lower.includes('invalid api key')
-    ) {
+    if (lower.includes('401') || lower.includes('incorrect api key') || lower.includes('invalid api key')) {
       throw new Error('Invalid AI API key — authentication failed')
     }
     throw new Error(`AI API key validation failed: ${msg}`)
@@ -140,23 +124,19 @@ export const classifyAiError = (err: unknown): string => {
   return message
 }
 
-export type ProgressCallback = (data: string) => void;
+export type ProgressCallback = (data: string) => void
 
-export type ToolCallCallback = (toolCall: {
-  id: string;
-  name: string;
-  input: Record<string, unknown>;
-}) => void;
+export type ToolCallCallback = (toolCall: { id: string; name: string; input: Record<string, unknown> }) => void
 
 export type ToolCallResultCallback = (result: {
-  id: string;
-  name: string;
-  input: Record<string, unknown>;
-  status: 'succeeded' | 'failed';
-  output?: Record<string, unknown>;
-}) => void;
+  id: string
+  name: string
+  input: Record<string, unknown>
+  status: 'succeeded' | 'failed'
+  output?: Record<string, unknown>
+}) => void
 
-export type TurnStartCallback = () => void;
+export type TurnStartCallback = () => void
 
 // Called before executing a tool that requires user approval.
 // Return { approved: true } to proceed, { approved: false } to reject (rejection message is fed back to the AI).
@@ -164,15 +144,15 @@ export type ConfirmToolCallFn = (
   toolCallId: string,
   toolName: string,
   input: Record<string, unknown>
-) => Promise<{ approved: boolean; userResponse?: string }>;
+) => Promise<{ approved: boolean; userResponse?: string }>
 
 // Bundles all streaming/progress callbacks to avoid long parameter lists
 export interface StreamCallbacks {
-  onProgress?: ProgressCallback;
-  onToolCall?: ToolCallCallback;
-  onToolCallResult?: ToolCallResultCallback;
-  onTurnStart?: TurnStartCallback;
-  confirmToolCall?: ConfirmToolCallFn;
+  onProgress?: ProgressCallback
+  onToolCall?: ToolCallCallback
+  onToolCallResult?: ToolCallResultCallback
+  onTurnStart?: TurnStartCallback
+  confirmToolCall?: ConfirmToolCallFn
 }
 
 // Tools that must pause and wait for user confirmation before execution
@@ -182,7 +162,7 @@ export const generateChatTitle = async (
   issue: Issue,
   model: string,
   modelKey: string,
-  modelUrl?: string,
+  modelUrl?: string
 ): Promise<string> => {
   const prompt = `Generate a concise title (max 60 characters) for a debugging session about this issue.
 Service: ${issue.service.serviceName}
@@ -197,19 +177,19 @@ Return only the title text, no quotes or explanation.`
       const response = await client.messages.create({
         model: model === 'claude-code' ? 'claude-haiku-4-5' : model,
         max_tokens: 64,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: prompt }]
       })
       const block = response.content[0]
       return block?.type === 'text' ? block.text.trim() : issue.title
     } else {
       const client = new OpenAI({
         apiKey: modelKey,
-        ...(modelUrl ? { baseURL: modelUrl } : {}),
+        ...(modelUrl ? { baseURL: modelUrl } : {})
       })
       const response = await client.chat.completions.create({
         model,
         max_tokens: 64,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: prompt }]
       })
       return response.choices[0]?.message?.content?.trim() ?? issue.title
     }
@@ -243,19 +223,19 @@ Always call write_patch at the end with the complete list of patches needed.${di
 
 export const fetchIssueDebugContext = async (
   issue: Issue,
-  mcpConfig: McpConfig,
+  mcpConfig: McpConfig
 ): Promise<{ context: string; debugSessionId: string } | undefined> => {
   try {
     const listUrl = new URL(
       `/v0/radar/workspaces/${issue.workspace}/projects/${issue.project}/debug-sessions`,
-      mcpConfig.apiUrl,
+      mcpConfig.apiUrl
     )
     listUrl.searchParams.set('issueComponentHash', issue.componentHash)
     listUrl.searchParams.set('limit', '1')
     listUrl.searchParams.set('sortKey', 'createdAt')
     listUrl.searchParams.set('sortDirection', '-1')
     const listRes = await fetch(listUrl.toString(), {
-      headers: { 'x-api-key': mcpConfig.apiKey },
+      headers: { 'x-api-key': mcpConfig.apiKey }
     })
     if (!listRes.ok) return undefined
     const listData = (await listRes.json()) as any
@@ -265,46 +245,35 @@ export const fetchIssueDebugContext = async (
     let traces: unknown[] = []
     let logs: unknown[] = []
 
-    if (
-      debugSession.finishedS3Transfer &&
-      Array.isArray(debugSession.s3Files)
-    ) {
-      const tracesFile = (debugSession.s3Files as any[]).find(
-        (f: any) => f.dataType === 'OTLP_TRACES',
-      )
-      const logsFile = (debugSession.s3Files as any[]).find(
-        (f: any) => f.dataType === 'OTLP_LOGS',
-      )
+    if (debugSession.finishedS3Transfer && Array.isArray(debugSession.s3Files)) {
+      const tracesFile = (debugSession.s3Files as any[]).find((f: any) => f.dataType === 'OTLP_TRACES')
+      const logsFile = (debugSession.s3Files as any[]).find((f: any) => f.dataType === 'OTLP_LOGS')
       const [tracesData, logsData] = await Promise.all([
-        tracesFile?.url
-          ? fetch(tracesFile.url).then((r: any) => (r.ok ? r.json() : []))
-          : Promise.resolve([]),
-        logsFile?.url
-          ? fetch(logsFile.url).then((r: any) => (r.ok ? r.json() : []))
-          : Promise.resolve([]),
+        tracesFile?.url ? fetch(tracesFile.url).then((r: any) => (r.ok ? r.json() : [])) : Promise.resolve([]),
+        logsFile?.url ? fetch(logsFile.url).then((r: any) => (r.ok ? r.json() : [])) : Promise.resolve([])
       ])
-      traces = Array.isArray(tracesData) ? tracesData : tracesData?.data ?? []
-      logs = Array.isArray(logsData) ? logsData : logsData?.data ?? []
+      traces = Array.isArray(tracesData) ? tracesData : (tracesData?.data ?? [])
+      logs = Array.isArray(logsData) ? logsData : (logsData?.data ?? [])
     } else {
       const tracesUrl = new URL(
         `/v0/radar/workspaces/${issue.workspace}/projects/${issue.project}/debug-sessions/${debugSession._id}/otel-traces`,
-        mcpConfig.apiUrl,
+        mcpConfig.apiUrl
       )
       tracesUrl.searchParams.set('skip', '0')
       tracesUrl.searchParams.set('limit', '300')
       const logsUrl = new URL(
         `/v0/radar/workspaces/${issue.workspace}/projects/${issue.project}/debug-sessions/${debugSession._id}/otel-logs`,
-        mcpConfig.apiUrl,
+        mcpConfig.apiUrl
       )
       logsUrl.searchParams.set('skip', '0')
       logsUrl.searchParams.set('limit', '300')
       const [tracesRes, logsRes] = await Promise.all([
         fetch(tracesUrl.toString(), {
-          headers: { 'x-api-key': mcpConfig.apiKey },
+          headers: { 'x-api-key': mcpConfig.apiKey }
         }),
         fetch(logsUrl.toString(), {
-          headers: { 'x-api-key': mcpConfig.apiKey },
-        }),
+          headers: { 'x-api-key': mcpConfig.apiKey }
+        })
       ])
       traces = tracesRes.ok ? ((await tracesRes.json()) as any).data : []
       logs = logsRes.ok ? ((await logsRes.json()) as any).data : []
@@ -312,7 +281,7 @@ export const fetchIssueDebugContext = async (
 
     return {
       context: JSON.stringify({ sessionId: debugSession._id, traces, logs }),
-      debugSessionId: debugSession._id,
+      debugSessionId: debugSession._id
     }
   } catch {
     return undefined
@@ -320,15 +289,15 @@ export const fetchIssueDebugContext = async (
 }
 
 export interface IssueAnalysis {
-  fixabilityScore: number;
-  severity: 'high' | 'medium' | 'low';
+  fixabilityScore: number
+  severity: 'high' | 'medium' | 'low'
 }
 
 export const analyseIssueContext = async (
   markdown: string,
   model: string,
   modelKey: string,
-  modelUrl?: string,
+  modelUrl?: string
 ): Promise<IssueAnalysis> => {
   const systemPrompt = `You are a software engineering assistant that evaluates bug reports.
 Respond ONLY with a JSON object in this exact format (no markdown, no explanation):
@@ -354,7 +323,7 @@ severity rules:
         model,
         max_tokens: 100,
         system: systemPrompt,
-        messages: [{ role: 'user', content: userMessage }],
+        messages: [{ role: 'user', content: userMessage }]
       })
       const text = response.content.find((b) => b.type === 'text')?.text ?? ''
       return JSON.parse(text) as IssueAnalysis
@@ -362,15 +331,15 @@ severity rules:
 
     const openai = new OpenAI({
       apiKey: modelKey,
-      ...(modelUrl ? { baseURL: modelUrl } : {}),
+      ...(modelUrl ? { baseURL: modelUrl } : {})
     })
     const response = await openai.chat.completions.create({
       model,
       max_tokens: 100,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
+        { role: 'user', content: userMessage }
+      ]
     })
     const text = response.choices[0]?.message?.content ?? ''
     return JSON.parse(text) as IssueAnalysis
@@ -383,14 +352,14 @@ severity rules:
 export const buildIssueContextDoc = (
   issue: Issue,
   release: Release | undefined,
-  debugContext: string | undefined,
+  debugContext: string | undefined
 ): string => {
   const lines: string[] = [
     `# Issue: ${issue.title}`,
     '',
     `**Component Hash:** \`${issue.componentHash}\``,
     `**Category:** ${issue.category}`,
-    `**Service:** ${issue.service.serviceName}`,
+    `**Service:** ${issue.service.serviceName}`
   ]
 
   if (issue.service.environment) {
@@ -404,10 +373,8 @@ export const buildIssueContextDoc = (
     lines.push('', '## Release')
     lines.push(`**Version:** ${release.version}`)
     if (release.commitHash) lines.push(`**Commit:** \`${release.commitHash}\``)
-    if (release.repositoryUrl)
-      lines.push(`**Repository:** ${release.repositoryUrl}`)
-    if (release.releaseNotes)
-      lines.push('', '**Release Notes:**', release.releaseNotes)
+    if (release.repositoryUrl) lines.push(`**Repository:** ${release.repositoryUrl}`)
+    if (release.releaseNotes) lines.push('', '**Release Notes:**', release.releaseNotes)
   }
 
   if (
@@ -418,17 +385,12 @@ export const buildIssueContextDoc = (
     issue.metadata.httpMethod
   ) {
     lines.push('', '## Error Details')
-    if (issue.metadata.message)
-      lines.push(`**Message:** ${issue.metadata.message}`)
+    if (issue.metadata.message) lines.push(`**Message:** ${issue.metadata.message}`)
     if (issue.metadata.type) lines.push(`**Type:** ${issue.metadata.type}`)
-    if (issue.metadata.filename)
-      lines.push(`**File:** ${issue.metadata.filename}`)
-    if (issue.metadata.function)
-      lines.push(`**Function:** ${issue.metadata.function}`)
+    if (issue.metadata.filename) lines.push(`**File:** ${issue.metadata.filename}`)
+    if (issue.metadata.function) lines.push(`**Function:** ${issue.metadata.function}`)
     if (issue.metadata.httpMethod && issue.metadata.httpRoute) {
-      lines.push(
-        `**HTTP:** ${issue.metadata.httpMethod} ${issue.metadata.httpRoute}`,
-      )
+      lines.push(`**HTTP:** ${issue.metadata.httpMethod} ${issue.metadata.httpRoute}`)
     }
     if (issue.metadata.value) lines.push(`**Value:** ${issue.metadata.value}`)
   }
@@ -440,9 +402,9 @@ export const buildIssueContextDoc = (
   if (debugContext) {
     try {
       const ctx = JSON.parse(debugContext) as {
-        sessionId?: string;
-        traces?: any[];
-        logs?: any[];
+        sessionId?: string
+        traces?: any[]
+        logs?: any[]
       }
       lines.push('', '## Debug Session')
       if (ctx.sessionId) lines.push(`**Session ID:** \`${ctx.sessionId}\``)
@@ -457,15 +419,11 @@ export const buildIssueContextDoc = (
               for (const span of scope.spans ?? []) {
                 const name = span.name ?? '(unnamed)'
                 const statusCode = span.status?.code ?? span.status?.Code ?? 0
-                const hasError =
-                  statusCode === 2 || statusCode === 'STATUS_CODE_ERROR'
-                const events = (span.events ?? [])
-                  .map((e: any) => e.name)
-                  .filter(Boolean)
+                const hasError = statusCode === 2 || statusCode === 'STATUS_CODE_ERROR'
+                const events = (span.events ?? []).map((e: any) => e.name).filter(Boolean)
                 let entry = `- **${name}**`
                 if (hasError) entry += ' ⚠ ERROR'
-                if (events.length)
-                  entry += ` [${events.slice(0, 3).join(', ')}]`
+                if (events.length) entry += ` [${events.slice(0, 3).join(', ')}]`
                 spans.push(entry)
               }
             }
@@ -473,8 +431,7 @@ export const buildIssueContextDoc = (
         }
         collectSpans(ctx.traces)
         lines.push(...spans.slice(0, 30))
-        if (spans.length > 30)
-          lines.push(`  … and ${spans.length - 30} more spans`)
+        if (spans.length > 30) lines.push(`  … and ${spans.length - 30} more spans`)
       }
 
       if (Array.isArray(ctx.logs) && ctx.logs.length > 0) {
@@ -484,28 +441,17 @@ export const buildIssueContextDoc = (
           for (const item of items) {
             const scopeLogs = item.scopeLogs ?? item.scope_logs ?? []
             for (const scope of scopeLogs) {
-              for (const record of scope.logRecords ??
-                scope.log_records ??
-                []) {
-                const severity =
-                  record.severityText ?? record.severity_text ?? ''
-                const body =
-                  record.body?.stringValue ??
-                  record.body?.string_value ??
-                  record.body ??
-                  ''
-                if (body)
-                  logLines.push(
-                    `- **[${severity}]** ${String(body).slice(0, 200)}`,
-                  )
+              for (const record of scope.logRecords ?? scope.log_records ?? []) {
+                const severity = record.severityText ?? record.severity_text ?? ''
+                const body = record.body?.stringValue ?? record.body?.string_value ?? record.body ?? ''
+                if (body) logLines.push(`- **[${severity}]** ${String(body).slice(0, 200)}`)
               }
             }
           }
         }
         collectLogs(ctx.logs)
         lines.push(...logLines.slice(0, 30))
-        if (logLines.length > 30)
-          lines.push(`  … and ${logLines.length - 30} more log entries`)
+        if (logLines.length > 30) lines.push(`  … and ${logLines.length - 30} more log entries`)
       }
     } catch {
       // debug context not parseable, skip structured section
@@ -519,16 +465,12 @@ export const buildIssueContextDoc = (
   return markdown
 }
 
-export const buildIssuePromptFallback = (
-  issue: Issue,
-  release?: Release,
-  debugContext?: string,
-): string => {
+export const buildIssuePromptFallback = (issue: Issue, release?: Release, debugContext?: string): string => {
   const lines: string[] = [
     `# Issue: ${issue.title}`,
     '',
     `**Category:** ${issue.category}`,
-    `**Service:** ${issue.service.serviceName}`,
+    `**Service:** ${issue.service.serviceName}`
   ]
 
   if (issue.service.environment) {
@@ -538,22 +480,10 @@ export const buildIssuePromptFallback = (
     lines.push(`**Release:** ${issue.service.release}`)
   }
   if (issue.metadata.message) {
-    lines.push(
-      '',
-      '## Error Message',
-      '```',
-      issue.metadata.message,
-      '```',
-    )
+    lines.push('', '## Error Message', '```', issue.metadata.message, '```')
   }
   if (issue.metadata.stacktrace) {
-    lines.push(
-      '',
-      '## Stacktrace',
-      '```',
-      issue.metadata.stacktrace,
-      '```',
-    )
+    lines.push('', '## Stacktrace', '```', issue.metadata.stacktrace, '```')
   }
   if (issue.metadata.filename) {
     lines.push('', `**File:** ${issue.metadata.filename}`)
@@ -562,10 +492,7 @@ export const buildIssuePromptFallback = (
     lines.push(`**Function:** ${issue.metadata.function}`)
   }
   if (issue.metadata.httpMethod && issue.metadata.httpRoute) {
-    lines.push(
-      '',
-      `**HTTP:** ${issue.metadata.httpMethod} ${issue.metadata.httpRoute}`,
-    )
+    lines.push('', `**HTTP:** ${issue.metadata.httpMethod} ${issue.metadata.httpRoute}`)
   }
   if (issue.metadata.value) {
     lines.push('', `**Value:** ${issue.metadata.value}`)
@@ -578,25 +505,17 @@ export const buildIssuePromptFallback = (
     lines.push('', '## Release')
     lines.push(`**Version:** ${release.version}`)
     if (release.commitHash) lines.push(`**Commit:** ${release.commitHash}`)
-    if (release.repositoryUrl)
-      lines.push(`**Repository:** ${release.repositoryUrl}`)
-    if (release.releaseNotes)
-      lines.push('', '**Release Notes:**', release.releaseNotes)
+    if (release.repositoryUrl) lines.push(`**Repository:** ${release.repositoryUrl}`)
+    if (release.releaseNotes) lines.push('', '**Release Notes:**', release.releaseNotes)
   }
 
   if (debugContext) {
-    lines.push(
-      '',
-      '## Runtime Debug Context',
-      '```json',
-      debugContext,
-      '```',
-    )
+    lines.push('', '## Runtime Debug Context', '```json', debugContext, '```')
   }
 
   lines.push(
     '',
-    'Please analyze this issue and produce file patches to fix it. Read relevant source files to understand the code before making changes.',
+    'Please analyze this issue and produce file patches to fix it. Read relevant source files to understand the code before making changes.'
   )
 
   return lines.join('\n')
@@ -619,10 +538,7 @@ const readFileSafe = (projectDir: string, filePath: string): string => {
     }
     const content = fs.readFileSync(resolved, 'utf-8')
     if (content.length > MAX_FILE_SIZE) {
-      return (
-        content.slice(0, MAX_FILE_SIZE) +
-        `\n\n[... truncated at ${MAX_FILE_SIZE} chars ...]`
-      )
+      return content.slice(0, MAX_FILE_SIZE) + `\n\n[... truncated at ${MAX_FILE_SIZE} chars ...]`
     }
     return content
   } catch (err: any) {
@@ -634,9 +550,7 @@ const applyPatches = (projectDir: string, patches: FilePatch[]): void => {
   for (const patch of patches) {
     const resolved = path.resolve(projectDir, patch.filePath)
     if (!resolved.startsWith(path.resolve(projectDir))) {
-      throw new Error(
-        `Security: patch path ${patch.filePath} is outside project directory`,
-      )
+      throw new Error(`Security: patch path ${patch.filePath} is outside project directory`)
     }
     const dir = path.dirname(resolved)
     fs.mkdirSync(dir, { recursive: true })
@@ -655,12 +569,12 @@ const openAiTools: OpenAI.Chat.ChatCompletionTool[] = [
         properties: {
           path: {
             type: 'string',
-            description: 'Relative path from the project root',
-          },
+            description: 'Relative path from the project root'
+          }
         },
-        required: ['path'],
-      },
-    },
+        required: ['path']
+      }
+    }
   },
   {
     type: 'function',
@@ -677,22 +591,22 @@ const openAiTools: OpenAI.Chat.ChatCompletionTool[] = [
               type: 'object',
               properties: {
                 filePath: { type: 'string' },
-                newContent: { type: 'string' },
+                newContent: { type: 'string' }
               },
-              required: ['filePath', 'newContent'],
-            },
-          },
+              required: ['filePath', 'newContent']
+            }
+          }
         },
-        required: ['patches'],
-      },
-    },
-  },
+        required: ['patches']
+      }
+    }
+  }
 ]
 
 // ─── Shared Claude Code stream processing ─────────────────────────────────────
 
-type PendingToolCall = { id: string; name: string; inputJson: string };
-type RunningToolCall = { name: string; input: Record<string, unknown> };
+type PendingToolCall = { id: string; name: string; inputJson: string }
+type RunningToolCall = { name: string; input: Record<string, unknown> }
 
 /**
  * Processes a user message from the Claude SDK, extracting tool results and
@@ -701,14 +615,9 @@ type RunningToolCall = { name: string; input: Record<string, unknown> };
 const processClaudeToolResults = (
   msg: any,
   callbacks: StreamCallbacks,
-  runningToolCalls: Map<string, RunningToolCall>,
+  runningToolCalls: Map<string, RunningToolCall>
 ): void => {
-  if (
-    msg.type !== 'user' ||
-    !callbacks.onToolCallResult ||
-    !Array.isArray(msg.message?.content)
-  )
-    return
+  if (msg.type !== 'user' || !callbacks.onToolCallResult || !Array.isArray(msg.message?.content)) return
 
   for (const block of msg.message.content) {
     if (block.type !== 'tool_result') continue
@@ -726,7 +635,7 @@ const processClaudeToolResults = (
       id,
       ...data,
       status: block.is_error ? 'failed' : 'succeeded',
-      output: { content: outputContent },
+      output: { content: outputContent }
     })
     runningToolCalls.delete(id)
   }
@@ -741,7 +650,7 @@ const processClaudeStreamEvent = (
   callbacks: StreamCallbacks,
   pendingToolCallRef: { current: PendingToolCall | null },
   runningToolCalls: Map<string, RunningToolCall>,
-  onText?: (text: string) => void,
+  onText?: (text: string) => void
 ): void => {
   if (event.type === 'message_start') {
     callbacks.onTurnStart?.()
@@ -752,48 +661,37 @@ const processClaudeStreamEvent = (
       }
       runningToolCalls.clear()
     }
-  } else if (
-    event.type === 'content_block_start' &&
-    event.content_block?.type === 'tool_use'
-  ) {
+  } else if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') {
     if (callbacks.onToolCall || callbacks.onToolCallResult) {
       pendingToolCallRef.current = {
         id: event.content_block.id,
         name: event.content_block.name,
-        inputJson: '',
+        inputJson: ''
       }
     }
   } else if (event.type === 'content_block_delta') {
     if (event.delta?.type === 'text_delta') {
       callbacks.onProgress?.(event.delta.text)
       onText?.(event.delta.text)
-    } else if (
-      event.delta?.type === 'input_json_delta' &&
-      pendingToolCallRef.current
-    ) {
+    } else if (event.delta?.type === 'input_json_delta' && pendingToolCallRef.current) {
       pendingToolCallRef.current.inputJson += event.delta.partial_json ?? ''
     }
-  } else if (
-    event.type === 'content_block_stop' &&
-    pendingToolCallRef.current
-  ) {
+  } else if (event.type === 'content_block_stop' && pendingToolCallRef.current) {
     let input: Record<string, unknown>
     try {
-      input = pendingToolCallRef.current.inputJson
-        ? JSON.parse(pendingToolCallRef.current.inputJson)
-        : {}
+      input = pendingToolCallRef.current.inputJson ? JSON.parse(pendingToolCallRef.current.inputJson) : {}
     } catch {
       input = {}
     }
     callbacks.onToolCall?.({
       id: pendingToolCallRef.current.id,
       name: pendingToolCallRef.current.name,
-      input,
+      input
     })
     if (callbacks.onToolCallResult) {
       runningToolCalls.set(pendingToolCallRef.current.id, {
         name: pendingToolCallRef.current.name,
-        input,
+        input
       })
     }
     pendingToolCallRef.current = null
@@ -809,18 +707,9 @@ const runOpenAiLoop = async (
   projectDir: string,
   abortSignal: AbortSignal | undefined,
   callbacks: StreamCallbacks,
-  handleExtraTool?: (
-    name: string,
-    input: Record<string, unknown>
-  ) => Promise<string>,
+  handleExtraTool?: (name: string, input: Record<string, unknown>) => Promise<string>
 ): Promise<{ patches: FilePatch[]; finalContent: string }> => {
-  const {
-    onProgress,
-    onToolCall,
-    onToolCallResult,
-    onTurnStart,
-    confirmToolCall,
-  } = callbacks
+  const { onProgress, onToolCall, onToolCallResult, onTurnStart, confirmToolCall } = callbacks
   let filesRead = 0
   let patches: FilePatch[] = []
   let finalContent = ''
@@ -838,7 +727,7 @@ const runOpenAiLoop = async (
       model,
       messages,
       tools: openAiTools,
-      tool_choice: 'auto',
+      tool_choice: 'auto'
     })
 
     const choice = response.choices[0]
@@ -864,13 +753,13 @@ const runOpenAiLoop = async (
 
         if (toolCall.function.name === 'read_file') {
           toolInput = JSON.parse(toolCall.function.arguments) as {
-            path: string;
+            path: string
           }
           onProgress?.(`[read] ${(toolInput as { path: string }).path}`)
           onToolCall?.({
             id: toolCall.id,
             name: toolCall.function.name,
-            input: toolInput,
+            input: toolInput
           })
           filesRead++
           result =
@@ -880,21 +769,17 @@ const runOpenAiLoop = async (
           if (result.startsWith('Error:')) toolStatus = 'failed'
         } else if (toolCall.function.name === 'write_patch') {
           toolInput = JSON.parse(toolCall.function.arguments) as {
-            patches: FilePatch[];
+            patches: FilePatch[]
           }
           onToolCall?.({
             id: toolCall.id,
             name: toolCall.function.name,
-            input: toolInput,
+            input: toolInput
           })
 
           if (confirmToolCall && CONFIRM_REQUIRED_TOOLS.has('write_patch')) {
             onProgress?.('[patch] Waiting for user confirmation...')
-            const { approved, userResponse } = await confirmToolCall(
-              toolCall.id,
-              'write_patch',
-              toolInput,
-            )
+            const { approved, userResponse } = await confirmToolCall(toolCall.id, 'write_patch', toolInput)
             if (!approved) {
               result = userResponse ?? 'Patch rejected by user'
               toolStatus = 'failed'
@@ -909,14 +794,11 @@ const runOpenAiLoop = async (
             result = `Patches recorded: ${patches.length} file(s)`
           }
         } else if (handleExtraTool) {
-          toolInput = JSON.parse(toolCall.function.arguments) as Record<
-            string,
-            unknown
-          >
+          toolInput = JSON.parse(toolCall.function.arguments) as Record<string, unknown>
           onToolCall?.({
             id: toolCall.id,
             name: toolCall.function.name,
-            input: toolInput,
+            input: toolInput
           })
           onProgress?.(`[${toolCall.function.name}] fetching...`)
           try {
@@ -926,14 +808,11 @@ const runOpenAiLoop = async (
             toolStatus = 'failed'
           }
         } else {
-          toolInput = JSON.parse(toolCall.function.arguments) as Record<
-            string,
-            unknown
-          >
+          toolInput = JSON.parse(toolCall.function.arguments) as Record<string, unknown>
           onToolCall?.({
             id: toolCall.id,
             name: toolCall.function.name,
-            input: toolInput,
+            input: toolInput
           })
           result = `Unknown tool: ${toolCall.function.name}`
           toolStatus = 'failed'
@@ -944,13 +823,13 @@ const runOpenAiLoop = async (
           name: toolCall.function.name,
           input: toolInput,
           status: toolStatus,
-          output: { content: result },
+          output: { content: result }
         })
 
         messages.push({
           role: 'tool',
           tool_call_id: toolCall.id,
-          content: result,
+          content: result
         })
       }
 
@@ -973,26 +852,19 @@ const resolveIssueWithOpenAI = async (
   apiKey: string,
   baseUrl: string | undefined,
   abortSignal: AbortSignal | undefined,
-  callbacks: StreamCallbacks,
+  callbacks: StreamCallbacks
 ): Promise<FilePatch[]> => {
   const client = new OpenAI({
     apiKey,
-    ...(baseUrl ? { baseURL: baseUrl } : {}),
+    ...(baseUrl ? { baseURL: baseUrl } : {})
   })
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: 'system', content: buildSystemPrompt() },
-    { role: 'user', content: prompt },
+    { role: 'user', content: prompt }
   ]
 
-  const { patches } = await runOpenAiLoop(
-    client,
-    model,
-    messages,
-    projectDir,
-    abortSignal,
-    callbacks,
-  )
+  const { patches } = await runOpenAiLoop(client, model, messages, projectDir, abortSignal, callbacks)
   return patches
 }
 
@@ -1004,12 +876,12 @@ const resolveIssueWithClaudeCode = async (
   prompt: string,
   model: string | undefined,
   abortSignal: AbortSignal | undefined,
-  callbacks: StreamCallbacks,
+  callbacks: StreamCallbacks
 ): Promise<FilePatch[]> => {
   const git = simpleGit(projectDir)
 
   const pendingToolCall: { current: PendingToolCall | null } = {
-    current: null,
+    current: null
   }
   const runningToolCalls = new Map<string, RunningToolCall>()
 
@@ -1017,12 +889,13 @@ const resolveIssueWithClaudeCode = async (
     prompt,
     options: {
       cwd: projectDir,
+      executable: 'node',
       permissionMode: 'bypassPermissions',
       systemPrompt: buildSystemPrompt(projectDir),
       maxTurns: 1000,
       includePartialMessages: !!(callbacks.onProgress || callbacks.onToolCall),
-      ...(model ? { model } : {}),
-    },
+      ...(model ? { model } : {})
+    }
   })) {
     if (abortSignal?.aborted) {
       callbacks.onProgress?.('[aborted]')
@@ -1034,17 +907,10 @@ const resolveIssueWithClaudeCode = async (
     processClaudeToolResults(msg, callbacks, runningToolCalls)
 
     if (msg.type === 'stream_event') {
-      processClaudeStreamEvent(
-        msg.event,
-        callbacks,
-        pendingToolCall,
-        runningToolCalls,
-      )
+      processClaudeStreamEvent(msg.event, callbacks, pendingToolCall, runningToolCalls)
     } else if (callbacks.onProgress) {
       if (msg.type === 'tool_progress') {
-        callbacks.onProgress(
-          `[${msg.tool_name}] ${msg.elapsed_time_seconds.toFixed(1)}s...`,
-        )
+        callbacks.onProgress(`[${msg.tool_name}] ${msg.elapsed_time_seconds.toFixed(1)}s...`)
       } else if (msg.type === 'system' && msg.subtype === 'task_progress') {
         callbacks.onProgress(msg.description)
       } else if (msg.type === 'result') {
@@ -1060,15 +926,11 @@ const resolveIssueWithClaudeCode = async (
   if (abortSignal?.aborted) return []
 
   const status = await git.status()
-  const changedFiles = [
-    ...status.modified,
-    ...status.created,
-    ...status.not_added,
-  ]
+  const changedFiles = [...status.modified, ...status.created, ...status.not_added]
 
   return changedFiles.map((filePath) => ({
     filePath,
-    newContent: fs.readFileSync(path.resolve(projectDir, filePath), 'utf-8'),
+    newContent: fs.readFileSync(path.resolve(projectDir, filePath), 'utf-8')
   }))
 }
 
@@ -1081,32 +943,25 @@ const continueChatWithOpenAI = async (
   apiKey: string,
   baseUrl: string | undefined,
   abortSignal: AbortSignal | undefined,
-  callbacks: StreamCallbacks,
+  callbacks: StreamCallbacks
 ): Promise<string> => {
   const client = new OpenAI({
     apiKey,
-    ...(baseUrl ? { baseURL: baseUrl } : {}),
+    ...(baseUrl ? { baseURL: baseUrl } : {})
   })
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: 'system', content: buildSystemPrompt() },
     ...history.map(
       (m) =>
-      ({
-        role: m.role,
-        content: m.content,
-      } as OpenAI.Chat.ChatCompletionMessageParam),
-    ),
+        ({
+          role: m.role,
+          content: m.content
+        }) as OpenAI.Chat.ChatCompletionMessageParam
+    )
   ]
 
-  const { finalContent } = await runOpenAiLoop(
-    client,
-    model,
-    messages,
-    projectDir,
-    abortSignal,
-    callbacks,
-  )
+  const { finalContent } = await runOpenAiLoop(client, model, messages, projectDir, abortSignal, callbacks)
   return finalContent
 }
 
@@ -1115,26 +970,22 @@ const continueChatWithClaudeCode = async (
   projectDir: string,
   model: string | undefined,
   abortSignal: AbortSignal | undefined,
-  callbacks: StreamCallbacks,
+  callbacks: StreamCallbacks
 ): Promise<string> => {
   if (!history.length) {
     throw new Error('EMPTY_HISTORY')
   }
-  const contextLines = history
-    .slice(0, -1)
-    .map((m) => `<${m.role}>\n${m.content}\n</${m.role}>`)
+  const contextLines = history.slice(0, -1).map((m) => `<${m.role}>\n${m.content}\n</${m.role}>`)
   const lastMessage = history[history.length - 1]
 
   const prompt =
     contextLines.length > 0
-      ? `<conversation_history>\n${contextLines.join(
-        '\n\n',
-      )}\n</conversation_history>\n\n${lastMessage?.content}`
+      ? `<conversation_history>\n${contextLines.join('\n\n')}\n</conversation_history>\n\n${lastMessage?.content}`
       : (lastMessage?.content as string)
 
   let response = ''
   const pendingToolCall: { current: PendingToolCall | null } = {
-    current: null,
+    current: null
   }
   const runningToolCalls = new Map<string, RunningToolCall>()
 
@@ -1142,16 +993,13 @@ const continueChatWithClaudeCode = async (
     prompt,
     options: {
       cwd: projectDir,
+      executable: 'node',
       permissionMode: 'bypassPermissions',
       systemPrompt: buildSystemPrompt(projectDir),
       maxTurns: 250,
-      includePartialMessages: !!(
-        callbacks.onProgress ||
-        callbacks.onToolCall ||
-        callbacks.onToolCallResult
-      ),
-      ...(model ? { model } : {}),
-    },
+      includePartialMessages: !!(callbacks.onProgress || callbacks.onToolCall || callbacks.onToolCallResult),
+      ...(model ? { model } : {})
+    }
   })) {
     if (abortSignal?.aborted) {
       callbacks.onProgress?.('[aborted]')
@@ -1163,15 +1011,9 @@ const continueChatWithClaudeCode = async (
     processClaudeToolResults(msg, callbacks, runningToolCalls)
 
     if (msg.type === 'stream_event') {
-      processClaudeStreamEvent(
-        msg.event,
-        callbacks,
-        pendingToolCall,
-        runningToolCalls,
-        (text) => {
-          response += text
-        },
-      )
+      processClaudeStreamEvent(msg.event, callbacks, pendingToolCall, runningToolCalls, (text) => {
+        response += text
+      })
     } else if (msg.type === 'result') {
       callbacks.onProgress?.('')
     }
@@ -1190,19 +1032,12 @@ export const resolveIssue = async (
   modelKey: string,
   modelUrl: string | undefined,
   abortSignal: AbortSignal | undefined,
-  callbacks: StreamCallbacks,
+  callbacks: StreamCallbacks
 ): Promise<FilePatch[]> => {
   if (model === 'claude-code' || isAnthropicModel(model)) {
     // Claude Code SDK handles tool execution internally — confirmation dialogs are not supported
     const claudeModel = model === 'claude-code' ? undefined : model
-    return resolveIssueWithClaudeCode(
-      issue,
-      projectDir,
-      prompt,
-      claudeModel,
-      abortSignal,
-      callbacks,
-    )
+    return resolveIssueWithClaudeCode(issue, projectDir, prompt, claudeModel, abortSignal, callbacks)
   }
 
   const patches = await resolveIssueWithOpenAI(
@@ -1213,7 +1048,7 @@ export const resolveIssue = async (
     modelKey,
     modelUrl,
     abortSignal,
-    callbacks,
+    callbacks
   )
 
   if (patches.length > 0) {
@@ -1229,7 +1064,7 @@ export const generatePrContent = async (
   diffStats: { additions: number; deletions: number },
   model: string,
   modelKey: string,
-  modelUrl: string | undefined,
+  modelUrl: string | undefined
 ): Promise<{ title: string; body: string }> => {
   const systemPrompt = `You are a developer writing a pull request for a bug fix.
 Return a JSON object with exactly two keys: "title" (concise PR title, max 72 chars) and "body" (markdown PR description).
@@ -1249,11 +1084,10 @@ Use clear markdown with section headers. Do not include any other text outside t
     issue.metadata?.type && `Error type: ${issue.metadata.type}`,
     issue.metadata?.message && `Error message: ${issue.metadata.message}`,
     issue.metadata?.culprit && `Culprit: ${issue.metadata.culprit}`,
-    issue.metadata?.stacktrace &&
-    `Stack trace:\n${issue.metadata.stacktrace.slice(0, 800)}`,
+    issue.metadata?.stacktrace && `Stack trace:\n${issue.metadata.stacktrace.slice(0, 800)}`,
     issue.service?.serviceName && `Service: ${issue.service.serviceName}`,
     issue.service?.environment && `Environment: ${issue.service.environment}`,
-    issue.category && `Category: ${issue.category}`,
+    issue.category && `Category: ${issue.category}`
   ]
     .filter(Boolean)
     .join('\n')
@@ -1276,21 +1110,21 @@ ${conversationContext || 'No details available.'}`
         model: isAnthropicModel(model) ? model : 'claude-haiku-4-5',
         max_tokens: 1024,
         system: systemPrompt,
-        messages: [{ role: 'user', content: userMessage }],
+        messages: [{ role: 'user', content: userMessage }]
       })
       text = response.content.find((b) => b.type === 'text')?.text ?? ''
     } else {
       const openai = new OpenAI({
         apiKey: modelKey,
-        ...(modelUrl ? { baseURL: modelUrl } : {}),
+        ...(modelUrl ? { baseURL: modelUrl } : {})
       })
       const response = await openai.chat.completions.create({
         model,
         max_tokens: 1024,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
+          { role: 'user', content: userMessage }
+        ]
       })
       text = response.choices[0]?.message?.content ?? ''
     }
@@ -1306,7 +1140,7 @@ ${conversationContext || 'No details available.'}`
   }
   return {
     title: `fix: ${issue.title}`,
-    body: `Fixes issue \`${issue.componentHash}\`.\n\nChanges: +${diffStats.additions}/-${diffStats.deletions} lines.`,
+    body: `Fixes issue \`${issue.componentHash}\`.\n\nChanges: +${diffStats.additions}/-${diffStats.deletions} lines.`
   }
 }
 
@@ -1317,25 +1151,11 @@ export const continueChat = async (
   modelKey: string,
   modelUrl: string | undefined,
   abortSignal: AbortSignal | undefined,
-  callbacks: StreamCallbacks,
+  callbacks: StreamCallbacks
 ): Promise<string> => {
   if (model === 'claude-code' || isAnthropicModel(model)) {
     const claudeModel = model === 'claude-code' ? undefined : model
-    return continueChatWithClaudeCode(
-      history,
-      projectDir,
-      claudeModel,
-      abortSignal,
-      callbacks,
-    )
+    return continueChatWithClaudeCode(history, projectDir, claudeModel, abortSignal, callbacks)
   }
-  return continueChatWithOpenAI(
-    history,
-    projectDir,
-    model,
-    modelKey,
-    modelUrl,
-    abortSignal,
-    callbacks,
-  )
+  return continueChatWithOpenAI(history, projectDir, model, modelKey, modelUrl, abortSignal, callbacks)
 }
