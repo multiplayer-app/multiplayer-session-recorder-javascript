@@ -4,6 +4,7 @@ import type { RuntimeMode } from '../runtime/types.js'
 import type { AgentConfig } from '../types/index.js'
 import { loadProfile } from './profile.js'
 import { API_URL, DEFAULT_MAX_CONCURRENT } from '../config.js'
+import pkg from '../../package.json' with { type: 'json' }
 
 export interface ParsedFlags {
   mode: RuntimeMode
@@ -18,7 +19,7 @@ export function parseFlags(argv: string[]): ParsedFlags {
   program
     .name('multiplayer')
     .description('Multiplayer debugging agent — automatically resolves issues using AI')
-    .version('0.0.1')
+    .version(pkg.version)
     .option('--headless', 'Run without TUI (structured log output, requires full config); also set via MULTIPLAYER_HEADLESS=true')
     .option('--profile <name>', 'Config profile to use from .multiplayer/config (default: "default"); also set via MULTIPLAYER_PROFILE')
     .option('--url <url>', 'Multiplayer base API URL')
