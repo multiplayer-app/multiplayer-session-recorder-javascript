@@ -1,45 +1,42 @@
 {
   "name": "@multiplayer-app/cli",
-  "version": "2.0.3",
+  "version": "2.0.5",
   "description": "Multiplayer CLI",
-  "main": "dist/index.js",
   "bin": {
-    "multiplayer": "./dist/index.js"
+    "multiplayer": "./bin/multiplayer.js"
   },
   "scripts": {
-    "build": "bun build src/index.tsx --outdir dist --target bun --format esm --sourcemap=none --external @anthropic-ai/claude-agent-sdk && rm -f dist/index.js.map",
+    "build": "bun build src/index.tsx --compile --outfile dist/multiplayer-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/x64/') --sourcemap=none",
+    "build:all": "bash scripts/build-all.sh",
     "start": "bun dist/index.js",
     "dev": "bun src/index.tsx",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts --config eslint.config.js",
     "prepublishOnly": "npm run build"
   },
+  "type": "module",
   "license": "MIT",
-  "dependencies": {
+  "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.2.89",
     "@anthropic-ai/sdk": "^0.78.0",
     "@opentui/core": "0.1.93",
+    "@opentui/core-darwin-x64": "^0.1.95",
     "@opentui/react": "0.1.93",
+    "@sindresorhus/tsconfig": "^8.1.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "25.5.0",
+    "@types/react": "19.2.14",
+    "@types/superagent": "8.1.9",
     "commander": "14.0.3",
     "dotenv": "16.0.0",
+    "eslint": "10.1.0",
     "jsonwebtoken": "9.0.3",
     "mongoose": "9.3.3",
     "openai": "6.33.0",
     "react": "19.2.4",
     "simple-git": "3.33.0",
     "socket.io-client": "4.8.3",
-    "superagent": "10.3.0"
-  },
-  "overrides": {
-    "react": "19.2.4"
-  },
-  "devDependencies": {
-    "@sindresorhus/tsconfig": "^8.1.0",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "25.5.0",
-    "@types/react": "19.2.14",
-    "@types/superagent": "8.1.9",
-    "eslint": "10.1.0",
+    "superagent": "10.3.0",
     "typescript": "6.0.2"
   }
 }
