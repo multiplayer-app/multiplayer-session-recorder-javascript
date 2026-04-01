@@ -1,13 +1,19 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [
-    ".nvmrc",
-    ".yarnrc.yml"
-  ],
-  "globalEnv": [
-    "NODE_ENV"
-  ],
+  "extends": ["//"],
+
   "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "package.json",
+        "tsconfig*.json",
+        "babel.config.js"
+      ],
+      "outputs": ["lib/**"]
+    },
     "build:android": {
       "env": [
         "ANDROID_HOME",
