@@ -3,6 +3,7 @@ import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { useKeyboard } from '@opentui/react'
 import type { AgentConfig } from '../../types/index.js'
 import { createApiService } from '../../services/api.service.js'
+import { API_URL } from '../../config.js'
 import { Logo } from '../Logo.js'
 import { ApiKeyStep } from '../startup/ApiKeyStep.js'
 import { WorkspaceStep } from '../startup/WorkspaceStep.js'
@@ -16,25 +17,24 @@ type StepId = 'api-key' | 'workspace' | 'directory' | 'model' | 'rate-limits' | 
 const STEPS: StepId[] = ['api-key', 'workspace', 'directory', 'model', 'rate-limits', 'connecting']
 
 const STEP_LABELS: Record<StepId, { title: string; description: string }> = {
-  'api-key':     { title: 'Project API Key',         description: 'Authenticate with Multiplayer and load workspace/project context.' },
-  'workspace':   { title: 'Workspace Confirmation',  description: 'Review the workspace and project that will receive agent updates.' },
-  'directory':   { title: 'Repository Directory',    description: 'Select the git repository where patches, commits, and branches are created.' },
-  'model':       { title: 'AI Model',                description: 'Choose an AI provider and model for issue resolution.' },
-  'rate-limits': { title: 'Concurrency',             description: 'Set how many issues can be processed in parallel.' },
-  'connecting':  { title: 'Final Checks',            description: 'Verify git and provider requirements before starting runtime.' },
+  'api-key': { title: 'Project API Key', description: 'Authenticate with Multiplayer and load workspace/project context.' },
+  'workspace': { title: 'Workspace Confirmation', description: 'Review the workspace and project that will receive agent updates.' },
+  'directory': { title: 'Repository Directory', description: 'Select the git repository where patches, commits, and branches are created.' },
+  'model': { title: 'AI Model', description: 'Choose an AI provider and model for issue resolution.' },
+  'rate-limits': { title: 'Concurrency', description: 'Set how many issues can be processed in parallel.' },
+  'connecting': { title: 'Final Checks', description: 'Verify git and provider requirements before starting runtime.' },
 }
 
 const STEP_SHORT: Record<StepId, string> = {
-  'api-key':     'API key',
-  'workspace':   'Workspace',
-  'directory':   'Directory',
-  'model':       'Model',
+  'api-key': 'API key',
+  'workspace': 'Workspace',
+  'directory': 'Directory',
+  'model': 'Model',
   'rate-limits': 'Concurrency',
-  'connecting':  'Verify',
+  'connecting': 'Verify',
 }
 
 const STEP_PANEL_WIDTH = 24
-const DEFAULT_API_URL = 'https://api.multiplayer.app/v0'
 
 function compactContextLabel(name: string | undefined, id: string | undefined): string {
   const raw = (name?.trim() || id || '—').trim()
@@ -44,12 +44,12 @@ function compactContextLabel(name: string | undefined, id: string | undefined): 
 
 function canSkip(step: StepId, config: Partial<AgentConfig>): boolean {
   switch (step) {
-    case 'api-key':     return !!config.apiKey
-    case 'workspace':   return !!(config.workspace && config.project && config.apiKey)
-    case 'directory':   return !!config.dir
-    case 'model':       return !!(config.model && (config.model.startsWith('claude') || config.modelKey))
+    case 'api-key': return !!config.apiKey
+    case 'workspace': return !!(config.workspace && config.project && config.apiKey)
+    case 'directory': return !!config.dir
+    case 'model': return !!(config.model && (config.model.startsWith('claude') || config.modelKey))
     case 'rate-limits': return typeof config.maxConcurrentIssues === 'number'
-    case 'connecting':  return false
+    case 'connecting': return false
   }
 }
 
@@ -88,7 +88,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
   }, [])
 
   useEffect(() => {
-    const url = config.url || DEFAULT_API_URL
+    const url = config.url || API_URL
     const apiKey = config.apiKey?.trim()
     const { workspace, project } = config
     if (!apiKey || !workspace || !project) return
@@ -99,7 +99,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
         const api = createApiService({ url, apiKey })
         const [ws, proj] = await Promise.all([
           api.fetchWorkspace(workspace),
-          api.fetchProject(workspace, project)
+          api.fetchProject(workspace, project),
         ])
         if (cancelled) return
         const workspaceDisplayName = ws?.name?.trim()
@@ -111,7 +111,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
           return {
             ...c,
             ...(workspaceDisplayName ? { workspaceDisplayName } : {}),
-            ...(projectDisplayName ? { projectDisplayName } : {})
+            ...(projectDisplayName ? { projectDisplayName } : {}),
           }
         })
       } catch {
@@ -235,12 +235,12 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
             </text>
           </box>
 
-          {step === 'api-key'     && <ApiKeyStep     config={config} onComplete={advance} />}
-          {step === 'workspace'   && <WorkspaceStep  config={config} onComplete={advance} />}
-          {step === 'directory'   && <DirectoryStep  config={config} onComplete={advance} />}
-          {step === 'model'       && <ModelStep      config={config} onComplete={advance} />}
+          {step === 'api-key' && <ApiKeyStep config={config} onComplete={advance} />}
+          {step === 'workspace' && <WorkspaceStep config={config} onComplete={advance} />}
+          {step === 'directory' && <DirectoryStep config={config} onComplete={advance} />}
+          {step === 'model' && <ModelStep config={config} onComplete={advance} />}
           {step === 'rate-limits' && <RateLimitsStep config={config} onComplete={advance} />}
-          {step === 'connecting'  && (
+          {step === 'connecting' && (
             <ConnectingStep
               config={config as AgentConfig}
               onComplete={onComplete}

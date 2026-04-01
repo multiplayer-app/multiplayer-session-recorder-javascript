@@ -1,8 +1,10 @@
 import React, { useState, type ReactElement } from 'react'
 import { stringFromInputSubmit } from '../../lib/inputSubmit.js'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
-import { validateApiKey } from '../../services/radar.service.js'
+import { createApiService } from '../../services/api.service.js'
 import type { AgentConfig } from '../../types/index.js'
+import { API_URL } from '../../config.js'
+import { decodeApiKeyPayload } from '../../services/radar.service.js'
 
 interface Props {
   config: Partial<AgentConfig>
@@ -14,20 +16,39 @@ export function ApiKeyStep({ config, onComplete }: Props): ReactElement {
   const [validating, setValidating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (input: string) => {
-    const trimmed = input.trim()
-    if (!trimmed) return
+  const handleSubmit = (apiKey: string) => {
+    const trimmedApiKey = apiKey.trim()
+    if (!trimmedApiKey) {
+      return
+    }
 
-    const url = config.url || 'https://api.multiplayer.app/v0'
+    const apiKeyPayload = decodeApiKeyPayload(trimmedApiKey)
+    const workspaceId = apiKeyPayload.workspace!
+    const projectId = apiKeyPayload.project!
+
+    const apiService = createApiService({
+      url: config.url || API_URL,
+      apiKey: trimmedApiKey,
+    })
     setValidating(true)
     setError(null)
 
-    validateApiKey(url, trimmed)
-      .then(({ workspace, project }) => {
+    apiService.fetchProject(workspaceId, projectId)
+      .then((result) => {
+        if (!result) {
+          setValidating(false)
+          setError('Invalid API key or workspace/project not found.')
+          return
+        }
+
         setValidating(false)
-        onComplete({ apiKey: trimmed, workspace, project })
+        onComplete({
+          apiKey: trimmedApiKey,
+          workspace: workspaceId,
+          project: projectId,
+        })
       })
-      .catch((err: Error) => {
+      .catch((err: any) => {
         setValidating(false)
         setError(err.message)
       })

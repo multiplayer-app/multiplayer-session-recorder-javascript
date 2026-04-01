@@ -1,12 +1,11 @@
 import superagent from 'superagent'
-
-const MULTIPLAYER_BASE_API_URL = 'https://api.multiplayer.app/v0'
+import { API_URL } from '../config.js'
 
 export const getDefaultBranchId = async (
   apiKey: string,
   workspaceId: string | undefined,
   projectId: string | undefined,
-  baseUrl = MULTIPLAYER_BASE_API_URL,
+  baseUrl = API_URL,
 ): Promise<string> => {
   const response = await superagent
     .get(`${baseUrl}/version/workspaces/${workspaceId}/projects/${projectId}/branches/default`)
@@ -21,7 +20,7 @@ export const getEntityId = async (
   branchId: string,
   entityName: string,
   entityType: string,
-  baseUrl = MULTIPLAYER_BASE_API_URL,
+  baseUrl = API_URL,
 ): Promise<string> => {
   const response = await superagent
     .get(`${baseUrl}/version/workspaces/${workspaceId}/projects/${projectId}/branches/${branchId}/entities?key=${entityName}&type=${entityType}&limit=1&skip=0`)
@@ -36,7 +35,7 @@ export const createRelease = async (
   workspaceId: string | undefined,
   projectId: string | undefined,
   payload: object,
-  baseUrl = MULTIPLAYER_BASE_API_URL,
+  baseUrl = API_URL,
 ): Promise<unknown> => {
   const response = await superagent
     .post(`${baseUrl}/version/workspaces/${workspaceId}/projects/${projectId}/releases`)
@@ -51,7 +50,7 @@ export const getReleaseId = async (
   projectId: string | undefined,
   entityId: string,
   version: string,
-  baseUrl = MULTIPLAYER_BASE_API_URL,
+  baseUrl = API_URL,
 ): Promise<string> => {
   const response = await superagent
     .get(`${baseUrl}/version/workspaces/${workspaceId}/projects/${projectId}/releases?version=${version}&entity=${entityId}`)
@@ -66,7 +65,7 @@ export const createDeployment = async (
   workspaceId: string | undefined,
   projectId: string | undefined,
   payload: object,
-  baseUrl = MULTIPLAYER_BASE_API_URL,
+  baseUrl = API_URL,
 ): Promise<unknown> => {
   const response = await superagent
     .post(`${baseUrl}/version/workspaces/${workspaceId}/projects/${projectId}/deployments`)
@@ -82,7 +81,7 @@ export const uploadSourcemap = async (
   releaseId: string,
   filePath: string,
   stream: import('fs').ReadStream,
-  baseUrl = MULTIPLAYER_BASE_API_URL,
+  baseUrl = API_URL,
 ): Promise<unknown> => {
   const response = await superagent
     .post(`${baseUrl}/version/workspaces/${workspaceId}/projects/${projectId}/releases/${releaseId}/sourcemaps`)

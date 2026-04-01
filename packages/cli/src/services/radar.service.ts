@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client'
 import jwt from 'jsonwebtoken'
+import * as fs from 'fs'
 import { URL } from 'url'
 import {
   AgentConfig,
@@ -8,16 +9,19 @@ import {
   AgentChat,
   ResolveIssuePayload,
   ChatSessionPayload,
-  Issue
+  Issue,
 } from '../types/index.js'
-
-const MESSAGE_NEW = 'message:new'
-const CHAT_NEW = 'chat:new'
-const CHAT_UPDATE = 'chat:update'
-const DEBUGGING_AGENT_RESOLVE_ISSUE = 'debugging-agent:resolve-issue'
-const DEBUGGING_AGENT_READY = 'debugging-agent:ready'
-const DEBUGGING_AGENT_FIX_PUSHED = 'debugging-agent:fix-pushed'
-const DEBUGGING_AGENT_FIX_FAILED = 'debugging-agent:fix-failed'
+import {
+  SOCKET_RECONNECTION_DELAY,
+  SOCKET_RECONNECTION_DELAY_MAX,
+  EVENT_MESSAGE_NEW,
+  EVENT_CHAT_NEW,
+  EVENT_CHAT_UPDATE,
+  EVENT_DEBUGGING_AGENT_RESOLVE_ISSUE,
+  EVENT_DEBUGGING_AGENT_READY,
+  EVENT_DEBUGGING_AGENT_FIX_PUSHED,
+  EVENT_DEBUGGING_AGENT_FIX_FAILED,
+} from '../config.js'
 
 export interface RadarService {
   socket: Socket
@@ -114,14 +118,14 @@ export const createRadarService = (config: AgentConfig): RadarService => {
       'x-max-concurrent-issues': String(config.maxConcurrentIssues ?? 2),
       ...(config.noGitBranch ? { 'x-no-git-branch': 'true' } : {}),
       ...(config.model ? { 'x-model': config.model } : {}),
-      'x-available-models': JSON.stringify(computeAvailableModels(config))
+      'x-available-models': JSON.stringify(computeAvailableModels(config)),
     },
     transports: ['websocket'],
     secure: host.startsWith('https'),
     reconnection: true,
     reconnectionAttempts: Infinity,
-    reconnectionDelay: 2000,
-    reconnectionDelayMax: 30000
+    reconnectionDelay: SOCKET_RECONNECTION_DELAY,
+    reconnectionDelayMax: SOCKET_RECONNECTION_DELAY_MAX,
   })
 
   const onConnect = (handler: () => void) => {
@@ -147,11 +151,11 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     issue: { componentHash: string }
     codeChanges?: { additions: number; deletions: number }
   }) => {
-    socket.emit(DEBUGGING_AGENT_FIX_PUSHED, payload)
+    socket.emit(EVENT_DEBUGGING_AGENT_FIX_PUSHED, payload)
   }
 
   const notifyFixFailed = (payload: { chatId: string; issue: { componentHash: string }; error?: string }) => {
-    socket.emit(DEBUGGING_AGENT_FIX_FAILED, payload)
+    socket.emit(EVENT_DEBUGGING_AGENT_FIX_FAILED, payload)
   }
 
   const emitAgentMessage = (message: AgentMessage) => {
@@ -159,15 +163,15 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     if (!payload.content && payload.toolCalls?.length) {
       delete (payload as any).content
     }
-    socket.emit(MESSAGE_NEW, payload)
+    socket.emit(EVENT_MESSAGE_NEW, payload)
   }
 
   const emitAgentChatUpdate = (chat: AgentChat) => {
-    socket.emit(CHAT_UPDATE, chat)
+    socket.emit(EVENT_CHAT_UPDATE, chat)
   }
 
   const onUserMessage = (handler: (message: AgentMessage) => void) => {
-    socket.on(MESSAGE_NEW, (msg: AgentMessage) => {
+    socket.on(EVENT_MESSAGE_NEW, (msg: AgentMessage) => {
       if (msg.role === 'user') handler(msg)
     })
   }
@@ -177,28 +181,28 @@ export const createRadarService = (config: AgentConfig): RadarService => {
   }
 
   const onAction = (
-    handler: (params: { chatId: string; toolCallId: string; action: string; data?: Record<string, unknown> }) => void
+    handler: (params: { chatId: string; toolCallId: string; action: string; data?: Record<string, unknown> }) => void,
   ) => {
     socket.on('agent:action', handler)
   }
 
   const emitIssueCheck = () => {
-    socket.emit(DEBUGGING_AGENT_READY)
+    socket.emit(EVENT_DEBUGGING_AGENT_READY)
   }
 
   const onResolveIssue = (handler: (payload: ResolveIssuePayload) => void) => {
-    socket.on(DEBUGGING_AGENT_RESOLVE_ISSUE, (payload: ResolveIssuePayload) => handler(payload))
+    socket.on(EVENT_DEBUGGING_AGENT_RESOLVE_ISSUE, (payload: ResolveIssuePayload) => handler(payload))
   }
 
   const onSessionStart = (handler: (payload: ChatSessionPayload) => void) => {
-    socket.on(CHAT_NEW, (payload: ChatSessionPayload) => handler(payload))
+    socket.on(EVENT_CHAT_NEW, (payload: ChatSessionPayload) => handler(payload))
   }
 
   const uploadContextDoc = async (
     workspaceId: string,
     projectId: string,
     chatId: string,
-    markdown: string
+    markdown: string,
   ): Promise<AgentAttachment> => {
     const filename = 'context-doc.md'
     const size = Buffer.byteLength(markdown, 'utf8')
@@ -207,9 +211,9 @@ export const createRadarService = (config: AgentConfig): RadarService => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': config.apiKey
+        'x-api-key': config.apiKey,
       },
-      body: JSON.stringify({ filename, mimeType: 'text/markdown', size, chatId })
+      body: JSON.stringify({ filename, mimeType: 'text/markdown', size, chatId }),
     })
     if (!presignRes.ok) throw new Error(`Failed to get presigned URL: ${presignRes.status}`)
     const { url, key, bucket } = (await presignRes.json()) as { url: string; key: string; bucket: string }
@@ -217,7 +221,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     const uploadRes = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'text/markdown' },
-      body: markdown
+      body: markdown,
     })
     if (!uploadRes.ok) throw new Error(`Failed to upload context doc: ${uploadRes.status}`)
 
@@ -226,7 +230,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
       name: filename,
       mimeType: 'text/markdown',
       size,
-      metadata: { s3Key: key, bucket }
+      metadata: { s3Key: key, bucket },
     }
   }
 
@@ -234,12 +238,12 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     workspaceId: string,
     projectId: string,
     chatId: string,
-    before?: string
+    before?: string,
   ): Promise<{ messages: AgentMessage[]; hasMore: boolean }> => {
     const query = new URLSearchParams({ limit: '20', ...(before ? { before } : {}) })
     const res = await fetch(
       `${apiBase}/workspaces/${workspaceId}/projects/${projectId}/agents/chats/${chatId}/messages?${query.toString()}`,
-      { headers: { 'x-api-key': config.apiKey } }
+      { headers: { 'x-api-key': config.apiKey } },
     )
     if (!res.ok) throw new Error(`Failed to fetch messages: ${res.status}`)
     const data = (await res.json()) as { messages: AgentMessage[]; hasMore: boolean }
@@ -249,11 +253,11 @@ export const createRadarService = (config: AgentConfig): RadarService => {
   const fetchIssueByComponentHash = async (
     workspaceId: string,
     projectId: string,
-    componentHash: string
+    componentHash: string,
   ): Promise<Issue | null> => {
     const params = new URLSearchParams({ componentHash, limit: '1' })
     const res = await fetch(`${apiBase}/workspaces/${workspaceId}/projects/${projectId}/issues?${params}`, {
-      headers: { 'x-api-key': config.apiKey }
+      headers: { 'x-api-key': config.apiKey },
     })
     if (!res.ok) return null
     const data = (await res.json()) as { data: Issue[] }
@@ -264,12 +268,12 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     workspaceId: string,
     projectId: string,
     componentHash: string,
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
   ): Promise<void> => {
     const res = await fetch(`${apiBase}/workspaces/${workspaceId}/projects/${projectId}/issues/bulk`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'x-api-key': config.apiKey },
-      body: JSON.stringify({ filter: { componentHash: [componentHash] }, payload })
+      body: JSON.stringify({ filter: { componentHash: [componentHash] }, payload }),
     })
     if (!res.ok) throw new Error(`Failed to update issue: ${res.status}`)
   }
@@ -297,7 +301,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     onSessionStart,
     onConnect,
     onDisconnect,
-    onError
+    onError,
   }
 }
 
@@ -319,13 +323,17 @@ export const decodeApiKeyPayload = (apiKey: string): ApiKeyPayload => {
 export const validateApiKey = async (url: string, apiKey: string): Promise<{ workspace: string; project: string }> => {
   const payload = decodeApiKeyPayload(apiKey)
 
-  if (!payload.workspace || !payload.project || !payload.integration) {
+  if (
+    !payload.workspace
+    || !payload.project
+    || !payload.integration
+  ) {
     throw new Error('Invalid API key')
   }
 
   const base = url.replace(/\/$/, '')
   const res = await fetch(`${base}/api/workspaces/${payload.workspace}/projects/${payload.project}`, {
-    headers: { 'x-api-key': apiKey }
+    headers: { 'x-api-key': apiKey },
   })
 
   if (!res.ok) {

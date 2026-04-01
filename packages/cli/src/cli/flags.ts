@@ -3,6 +3,7 @@ import os from 'os'
 import type { RuntimeMode } from '../runtime/types.js'
 import type { AgentConfig } from '../types/index.js'
 import { loadProfile } from './profile.js'
+import { API_URL, DEFAULT_MAX_CONCURRENT } from '../config.js'
 
 export interface ParsedFlags {
   mode: RuntimeMode
@@ -12,8 +13,6 @@ export interface ParsedFlags {
 }
 
 export function parseFlags(argv: string[]): ParsedFlags {
-  const DEFAULT_URL = process.env.MULTIPLAYER_URL || 'https://api.multiplayer.app/v0'
-
   const program = new Command()
 
   program
@@ -22,7 +21,7 @@ export function parseFlags(argv: string[]): ParsedFlags {
     .version('0.0.1')
     .option('--headless', 'Run without TUI (structured log output, requires full config); also set via MULTIPLAYER_HEADLESS=true')
     .option('--profile <name>', 'Config profile to use from .multiplayer/config (default: "default"); also set via MULTIPLAYER_PROFILE')
-    .option('--url <url>', 'Multiplayer base API URL', DEFAULT_URL)
+    .option('--url <url>', 'Multiplayer base API URL', API_URL)
     .option('--api-key <key>', 'Multiplayer API key')
     .option('--name <name>', 'Agent name (defaults to hostname)')
     .option('--dir <path>', 'Project directory (must be a git repo)')
@@ -32,7 +31,7 @@ export function parseFlags(argv: string[]): ParsedFlags {
     .option(
       '--max-concurrent <n>',
       'Maximum number of issues to resolve in parallel',
-      '2'
+      String(DEFAULT_MAX_CONCURRENT)
     )
     .option('--no-git-branch', 'Work in current branch — no worktree, no new branch, no push')
     .option('--health-port <port>', 'Port for HTTP health check endpoint (headless mode only); also set via MULTIPLAYER_HEALTH_PORT')
@@ -60,7 +59,7 @@ export function parseFlags(argv: string[]): ParsedFlags {
 
   // CLI flags and env vars take precedence over profile values.
   const initialConfig: Partial<AgentConfig> = {
-    url: opts.url || process.env.MULTIPLAYER_URL || profile.url || DEFAULT_URL,
+    url: opts.url || process.env.MULTIPLAYER_URL || profile.url || API_URL,
     apiKey: opts.apiKey || process.env.MULTIPLAYER_API_KEY || profile.apiKey,
     name: opts.name || process.env.MULTIPLAYER_AGENT_NAME || profile.name || os.hostname(),
     dir: opts.dir || process.env.MULTIPLAYER_DIR || profile.dir,
@@ -68,7 +67,7 @@ export function parseFlags(argv: string[]): ParsedFlags {
     modelKey: opts.modelKey || process.env.AI_API_KEY || profile.modelKey,
     modelUrl: opts.modelUrl || process.env.AI_BASE_URL || profile.modelUrl,
     maxConcurrentIssues: Number(
-      opts.maxConcurrent || process.env.MULTIPLAYER_MAX_CONCURRENT || profile.maxConcurrentIssues || 2
+      opts.maxConcurrent || process.env.MULTIPLAYER_MAX_CONCURRENT || profile.maxConcurrentIssues || DEFAULT_MAX_CONCURRENT
     ),
     noGitBranch: opts.noGitBranch || process.env.MULTIPLAYER_NO_GIT_BRANCH === 'true' || profile.noGitBranch || false,
   }
