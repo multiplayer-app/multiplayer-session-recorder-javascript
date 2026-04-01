@@ -1092,10 +1092,10 @@ const continueChatWithOpenAI = async (
     { role: 'system', content: buildSystemPrompt() },
     ...history.map(
       (m) =>
-        ({
-          role: m.role,
-          content: m.content,
-        } as OpenAI.Chat.ChatCompletionMessageParam),
+      ({
+        role: m.role,
+        content: m.content,
+      } as OpenAI.Chat.ChatCompletionMessageParam),
     ),
   ]
 
@@ -1250,7 +1250,7 @@ Use clear markdown with section headers. Do not include any other text outside t
     issue.metadata?.message && `Error message: ${issue.metadata.message}`,
     issue.metadata?.culprit && `Culprit: ${issue.metadata.culprit}`,
     issue.metadata?.stacktrace &&
-      `Stack trace:\n${issue.metadata.stacktrace.slice(0, 800)}`,
+    `Stack trace:\n${issue.metadata.stacktrace.slice(0, 800)}`,
     issue.service?.serviceName && `Service: ${issue.service.serviceName}`,
     issue.service?.environment && `Environment: ${issue.service.environment}`,
     issue.category && `Category: ${issue.category}`,
