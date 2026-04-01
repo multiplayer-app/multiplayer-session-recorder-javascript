@@ -6,12 +6,12 @@
   "bin": {
     "multiplayer": "./dist/index.js"
   },
-  "type": "module",
   "scripts": {
     "build": "bun build src/index.tsx --outdir dist --target bun --format esm --sourcemap=none && rm -f dist/index.js.map",
     "start": "bun dist/index.js",
     "dev": "bun src/index.tsx",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/**/*.ts --config eslint.config.js"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.2.73",
@@ -37,6 +37,7 @@
     "@types/node": "25.5.0",
     "@types/react": "19.2.14",
     "@types/superagent": "8.1.9",
+    "eslint": "10.1.0",
     "typescript": "6.0.2"
   }
 }

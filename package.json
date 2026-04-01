@@ -4,7 +4,7 @@
   "description": "Multiplayer Fullstack Session Recorder",
   "scripts": {
     "lint": "eslint **/src/**/*.ts",
-    "build": "./scripts/build.sh",
+    "build": "turbo build",
     "publish": "./scripts/publish.sh",
     "preinstall": "cd ./packages/session-recorder-react-native && yarn"
   },

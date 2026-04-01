@@ -13,14 +13,14 @@ import { FooterHints, type FooterHintItem } from '../panes/FooterHints.js'
 type ConnectionState = RuntimeState['connection']
 
 /** Below this width, stack sessions vs detail and use a multi-line header. */
-const NARROW_COLUMNS = 80
+const NARROW_COLUMNS = 120
 
 const CONNECTION_BADGE: Record<ConnectionState, { symbol: string; color: string }> = {
   idle: { symbol: '○', color: '#6b7280' },
   connecting: { symbol: '◌', color: '#f59e0b' },
   connected: { symbol: '●', color: '#10b981' },
   disconnected: { symbol: '○', color: '#6b7280' },
-  error: { symbol: '✕', color: '#ef4444' }
+  error: { symbol: '✕', color: '#ef4444' },
 }
 
 interface Props {
@@ -41,7 +41,7 @@ export function DashboardScreen({
   agentLogs,
   onQuitRequest,
   onLoadMessages,
-  suspendKeyboard = false
+  suspendKeyboard = false,
 }: Props): ReactElement {
   const { width: columns, height: rows } = useTerminalDimensions()
   const isNarrow = columns < NARROW_COLUMNS
@@ -101,7 +101,7 @@ export function DashboardScreen({
       id: 'stack',
       keys: 'v',
       label: narrowShowsDetail ? 'Sessions' : 'Detail',
-      onPress: toggleNarrowStack
+      onPress: toggleNarrowStack,
     }
   }, [isNarrow, selectedDetail?.chatId, narrowShowsDetail, toggleNarrowStack])
 
@@ -109,9 +109,9 @@ export function DashboardScreen({
     const scrollListHints: FooterHintItem[] =
       state.sessions.length > 0
         ? [
-            { id: 'list-page', keys: 'PgUp/Dn', label: 'Scroll list' },
-            { id: 'list-ends', keys: 'Hm/End', label: 'List ends' }
-          ]
+          { id: 'list-page', keys: 'PgUp/Dn', label: 'Scroll list' },
+          { id: 'list-ends', keys: 'Hm/End', label: 'List ends' },
+        ]
         : []
     return [
       { id: 'nav', keys: '↑↓', label: 'Move' },
@@ -122,22 +122,22 @@ export function DashboardScreen({
         id: 'logs',
         keys: 'l',
         label: showAgentLogs ? 'Hide logs' : 'Show logs',
-        onPress: toggleAgentLogs
+        onPress: toggleAgentLogs,
       },
       {
         id: 'quit',
         keys: 'q',
         label: 'Quit',
         alt: 'q / Ctrl+C',
-        onPress: () => onQuitRequest()
-      }
+        onPress: () => onQuitRequest(),
+      },
     ]
   }, [
     showAgentLogs,
     onQuitRequest,
     state.sessions.length,
     toggleAgentLogs,
-    stackToggleHint
+    stackToggleHint,
   ])
 
   const detailHints = useMemo((): FooterHintItem[] => {
@@ -148,22 +148,22 @@ export function DashboardScreen({
       {
         id: 'sessions',
         keys: 'Tab/Esc',
-        label: showAgentLogs ? 'List · logs' : 'List'
+        label: showAgentLogs ? 'List · logs' : 'List',
       },
       ...(stackToggleHint ? [stackToggleHint] : []),
       {
         id: 'logs',
         keys: 'l',
         label: showAgentLogs ? 'Hide logs' : 'Show logs',
-        onPress: toggleAgentLogs
+        onPress: toggleAgentLogs,
       },
       {
         id: 'quit',
         keys: 'q',
         label: 'Quit',
         alt: 'q / Ctrl+C',
-        onPress: () => onQuitRequest()
-      }
+        onPress: () => onQuitRequest(),
+      },
     ]
   }, [showAgentLogs, onQuitRequest, toggleAgentLogs, stackToggleHint])
 
@@ -175,7 +175,7 @@ export function DashboardScreen({
       {
         id: 'focus',
         keys: 'Tab',
-        label: showAgentLogs ? 'List · detail · logs' : 'List · detail'
+        label: showAgentLogs ? 'List · detail · logs' : 'List · detail',
       },
       { id: 'back', keys: 'Esc', label: 'List' },
       ...(stackToggleHint ? [stackToggleHint] : []),
@@ -183,22 +183,22 @@ export function DashboardScreen({
         id: 'logs',
         keys: 'l',
         label: 'Hide logs',
-        onPress: toggleAgentLogs
+        onPress: toggleAgentLogs,
       },
       {
         id: 'quit',
         keys: 'q',
         label: 'Quit',
         alt: 'q / Ctrl+C',
-        onPress: () => onQuitRequest()
-      }
+        onPress: () => onQuitRequest(),
+      },
     ]
   }, [showAgentLogs, onQuitRequest, toggleAgentLogs, stackToggleHint])
 
   useEffect(() => {
     const session = state.sessions[clampedIndex]
     if (session) onLoadMessages(session.chatId)
-  }, [clampedIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clampedIndex])
 
   useKeyboard(
     useCallback(
@@ -274,9 +274,9 @@ export function DashboardScreen({
         showAgentLogs,
         toggleAgentLogs,
         isNarrow,
-        toggleNarrowStack
-      ]
-    )
+        toggleNarrowStack,
+      ],
+    ),
   )
 
   const handleLogDockMouseUp = useCallback((e: MouseEvent) => {
@@ -458,9 +458,9 @@ export function DashboardScreen({
                 showArrows: true,
                 trackOptions: {
                   foregroundColor: '#a78bfa',
-                  backgroundColor: '#374151'
-                }
-              }
+                  backgroundColor: '#374151',
+                },
+              },
             }}
           >
             <LogOutput logs={agentLogs} showTitle={false} />

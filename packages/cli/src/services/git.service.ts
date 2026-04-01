@@ -141,7 +141,7 @@ export const getWorktreeForBranch = async (repoDir: string, branchName: string):
 export const createWorktree = async (
   repoDir: string,
   worktreeDir: string,
-  branchName: string
+  branchName: string,
 ): Promise<string> => {
   const existing = await getWorktreeForBranch(repoDir, branchName)
   if (existing) {

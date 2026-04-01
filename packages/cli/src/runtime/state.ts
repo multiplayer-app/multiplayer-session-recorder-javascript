@@ -14,7 +14,7 @@ export const addSession = (state: RuntimeState, session: SessionSummary): Runtim
 
 export const upsertSession = (
   state: RuntimeState,
-  update: Partial<SessionSummary> & { chatId: string }
+  update: Partial<SessionSummary> & { chatId: string },
 ): RuntimeState => {
   const idx = state.sessions.findIndex((s) => s.chatId === update.chatId)
   if (idx === -1) return state
@@ -26,7 +26,7 @@ export const upsertSession = (
 export const setConnection = (
   state: RuntimeState,
   connection: ConnectionState,
-  error?: string
+  error?: string,
 ): RuntimeState => ({
   ...state,
   connection,

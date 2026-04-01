@@ -31,7 +31,7 @@ export function parseFlags(argv: string[]): ParsedFlags {
     .option(
       '--max-concurrent <n>',
       'Maximum number of issues to resolve in parallel',
-      String(DEFAULT_MAX_CONCURRENT)
+      String(DEFAULT_MAX_CONCURRENT),
     )
     .option('--no-git-branch', 'Work in current branch — no worktree, no new branch, no push')
     .option('--health-port <port>', 'Port for HTTP health check endpoint (headless mode only); also set via MULTIPLAYER_HEALTH_PORT')
@@ -67,7 +67,7 @@ export function parseFlags(argv: string[]): ParsedFlags {
     modelKey: opts.modelKey || process.env.AI_API_KEY || profile.modelKey,
     modelUrl: opts.modelUrl || process.env.AI_BASE_URL || profile.modelUrl,
     maxConcurrentIssues: Number(
-      opts.maxConcurrent || process.env.MULTIPLAYER_MAX_CONCURRENT || profile.maxConcurrentIssues || DEFAULT_MAX_CONCURRENT
+      opts.maxConcurrent || process.env.MULTIPLAYER_MAX_CONCURRENT || profile.maxConcurrentIssues || DEFAULT_MAX_CONCURRENT,
     ),
     noGitBranch: opts.noGitBranch || process.env.MULTIPLAYER_NO_GIT_BRANCH === 'true' || profile.noGitBranch || false,
   }

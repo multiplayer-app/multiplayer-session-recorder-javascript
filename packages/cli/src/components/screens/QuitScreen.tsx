@@ -17,20 +17,20 @@ const OPTIONS: { value: Option; digit: string; label: string; description: strin
     value: 'now',
     digit: '1',
     label: 'Quit now',
-    description: 'Stop immediately — active sessions are abandoned'
+    description: 'Stop immediately — active sessions are abandoned',
   },
   {
     value: 'after-current',
     digit: '2',
     label: 'Quit when idle',
-    description: 'Finish active sessions, then exit'
+    description: 'Finish active sessions, then exit',
   },
   {
     value: 'cancel',
     digit: '3',
     label: 'Cancel',
-    description: 'Return to the dashboard'
-  }
+    description: 'Return to the dashboard',
+  },
 ]
 
 interface Props {
