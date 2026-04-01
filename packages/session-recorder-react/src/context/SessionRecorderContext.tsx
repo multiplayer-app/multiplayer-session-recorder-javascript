@@ -31,7 +31,7 @@ export const SessionRecorderProvider: React.FC<SessionRecorderProviderProps> = (
   useEffect(() => {
     sessionRecorderStore.setState({
       sessionState: SessionRecorder.sessionState,
-      sessionType: SessionRecorder.sessionType
+      sessionType: SessionRecorder.sessionType,
     })
 
     const onStateChange = (sessionState: SessionState) => {
@@ -82,7 +82,7 @@ export const SessionRecorderProvider: React.FC<SessionRecorderProviderProps> = (
         pauseSession,
         resumeSession,
         cancelSession,
-        saveSession
+        saveSession,
       }}
     >
       {children}

@@ -168,7 +168,7 @@ if (typeof window !== 'undefined' && typeof window.fetch !== 'undefined') {
     // Already patched; do nothing
   } else {
     // @ts-ignore
-    ;(window.fetch as any).__mp_session_recorder_patched__ = true
+    (window.fetch as any).__mp_session_recorder_patched__ = true
 
     // Store original fetch
     const originalFetch = window.fetch

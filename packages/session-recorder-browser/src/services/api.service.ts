@@ -3,7 +3,7 @@ import { ApiServiceConfig } from '../types'
 import {
   type ISessionAttributes,
   type IResourceAttributes,
-  type IUserAttributes
+  type IUserAttributes,
 } from '@multiplayer-app/session-recorder-common'
 import { eventWithTime } from 'rrweb'
 
@@ -38,7 +38,7 @@ export class ApiService {
     this.config = {
       apiKey: '',
       apiBaseUrl: '',
-      exporterEndpoint: ''
+      exporterEndpoint: '',
     }
   }
 
@@ -49,7 +49,7 @@ export class ApiService {
   public init(config: ApiServiceConfig) {
     this.config = {
       ...this.config,
-      ...config
+      ...config,
     }
   }
 
@@ -127,7 +127,7 @@ export class ApiService {
    */
   checkRemoteSession(
     requestBody: CheckRemoteSessionRequest,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<{ state: 'START' | 'STOP' }> {
     return this.makeRequest('/remote-debug-session/check', 'POST', requestBody, signal)
   }
@@ -142,7 +142,7 @@ export class ApiService {
       sessionAttributes?: ISessionAttributes
       resourceAttributes?: IResourceAttributes
     },
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<any> {
     return this.makeRequest(`/debug-sessions/${sessionId}`, 'PATCH', requestBody, signal)
   }
@@ -168,15 +168,15 @@ export class ApiService {
       body: body ? JSON.stringify(body) : null,
       headers: {
         'Content-Type': 'application/json',
-        ...(this.config.apiKey && { 'X-Api-Key': this.config.apiKey })
-      }
+        ...(this.config.apiKey && { 'X-Api-Key': this.config.apiKey }),
+      },
     }
 
     try {
       const response = await fetch(url, {
         ...params,
         credentials: 'include',
-        signal
+        signal,
       })
 
       if (!response.ok) {

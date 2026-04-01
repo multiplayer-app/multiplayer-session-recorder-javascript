@@ -63,7 +63,7 @@ if (typeof XMLHttpRequest !== 'undefined') {
       return
     }
     // @ts-ignore
-    ; (xhr as any).__mp_session_recorder_patched__ = true
+    (xhr as any).__mp_session_recorder_patched__ = true
 
     const originalOpen = xhr.open
 

@@ -1,10 +1,10 @@
-import { SessionState, SessionType } from '@multiplayer-app/session-recorder-browser';
+import { SessionState, SessionType } from '@multiplayer-app/session-recorder-browser'
 
 import {
   type SessionRecorderState,
   sessionRecorderStore,
-} from './SessionRecorderStore';
-import { useStoreSelector } from './useStoreSelector';
+} from './SessionRecorderStore'
+import { useStoreSelector } from './useStoreSelector'
 
 /**
  * Select a derived slice from the shared Session Recorder store.
@@ -16,32 +16,32 @@ import { useStoreSelector } from './useStoreSelector';
  */
 export function useSessionRecorderStore<TSlice>(
   selector: (s: SessionRecorderState) => TSlice,
-  equalityFn?: (a: TSlice, b: TSlice) => boolean
+  equalityFn?: (a: TSlice, b: TSlice) => boolean,
 ): TSlice {
   return useStoreSelector<SessionRecorderState, TSlice>(
     sessionRecorderStore,
     selector,
-    equalityFn
-  );
+    equalityFn,
+  )
 }
 
 /**
  * Read the current session recording state (started, paused, stopped).
  */
 export function useSessionRecordingState() {
-  return useSessionRecorderStore<SessionState | null>((s) => s.sessionState);
+  return useSessionRecorderStore<SessionState | null>((s) => s.sessionState)
 }
 
 /**
  * Read the current session type (MANUAL/CONTINUOUS).
  */
 export function useSessionType() {
-  return useSessionRecorderStore<SessionType | null>((s) => s.sessionType);
+  return useSessionRecorderStore<SessionType | null>((s) => s.sessionType)
 }
 
 /**
  * Check whether the Session Recorder has been initialized.
  */
 export function useIsInitialized() {
-  return useSessionRecorderStore<boolean>((s) => s.isInitialized);
+  return useSessionRecorderStore<boolean>((s) => s.isInitialized)
 }

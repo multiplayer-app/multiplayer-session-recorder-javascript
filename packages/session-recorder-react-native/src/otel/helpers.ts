@@ -263,7 +263,11 @@ export async function extractResponseBody(
   } catch (error) {
     // If cloning fails (body already consumed), return null
 
-    logger.warn('MULTIPLAYER_SESSION_RECORDER', 'Failed to extract response body', error);
+    logger.warn(
+      'MULTIPLAYER_SESSION_RECORDER',
+      'Failed to extract response body',
+      error
+    );
     return null;
   }
 }

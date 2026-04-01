@@ -11,7 +11,7 @@ import {
   SessionRecorderBrowserTraceExporter,
   SessionRecorderTraceIdRatioBasedSampler,
   ATTR_MULTIPLAYER_SESSION_ID,
-  MULTIPLAYER_TRACE_CLIENT_ID_LENGTH
+  MULTIPLAYER_TRACE_CLIENT_ID_LENGTH,
 } from '@multiplayer-app/session-recorder-common'
 import type { CrashBuffer } from '@multiplayer-app/session-recorder-common'
 import { TracerBrowserConfig } from '../types'
@@ -55,13 +55,13 @@ export class TracerBrowserSDK {
     this.exporter = new SessionRecorderBrowserTraceExporter({
       apiKey: options.apiKey,
       url: getExporterEndpoint(options.exporterEndpoint),
-      usePostMessageFallback: options.usePostMessageFallback
+      usePostMessageFallback: options.usePostMessageFallback,
     })
 
     const resourceAttributes = resourceFromAttributes({
       [SemanticAttributes.SEMRESATTRS_SERVICE_NAME]: application,
       [SemanticAttributes.SEMRESATTRS_SERVICE_VERSION]: version,
-      [SemanticAttributes.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment
+      [SemanticAttributes.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment,
     })
 
     SessionRecorderSdk.setResourceAttributes(resourceAttributes.attributes)
@@ -73,17 +73,17 @@ export class TracerBrowserSDK {
       spanProcessors: [
         this._getSpanSessionIdProcessor(),
         new BatchSpanProcessor(this.exporter),
-        new CrashBufferSpanProcessor(this.crashBuffer, this.exporter.serializeSpan)
-      ]
+        new CrashBufferSpanProcessor(this.crashBuffer, this.exporter.serializeSpan),
+      ],
     })
 
     this.tracerProvider.register({
-      propagator: new W3CTraceContextPropagator()
+      propagator: new W3CTraceContextPropagator(),
     })
 
     registerInstrumentations({
       tracerProvider: this.tracerProvider,
-      instrumentations: getInstrumentations(this.config)
+      instrumentations: getInstrumentations(this.config),
     })
 
     this._registerGlobalErrorListeners()
@@ -151,7 +151,7 @@ export class TracerBrowserSDK {
       },
       onEnd: () => {},
       shutdown: () => Promise.resolve(),
-      forceFlush: () => Promise.resolve()
+      forceFlush: () => Promise.resolve(),
     }
   }
 
@@ -194,7 +194,7 @@ export class TracerBrowserSDK {
         traceId: span?.traceId,
         spanId: span?.spanId,
         traceFlags: span?.traceFlags,
-        traceState: span?.traceState
+        traceState: span?.traceState,
       } as any)
 
     const instrumentationScope =
@@ -205,7 +205,7 @@ export class TracerBrowserSDK {
     const normalizedScope = {
       name: instrumentationScope?.name || 'multiplayer-buffer',
       version: instrumentationScope?.version,
-      schemaUrl: instrumentationScope?.schemaUrl
+      schemaUrl: instrumentationScope?.schemaUrl,
     }
 
     const resource = span?.resource || { attributes: {}, asyncAttributesPending: false }
@@ -217,11 +217,11 @@ export class TracerBrowserSDK {
       spanContext: () => normalizedCtx,
       parentSpanContext: parentSpanId
         ? ({
-            traceId: normalizedCtx?.traceId,
-            spanId: parentSpanId,
-            traceFlags: normalizedCtx?.traceFlags,
-            traceState: normalizedCtx?.traceState
-          } as any)
+          traceId: normalizedCtx?.traceId,
+          spanId: parentSpanId,
+          traceFlags: normalizedCtx?.traceFlags,
+          traceState: normalizedCtx?.traceState,
+        } as any)
         : undefined,
       startTime: span?.startTime,
       endTime: span?.endTime ?? span?.startTime,
@@ -235,7 +235,7 @@ export class TracerBrowserSDK {
       droppedEventsCount: span?.droppedEventsCount || 0,
       droppedLinksCount: span?.droppedLinksCount || 0,
       resource,
-      instrumentationScope: normalizedScope as any
+      instrumentationScope: normalizedScope as any,
     } as any
   }
 }

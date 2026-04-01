@@ -49,7 +49,7 @@
     "@types/jest": "29.5.4",
     "@types/node": "20.5.7",
     "@types/restify-errors": "4.3.5",
-    "eslint": "8.48.0",
+    "eslint": "10.1.0",
     "ts-node": "10.9.1",
     "typescript": "5.7.3"
   }

@@ -1,5 +1,5 @@
-import { createStore, type Store } from './createStore';
-import { SessionState, SessionType } from '@multiplayer-app/session-recorder-browser';
+import { createStore, type Store } from './createStore'
+import { SessionState, SessionType } from '@multiplayer-app/session-recorder-browser'
 
 
 export type SessionRecorderState = {
@@ -17,4 +17,4 @@ export const sessionRecorderStore: Store<SessionRecorderState> =
     sessionState: null,
     isOnline: true,
     error: null,
-  });
+  })

@@ -46,7 +46,7 @@
     "browser"
   ],
   "scripts": {
-    "lint": "eslint src/**/*.ts",
+    "lint": "eslint src/**/*.ts --config eslint.config.js",
     "preversion": "npm run lint",
     "postversion:skip": "git push && git push --tags",
     "build": "rm -rf dist tsconfig.tsbuildinfo && tsc && webpack",
@@ -58,7 +58,7 @@
     "clean-webpack-plugin": "4.0.0",
     "css-loader": "6.0.0",
     "css-minimizer-webpack-plugin": "7.0.0",
-    "eslint": "8.48.0",
+    "eslint": "10.1.0",
     "mini-css-extract-plugin": "2.9.1",
     "sass": "^1.79.4",
     "sass-loader": "16.0.2",

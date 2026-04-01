@@ -1,4 +1,6 @@
-import SessionRecorderNative, { type MaskingOptions } from '../native/SessionRecorderNative';
+import SessionRecorderNative, {
+  type MaskingOptions,
+} from '../native/SessionRecorderNative';
 import { logger } from '../utils';
 
 export interface ScreenRecordingConfig {
@@ -129,7 +131,10 @@ export class ScreenRecordingService {
    */
   updateConfig(config: Partial<ScreenRecordingConfig>): void {
     this.config = { ...this.config, ...config };
-    logger.info('ScreenRecordingService', 'Screen masking configuration updated');
+    logger.info(
+      'ScreenRecordingService',
+      'Screen masking configuration updated'
+    );
   }
 
   /**

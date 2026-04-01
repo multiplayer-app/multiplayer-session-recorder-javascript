@@ -10,7 +10,7 @@ import type { CrashBuffer } from '@multiplayer-app/session-recorder-common'
 export class CrashBufferSpanProcessor implements SpanProcessor {
   constructor(
     private readonly _crashBuffer: CrashBuffer | undefined,
-    private readonly _serializeSpan: (span: ReadableSpan) => any
+    private readonly _serializeSpan: (span: ReadableSpan) => any,
   ) {}
 
   forceFlush(): Promise<void> {
@@ -36,8 +36,8 @@ export class CrashBufferSpanProcessor implements SpanProcessor {
         this._crashBuffer.appendSpans([
           {
             ts: span.startTime[0] * 1000 + span.startTime[1] / 1000000,
-            span: this._serializeSpan(span)
-          }
+            span: this._serializeSpan(span),
+          },
         ])
       }
       return

@@ -7,7 +7,7 @@ import type {
   CrashBufferEventName,
   CrashBufferOtelSpanBatchPayload,
   CrashBufferRrwebEventPayload,
-  CrashBufferSnapshot
+  CrashBufferSnapshot,
 } from '@multiplayer-app/session-recorder-common'
 
 export class CrashBufferService implements CrashBuffer {
@@ -23,7 +23,7 @@ export class CrashBufferService implements CrashBuffer {
   constructor(
     private readonly db: IndexedDBService,
     private readonly tabId: string,
-    private readonly windowMs: number
+    private readonly windowMs: number,
   ) {}
 
   private async _safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -45,7 +45,7 @@ export class CrashBufferService implements CrashBuffer {
         tabId: this.tabId,
         ts: payload.ts,
         isFullSnapshot: payload.isFullSnapshot,
-        event: payload.event
+        event: payload.event,
       })
     }, undefined as any)
 
@@ -70,7 +70,7 @@ export class CrashBufferService implements CrashBuffer {
         return {
           tabId: this.tabId,
           ts: p.ts,
-          span: p.span
+          span: p.span,
         }
       })
       await this.db.appendSpans(records)
@@ -102,7 +102,7 @@ export class CrashBufferService implements CrashBuffer {
     if (!set || set.size === 0) return
     for (const fn of Array.from(set)) {
       try {
-        ;(fn as any)(payload)
+        (fn as any)(payload)
       } catch (_e) {
         // never throw into app code
       }
@@ -111,7 +111,7 @@ export class CrashBufferService implements CrashBuffer {
 
   async snapshot(_windowMs?: number, now: number = Date.now()): Promise<CrashBufferSnapshot> {
     const stoppedAt = now
-    let startedAt = Math.max(0, stoppedAt - this.windowMs)
+    const startedAt = Math.max(0, stoppedAt - this.windowMs)
 
     // Always include a full snapshot "anchor" if one exists at/before the window start.
     const firstSnapshotAt = await this._safe(async () => {
@@ -121,7 +121,7 @@ export class CrashBufferService implements CrashBuffer {
 
     const [allEvents, allSpans] = await Promise.all([
       this._safe(() => this.db.getRrwebEventsWindow(this.tabId, firstSnapshotAt, stoppedAt), []),
-      this._safe(() => this.db.getOtelSpansWindow(this.tabId, startedAt, stoppedAt), [])
+      this._safe(() => this.db.getOtelSpansWindow(this.tabId, startedAt, stoppedAt), []),
     ])
 
     const eventsSorted = allEvents
@@ -132,7 +132,7 @@ export class CrashBufferService implements CrashBuffer {
       startedAt,
       stoppedAt,
       spans: [],
-      events: []
+      events: [],
     }
 
     // Hard guarantee: snapshot payload starts with Meta -> FullSnapshot (or is empty).
@@ -219,7 +219,7 @@ export class CrashBufferService implements CrashBuffer {
 
     this.pruneInFlight = this._safe(
       () => this.db.pruneOlderThanWithRrwebSnapshotAnchor(this.tabId, cutoff),
-      undefined as any
+      undefined as any,
     ).finally(() => {
       this.pruneInFlight = null
     })

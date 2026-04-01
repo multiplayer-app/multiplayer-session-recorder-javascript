@@ -2,7 +2,6 @@ import { configs } from './configs';
 import { formDataToQuery } from '../utils/request-utils';
 import { isFormData, isNullish, isObject, isString } from '../utils/type-utils';
 
-
 function _tryReadXHRBody({
   body,
 }: {
@@ -52,7 +51,7 @@ if (typeof XMLHttpRequest !== 'undefined') {
         responseBody?: any;
       } = {};
 
-      // @ts-ignore
+      // ts-expect-error
       const requestHeaders: Record<string, string> = {};
       const originalSetRequestHeader = xhr.setRequestHeader.bind(xhr);
       xhr.setRequestHeader = (header: string, value: string) => {
@@ -83,7 +82,7 @@ if (typeof XMLHttpRequest !== 'undefined') {
           return;
         }
 
-        // @ts-ignore
+        // ts-expect-error
         const responseHeaders: Record<string, string> = {};
         const rawHeaders = xhr.getAllResponseHeaders() || '';
         const headers = rawHeaders
@@ -114,7 +113,7 @@ if (typeof XMLHttpRequest !== 'undefined') {
         }
       });
 
-      // @ts-ignore
+      // @ts-expect-error
       xhr.networkRequest = networkRequest;
 
       originalOpen.call(xhr, method, url as string, async, username, password);

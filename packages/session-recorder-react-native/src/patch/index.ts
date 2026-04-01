@@ -1,4 +1,4 @@
 import './xhr';
 import './fetch';
 
-export * from './configs'
+export * from './configs';

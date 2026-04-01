@@ -1,5 +1,8 @@
 import { Platform } from 'react-native';
-import { SessionType, type ISession } from '@multiplayer-app/session-recorder-common';
+import {
+  SessionType,
+  type ISession,
+} from '@multiplayer-app/session-recorder-common';
 import { logger } from '../utils';
 import type { SessionState } from '../types';
 

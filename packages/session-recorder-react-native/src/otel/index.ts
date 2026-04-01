@@ -202,7 +202,7 @@ export class TracerReactNativeSDK {
     if (this.globalErrorHandlerRegistered) return;
 
     // React Native global error handler
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const ErrorUtilsRef: any = (global as any).ErrorUtils;
     if (ErrorUtilsRef && typeof ErrorUtilsRef.setGlobalHandler === 'function') {
       const previous = ErrorUtilsRef.getGlobalHandler?.();

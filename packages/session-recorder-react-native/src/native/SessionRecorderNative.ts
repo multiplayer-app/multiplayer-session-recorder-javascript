@@ -1,13 +1,14 @@
 import { Platform, NativeEventEmitter } from 'react-native';
-import SessionRecorderNative, { type MaskingOptions, type Spec } from '../NativeSessionRecorderModule';
-
+import SessionRecorderNative, {
+  type MaskingOptions,
+  type Spec,
+} from '../NativeSessionRecorderModule';
 
 // Check if we're on web platform
 const isWeb = Platform.OS === 'web';
 
 // Get the Turbo Module
 let eventEmitter = new NativeEventEmitter(SessionRecorderNative as any);
-
 
 // Validate that the native module is available
 if (!SessionRecorderNative && !isWeb) {
@@ -57,7 +58,13 @@ const SafeSessionRecorderNative: Spec = {
     return SessionRecorderNative.isGestureRecordingActive();
   },
 
-  recordGesture(gestureType: string, x: number, y: number, target?: string, metadata?: any): void {
+  recordGesture(
+    gestureType: string,
+    x: number,
+    y: number,
+    target?: string,
+    metadata?: any
+  ): void {
     if (isWeb || !SessionRecorderNative) {
       throw new Error('SessionRecorderNative is not available on web platform');
     }
@@ -75,13 +82,13 @@ const SafeSessionRecorderNative: Spec = {
 
 export interface NativeGestureEvent {
   type:
-  | 'tap'
-  | 'pan_start'
-  | 'pan_move'
-  | 'pan_end'
-  | 'long_press'
-  | 'pinch'
-  | 'swipe';
+    | 'tap'
+    | 'pan_start'
+    | 'pan_move'
+    | 'pan_end'
+    | 'long_press'
+    | 'pinch'
+    | 'swipe';
   timestamp: number;
   x: number;
   y: number;
@@ -103,7 +110,9 @@ export interface NativeGestureEvent {
 }
 
 // Helper function to set gesture callback using event emitter pattern
-export function setGestureCallback(callback: (event: NativeGestureEvent) => void): void {
+export function setGestureCallback(
+  callback: (event: NativeGestureEvent) => void
+): void {
   if (isWeb || !SessionRecorderNative) {
     throw new Error('SessionRecorderNative is not available on web platform');
   }
