@@ -1,27 +1,38 @@
 {
   "name": "@multiplayer-app/cli",
-  "version": "2.0.5",
+  "version": "2.0.7",
   "description": "Multiplayer CLI",
+  "type": "module",
   "bin": {
     "multiplayer": "./bin/multiplayer.js"
   },
   "scripts": {
-    "build": "bun build src/index.tsx --compile --outfile dist/multiplayer-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/x64/') --sourcemap=none",
-    "build:all": "bash scripts/build-all.sh",
-    "start": "bun dist/index.js",
+    "build": "bun run scripts/build.ts",
+    "publish": "bun run scripts/publish.ts",
     "dev": "bun src/index.tsx",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/**/*.ts --config eslint.config.js",
-    "prepublishOnly": "npm run build"
+    "lint": "eslint src/**/*.ts --config eslint.config.js"
   },
-  "type": "module",
+  "optionalDependencies": {
+    "@multiplayer-app/cli-darwin-arm64": "2.0.5",
+    "@multiplayer-app/cli-darwin-x64": "2.0.5",
+    "@multiplayer-app/cli-linux-x64": "2.0.5",
+    "@multiplayer-app/cli-linux-arm64": "2.0.5",
+    "@multiplayer-app/cli-windows-x64": "2.0.5",
+    "@multiplayer-app/cli-windows-arm64": "2.0.5"
+  },
   "license": "MIT",
   "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.2.89",
     "@anthropic-ai/sdk": "^0.78.0",
-    "@opentui/core": "0.1.93",
-    "@opentui/core-darwin-x64": "^0.1.95",
-    "@opentui/react": "0.1.93",
+    "@opentui/core": "0.1.96",
+    "@opentui/core-darwin-arm64": "0.1.96",
+    "@opentui/core-darwin-x64": "0.1.96",
+    "@opentui/core-linux-x64": "0.1.96",
+    "@opentui/core-linux-arm64": "0.1.96",
+    "@opentui/core-win32-x64": "0.1.96",
+    "@opentui/core-win32-arm64": "0.1.96",
+    "@opentui/react": "0.1.96",
     "@sindresorhus/tsconfig": "^8.1.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "25.5.0",

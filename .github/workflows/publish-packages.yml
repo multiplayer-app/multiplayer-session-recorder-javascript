@@ -5,6 +5,10 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (without v prefix, e.g. 2.0.7)"
+        required: true
 
 env:
   PNPM_VERSION: 10.33.0
@@ -19,125 +23,26 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
           path: ~/.local/share/pnpm/store
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
-
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
           path: "**/node_modules"
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo lint
 
-  build-cli:
-    name: Build CLI (${{ matrix.os }})
-    needs: lint
-    strategy:
-      matrix:
-        include:
-          - os: macos-latest
-            targets: "darwin-arm64 darwin-x64"
-            opentui_extras: "@opentui/core-darwin-x64"
-          - os: ubuntu-latest
-            targets: "linux-x64 linux-arm64"
-            opentui_extras: "@opentui/core-linux-x64 @opentui/core-linux-arm64"
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - uses: oven-sh/setup-bun@v2
-
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: pnpm-store-${{ runner.os }}-
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: "**/node_modules"
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm add -w --save-dev ${{ matrix.opentui_extras }}
-
-      - name: Build CLI binaries
-        working-directory: packages/cli
-        run: |
-          for target in ${{ matrix.targets }}; do
-            os=$(echo $target | cut -d- -f1)
-            arch=$(echo $target | cut -d- -f2)
-            bun build src/index.tsx \
-              --compile \
-              --target=bun-${os}-${arch} \
-              --outfile dist/multiplayer-${os}-${arch} \
-              --sourcemap=none
-          done
-
-      - name: Upload binaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: cli-binaries-${{ matrix.os }}
-          path: packages/cli/dist/multiplayer-*
-          retention-days: 1
-
-  build-packages:
-    name: Build packages
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: pnpm-store-${{ runner.os }}-
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: "**/node_modules"
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-
-      - name: Cache turbo
-        uses: actions/cache@v4
-        with:
-          path: .turbo
-          key: turbo-${{ runner.os }}-${{ github.sha }}
-          restore-keys: turbo-${{ runner.os }}-
-
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo build --filter=!@multiplayer-app/cli
-
   version:
     name: Version
-    needs: [build-cli, build-packages]
+    needs: lint
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -148,44 +53,130 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
           path: ~/.local/share/pnpm/store
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
-
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
           path: "**/node_modules"
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-
       - run: pnpm install --frozen-lockfile
-      - run: pnpm changeset version
-
       - id: get_version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
-
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+          fi
+      - name: Set CLI version from tag
+        run: |
+          node -e "
+            const fs = require('fs');
+            const p = 'packages/cli/package.json';
+            const pkg = JSON.parse(fs.readFileSync(p, 'utf-8'));
+            const version = '${{ steps.get_version.outputs.version }}';
+            pkg.version = version;
+            for (const k of Object.keys(pkg.optionalDependencies || {})) {
+              pkg.optionalDependencies[k] = version;
+            }
+            fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+          "
+      - name: Version other packages via changesets
+        run: pnpm changeset version
+      - name: Update lockfile
+        run: pnpm install --no-frozen-lockfile
       - name: Commit version bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --staged --quiet || git commit -m "chore: version bump ${{ steps.get_version.outputs.version }} [skip ci]"
-          git push
+          git push origin HEAD:refs/heads/main
+
+  build-cli:
+    name: Build CLI
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: oven-sh/setup-bun@v2
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: "**/node_modules"
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - name: Build all platform binaries
+        working-directory: packages/cli
+        run: bun run scripts/build.ts
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-binaries
+          path: packages/cli/dist/
+          retention-days: 1
+
+  build-packages:
+    name: Build packages
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: "**/node_modules"
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo build --filter=!@multiplayer-app/cli
 
   publish:
     name: Publish
-    needs: version
+    needs: [build-cli, build-packages]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -193,7 +184,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -202,41 +192,36 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: "https://registry.npmjs.org"
       - uses: oven-sh/setup-bun@v2
-
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
           path: ~/.local/share/pnpm/store
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
-
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
           path: "**/node_modules"
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-
       - name: Cache turbo
         uses: actions/cache@v4
         with:
           path: .turbo
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
-
       - run: pnpm install --frozen-lockfile
-
-      - name: Download all CLI binaries
+      - name: Download CLI binaries
         uses: actions/download-artifact@v4
         with:
-          pattern: cli-binaries-*
+          name: cli-binaries
           path: packages/cli/dist
-          merge-multiple: true
-
-      - run: chmod +x packages/cli/dist/multiplayer-*
-
       - run: pnpm turbo build --filter=!@multiplayer-app/cli
-
-      - name: Publish all packages
+      - name: Publish CLI platform packages + wrapper
+        working-directory: packages/cli
+        run: bun run scripts/publish.ts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish remaining packages
         run: pnpm changeset publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
