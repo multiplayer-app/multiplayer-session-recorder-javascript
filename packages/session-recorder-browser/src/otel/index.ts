@@ -160,13 +160,13 @@ export class TracerBrowserSDK {
 
     if (typeof window === 'undefined') return
 
-    // eslint-disable-next-line
+
     const errorHandler = (event: ErrorEvent) => {
       const err = event?.error instanceof Error ? event.error : new Error(event?.message || 'Script error')
       this.captureException(err)
     }
 
-    // eslint-disable-next-line
+
     const rejectionHandler = (event: PromiseRejectionEvent) => {
       const reason = event && 'reason' in event ? (event as any).reason : undefined
       const err =
