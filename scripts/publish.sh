@@ -15,7 +15,7 @@ cd packages/session-recorder-common
 npm publish
 cd ../..
 
-npm install
+pnpm install
 
 echo "  🌐 Publishing session-recorder-browser..."
 cd packages/session-recorder-browser
