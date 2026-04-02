@@ -98,6 +98,8 @@ SessionRecorder.init({
 
   showWidget: true, // show in‑app recording widget (default: true)
   recordCanvas: true, // record canvas elements (default: false)
+  inlineImages: true, // inline images as base64 so they survive asset removal (default: true)
+  inlineStylesheet: true, // inline stylesheets so they survive asset removal (default: true)
   // Add domains to not capture OTLP data in the session recording
   ignoreUrls: [
     /https:\/\/domain\.to\.ignore\/.*/, // can be regex or string

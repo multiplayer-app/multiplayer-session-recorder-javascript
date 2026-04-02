@@ -87,6 +87,22 @@ export interface SessionRecorderOptions {
   recordCanvas?: boolean
 
   /**
+   * (Optional) If true, inlines images as base64 data URLs in the recording
+   * so they remain available during replay even if the original assets are gone.
+   * Increases payload size.
+   * @default true
+   */
+  inlineImages?: boolean
+
+  /**
+   * (Optional) If true, inlines stylesheets in the recording so they remain
+   * available during replay even if the original assets are gone.
+   * Increases payload size.
+   * @default true
+   */
+  inlineStylesheet?: boolean
+
+  /**
    * (Optional) If true, records navigation changes via tracing spans.
    * @default recordNavigation = true
    */

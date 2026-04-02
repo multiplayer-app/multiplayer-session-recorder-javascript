@@ -59,6 +59,8 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
   exporterEndpoint: MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
 
   recordCanvas: false,
+  inlineImages: true,
+  inlineStylesheet: true,
   recordNavigation: true,
   schemifyDocSpanPayload: true,
 
