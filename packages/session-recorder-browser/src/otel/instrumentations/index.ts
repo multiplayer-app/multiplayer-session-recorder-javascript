@@ -5,7 +5,7 @@ import {
   processHttpPayload,
   extractResponseBody,
   getElementInnerText,
-  getElementTextContent
+  getElementTextContent,
 } from '../helpers'
 import { OTEL_IGNORE_URLS } from '../../config'
 import { TracerBrowserConfig } from '../../types'
@@ -38,14 +38,14 @@ export const getInstrumentations = (config: TracerBrowserConfig) => {
               requestBody,
               responseBody,
               requestHeaders,
-              responseHeaders
+              responseHeaders,
             }
             processHttpPayload(payload, config, span)
           } catch (error) {
             // eslint-disable-next-line
             console.error('[MULTIPLAYER_SESSION_RECORDER] Failed to capture xml-http payload', error)
           }
-        }
+        },
       },
       '@opentelemetry/instrumentation-fetch': {
         clearTimingResources: true,
@@ -91,14 +91,14 @@ export const getInstrumentations = (config: TracerBrowserConfig) => {
               requestBody,
               responseBody,
               requestHeaders,
-              responseHeaders
+              responseHeaders,
             }
             processHttpPayload(payload, config, span)
           } catch (error) {
             // eslint-disable-next-line
             console.error('[MULTIPLAYER_SESSION_RECORDER] Failed to capture fetch payload', error)
           }
-        }
+        },
       },
       '@opentelemetry/instrumentation-user-interaction': {
         shouldPreventSpanCreation: (_event, element: HTMLElement, span) => {
@@ -112,8 +112,8 @@ export const getInstrumentations = (config: TracerBrowserConfig) => {
           })
 
           return false
-        }
-      }
-    })
+        },
+      },
+    }),
   ]
 }

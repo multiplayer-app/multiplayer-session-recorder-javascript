@@ -24,10 +24,12 @@ export interface Spec extends TurboModule {
     x: number,
     y: number,
     target?: string,
-    metadata?: Object,
+    metadata?: object
   ): void;
   addListener(eventName: string): void;
   removeListeners(count: number): void;
 }
 
-export default TurboModuleRegistry.getEnforcing<Spec>('SessionRecorderNative') as Spec;
+export default TurboModuleRegistry.getEnforcing<Spec>(
+  'SessionRecorderNative'
+) as Spec;

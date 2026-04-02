@@ -355,6 +355,7 @@ class SessionRecorder
     // Start capturing events without an active debug session id.
     try {
       this._recorder.stop();
+      // eslint-disable-next-line no-empty
     } catch (_e) {}
     this._recorder.start(null, SessionType.MANUAL);
   }
@@ -657,12 +658,14 @@ class SessionRecorder
    */
   private _start(): void {
     this.sessionState = SessionState.started;
+    // eslint-disable-next-line no-self-assign
     this.sessionType = this.sessionType;
 
     if (this.sessionId) {
       // Switch from buffer-only recording to session recording cleanly.
       try {
         this._recorder.stop();
+        // eslint-disable-next-line no-empty
       } catch (_e) {}
       this._tracer.start(this.sessionId, this.sessionType);
       this._recorder.start(this.sessionId, this.sessionType);
@@ -700,6 +703,7 @@ class SessionRecorder
       this._tracer.start(this.sessionId, this.sessionType);
       try {
         this._recorder.stop();
+        // eslint-disable-next-line no-empty
       } catch (_e) {}
       this._recorder.start(this.sessionId, this.sessionType);
     }

@@ -34,7 +34,7 @@
     "otlp"
   ],
   "scripts": {
-    "lint": "eslint src/**/*.ts --config eslint.config.js",
+    "lint": "eslint 'src/**/*.ts' --config eslint.config.js",
     "preversion": "npm run lint",
     "postversion:skip": "git push && git push --tags",
     "build": "rm -rf dist tsconfig.tsbuildinfo && tsc --build tsconfig.json tsconfig.esm.json tsconfig.esnext.json",

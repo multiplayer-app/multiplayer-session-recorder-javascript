@@ -1,8 +1,8 @@
-export * from '@multiplayer-app/session-recorder-browser';
-export { default } from '@multiplayer-app/session-recorder-browser';
+export * from '@multiplayer-app/session-recorder-browser'
+export { default } from '@multiplayer-app/session-recorder-browser'
 
-export * from './context/SessionRecorderContext';
-export * from './context/useSessionRecorderStore';
+export * from './context/SessionRecorderContext'
+export * from './context/useSessionRecorderStore'
 export { ErrorBoundary } from './ErrorBoundary'
 export { useNavigationRecorder } from './navigation'
 export type { UseNavigationRecorderOptions } from './navigation'

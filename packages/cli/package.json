@@ -11,7 +11,7 @@
     "publish": "bun run scripts/publish.ts",
     "dev": "bun src/index.tsx",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/**/*.ts --config eslint.config.js"
+    "lint": "eslint 'src/**/*.ts' --config eslint.config.js"
   },
   "optionalDependencies": {
     "@multiplayer-app/cli-darwin-arm64": "2.0.5",
