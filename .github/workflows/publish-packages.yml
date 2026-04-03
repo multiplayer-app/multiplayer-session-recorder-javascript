@@ -37,7 +37,7 @@ jobs:
         with:
           path: "**/node_modules"
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm turbo lint
 
   version:
@@ -71,7 +71,7 @@ jobs:
         with:
           path: "**/node_modules"
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - id: get_version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -104,7 +104,7 @@ jobs:
             }
           "
       - name: Update lockfile
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --no-frozen-lockfile --ignore-scripts
       - name: Commit version bump
         id: commit
         run: |
@@ -147,7 +147,7 @@ jobs:
         with:
           path: "**/node_modules"
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Build all platform binaries
         working-directory: packages/cli
         run: bun run scripts/build.ts
@@ -189,7 +189,7 @@ jobs:
           path: .turbo
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm turbo build --filter=!@multiplayer-app/cli
 
   publish:
@@ -227,7 +227,7 @@ jobs:
           path: .turbo
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Download CLI binaries
         uses: actions/download-artifact@v4
         with:
