@@ -24,7 +24,7 @@ function findBinary() {
 
   let dir = path.dirname(fileURLToPath(import.meta.url))
   while (true) {
-    const candidate = path.join(dir, 'node_modules', pkgName, binName)
+    const candidate = path.join(dir, 'node_modules', pkgName, 'src', binName)
     if (existsSync(candidate)) return candidate
     const parent = path.dirname(dir)
     if (parent === dir) break
@@ -32,7 +32,7 @@ function findBinary() {
   }
 
   // Fallback: sibling dist/ for local dev
-  const devBin = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist', `${platform}-${arch}`, binName)
+  const devBin = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist', `${platform}-${arch}`, 'src', binName)
   if (existsSync(devBin)) return devBin
 
   return null
