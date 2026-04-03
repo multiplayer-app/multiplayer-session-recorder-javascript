@@ -162,7 +162,12 @@ export class TracerBrowserSDK {
 
     // eslint-disable-next-line
     const errorHandler = (event: ErrorEvent) => {
-      const err = event?.error instanceof Error ? event.error : new Error(event?.message || 'Script error')
+      const message = event?.message || ''
+      if (message === 'ResizeObserver loop completed with undelivered notifications.' ||
+          message === 'ResizeObserver loop limit exceeded') {
+        return
+      }
+      const err = event?.error instanceof Error ? event.error : new Error(message || 'Script error')
       this.captureException(err)
     }
 
