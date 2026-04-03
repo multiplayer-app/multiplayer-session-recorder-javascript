@@ -15,3 +15,5 @@ bun.lock
 .npmrc
 npm-debug.log
 *.map
+.turbo
+tsuo

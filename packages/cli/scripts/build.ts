@@ -34,6 +34,8 @@ for (const { target, platform, arch, os, cpu, entry, bin } of targets) {
   console.log(`  → ${target}`)
   await $`bun build ${path.join(ROOT, entry)} --compile --target=${target} --outfile=${binPath} --sourcemap=none`.cwd(ROOT)
 
+  if (platform !== 'windows') fs.chmodSync(binPath, 0o755)
+
   fs.writeFileSync(path.join(pkgDir, 'package.json'), JSON.stringify({
     name: pkgName,
     version: pkg.version,

@@ -6,7 +6,8 @@
     "lint": "turbo run lint",
     "build": "turbo build",
     "publish": "./scripts/publish.sh",
-    "preinstall": "cd ./packages/session-recorder-react-native && yarn"
+    "preinstall": "cd ./packages/session-recorder-react-native && yarn",
+    "postinstall": "cd node_modules/bun && node install.js"
   },
   "repository": {
     "type": "git",
