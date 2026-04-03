@@ -9,6 +9,7 @@ scripts/
 dist/
 test/
 tsconfig.json
+tsup.config.ts
 bun.lock
 
 .git/
@@ -16,4 +17,4 @@ bun.lock
 npm-debug.log
 *.map
 .turbo
-tsuo
+eslint.config.js
