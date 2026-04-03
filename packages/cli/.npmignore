@@ -5,15 +5,13 @@
 
 node_modules/
 src/
+scripts/
+dist/
 test/
-gulpfile.js
 tsconfig.json
-tslint.json
-.prettierrc
-.eslintrc.json
-tsup.config.ts
 bun.lock
 
 .git/
 .npmrc
 npm-debug.log
+*.map

@@ -32,29 +32,29 @@ export function getInstrumentations(config: TracerReactNativeConfig) {
 
             // Try to get data from our fetch wrapper first
             // @ts-ignore
-            const networkRequest = response?.networkRequest
+            const networkRequest = response?.networkRequest;
 
-            let requestBody: any = null
-            let responseBody: string | null = null
-            let requestHeaders: Record<string, string> = {}
-            let responseHeaders: Record<string, string> = {}
+            let requestBody: any = null;
+            let responseBody: string | null = null;
+            let requestHeaders: Record<string, string> = {};
+            let responseHeaders: Record<string, string> = {};
 
             if (networkRequest) {
               // Use data captured by our fetch wrapper
-              requestBody = networkRequest.requestBody
-              responseBody = networkRequest.responseBody
-              requestHeaders = networkRequest.requestHeaders || {}
-              responseHeaders = networkRequest.responseHeaders || {}
+              requestBody = networkRequest.requestBody;
+              responseBody = networkRequest.responseBody;
+              requestHeaders = networkRequest.requestHeaders || {};
+              responseHeaders = networkRequest.responseHeaders || {};
             } else {
               // Fallback to original OpenTelemetry approach
-              requestBody = request.body
-              requestHeaders = headersToObject(request.headers)
+              requestBody = request.body;
+              requestHeaders = headersToObject(request.headers);
               responseHeaders = headersToObject(
                 response instanceof Response ? response.headers : undefined
-              )
+              );
 
               if (response instanceof Response && response.body) {
-                responseBody = await extractResponseBody(response)
+                responseBody = await extractResponseBody(response);
               }
             }
 
@@ -94,17 +94,17 @@ export function getInstrumentations(config: TracerReactNativeConfig) {
             }
 
             // @ts-ignore
-            const networkRequest = xhr.networkRequest
-            let requestBody: any = null
-            let responseBody: string | null = null
-            let requestHeaders: Record<string, string> = {}
-            let responseHeaders: Record<string, string> = {}
+            const networkRequest = xhr.networkRequest;
+            let requestBody: any = null;
+            let responseBody: string | null = null;
+            let requestHeaders: Record<string, string> = {};
+            let responseHeaders: Record<string, string> = {};
 
             if (networkRequest) {
-              requestBody = networkRequest.requestBody
-              responseBody = networkRequest.responseBody
-              requestHeaders = networkRequest.requestHeaders || {}
-              responseHeaders = networkRequest.responseHeaders || {}
+              requestBody = networkRequest.requestBody;
+              responseBody = networkRequest.responseBody;
+              requestHeaders = networkRequest.requestHeaders || {};
+              responseHeaders = networkRequest.responseHeaders || {};
             }
 
             const payload = {

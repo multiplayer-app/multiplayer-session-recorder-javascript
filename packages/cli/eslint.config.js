@@ -1,5 +1,5 @@
-const tsPlugin = require('@typescript-eslint/eslint-plugin')
-const tsParser = require('@typescript-eslint/parser')
+import tsPlugin from '@typescript-eslint/eslint-plugin'
+import tsParser from '@typescript-eslint/parser'
 
 // Equivalent to env: { es6: true, node: true, jest: true, mocha: true }
 const envGlobals = {
@@ -49,7 +49,7 @@ const envGlobals = {
   xspecify: 'readonly',
 }
 
-module.exports = [
+export default [
   {
     ignores: [
       'package.json',

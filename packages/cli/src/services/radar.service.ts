@@ -340,6 +340,6 @@ export const validateApiKey = async (url: string, apiKey: string): Promise<{ wor
 
   return {
     workspace: payload.workspace,
-    project: payload.project
+    project: payload.project,
   }
 }

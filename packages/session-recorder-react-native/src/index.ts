@@ -5,7 +5,6 @@ export * from './context/SessionRecorderContext';
 export * from './context/useSessionRecorderStore';
 export { ErrorBoundary } from './components';
 
-
 // Export the class for type checking
 export { SessionRecorder };
 // Export the instance as default
