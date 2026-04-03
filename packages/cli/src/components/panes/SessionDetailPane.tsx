@@ -5,6 +5,7 @@ import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { collapseForSingleLine, formatBytes, stripAgentDisplayNoise } from '../../lib/formatDisplay.js'
 import type { SessionDetail, SessionMessage, SessionStatus } from '../../runtime/types.js'
 import type { AgentToolCall } from '../../types/index.js'
+import { EmptyDetailPane } from '../EmptyDetailPane.js'
 
 const STATUS_LABEL: Record<SessionStatus, { label: string; color: string }> = {
   pending: { label: 'pending', color: '#6b7280' },
@@ -709,6 +710,8 @@ interface Props {
   session: SessionDetail | null
   contentWidth?: number
   isFocused: boolean
+  /** Whether sessions exist at all (for empty-state messaging). */
+  hasSessions?: boolean
   /** Primary click anywhere in the pane moves dashboard focus here (terminal mouse). */
   onRequestFocus?: () => void
   onRequestLoadMore?: () => void
@@ -718,6 +721,7 @@ function SessionDetailPaneImpl({
   session,
   contentWidth,
   isFocused,
+  hasSessions = true,
   onRequestFocus,
   onRequestLoadMore
 }: Props): ReactElement {
@@ -747,12 +751,12 @@ function SessionDetailPaneImpl({
         flexDirection='column'
         border={true}
         borderStyle='rounded'
-        borderColor={borderColor}
+        borderColor='#374151'
         padding={1}
         flexGrow={1}
         onMouseUp={handleMouseUpFocus || undefined}
       >
-        <text attributes={tuiAttrs({ dim: true })}>Select a session to view details</text>
+        <EmptyDetailPane hasSessions={hasSessions} />
       </box>
     ) as ReactElement
   }

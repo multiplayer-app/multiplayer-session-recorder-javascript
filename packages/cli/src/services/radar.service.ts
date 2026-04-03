@@ -69,9 +69,26 @@ export interface RadarService {
   ) => void
   onResolveIssue: (handler: (payload: ResolveIssuePayload) => void) => void
   onSessionStart: (handler: (payload: ChatSessionPayload) => void) => void
+  onChatUpdate: (handler: (chat: AgentChat) => void) => void
   onConnect: (handler: () => void) => void
   onDisconnect: (handler: (reason: string) => void) => void
   onError: (handler: (err: Error) => void) => void
+  sendStreamMessage: (
+    workspaceId: string,
+    projectId: string,
+    payload: { chatId?: string; content: string; contextKey?: string },
+    signal?: AbortSignal,
+  ) => Promise<void>
+  abortChat: (
+    workspaceId: string,
+    projectId: string,
+    chatId: string,
+  ) => Promise<void>
+  fetchChat: (
+    workspaceId: string,
+    projectId: string,
+    chatId: string,
+  ) => Promise<AgentChat | null>
 }
 
 const computeAvailableModels = (config: AgentConfig): string[] => {
@@ -190,6 +207,10 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     socket.emit(EVENT_DEBUGGING_AGENT_READY)
   }
 
+  const onChatUpdate = (handler: (chat: AgentChat) => void) => {
+    socket.on(EVENT_CHAT_UPDATE, (chat: AgentChat) => handler(chat))
+  }
+
   const onResolveIssue = (handler: (payload: ResolveIssuePayload) => void) => {
     socket.on(EVENT_DEBUGGING_AGENT_RESOLVE_ISSUE, (payload: ResolveIssuePayload) => handler(payload))
   }
@@ -278,6 +299,67 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     if (!res.ok) throw new Error(`Failed to update issue: ${res.status}`)
   }
 
+  const sendStreamMessage = async (
+    workspaceId: string,
+    projectId: string,
+    payload: { chatId?: string; content: string; contextKey?: string },
+    signal?: AbortSignal,
+  ): Promise<void> => {
+    const res = await fetch(
+      `${apiBase}/workspaces/${workspaceId}/projects/${projectId}/agents/chats/stream`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': config.apiKey,
+        },
+        body: JSON.stringify(payload),
+        signal,
+      },
+    )
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`Failed to send message: ${res.status} ${text}`)
+    }
+    // Don't consume SSE stream — socket handles message delivery.
+    // Just close the response to free the connection.
+    try { res.body?.cancel() } catch {}
+  }
+
+  const abortChat = async (
+    workspaceId: string,
+    projectId: string,
+    chatId: string,
+  ): Promise<void> => {
+    const res = await fetch(
+      `${apiBase}/workspaces/${workspaceId}/projects/${projectId}/agents/chats/${chatId}/abort`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': config.apiKey,
+        },
+      },
+    )
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`Failed to abort chat: ${res.status} ${text}`)
+    }
+  }
+
+  const fetchChat = async (
+    workspaceId: string,
+    projectId: string,
+    chatId: string,
+  ): Promise<AgentChat | null> => {
+    const res = await fetch(
+      `${apiBase}/workspaces/${workspaceId}/projects/${projectId}/agents/chats/${chatId}`,
+      { headers: { 'x-api-key': config.apiKey } },
+    )
+    if (!res.ok) return null
+    return (await res.json()) as AgentChat
+  }
+
   const disconnect = () => {
     socket.disconnect()
   }
@@ -297,11 +379,15 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     onUserMessage,
     onAbort,
     onAction,
+    onChatUpdate,
     onResolveIssue,
     onSessionStart,
     onConnect,
     onDisconnect,
     onError,
+    sendStreamMessage,
+    abortChat,
+    fetchChat,
   }
 }
 

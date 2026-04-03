@@ -216,6 +216,12 @@ export class RuntimeController extends EventEmitter {
       this.handleAbort(params)
     })
 
+    radar.onChatUpdate((chat) => {
+      if (chat._id && chat.status) {
+        this.emit('chat-status', chat._id, chat.status)
+      }
+    })
+
     radar.onAction((params) => {
       this.handleAction(params)
     })
@@ -285,6 +291,63 @@ export class RuntimeController extends EventEmitter {
       this.emit('quit')
     }
     // Otherwise wait — processIssue finally block will emit quit when last session ends
+  }
+
+  // ─── Chat composer API ─────────────────────────────────────────────────────
+
+  /**
+   * Send a user message to an active chat session via the /stream endpoint.
+   * The SSE response is discarded — socket delivers messages to the UI.
+   */
+  async sendUserMessage(chatId: string, content: string): Promise<void> {
+    const cfg = this._config
+    if (!this.radar || !cfg.workspace || !cfg.project) return
+
+    this.log('info', `Sending user message to ${chatId}: ${content.slice(0, 80)}`)
+
+    try {
+      await this.radar.sendStreamMessage(
+        cfg.workspace,
+        cfg.project,
+        { chatId, content },
+      )
+    } catch (err: unknown) {
+      this.log('error', `Failed to send message to ${chatId}: ${err instanceof Error ? err.message : String(err)}`)
+      throw err
+    }
+  }
+
+  /**
+   * Abort an active chat session via the /:chatId/abort endpoint.
+   */
+  async abortChatSession(chatId: string): Promise<void> {
+    const cfg = this._config
+    if (!this.radar || !cfg.workspace || !cfg.project) return
+
+    this.log('info', `Requesting abort for chat ${chatId}`)
+
+    try {
+      await this.radar.abortChat(cfg.workspace, cfg.project, chatId)
+    } catch (err: unknown) {
+      this.log('error', `Failed to abort ${chatId}: ${err instanceof Error ? err.message : String(err)}`)
+      throw err
+    }
+  }
+
+  /**
+   * Fetch the current chat status from the server. Returns the AgentChatStatus
+   * or null if the chat is not found.
+   */
+  async fetchChatStatus(chatId: string): Promise<string | null> {
+    const cfg = this._config
+    if (!this.radar || !cfg.workspace || !cfg.project) return null
+
+    try {
+      const chat = await this.radar.fetchChat(cfg.workspace, cfg.project, chatId)
+      return chat?.status ?? null
+    } catch {
+      return null
+    }
   }
 
   // ─── Internal state helpers ──────────────────────────────────────────────────
