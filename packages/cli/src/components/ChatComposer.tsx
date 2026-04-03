@@ -93,6 +93,20 @@ export function ChatComposer({
     )
   )
 
+  // Wire up onSubmit via ref — the React reconciler only handles onSubmit for
+  // <input>, not <textarea>, so the JSX prop is silently ignored.
+  useEffect(() => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      textarea.onSubmit = handleSend
+    }
+    return () => {
+      if (textarea) {
+        textarea.onSubmit = undefined
+      }
+    }
+  }, [handleSend])
+
   // Reset state when chat changes
   useEffect(() => {
     textareaRef.current?.clear()
@@ -200,7 +214,6 @@ export function ChatComposer({
               { name: 'return', shift: true, action: 'newline' }
             ]}
             onContentChange={handleContentChange}
-            onSubmit={handleSend}
           />
         </box>
 
