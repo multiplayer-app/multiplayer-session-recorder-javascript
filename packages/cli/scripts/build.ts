@@ -27,9 +27,9 @@ console.log(`Building ${targets.length} target(s)...`)
 for (const { target, platform, arch, os, cpu, entry, bin } of targets) {
   const pkgName = `@multiplayer-app/cli-${platform}-${arch}`
   const pkgDir = path.join(ROOT, 'dist', `${platform}-${arch}`)
-  const binPath = path.join(pkgDir, bin)
+  const binPath = path.join(pkgDir, 'src', bin)
 
-  fs.mkdirSync(pkgDir, { recursive: true })
+  fs.mkdirSync(path.join(pkgDir, 'src'), { recursive: true })
 
   console.log(`  → ${target}`)
   await $`bun build ${path.join(ROOT, entry)} --compile --target=${target} --outfile=${binPath} --sourcemap=none`.cwd(ROOT)
@@ -43,8 +43,8 @@ for (const { target, platform, arch, os, cpu, entry, bin } of targets) {
     repository: pkg.repository,
     os: [os],
     cpu: [cpu],
-    bin: { multiplayer: `./${bin}` },
-    files: [bin],
+    bin: { multiplayer: `./src/${bin}` },
+    files: ['src'],
     license: pkg.license,
   }, null, 2))
 }
