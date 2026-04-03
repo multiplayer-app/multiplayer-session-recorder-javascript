@@ -4,3 +4,6 @@ node_modules
 README.md
 tsconfig.tsbuildinfo
 .turbo
+docs
+src
+tsconfig.json
