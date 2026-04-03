@@ -179,6 +179,16 @@ export class RuntimeController extends EventEmitter {
     }
   }
 
+  subscribeSession(chatId: string): void {
+    this.radar?.subscribeChat(chatId)
+    this.log('debug', `Subscribed to chat ${chatId}`)
+  }
+
+  unsubscribeSession(chatId: string): void {
+    this.radar?.unsubscribeChat(chatId)
+    this.log('debug', `Unsubscribed from chat ${chatId}`)
+  }
+
   connect(): void {
     this.setState(setConnection(this._state, 'connecting'))
     this.log('info', `Connecting to ${this._config.url}`)
@@ -205,7 +215,9 @@ export class RuntimeController extends EventEmitter {
       void this.handleUserMessage(msg)
     })
 
-    // Listen for all incoming messages (assistant responses from server-side streaming)
+    // Listen for all incoming messages (assistant responses from server-side streaming).
+    // User messages are added optimistically by sendUserMessage, so skip them here
+    // to avoid duplicates (optimistic messages lack a server _id for deduplication).
     radar.onMessage((msg) => {
       this.log('debug', `message:new received: role=${msg.role} chat=${msg.chat}`)
       if (msg.chat && msg.role !== 'user') {
@@ -422,6 +434,8 @@ export class RuntimeController extends EventEmitter {
   private addSessionMessage(chatId: string, msg: Omit<SessionMessage, 'id' | 'createdAt'> & { id?: string }): void {
     const detail = this.sessionDetails.get(chatId)
     if (!detail) return
+    // Skip if a message with this id already exists (e.g. optimistic add + socket echo)
+    if (msg.id && detail.messages.some((m) => m.id === msg.id)) return
     const full: SessionMessage = {
       id: msg.id ?? new mongoose.Types.ObjectId().toString(),
       createdAt: new Date(),

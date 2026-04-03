@@ -112,6 +112,14 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
     void controllerRef.current?.abortChatSession(chatId)
   }, [])
 
+  const handleSubscribeSession = useCallback((chatId: string) => {
+    controllerRef.current?.subscribeSession(chatId)
+  }, [])
+
+  const handleUnsubscribeSession = useCallback((chatId: string) => {
+    controllerRef.current?.unsubscribeSession(chatId)
+  }, [])
+
   useEffect(() => {
     return () => {
       controllerRef.current?.disconnect()
@@ -136,6 +144,8 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
             onLoadMessages={handleLoadMessages}
             onSendMessage={handleSendMessage}
             onAbortChat={handleAbortChat}
+            onSubscribeSession={handleSubscribeSession}
+            onUnsubscribeSession={handleUnsubscribeSession}
             suspendKeyboard={screen === 'quit-confirm'}
           />
         </box>

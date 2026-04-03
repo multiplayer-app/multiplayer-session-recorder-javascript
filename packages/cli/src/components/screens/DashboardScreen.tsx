@@ -36,6 +36,8 @@ interface Props {
   onLoadMessages: (chatId: string, before?: string) => void
   onSendMessage: (chatId: string, content: string) => void
   onAbortChat: (chatId: string) => void
+  onSubscribeSession: (chatId: string) => void
+  onUnsubscribeSession: (chatId: string) => void
   /** When true (e.g. quit dialog open), ignore keys so the overlay handles them. */
   suspendKeyboard?: boolean
 }
@@ -52,6 +54,8 @@ export function DashboardScreen({
   onLoadMessages,
   onSendMessage,
   onAbortChat,
+  onSubscribeSession,
+  onUnsubscribeSession,
   suspendKeyboard = false
 }: Props): ReactElement {
   // ── Dimensions ──────────────────────────────────────────────────────────────
@@ -101,6 +105,14 @@ export function DashboardScreen({
     }
     setNarrowShowsDetail(true)
   }, [selectedDetail?.chatId])
+
+  // Subscribe to chat events when a session is selected; unsubscribe on change.
+  useEffect(() => {
+    if (!selectedSession) return
+    const chatId = selectedSession.chatId
+    onSubscribeSession(chatId)
+    return () => onUnsubscribeSession(chatId)
+  }, [selectedSession?.chatId, onSubscribeSession, onUnsubscribeSession])
 
   // Load messages when a new session is highlighted.
   useEffect(() => {
