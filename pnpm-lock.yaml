@@ -111,25 +111,6 @@ importers:
       typescript:
         specifier: 6.0.2
         version: 6.0.2
-    optionalDependencies:
-      '@multiplayer-app/cli-darwin-arm64':
-        specifier: 2.0.5
-        version: 2.0.5
-      '@multiplayer-app/cli-darwin-x64':
-        specifier: 2.0.5
-        version: 2.0.5
-      '@multiplayer-app/cli-linux-arm64':
-        specifier: 2.0.5
-        version: 2.0.5
-      '@multiplayer-app/cli-linux-x64':
-        specifier: 2.0.5
-        version: 2.0.5
-      '@multiplayer-app/cli-windows-arm64':
-        specifier: 2.0.5
-        version: 2.0.5
-      '@multiplayer-app/cli-windows-x64':
-        specifier: 2.0.5
-        version: 2.0.5
 
   packages/session-recorder-browser:
     dependencies:
@@ -2081,42 +2062,6 @@ packages:
 
   '@mongodb-js/saslprep@1.4.6':
     resolution: {integrity: sha512-y+x3H1xBZd38n10NZF/rEBlvDOOMQ6LKUTHqr8R9VkJ+mmQOYtJFxIlkkK8fZrtOiL6VixbOBWMbZGBdal3Z1g==}
-
-  '@multiplayer-app/cli-darwin-arm64@2.0.5':
-    resolution: {integrity: sha512-wP3Mukt+3LDK/Lf+qH62wCJ0GnmPWYl71HuNuTs0GiZsdld9GiS8kf0wD5S5gnONvVjGblsevgQYbfzicMMfbA==}
-    cpu: [arm64]
-    os: [darwin]
-    hasBin: true
-
-  '@multiplayer-app/cli-darwin-x64@2.0.5':
-    resolution: {integrity: sha512-uLRogzLSSEuQuiLDwygucf4trJ/y4cSt6AY/laWlCWbTetlSXrSrGfUNmlMFL7lqJGn1P2F2y0yoKq2/m75X5g==}
-    cpu: [x64]
-    os: [darwin]
-    hasBin: true
-
-  '@multiplayer-app/cli-linux-arm64@2.0.5':
-    resolution: {integrity: sha512-lQ9MEa4+k+RGXxryUVTPKcKNiPQMWyPjTwaN5Jb06HItTExLn/ySiporSaZnPJDndSB7HSPK2Ucaigby7QsCAA==}
-    cpu: [arm64]
-    os: [linux]
-    hasBin: true
-
-  '@multiplayer-app/cli-linux-x64@2.0.5':
-    resolution: {integrity: sha512-YUi14Ki3wqMPPLl0R2Az5K6AM5QanOWWRyXWzMYmoW34gahajov40bfDy+SENGgmuvyC/zM2m4c9bhaBhQn20Q==}
-    cpu: [x64]
-    os: [linux]
-    hasBin: true
-
-  '@multiplayer-app/cli-windows-arm64@2.0.5':
-    resolution: {integrity: sha512-AMODuZIPZzAEFVth1T6gLiHmIRtEhrzabjLKyCoeRu6y1c2zfjZC8v4XgE5HbP9ECRby49GED9v3L5k3ze5Cyg==}
-    cpu: [arm64]
-    os: [win32]
-    hasBin: true
-
-  '@multiplayer-app/cli-windows-x64@2.0.5':
-    resolution: {integrity: sha512-IF77gFq9FVxvsZg+KWMsK9QhaHm0MEqzeH+7C5Iq7/quKaf8KF4Qw7m9NvD9vSbxjS17fH4NtrMCa6TQb72a2Q==}
-    cpu: [x64]
-    os: [win32]
-    hasBin: true
 
   '@nicolo-ribaudo/eslint-scope-5-internals@5.1.1-v1':
     resolution: {integrity: sha512-54/JRvkLIzzDWshCWfuhadfrfZVPiElY8Fcgmg1HroEly/EDSszzhBAsarCux+D/kOslTRquNzuyGSmUSTTHGg==}
@@ -10874,24 +10819,6 @@ snapshots:
     dependencies:
       sparse-bitfield: 3.0.3
 
-  '@multiplayer-app/cli-darwin-arm64@2.0.5':
-    optional: true
-
-  '@multiplayer-app/cli-darwin-x64@2.0.5':
-    optional: true
-
-  '@multiplayer-app/cli-linux-arm64@2.0.5':
-    optional: true
-
-  '@multiplayer-app/cli-linux-x64@2.0.5':
-    optional: true
-
-  '@multiplayer-app/cli-windows-arm64@2.0.5':
-    optional: true
-
-  '@multiplayer-app/cli-windows-x64@2.0.5':
-    optional: true
-
   '@nicolo-ribaudo/eslint-scope-5-internals@5.1.1-v1':
     dependencies:
       eslint-scope: 5.1.1
@@ -11738,7 +11665,9 @@ snapshots:
       metro-runtime: 0.83.5
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/normalize-colors@0.81.1': {}
 
