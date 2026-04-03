@@ -26,7 +26,6 @@ const STATUS_SYMBOL: Record<SessionStatus, string> = {
 interface Props {
   session: SessionDetail | null
   chatStatus: AgentChatStatus | string | null
-  model: string
   workspace?: string
   project?: string
   rateLimitState: RateLimitState
@@ -45,7 +44,7 @@ function SectionTitle({ title }: { title: string }): ReactElement {
 
 function InfoRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }): ReactElement {
   return (
-    <box flexDirection='row' gap={1}>
+    <box flexDirection='column'>
       <text fg='#6b7280'>{label}</text>
       <text fg={valueColor ?? '#e5e7eb'}>{value}</text>
     </box>
@@ -64,7 +63,6 @@ function timeAgo(date: Date): string {
 function ContextSidebarImpl({
   session,
   chatStatus,
-  model,
   workspace,
   project,
   rateLimitState,
@@ -86,17 +84,11 @@ function ContextSidebarImpl({
         padding={1}
         gap={2}
       >
-        {/* Context section */}
-        <box flexDirection='column' gap={1}>
-          <SectionTitle title='Context' />
-          <InfoRow label='Model:' value={model} />
-          {workspace && <InfoRow label='Workspace:' value={workspace} />}
-          {project && <InfoRow label='Project:' value={project} />}
-        </box>
-
         {/* Stats section */}
         <box flexDirection='column' gap={1}>
           <SectionTitle title='Stats' />
+          {workspace && <InfoRow label='Workspace' value={workspace} />}
+          {project && <InfoRow label='Project' value={project} />}
           <InfoRow label='Active:' value={String(activeCount)} valueColor='#f59e0b' />
           <InfoRow label='Resolved:' value={String(resolvedCount)} valueColor='#10b981' />
         </box>
@@ -175,9 +167,14 @@ function ContextSidebarImpl({
       {/* Session section */}
       <box flexDirection='column' gap={1}>
         <SectionTitle title='Session' />
+        {workspace && <InfoRow label='Workspace' value={workspace} />}
+        {project && <InfoRow label='Project' value={project} />}
         <InfoRow label='Service:' value={session.issueService} />
         {session.branchName && (
-          <InfoRow label='Branch:' value={session.branchName} />
+          <box flexDirection='column'>
+            <text fg='#6b7280'>Branch:</text>
+            <text fg='#818cf8'>{session.branchName}</text>
+          </box>
         )}
         {session.prUrl && (
           <box flexDirection='column'>
@@ -202,13 +199,7 @@ function ContextSidebarImpl({
       {/* Context section */}
       <box flexDirection='column' gap={1}>
         <SectionTitle title='Context' />
-        <InfoRow label='Model:' value={model} />
         <InfoRow label='Messages:' value={String(session.messages.length)} />
-      </box>
-
-      {/* Stats section */}
-      <box flexDirection='column' gap={1}>
-        <SectionTitle title='Stats' />
         <InfoRow label='Active:' value={String(activeCount)} valueColor='#f59e0b' />
         <InfoRow label='Resolved:' value={String(resolvedCount)} valueColor='#10b981' />
         <box flexDirection='row' gap={1}>

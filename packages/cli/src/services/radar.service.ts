@@ -62,6 +62,7 @@ export interface RadarService {
   emitAgentMessage: (message: AgentMessage) => void
   emitAgentChatUpdate: (chat: AgentChat) => void
   emitIssueCheck: () => void
+  onMessage: (handler: (message: AgentMessage) => void) => void
   onUserMessage: (handler: (message: AgentMessage) => void) => void
   onAbort: (handler: (params: { chatId: string }) => void) => void
   onAction: (
@@ -76,7 +77,7 @@ export interface RadarService {
   sendStreamMessage: (
     workspaceId: string,
     projectId: string,
-    payload: { chatId?: string; content: string; contextKey?: string },
+    payload: { chatId?: string; content: string; contextKey?: string; userId?: string },
     signal?: AbortSignal,
   ) => Promise<void>
   abortChat: (
@@ -89,6 +90,8 @@ export interface RadarService {
     projectId: string,
     chatId: string,
   ) => Promise<AgentChat | null>
+  subscribeChat: (chatId: string) => void
+  unsubscribeChat: (chatId: string) => void
 }
 
 const computeAvailableModels = (config: AgentConfig): string[] => {
@@ -145,6 +148,11 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     reconnectionDelayMax: SOCKET_RECONNECTION_DELAY_MAX,
   })
 
+  // Debug: log all incoming socket events
+  socket.onAny((event: string, ...args: unknown[]) => {
+    console.log(`[SOCKET] event=${event}`, JSON.stringify(args).slice(0, 200))
+  })
+
   const onConnect = (handler: () => void) => {
     socket.on('connect', handler)
   }
@@ -185,6 +193,10 @@ export const createRadarService = (config: AgentConfig): RadarService => {
 
   const emitAgentChatUpdate = (chat: AgentChat) => {
     socket.emit(EVENT_CHAT_UPDATE, chat)
+  }
+
+  const onMessage = (handler: (message: AgentMessage) => void) => {
+    socket.on(EVENT_MESSAGE_NEW, (msg: AgentMessage) => handler(msg))
   }
 
   const onUserMessage = (handler: (message: AgentMessage) => void) => {
@@ -302,7 +314,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
   const sendStreamMessage = async (
     workspaceId: string,
     projectId: string,
-    payload: { chatId?: string; content: string; contextKey?: string },
+    payload: { chatId?: string; content: string; contextKey?: string; userId?: string },
     signal?: AbortSignal,
   ): Promise<void> => {
     const res = await fetch(
@@ -360,6 +372,15 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     return (await res.json()) as AgentChat
   }
 
+  const subscribeChat = (chatId: string) => {
+    console.log(`[RADAR] chat:subscribe emitting for ${chatId}, connected=${socket.connected}`)
+    socket.emit('chat:subscribe', { chatId })
+  }
+
+  const unsubscribeChat = (chatId: string) => {
+    socket.emit('chat:unsubscribe', { chatId })
+  }
+
   const disconnect = () => {
     socket.disconnect()
   }
@@ -376,6 +397,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     emitAgentMessage,
     emitAgentChatUpdate,
     emitIssueCheck,
+    onMessage,
     onUserMessage,
     onAbort,
     onAction,
@@ -386,6 +408,8 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     onDisconnect,
     onError,
     sendStreamMessage,
+    subscribeChat,
+    unsubscribeChat,
     abortChat,
     fetchChat,
   }

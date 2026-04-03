@@ -5,12 +5,12 @@ import type { AgentConfig } from '../types/index.js'
 
 type ConnectionState = RuntimeState['connection']
 
-const CONNECTION_BADGE: Record<ConnectionState, { symbol: string; color: string }> = {
-  idle:         { symbol: '○', color: '#6b7280' },
-  connecting:   { symbol: '◌', color: '#f59e0b' },
-  connected:    { symbol: '●', color: '#10b981' },
-  disconnected: { symbol: '○', color: '#6b7280' },
-  error:        { symbol: '✕', color: '#ef4444' },
+const CONNECTION_BADGE: Record<ConnectionState, { symbol: string; color: string; label: string }> = {
+  idle: { symbol: '○', color: '#6b7280', label: 'idle' },
+  connecting: { symbol: '◌', color: '#f59e0b', label: 'connecting' },
+  connected: { symbol: '●', color: '#10b981', label: 'connected' },
+  disconnected: { symbol: '○', color: '#6b7280', label: 'disconnected' },
+  error: { symbol: '✕', color: '#ef4444', label: 'error' }
 }
 
 interface Props {
@@ -19,146 +19,57 @@ interface Props {
   isNarrow: boolean
 }
 
-function resolveLabel(
-  stateDisplay: string | undefined,
-  configDisplay: string | undefined,
-  rawId: string | undefined,
-): string {
-  return stateDisplay?.trim() || configDisplay?.trim() || (rawId ? rawId.slice(-8) : '')
+/** Shorten an absolute path by replacing $HOME with ~. */
+function shortenPath(dir: string): string {
+  const home = process.env['HOME'] ?? process.env['USERPROFILE'] ?? ''
+  if (home && dir.startsWith(home)) return '~' + dir.slice(home.length)
+  return dir
 }
 
 function DashboardHeaderImpl({ state, config, isNarrow }: Props): ReactElement {
-  const { symbol, color } = CONNECTION_BADGE[state.connection]
-  const activeCount = state.sessions.filter(
-    (s) => !['done', 'failed', 'aborted'].includes(s.status),
-  ).length
-
-  const workspaceLabel = resolveLabel(
-    state.workspaceDisplayName,
-    config.workspaceDisplayName,
-    config.workspace,
-  )
-  const projectLabel = resolveLabel(
-    state.projectDisplayName,
-    config.projectDisplayName,
-    config.project,
-  )
-
-  // ── Shared fragments ────────────────────────────────────────────────────────
-
-  const brandBadge = (
-    <text fg='#6366f1' attributes={tuiAttrs({ bold: true })}>
-      ◆ MULTIPLAYER
-    </text>
-  )
-
-  const connectionBadge = (
-    <text fg={color}>
-      {symbol} {state.connection}
-    </text>
-  )
-
-  const connectionError = state.connectionError ? (
-    <text fg='#ef4444'>{state.connectionError}</text>
-  ) : null
-
-  const separator = <text attributes={tuiAttrs({ dim: true })}>│</text>
-
-  const statsBadges = (
-    <>
-      {activeCount > 0 && (
-        <>
-          {separator}
-          <text fg='#f59e0b'>{activeCount} active</text>
-        </>
-      )}
-      {separator}
-      <text fg='#10b981'>{state.resolvedCount} resolved</text>
-    </>
-  )
-
-  // ── Wide layout (single row) ────────────────────────────────────────────────
-
-  if (!isNarrow) {
-    return (
-      <box
-        border={true}
-        borderStyle='rounded'
-        borderColor='#374151'
-        padding={1}
-        flexDirection='row'
-        flexShrink={0}
-        gap={2}
-      >
-        {brandBadge}
-        {separator}
-        {connectionBadge}
-        {connectionError}
-        {config.workspace && (
-          <>
-            {separator}
-            <text attributes={tuiAttrs({ dim: true })}>workspace:</text>
-            <text>{workspaceLabel}</text>
-          </>
-        )}
-        {config.project && (
-          <>
-            <text attributes={tuiAttrs({ dim: true })}>project:</text>
-            <text>{projectLabel}</text>
-          </>
-        )}
-        {separator}
-        <text attributes={tuiAttrs({ dim: true })}>model:</text>
-        <text>{config.model}</text>
-        {statsBadges}
-      </box>
-    ) as ReactElement
-  }
-
-  // ── Narrow layout (multi-row) ───────────────────────────────────────────────
+  const conn = CONNECTION_BADGE[state.connection]
+  const displayDir = shortenPath(config.dir)
+  const separator = <text fg='#374151'> │ </text>
 
   return (
     <box
-      border={true}
-      borderStyle='rounded'
-      borderColor='#374151'
-      padding={1}
-      flexDirection='column'
+      flexDirection='row'
       flexShrink={0}
-      gap={1}
+      justifyContent='space-between'
+      paddingLeft={1}
+      paddingRight={1}
+      height={1}
+      // backgroundColor='#1e1e2e'
     >
-      {/* Row 1: brand + connection */}
-      <box flexDirection='row' flexWrap='wrap' gap={2}>
-        {brandBadge}
-        {separator}
-        {connectionBadge}
-        {connectionError}
+      {/* Left: Brand */}
+      <box flexDirection='row' gap={0} flexShrink={0}>
+        <text fg='#6366f1' attributes={tuiAttrs({ bold: true })}>
+          ◆ MULTIPLAYER
+        </text>
       </box>
 
-      {/* Row 2: workspace / project (conditional) */}
-      {(config.workspace || config.project) && (
-        <box flexDirection='row' flexWrap='wrap' gap={2}>
-          {config.workspace && (
-            <>
-              <text attributes={tuiAttrs({ dim: true })}>workspace:</text>
-              <text>{workspaceLabel}</text>
-            </>
-          )}
-          {config.workspace && config.project && separator}
-          {config.project && (
-            <>
-              <text attributes={tuiAttrs({ dim: true })}>project:</text>
-              <text>{projectLabel}</text>
-            </>
-          )}
-        </box>
-      )}
-
-      {/* Row 3: model + stats */}
-      <box flexDirection='row' flexWrap='wrap' gap={2}>
-        <text attributes={tuiAttrs({ dim: true })}>model:</text>
-        <text>{config.model}</text>
-        {statsBadges}
+      {/* Right: dir · model · connection */}
+      <box flexDirection='row' gap={0} flexShrink={1}>
+        {!isNarrow && (
+          <>
+            <text fg='#6b7280'>{displayDir}</text>
+            {separator}
+          </>
+        )}
+        <text fg='#4b5563'>model:</text>
+        <text fg='#9ca3af'>{config.model}</text>
+        {separator}
+        <text fg={conn.color}>
+          {conn.symbol} {conn.label}
+        </text>
+        {state.connectionError && (
+          <>
+            <text> </text>
+            <text fg='#ef4444' attributes={tuiAttrs({ dim: true })}>
+              {state.connectionError.slice(0, 30)}
+            </text>
+          </>
+        )}
       </box>
     </box>
   ) as ReactElement

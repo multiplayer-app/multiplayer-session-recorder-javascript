@@ -857,7 +857,7 @@ function SessionDetailPaneImpl({
             </text>
           </box>
         )}
-        <box flexDirection='column' flexShrink={0} width='100%'>
+        <box flexDirection='column' flexShrink={0} width='100%' paddingRight={2}>
           {allRows.length === 0 ? (
             <text attributes={tuiAttrs({ dim: true })}>No messages yet...</text>
           ) : (

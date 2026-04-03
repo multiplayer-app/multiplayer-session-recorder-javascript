@@ -1,10 +1,19 @@
 import { useState, useEffect, type ReactElement } from 'react'
-import type { KeyEvent } from '@opentui/core'
+import type { KeyEvent, MouseEvent } from '@opentui/core'
+import { MouseButton } from '@opentui/core'
 import { InputSubmitPayload, stringFromInputSubmit } from '../../lib/inputSubmit.js'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { useKeyboard } from '@opentui/react'
 import * as AiService from '../../services/ai.service.js'
 import type { AgentConfig } from '../../types/index.js'
+
+function clickHandler(handler: () => void) {
+  return (e: MouseEvent) => {
+    if (e.button !== MouseButton.LEFT) return
+    e.stopPropagation()
+    handler()
+  }
+}
 
 interface ModelOption {
   label: string
@@ -44,6 +53,7 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
   const [apiKeyError, setApiKeyError] = useState<string | null>(null)
   const [customModelError, setCustomModelError] = useState<string | null>(null)
   const [validating, setValidating] = useState(false)
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null)
 
   useEffect(() => {
     AiService.checkClaudeRequirements()
@@ -67,6 +77,24 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
       })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const selectModel = (opt: ModelOption) => {
+    setSelectedModel(opt)
+    if (opt.provider === 'openai') {
+      if (!config.modelKey) {
+        setSubStep('api-key')
+        return
+      }
+      if (opt.value === '__custom__') {
+        setCustomModelName(config.model && !config.model.startsWith('claude') ? config.model : '')
+        setSubStep('custom-model')
+      } else {
+        setSubStep('api-url')
+      }
+    } else {
+      onComplete({ model: opt.value, modelKey: '', modelUrl: undefined })
+    }
+  }
+
   useKeyboard((key: KeyEvent) => {
     const { name } = key
     // Navigation in select mode
@@ -77,22 +105,7 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
         setSelectedIndex((i) => Math.min(options.length - 1, i + 1))
       } else if (name === 'return') {
         const opt = options[selectedIndex]
-        if (!opt) return
-        setSelectedModel(opt)
-        if (opt.provider === 'openai') {
-          if (!config.modelKey) {
-            setSubStep('api-key')
-            return
-          }
-          if (opt.value === '__custom__') {
-            setCustomModelName(config.model && !config.model.startsWith('claude') ? config.model : '')
-            setSubStep('custom-model')
-          } else {
-            setSubStep('api-url')
-          }
-        } else {
-          onComplete({ model: opt.value, modelKey: '', modelUrl: undefined })
-        }
+        if (opt) selectModel(opt)
       }
     }
 
@@ -155,28 +168,71 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
 
   if (subStep === 'select') {
     return (
-      <box flexDirection='column' gap={1}>
-        {detectError && <text fg='#f59e0b'>⚠ {detectError}</text>}
-        {claudeAvailable && <text fg='#10b981'>✓ Claude CLI detected</text>}
-        <text attributes={tuiAttrs({ dim: true })}>
+      <box flexDirection='column' flexGrow={1}>
+        {detectError && <text fg='#f59e0b'> ⚠ {detectError}</text>}
+        {claudeAvailable && <text fg='#10b981'> ✓ Claude CLI detected</text>}
+        <text attributes={tuiAttrs({ dim: true })} marginLeft={1}>
           Use Claude for fastest local setup, or OpenAI-compatible with API key.
         </text>
-        <box flexDirection='column' marginTop={1} border={true} borderStyle='rounded' borderColor='#374151' padding={1}>
+        <box
+          flexDirection='column'
+          marginTop={1}
+          border={true}
+          borderStyle='rounded'
+          borderColor='#30363d'
+          flexGrow={1}
+          overflow={'hidden' as const}
+        >
           {options.map((opt, i) => {
             const isActive = i === selectedIndex
+            const isHovered = hoveredRow === i
             const isClaudeOption = opt.provider === 'claude'
-            const color = isActive ? '#22d3ee' : isClaudeOption ? undefined : '#f59e0b'
+            const isLast = i === options.length - 1
+            const icon = isClaudeOption ? '◆' : opt.value === '__custom__' ? '⚙' : '◇'
+            const iconColor = isClaudeOption ? '#22d3ee' : '#f59e0b'
+            const nameFg = isActive ? '#e6edf3' : isClaudeOption ? '#c9d1d9' : '#f59e0b'
+
             return (
-              <box key={opt.value} flexDirection='row' gap={2}>
-                <text fg={color} attributes={tuiAttrs({ bold: isActive })}>
-                  {isActive ? '❯' : ' '} {opt.label}
-                </text>
-                {opt.description && <text attributes={tuiAttrs({ dim: true })}>{opt.description}</text>}
+              <box
+                key={opt.value}
+                flexDirection='column'
+                onMouseUp={clickHandler(() => selectModel(opt))}
+                onMouseOver={() => setHoveredRow(i)}
+                onMouseOut={() => setHoveredRow((v) => (v === i ? null : v))}
+              >
+                <box
+                  flexDirection='row'
+                  height={1}
+                  paddingLeft={1}
+                  paddingRight={1}
+                  backgroundColor={isActive ? '#161b22' : isHovered ? '#21262d' : undefined}
+                >
+                  <box width={3} flexShrink={0}>
+                    <text fg={iconColor}>{icon}</text>
+                  </box>
+                  <box flexGrow={1}>
+                    <text fg={nameFg} attributes={tuiAttrs({ bold: isActive })}>
+                      {opt.label}
+                    </text>
+                  </box>
+                  {opt.description && (
+                    <box flexShrink={0}>
+                      <text attributes={tuiAttrs({ dim: true })}>{opt.description}</text>
+                    </box>
+                  )}
+                </box>
+                {!isLast && (
+                  <box height={1} paddingLeft={1} paddingRight={1}>
+                    <text fg='#21262d'>{'─'.repeat(999)}</text>
+                  </box>
+                )}
               </box>
             )
           })}
         </box>
-        <text attributes={tuiAttrs({ dim: true })}>↑↓ navigate · Enter select · Esc back</text>
+        <box flexDirection='row' flexShrink={0} paddingLeft={1} marginTop={1} gap={2}>
+          <text fg='#484f58'>↑↓ navigate · Enter select · Click to select · Esc back</text>
+        </box>
       </box>
     ) as ReactElement
   }

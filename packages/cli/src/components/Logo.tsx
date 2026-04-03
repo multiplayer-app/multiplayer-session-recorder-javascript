@@ -1,4 +1,4 @@
-import React, { type ReactElement } from 'react'
+import { type ReactElement } from 'react'
 import { tuiAttrs } from '../lib/tuiAttrs.js'
 import { useTerminalDimensions } from '@opentui/react'
 
@@ -14,7 +14,7 @@ const WORDMARK_COMPACT = [
   '█   █ █   █ █       █     █   ████  █     █████   █   ████  ████ ',
   '█   █ █   █ █       █     █   █     █     █   █   █   █     █ █  ',
   '█   █ █   █ █       █     █   █     █     █   █   █   █     █  █ ',
-  '█   █  ███  █████   █   █████ █     █████ █   █   █   █████ █   █',
+  '█   █  ███  █████   █   █████ █     █████ █   █   █   █████ █   █'
 ]
 
 function center(input: string, width: number): string {
@@ -31,8 +31,8 @@ export function Logo(): ReactElement {
 
   if (useAsciiFont) {
     return (
-      <box flexDirection="column" alignItems="center" marginTop={1} marginBottom={1}>
-        <ascii-font font="block" color={BRAND_PRIMARY} text="MULTIPLAYER" />
+      <box flexDirection='column' alignItems='center' marginTop={1} marginBottom={1} flexShrink={0}>
+        <ascii-font font='block' color={BRAND_PRIMARY} text='MULTIPLAYER' />
         <text fg={BRAND_ACCENT} attributes={tuiAttrs({ dim: true })}>
           {center('Automated issue triage, patching, and PR workflow', Math.min(width - 4, 80))}
         </text>
@@ -42,9 +42,11 @@ export function Logo(): ReactElement {
 
   const maxWidth = Math.max(48, width - 8)
   return (
-    <box flexDirection="column" alignItems="center" marginTop={1} marginBottom={1}>
+    <box flexDirection='column' alignItems='center' marginTop={1} marginBottom={1} flexShrink={0}>
       {WORDMARK_COMPACT.map((line, i) => (
-        <text key={i} fg={BRAND_PRIMARY}>{center(line, maxWidth)}</text>
+        <text key={i} fg={BRAND_PRIMARY}>
+          {center(line, maxWidth)}
+        </text>
       ))}
       <text fg={BRAND_ACCENT} attributes={tuiAttrs({ dim: true })}>
         {center('Automated issue triage, patching, and PR workflow', maxWidth)}

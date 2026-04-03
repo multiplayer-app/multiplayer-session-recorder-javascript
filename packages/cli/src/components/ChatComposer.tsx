@@ -6,18 +6,7 @@ import { tuiAttrs } from '../lib/tuiAttrs.js'
 import type { AgentChatStatus } from '../types/index.js'
 
 /** Chat statuses that indicate the agent is actively working. */
-const ACTIVE_STATUSES = new Set<AgentChatStatus | string>([
-  'processing',
-  'streaming',
-])
-
-/** Chat statuses that allow the user to send a message. */
-const SENDABLE_STATUSES = new Set<AgentChatStatus | string>([
-  'finished',
-  'aborted',
-  'error',
-  'waitingForUserAction',
-])
+const ACTIVE_STATUSES = new Set<AgentChatStatus | string>(['processing', 'streaming'])
 
 export interface ChatComposerProps {
   /** Current chat session ID, or null when no session is selected. */
@@ -46,14 +35,14 @@ export function ChatComposer({
   onSend,
   onAbort,
   onRequestFocus,
-  onEscape,
+  onEscape
 }: ChatComposerProps): ReactElement {
   const textareaRef = useRef<TextareaRenderable | null>(null)
   const [hasContent, setHasContent] = useState(false)
   const [sending, setSending] = useState(false)
 
   const isActive = ACTIVE_STATUSES.has(chatStatus ?? '')
-  const canSend = chatId !== null && SENDABLE_STATUSES.has(chatStatus ?? '') && hasContent && !sending
+  const canSend = chatId !== null && !isActive && hasContent && !sending
   const canAbort = chatId !== null && isActive
 
   const handleSend = useCallback(() => {
@@ -81,7 +70,7 @@ export function ChatComposer({
     setHasContent(text.trim().length > 0)
   }, [])
 
-  // Ctrl+Enter to send, Escape to blur
+  // Escape to blur, Enter to abort (when active)
   useKeyboard(
     useCallback(
       (key: KeyEvent) => {
@@ -93,19 +82,15 @@ export function ChatComposer({
           return
         }
 
-        // Ctrl+Enter or Cmd+Enter to send
-        if (key.name === 'return' && (key.ctrl || key.meta)) {
-          if (canSend) {
-            handleSend()
-          } else if (canAbort) {
-            handleAbort()
-          }
+        // Enter to abort when agent is active
+        if (key.name === 'return' && !key.shift && canAbort) {
+          handleAbort()
           key.stopPropagation()
           return
         }
       },
-      [isFocused, canSend, canAbort, handleSend, handleAbort, onEscape],
-    ),
+      [isFocused, canAbort, handleAbort, onEscape]
+    )
   )
 
   // Reset state when chat changes
@@ -144,14 +129,29 @@ export function ChatComposer({
   const actionButton = (() => {
     if (canAbort) {
       return (
-        <text fg='#ef4444' attributes={tuiAttrs({ bold: true })}>
+        <text
+          fg='#ef4444'
+          attributes={tuiAttrs({ bold: true })}
+          onMouseUp={(e) => {
+            e.stopPropagation()
+            handleAbort()
+          }}
+        >
           {' ■ Stop '}
         </text>
       )
     }
     if (canSend) {
       return (
-        <text fg='#10b981' attributes={tuiAttrs({ bold: true })}>
+        <text
+          fg='#10b981'
+          bg='#064e3b'
+          attributes={tuiAttrs({ bold: true })}
+          onMouseUp={(e) => {
+            e.stopPropagation()
+            handleSend()
+          }}
+        >
           {' ↵ Send '}
         </text>
       )
@@ -166,11 +166,7 @@ export function ChatComposer({
   const borderColor = isFocused ? '#6366f1' : '#374151'
 
   return (
-    <box
-      flexDirection='column'
-      flexShrink={0}
-      gap={0}
-    >
+    <box flexDirection='column' flexShrink={0} gap={0}>
       <box
         border={true}
         borderStyle='rounded'
@@ -184,39 +180,43 @@ export function ChatComposer({
       >
         {/* Textarea row */}
         <box flexDirection='row' gap={1} padding={1}>
-          <text fg={isFocused ? '#6366f1' : '#6b7280'}>
-            {isFocused ? '❯' : ' '}
-          </text>
+          <text fg={isFocused ? '#6366f1' : '#6b7280'}>{isFocused ? '❯' : ' '}</text>
           <textarea
             ref={textareaRef}
             width={textareaWidth}
             height={3}
             focused={isFocused && !disabled}
-            placeholder={disabled ? 'Select a session...' : isActive ? 'Agent is working...' : 'Type a message... (Ctrl+Enter to send)'}
+            placeholder={
+              disabled ? 'Select a session...' : isActive ? 'Agent is working...' : 'Type a message... (Enter to send)'
+            }
             placeholderColor='#6b7280'
             wrapMode='word'
             backgroundColor='transparent'
             focusedBackgroundColor='transparent'
             textColor={disabled ? '#6b7280' : '#e5e7eb'}
             focusedTextColor='#f3f4f6'
+            keyBindings={[
+              { name: 'return', action: 'submit' },
+              { name: 'return', shift: true, action: 'newline' }
+            ]}
             onContentChange={handleContentChange}
             onSubmit={handleSend}
           />
         </box>
 
-        {/* Bottom bar: status + action button */}
-        <box
-          flexDirection='row'
-          justifyContent='space-between'
-          paddingLeft={1}
-          paddingRight={1}
-          paddingBottom={1}
-        >
-          <box flexDirection='row' gap={2}>
-            {statusIndicator}
-            <text fg='#4b5563' attributes={tuiAttrs({ dim: true })}>
-              {isFocused ? 'Ctrl+↵ send · Esc back' : 'i to compose'}
+        {/* Bottom bar: mode tabs + status + action button */}
+        <box flexDirection='row' justifyContent='space-between' paddingLeft={1} paddingRight={1} paddingBottom={1}>
+          <box flexDirection='row' gap={1}>
+            {/* Mode tabs */}
+            <text fg='#6366f1' attributes={tuiAttrs({ bold: true })}>
+              Chat
             </text>
+            <text fg='#374151'>│</text>
+            {statusIndicator ?? (
+              <text fg='#4b5563' attributes={tuiAttrs({ dim: true })}>
+                {isFocused ? '↵ send · ⇧↵ newline · Esc back' : 'i to compose'}
+              </text>
+            )}
           </box>
           {actionButton}
         </box>

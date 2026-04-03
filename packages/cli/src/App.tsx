@@ -106,8 +106,6 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
 
   const handleSendMessage = useCallback((chatId: string, content: string) => {
     void controllerRef.current?.sendUserMessage(chatId, content)
-    // Optimistically set status to processing
-    setChatStatuses((prev) => new Map(prev).set(chatId, 'processing'))
   }, [])
 
   const handleAbortChat = useCallback((chatId: string) => {

@@ -7,13 +7,20 @@ import { DashboardHeader } from '../DashboardHeader.js'
 import { SessionListPane } from '../panes/SessionListPane.js'
 import { SessionDetailPane } from '../panes/SessionDetailPane.js'
 import { ChatComposer } from '../ChatComposer.js'
+import { ContextSidebar } from '../ContextSidebar.js'
 import { LogsDock } from '../LogsDock.js'
-import { FooterHints, type FooterHintItem } from '../panes/FooterHints.js'
+import { StatusBar, type StatusBarHint } from '../StatusBar.js'
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-/** Below this width, stack sessions vs detail and use a multi-line header. */
+/** Below this width, stack sessions vs detail and hide context sidebar. */
 const NARROW_BREAKPOINT = 120
+
+/** Below this width, hide the context sidebar even in wide mode. */
+const SIDEBAR_BREAKPOINT = 150
+
+/** CLI version (injected at build or read from package). */
+const CLI_VERSION = '2.0.7'
 
 type FocusedPane = 'list' | 'detail' | 'composer' | 'logs'
 
@@ -45,16 +52,19 @@ export function DashboardScreen({
   onLoadMessages,
   onSendMessage,
   onAbortChat,
-  suspendKeyboard = false,
+  suspendKeyboard = false
 }: Props): ReactElement {
   // ── Dimensions ──────────────────────────────────────────────────────────────
 
   const { width: columns, height: rows } = useTerminalDimensions()
   const isNarrow = columns < NARROW_BREAKPOINT
+  const showContextSidebar = columns >= SIDEBAR_BREAKPOINT
 
   const contentWidth = isNarrow
-    ? Math.max(20, columns - 8)
-    : Math.max(20, columns - 37)
+    ? Math.max(20, columns - 10)
+    : showContextSidebar
+      ? Math.max(20, columns - 71) // list(32) + sidebar(30) + border(2) + pad(2) + scrollbar(1) + innerPad(2) + gap(2)
+      : Math.max(20, columns - 41)
   const listFluidTextWidth = Math.max(16, columns - 10)
   const logBlockHeight = Math.min(28, Math.max(8, rows - 10))
 
@@ -69,17 +79,15 @@ export function DashboardScreen({
 
   const clampedIndex = Math.min(selectedIndex, Math.max(0, state.sessions.length - 1))
   const selectedSession = state.sessions[clampedIndex]
-  const selectedDetail = selectedSession
-    ? (sessionDetails.get(selectedSession.chatId) ?? null)
-    : null
-  const selectedChatStatus = selectedSession
-    ? (chatStatuses.get(selectedSession.chatId) ?? null)
-    : null
+  const selectedDetail = selectedSession ? (sessionDetails.get(selectedSession.chatId) ?? null) : null
+  const selectedChatStatus = selectedSession ? (chatStatuses.get(selectedSession.chatId) ?? null) : null
 
   const showListPane = !isNarrow || !selectedDetail || !narrowShowsDetail
   const showDetailPane = !isNarrow || Boolean(selectedDetail && narrowShowsDetail)
   const showComposer = showDetailPane && selectedDetail !== null
   const hasSessions = state.sessions.length > 0
+
+  const activeCount = state.sessions.filter((s) => !['done', 'failed', 'aborted'].includes(s.status)).length
 
   // ── Effects ─────────────────────────────────────────────────────────────────
 
@@ -103,8 +111,12 @@ export function DashboardScreen({
 
   const focusNext = useCallback(() => {
     const panes: FocusedPane[] = showComposer
-      ? (showLogs ? ['list', 'detail', 'composer', 'logs'] : ['list', 'detail', 'composer'])
-      : (showLogs ? ['list', 'detail', 'logs'] : ['list', 'detail'])
+      ? showLogs
+        ? ['list', 'detail', 'composer', 'logs']
+        : ['list', 'detail', 'composer']
+      : showLogs
+        ? ['list', 'detail', 'logs']
+        : ['list', 'detail']
     const idx = panes.indexOf(focusedPane)
     const next = panes[(idx + 1) % panes.length]!
     if (isNarrow && selectedDetail) {
@@ -217,96 +229,80 @@ export function DashboardScreen({
         showLogs,
         toggleLogs,
         isNarrow,
-        toggleNarrowStack,
-      ],
-    ),
+        toggleNarrowStack
+      ]
+    )
   )
 
-  // ── Footer hints ────────────────────────────────────────────────────────────
+  // ── Status bar hints ────────────────────────────────────────────────────────
 
-  const stackToggleHint = useMemo((): FooterHintItem | null => {
-    if (!isNarrow || !selectedDetail) return null
-    return {
-      id: 'stack',
-      keys: 'v',
-      label: narrowShowsDetail ? 'Sessions' : 'Detail',
-      onPress: toggleNarrowStack,
-    }
-  }, [isNarrow, selectedDetail?.chatId, narrowShowsDetail, toggleNarrowStack])
+  const hints = useMemo((): StatusBarHint[] => {
+    const base: StatusBarHint[] = [{ id: 'tab', keys: 'tab', label: 'navigate' }]
 
-  const commonHints = useMemo((): FooterHintItem[] => [
-    ...(stackToggleHint ? [stackToggleHint] : []),
-    {
-      id: 'logs',
-      keys: 'l',
-      label: showLogs ? 'Hide logs' : 'Logs',
-      onPress: toggleLogs,
-    },
-    {
-      id: 'quit',
-      keys: 'q',
-      label: 'Quit',
-      alt: 'q / Ctrl+C',
-      onPress: onQuitRequest,
-    },
-  ], [stackToggleHint, showLogs, toggleLogs, onQuitRequest])
-
-  const composeHint: FooterHintItem[] = showComposer
-    ? [{ id: 'compose', keys: 'i', label: 'Compose' }]
-    : []
-
-  const hints = useMemo((): FooterHintItem[] => {
     switch (focusedPane) {
-      case 'list': {
-        const scrollHints: FooterHintItem[] = hasSessions
-          ? [
-            { id: 'page', keys: 'PgUp/Dn', label: 'Scroll' },
-            { id: 'ends', keys: 'Hm/End', label: 'Ends' },
-          ]
-          : []
-        return [
-          { id: 'nav', keys: '↑↓', label: 'Navigate' },
-          ...scrollHints,
-          { id: 'detail', keys: 'Tab/↵', label: 'Detail' },
-          ...composeHint,
-          ...commonHints,
-        ]
-      }
+      case 'list':
+        base.push({ id: 'nav', keys: '↑↓', label: 'select' }, { id: 'enter', keys: '↵', label: 'open' })
+        break
       case 'detail':
-        return [
-          { id: 'scroll', keys: '↑↓·jk', label: 'Scroll' },
-          ...composeHint,
-          { id: 'page', keys: 'PgUp/Dn', label: 'Page' },
-          { id: 'back', keys: 'Esc', label: 'List' },
-          { id: 'focus', keys: 'Tab', label: 'Next' },
-          ...commonHints,
-        ]
+        base.push({ id: 'scroll', keys: '↑↓', label: 'scroll' }, { id: 'page', keys: 'PgUp/Dn', label: 'page' })
+        break
       case 'composer':
-        return [
-          { id: 'send', keys: 'Ctrl+↵', label: 'Send' },
-          { id: 'back', keys: 'Esc', label: 'Detail' },
-          { id: 'focus', keys: 'Tab', label: 'Next' },
-          ...commonHints.filter((h) => h.id !== 'quit'),
-        ]
+        base.push({ id: 'send', keys: 'Ctrl+↵', label: 'send' }, { id: 'esc', keys: 'Esc', label: 'back' })
+        break
       case 'logs':
-        return [
-          { id: 'scroll', keys: '↑↓·jk', label: 'Scroll' },
-          { id: 'page', keys: 'PgUp/Dn', label: 'Page' },
-          { id: 'back', keys: 'Esc', label: 'List' },
-          { id: 'focus', keys: 'Tab', label: 'Next' },
-          ...commonHints,
-        ]
+        base.push({ id: 'scroll', keys: '↑↓', label: 'scroll' })
+        break
     }
-  }, [focusedPane, hasSessions, showComposer, composeHint, commonHints])
+
+    if (showComposer && focusedPane !== 'composer') {
+      base.push({ id: 'compose', keys: 'i', label: 'compose' })
+    }
+
+    if (isNarrow && selectedDetail) {
+      base.push({
+        id: 'stack',
+        keys: 'v',
+        label: narrowShowsDetail ? 'sessions' : 'detail',
+        onPress: toggleNarrowStack
+      })
+    }
+
+    base.push(
+      { id: 'logs', keys: 'l', label: showLogs ? 'hide logs' : 'logs', onPress: toggleLogs },
+      { id: 'quit', keys: 'q', label: 'quit', onPress: onQuitRequest }
+    )
+
+    return base
+  }, [
+    focusedPane,
+    showComposer,
+    showLogs,
+    isNarrow,
+    selectedDetail,
+    narrowShowsDetail,
+    toggleNarrowStack,
+    toggleLogs,
+    onQuitRequest
+  ])
+
+  // Resolve display names for sidebar
+  const workspaceLabel =
+    state.workspaceDisplayName?.trim() ||
+    config.workspaceDisplayName?.trim() ||
+    (config.workspace ? config.workspace.slice(-8) : '')
+  const projectLabel =
+    state.projectDisplayName?.trim() ||
+    config.projectDisplayName?.trim() ||
+    (config.project ? config.project.slice(-8) : '')
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <box flexDirection='column' height={rows} gap={0}>
-      {/* Header */}
+      {/* Header - slim single line */}
       <DashboardHeader state={state} config={config} isNarrow={isNarrow} />
 
-      {/* Main content: sidebar + detail column */}
+      {/* Main content: sidebar + detail + context */}
       <box flexDirection='row' flexGrow={1} gap={showListPane && showDetailPane ? 1 : 0}>
         {showListPane && (
           <SessionListPane
@@ -349,6 +345,20 @@ export function DashboardScreen({
             )}
           </box>
         )}
+
+        {/* Context sidebar - right panel (wide screens only) */}
+        {showContextSidebar && showDetailPane && (
+          <ContextSidebar
+            session={selectedDetail}
+            chatStatus={selectedChatStatus}
+            workspace={workspaceLabel || undefined}
+            project={projectLabel || undefined}
+            rateLimitState={state.rateLimitState}
+            activeCount={activeCount}
+            resolvedCount={state.resolvedCount}
+            isFocused={false}
+          />
+        )}
       </box>
 
       {/* Logs dock (toggleable) */}
@@ -361,8 +371,8 @@ export function DashboardScreen({
         />
       )}
 
-      {/* Footer */}
-      <FooterHints hints={hints} />
+      {/* Status bar - clean single line at bottom */}
+      <StatusBar hints={hints} version={CLI_VERSION} />
     </box>
   ) as ReactElement
 }
