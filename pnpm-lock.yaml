@@ -78,6 +78,9 @@ importers:
       '@types/superagent':
         specifier: 8.1.9
         version: 8.1.9
+      bun:
+        specifier: 1.3.11
+        version: 1.3.11
       commander:
         specifier: 14.0.3
         version: 14.0.3
@@ -111,30 +114,11 @@ importers:
       typescript:
         specifier: 6.0.2
         version: 6.0.2
-    optionalDependencies:
-      '@multiplayer-app/cli-darwin-arm64':
-        specifier: 2.0.5
-        version: 2.0.5
-      '@multiplayer-app/cli-darwin-x64':
-        specifier: 2.0.5
-        version: 2.0.5
-      '@multiplayer-app/cli-linux-arm64':
-        specifier: 2.0.5
-        version: 2.0.5
-      '@multiplayer-app/cli-linux-x64':
-        specifier: 2.0.5
-        version: 2.0.5
-      '@multiplayer-app/cli-windows-arm64':
-        specifier: 2.0.5
-        version: 2.0.5
-      '@multiplayer-app/cli-windows-x64':
-        specifier: 2.0.5
-        version: 2.0.5
 
   packages/session-recorder-browser:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 1.3.37
+        specifier: 2.0.18
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -295,7 +279,7 @@ importers:
   packages/session-recorder-node:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 1.3.37
+        specifier: 2.0.18
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -329,10 +313,10 @@ importers:
   packages/session-recorder-react:
     dependencies:
       '@multiplayer-app/session-recorder-browser':
-        specifier: 1.3.37
+        specifier: 2.0.18
         version: link:../session-recorder-browser
       '@multiplayer-app/session-recorder-common':
-        specifier: 1.3.37
+        specifier: 2.0.18
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -357,7 +341,7 @@ importers:
   packages/session-recorder-react-native:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 1.3.37
+        specifier: 2.0.18
         version: link:../session-recorder-common
       '@opentelemetry/core':
         specifier: 2.0.1
@@ -469,7 +453,7 @@ importers:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@25.5.0)
       prettier:
-        specifier: ^3.6.2
+        specifier: 3.8.1
         version: 3.8.1
       react:
         specifier: 19.2.4
@@ -2082,42 +2066,6 @@ packages:
   '@mongodb-js/saslprep@1.4.6':
     resolution: {integrity: sha512-y+x3H1xBZd38n10NZF/rEBlvDOOMQ6LKUTHqr8R9VkJ+mmQOYtJFxIlkkK8fZrtOiL6VixbOBWMbZGBdal3Z1g==}
 
-  '@multiplayer-app/cli-darwin-arm64@2.0.5':
-    resolution: {integrity: sha512-wP3Mukt+3LDK/Lf+qH62wCJ0GnmPWYl71HuNuTs0GiZsdld9GiS8kf0wD5S5gnONvVjGblsevgQYbfzicMMfbA==}
-    cpu: [arm64]
-    os: [darwin]
-    hasBin: true
-
-  '@multiplayer-app/cli-darwin-x64@2.0.5':
-    resolution: {integrity: sha512-uLRogzLSSEuQuiLDwygucf4trJ/y4cSt6AY/laWlCWbTetlSXrSrGfUNmlMFL7lqJGn1P2F2y0yoKq2/m75X5g==}
-    cpu: [x64]
-    os: [darwin]
-    hasBin: true
-
-  '@multiplayer-app/cli-linux-arm64@2.0.5':
-    resolution: {integrity: sha512-lQ9MEa4+k+RGXxryUVTPKcKNiPQMWyPjTwaN5Jb06HItTExLn/ySiporSaZnPJDndSB7HSPK2Ucaigby7QsCAA==}
-    cpu: [arm64]
-    os: [linux]
-    hasBin: true
-
-  '@multiplayer-app/cli-linux-x64@2.0.5':
-    resolution: {integrity: sha512-YUi14Ki3wqMPPLl0R2Az5K6AM5QanOWWRyXWzMYmoW34gahajov40bfDy+SENGgmuvyC/zM2m4c9bhaBhQn20Q==}
-    cpu: [x64]
-    os: [linux]
-    hasBin: true
-
-  '@multiplayer-app/cli-windows-arm64@2.0.5':
-    resolution: {integrity: sha512-AMODuZIPZzAEFVth1T6gLiHmIRtEhrzabjLKyCoeRu6y1c2zfjZC8v4XgE5HbP9ECRby49GED9v3L5k3ze5Cyg==}
-    cpu: [arm64]
-    os: [win32]
-    hasBin: true
-
-  '@multiplayer-app/cli-windows-x64@2.0.5':
-    resolution: {integrity: sha512-IF77gFq9FVxvsZg+KWMsK9QhaHm0MEqzeH+7C5Iq7/quKaf8KF4Qw7m9NvD9vSbxjS17fH4NtrMCa6TQb72a2Q==}
-    cpu: [x64]
-    os: [win32]
-    hasBin: true
-
   '@nicolo-ribaudo/eslint-scope-5-internals@5.1.1-v1':
     resolution: {integrity: sha512-54/JRvkLIzzDWshCWfuhadfrfZVPiElY8Fcgmg1HroEly/EDSszzhBAsarCux+D/kOslTRquNzuyGSmUSTTHGg==}
 
@@ -2371,6 +2319,66 @@ packages:
       react: '>=19.0.0'
       react-devtools-core: ^7.0.1
       ws: ^8.18.0
+
+  '@oven/bun-darwin-aarch64@1.3.11':
+    resolution: {integrity: sha512-/8IzqSu4/OWGRs7Fs2ROzGVwJMFTBQkgAp6sAthkBYoN7OiM4rY/CpPVs2X9w9N1W61CHSkEdNKi8HrLZKfK3g==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@oven/bun-darwin-x64-baseline@1.3.11':
+    resolution: {integrity: sha512-CYjIHWaQG7T4phfjErHr6BiXRs0K/9DqMeiohJmuYSBF+H2m56vFslOenLCguGYQL9jeiiCZBeoVCpwjxZrMgQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@oven/bun-darwin-x64@1.3.11':
+    resolution: {integrity: sha512-TT7eUihnAzxM2tlZesusuC75PAOYKvUBgVU/Nm/lakZ/DpyuqhNkzUfcxSgmmK9IjVWzMmezLIGZl16XGCGJng==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@oven/bun-linux-aarch64-musl@1.3.11':
+    resolution: {integrity: sha512-jBwYCLG5Eb+PqtFrc3Wp2WMYlw1Id75gUcsdP+ApCOpf5oQhHxkFWCjZmcDoioDmEhMWAiM3wtwSrTlPg+sI6Q==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@oven/bun-linux-aarch64@1.3.11':
+    resolution: {integrity: sha512-8XMLyRNxHF4jfLajkWt+F8UDxsWbzysyxQVMZKUXwoeGvaxB0rVd07r3YbgDtG8U6khhRFM3oaGp+CQ0whwmdA==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@oven/bun-linux-x64-baseline@1.3.11':
+    resolution: {integrity: sha512-KZlf1jKtf4jai8xiQv/0XRjxVVhHnw/HtUKtLdOeQpTOQ1fQFhLoz2FGGtVRd0LVa/yiRbSz9HlWIzWlmJClng==}
+    cpu: [x64]
+    os: [linux]
+
+  '@oven/bun-linux-x64-musl-baseline@1.3.11':
+    resolution: {integrity: sha512-J+qz4Al05PrNIOdj7xsWVTyx0c/gjUauG5nKV3Rrx0Q+5JO+1pPVlnfNmWbOF9pKG4f3IGad8KXJUfGMORld+Q==}
+    cpu: [x64]
+    os: [linux]
+
+  '@oven/bun-linux-x64-musl@1.3.11':
+    resolution: {integrity: sha512-ADImD4yCHNpqZu718E2chWcCaAHvua90yhmpzzV6fF4zOhwkGGbPCgUWmKyJ83uz+DXaPdYxX0ttDvtolrzx3Q==}
+    cpu: [x64]
+    os: [linux]
+
+  '@oven/bun-linux-x64@1.3.11':
+    resolution: {integrity: sha512-z3GFCk1UBzDOOiEBHL32lVP7Edi26BhOjKb6bIc0nRyabbRiyON4++GR0zmd/H5zM5S0+UcXFgCGnD+b8avTLw==}
+    cpu: [x64]
+    os: [linux]
+
+  '@oven/bun-windows-aarch64@1.3.11':
+    resolution: {integrity: sha512-UOdkwScHRkGPz+n9ZJU7sTkTvqV7rD1SLCLaru1xH8WRsV7tDorPqNCzEN1msOIiPRK825nvAtEm9UsomO1GsA==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@oven/bun-windows-x64-baseline@1.3.11':
+    resolution: {integrity: sha512-cCsXK9AQ9Zf18QlVnbrFu2IKfr4sf2sfbErkF2jfCzyCO9Bnhl0KRx63zlN+Ni1xU7gcBLAssgcui5R400N2eA==}
+    cpu: [x64]
+    os: [win32]
+
+  '@oven/bun-windows-x64@1.3.11':
+    resolution: {integrity: sha512-E51tyWDP1l0CbjZYhiUxhDGPaY8Hf5YBREx0PHBff1LM1/q3qsJ6ZvRUa8YbbOO0Ax9QP6GHjD9vf3n6bXZ7QA==}
+    cpu: [x64]
+    os: [win32]
 
   '@paralleldrive/cuid2@2.3.1':
     resolution: {integrity: sha512-XO7cAxhnTZl0Yggq6jOgjiOHhbgcO4NqFqwSmQpjK3b6TEE6Uj/jfSk6wzYyemh3+I0sHirKSetjQwn5cZktFw==}
@@ -3644,6 +3652,12 @@ packages:
 
   bun-webgpu@0.1.5:
     resolution: {integrity: sha512-91/K6S5whZKX7CWAm9AylhyKrLGRz6BUiiPiM/kXadSnD4rffljCD/q9cNFftm5YXhx4MvLqw33yEilxogJvwA==}
+
+  bun@1.3.11:
+    resolution: {integrity: sha512-AvXWYFO6j/ZQ7bhGm4X6eilq2JHsDVC90ZM32k2B7/srhC2gs3Sdki1QTbwrdRCo8o7eT+167vcB1yzOvPdbjA==}
+    cpu: [arm64, x64]
+    os: [darwin, linux, win32]
+    hasBin: true
 
   bundle-name@4.1.0:
     resolution: {integrity: sha512-tjwM5exMg6BGRI+kNmTntNsvdZS1X8BFYS6tnJ2hdH0kVxM6/eVZ2xy+FqStSWvYmtfFMDLIxurorHwDKfDz5Q==}
@@ -8651,6 +8665,14 @@ packages:
   zone.js@0.15.1:
     resolution: {integrity: sha512-XE96n56IQpJM7NAoXswY3XRLcWFW83xe0BiAOeMD7K5k5xecOeul3Qcpx6GqEeeHNkW5DWL5zOyTbEfB4eti8w==}
 
+ignoredOptionalDependencies:
+  - '@multiplayer-app/cli-darwin-arm64'
+  - '@multiplayer-app/cli-darwin-x64'
+  - '@multiplayer-app/cli-linux-arm64'
+  - '@multiplayer-app/cli-linux-x64'
+  - '@multiplayer-app/cli-windows-arm64'
+  - '@multiplayer-app/cli-windows-x64'
+
 snapshots:
 
   '@anthropic-ai/claude-agent-sdk@0.2.89(zod@4.3.6)':
@@ -10874,24 +10896,6 @@ snapshots:
     dependencies:
       sparse-bitfield: 3.0.3
 
-  '@multiplayer-app/cli-darwin-arm64@2.0.5':
-    optional: true
-
-  '@multiplayer-app/cli-darwin-x64@2.0.5':
-    optional: true
-
-  '@multiplayer-app/cli-linux-arm64@2.0.5':
-    optional: true
-
-  '@multiplayer-app/cli-linux-x64@2.0.5':
-    optional: true
-
-  '@multiplayer-app/cli-windows-arm64@2.0.5':
-    optional: true
-
-  '@multiplayer-app/cli-windows-x64@2.0.5':
-    optional: true
-
   '@nicolo-ribaudo/eslint-scope-5-internals@5.1.1-v1':
     dependencies:
       eslint-scope: 5.1.1
@@ -11198,6 +11202,42 @@ snapshots:
       - stage-js
       - typescript
       - web-tree-sitter
+
+  '@oven/bun-darwin-aarch64@1.3.11':
+    optional: true
+
+  '@oven/bun-darwin-x64-baseline@1.3.11':
+    optional: true
+
+  '@oven/bun-darwin-x64@1.3.11':
+    optional: true
+
+  '@oven/bun-linux-aarch64-musl@1.3.11':
+    optional: true
+
+  '@oven/bun-linux-aarch64@1.3.11':
+    optional: true
+
+  '@oven/bun-linux-x64-baseline@1.3.11':
+    optional: true
+
+  '@oven/bun-linux-x64-musl-baseline@1.3.11':
+    optional: true
+
+  '@oven/bun-linux-x64-musl@1.3.11':
+    optional: true
+
+  '@oven/bun-linux-x64@1.3.11':
+    optional: true
+
+  '@oven/bun-windows-aarch64@1.3.11':
+    optional: true
+
+  '@oven/bun-windows-x64-baseline@1.3.11':
+    optional: true
+
+  '@oven/bun-windows-x64@1.3.11':
+    optional: true
 
   '@paralleldrive/cuid2@2.3.1':
     dependencies:
@@ -12957,6 +12997,21 @@ snapshots:
       bun-webgpu-linux-x64: 0.1.6
       bun-webgpu-win32-x64: 0.1.6
     optional: true
+
+  bun@1.3.11:
+    optionalDependencies:
+      '@oven/bun-darwin-aarch64': 1.3.11
+      '@oven/bun-darwin-x64': 1.3.11
+      '@oven/bun-darwin-x64-baseline': 1.3.11
+      '@oven/bun-linux-aarch64': 1.3.11
+      '@oven/bun-linux-aarch64-musl': 1.3.11
+      '@oven/bun-linux-x64': 1.3.11
+      '@oven/bun-linux-x64-baseline': 1.3.11
+      '@oven/bun-linux-x64-musl': 1.3.11
+      '@oven/bun-linux-x64-musl-baseline': 1.3.11
+      '@oven/bun-windows-aarch64': 1.3.11
+      '@oven/bun-windows-x64': 1.3.11
+      '@oven/bun-windows-x64-baseline': 1.3.11
 
   bundle-name@4.1.0:
     dependencies:

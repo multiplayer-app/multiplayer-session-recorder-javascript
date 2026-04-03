@@ -9,9 +9,12 @@ scripts/
 dist/
 test/
 tsconfig.json
+tsup.config.ts
 bun.lock
 
 .git/
 .npmrc
 npm-debug.log
 *.map
+.turbo
+eslint.config.js

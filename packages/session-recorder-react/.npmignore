@@ -4,7 +4,6 @@ node_modules
 README.md
 tsconfig.tsbuildinfo
 .turbo
-src
 docs
-eslint.config.js
-tsconfig.*
+src
+tsconfig.json

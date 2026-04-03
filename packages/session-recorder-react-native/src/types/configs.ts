@@ -22,8 +22,7 @@ export type DeepRequired<T> = T extends Function
  * Fully resolved configuration interface
  * All optional properties from SessionRecorderOptions are now required
  */
-export interface SessionRecorderConfigs
-  extends DeepRequired<SessionRecorderOptions> {}
+export interface SessionRecorderConfigs extends DeepRequired<SessionRecorderOptions> {}
 
 /**
  * Base configuration interface with common properties

@@ -1,12 +1,14 @@
-# @multiplayer-app/debugging-agent
+# @multiplayer-app/cli
 
 AI-powered debugging agent and release management CLI for [Multiplayer](https://multiplayer.app).
 
 ## Install
 
 ```sh
-npm install -g @multiplayer-app/debugging-agent
+npm install -g @multiplayer-app/cli
 ```
+
+Supports macOS (arm64, x64), Linux (arm64, x64), and Windows (arm64, x64). The correct platform binary is installed automatically.
 
 ## Commands
 

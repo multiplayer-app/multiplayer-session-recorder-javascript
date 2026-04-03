@@ -27,21 +27,24 @@ console.log(`Building ${targets.length} target(s)...`)
 for (const { target, platform, arch, os, cpu, entry, bin } of targets) {
   const pkgName = `@multiplayer-app/cli-${platform}-${arch}`
   const pkgDir = path.join(ROOT, 'dist', `${platform}-${arch}`)
-  const binPath = path.join(pkgDir, bin)
+  const binPath = path.join(pkgDir, 'bin', bin)
 
-  fs.mkdirSync(pkgDir, { recursive: true })
+  fs.mkdirSync(path.join(pkgDir, 'bin'), { recursive: true })
 
   console.log(`  → ${target}`)
-  await $`bun build ${path.join(ROOT, entry)} --compile --target=${target} --outfile=${binPath} --sourcemap=none`.cwd(ROOT)
+  await $`${process.execPath} build ${path.join(ROOT, entry)} --compile --target=${target} --outfile=${binPath} --sourcemap=none`.cwd(ROOT)
+
+  if (platform !== 'windows') fs.chmodSync(binPath, 0o755)
 
   fs.writeFileSync(path.join(pkgDir, 'package.json'), JSON.stringify({
     name: pkgName,
     version: pkg.version,
     description: `Multiplayer CLI binary for ${platform}-${arch}`,
+    repository: pkg.repository,
     os: [os],
     cpu: [cpu],
-    bin: { multiplayer: `./${bin}` },
-    files: [bin],
+    bin: { multiplayer: `./bin/${bin}` },
+    files: ['bin'],
     license: pkg.license,
   }, null, 2))
 }
