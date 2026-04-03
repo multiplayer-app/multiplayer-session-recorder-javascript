@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/cli",
-  "version": "2.0.12",
+  "version": "2.0.18",
   "description": "Multiplayer CLI",
   "type": "module",
   "bin": {
@@ -14,14 +14,18 @@
     "lint": "eslint 'src/**/*.ts' --config eslint.config.js"
   },
   "optionalDependencies": {
-    "@multiplayer-app/cli-darwin-arm64": "2.0.12",
-    "@multiplayer-app/cli-darwin-x64": "2.0.12",
-    "@multiplayer-app/cli-linux-x64": "2.0.12",
-    "@multiplayer-app/cli-linux-arm64": "2.0.12",
-    "@multiplayer-app/cli-windows-x64": "2.0.12",
-    "@multiplayer-app/cli-windows-arm64": "2.0.12"
+    "@multiplayer-app/cli-darwin-arm64": "2.0.18",
+    "@multiplayer-app/cli-darwin-x64": "2.0.18",
+    "@multiplayer-app/cli-linux-x64": "2.0.18",
+    "@multiplayer-app/cli-linux-arm64": "2.0.18",
+    "@multiplayer-app/cli-windows-x64": "2.0.18",
+    "@multiplayer-app/cli-windows-arm64": "2.0.18"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/multiplayer-app/multiplayer-session-recorder-javascript.git"
+  },
   "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.2.89",
     "@anthropic-ai/sdk": "^0.78.0",
@@ -38,6 +42,7 @@
     "@types/node": "25.5.0",
     "@types/react": "19.2.14",
     "@types/superagent": "8.1.9",
+    "bun": "1.3.11",
     "commander": "14.0.3",
     "dotenv": "16.0.0",
     "eslint": "10.1.0",

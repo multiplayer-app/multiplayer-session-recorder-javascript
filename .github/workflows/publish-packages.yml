@@ -37,7 +37,7 @@ jobs:
         with:
           path: "**/node_modules"
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm turbo lint
 
   version:
@@ -48,6 +48,7 @@ jobs:
       contents: write
     outputs:
       version: ${{ steps.get_version.outputs.version }}
+      sha: ${{ steps.commit.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -70,7 +71,7 @@ jobs:
         with:
           path: "**/node_modules"
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - id: get_version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -78,30 +79,47 @@ jobs:
           else
             echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
           fi
-      - name: Set CLI version from tag
+      - name: Set all packages version from tag
         run: |
           node -e "
             const fs = require('fs');
-            const p = 'packages/cli/package.json';
-            const pkg = JSON.parse(fs.readFileSync(p, 'utf-8'));
+            const path = require('path');
             const version = '${{ steps.get_version.outputs.version }}';
-            pkg.version = version;
-            for (const k of Object.keys(pkg.optionalDependencies || {})) {
-              pkg.optionalDependencies[k] = version;
+            const pkgDirs = fs.readdirSync('packages').map(d => path.join('packages', d));
+            for (const dir of pkgDirs) {
+              const pkgPath = path.join(dir, 'package.json');
+              if (!fs.existsSync(pkgPath)) continue;
+              const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+              pkg.version = version;
+              for (const k of Object.keys(pkg.optionalDependencies || {})) {
+                if (k.startsWith('@multiplayer-app/')) pkg.optionalDependencies[k] = version;
+              }
+              for (const k of Object.keys(pkg.dependencies || {})) {
+                if (k.startsWith('@multiplayer-app/')) pkg.dependencies[k] = version;
+              }
+              for (const k of Object.keys(pkg.peerDependencies || {})) {
+                if (k.startsWith('@multiplayer-app/')) pkg.peerDependencies[k] = version;
+              }
+              fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
             }
-            fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
           "
-      - name: Version other packages via changesets
-        run: pnpm changeset version
       - name: Update lockfile
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --no-frozen-lockfile --ignore-scripts
       - name: Commit version bump
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --staged --quiet || git commit -m "chore: version bump ${{ steps.get_version.outputs.version }} [skip ci]"
-          git push origin HEAD:refs/heads/main
+          # Find the branch this tag was made from and push back to it
+          SOURCE_BRANCH=$(git branch -r --contains ${{ github.sha }} | grep -v 'HEAD' | head -1 | sed 's/.*origin\///' | xargs)
+          if [ -n "$SOURCE_BRANCH" ]; then
+            git push origin HEAD:refs/heads/$SOURCE_BRANCH
+          else
+            git push origin HEAD:refs/heads/main
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
   build-cli:
     name: Build CLI
@@ -110,7 +128,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.version.outputs.sha }}
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -129,7 +147,7 @@ jobs:
         with:
           path: "**/node_modules"
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Build all platform binaries
         working-directory: packages/cli
         run: bun run scripts/build.ts
@@ -147,7 +165,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.version.outputs.sha }}
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -171,19 +189,26 @@ jobs:
           path: .turbo
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm turbo build --filter=!@multiplayer-app/cli
+      - name: Upload package dists
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-dists
+          path: packages/*/dist/
+          retention-days: 1
 
   publish:
     name: Publish
-    needs: [build-cli, build-packages]
+    needs: [version, build-cli, build-packages]
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.version.outputs.sha }}
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -203,25 +228,40 @@ jobs:
         with:
           path: "**/node_modules"
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-      - name: Cache turbo
-        uses: actions/cache@v4
-        with:
-          path: .turbo
-          key: turbo-${{ runner.os }}-${{ github.sha }}
-          restore-keys: turbo-${{ runner.os }}-
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Download CLI binaries
         uses: actions/download-artifact@v4
         with:
           name: cli-binaries
           path: packages/cli/dist
-      - run: pnpm turbo build --filter=!@multiplayer-app/cli
+      - name: Download package dists
+        uses: actions/download-artifact@v4
+        with:
+          name: package-dists
+          path: packages
       - name: Publish CLI platform packages + wrapper
         working-directory: packages/cli
         run: bun run scripts/publish.ts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
       - name: Publish remaining packages
-        run: pnpm changeset publish
+        run: |
+          VERSION=${{ needs.version.outputs.version }}
+          PRERELEASE=$(echo "$VERSION" | grep -oP '(?<=-)\w+' || echo "")
+          TAG=${PRERELEASE:-latest}
+          for PKG_DIR in packages/session-recorder-common packages/session-recorder-browser packages/session-recorder-node packages/session-recorder-react packages/session-recorder-react-native; do
+            NAME=$(node -e "console.log(require('./$PKG_DIR/package.json').name)")
+            echo "Publishing $NAME..."
+            OUTPUT=$(cd "$PKG_DIR" && npm publish --access public --tag "$TAG" --provenance --ignore-scripts 2>&1) || true
+            if echo "$OUTPUT" | grep -q "previously published\|You cannot publish over"; then
+              echo "Skipping $NAME — already published"
+            elif echo "$OUTPUT" | grep -q "npm error"; then
+              echo "$OUTPUT"
+              exit 1
+            else
+              echo "Published $NAME"
+            fi
+          done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

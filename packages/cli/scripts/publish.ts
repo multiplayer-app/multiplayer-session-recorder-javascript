@@ -4,6 +4,10 @@ import path from 'path'
 import fs from 'fs'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
+const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf-8'))
+const prereleaseMatch = pkg.version?.match(/-([\w]+)(\.\d+)?$/)
+const distTag = prereleaseMatch ? prereleaseMatch[1] : 'latest'
+
 const PLATFORMS: { dir: string; bin: string }[] = [
   { dir: 'darwin-arm64',  bin: 'multiplayer'     },
   { dir: 'darwin-x64',    bin: 'multiplayer'     },
@@ -14,14 +18,16 @@ const PLATFORMS: { dir: string; bin: string }[] = [
 ]
 
 async function publish(pkgDir: string, label: string, ignoreScripts = false) {
+  const provenance = process.env.NPM_CONFIG_PROVENANCE === 'true' ? ['--provenance'] : []
   const result = ignoreScripts
-    ? await $`npm publish --access public --ignore-scripts`.cwd(pkgDir).nothrow()
-    : await $`npm publish --access public`.cwd(pkgDir).nothrow()
+    ? await $`npm publish --access public --tag ${distTag} --ignore-scripts ${provenance}`.cwd(pkgDir).nothrow()
+    : await $`npm publish --access public --tag ${distTag} ${provenance}`.cwd(pkgDir).nothrow()
   if (result.exitCode === 0) {
     console.log(`Published ${label}`)
   } else {
     const stderr = result.stderr.toString()
-    if (stderr.includes('You cannot publish over the previously published versions')) {
+    const output = stderr + result.stdout.toString()
+    if (output.includes('You cannot publish over the previously published versions') || output.includes('previously published')) {
       console.log(`Skipping ${label} — already published`)
     } else {
       process.stderr.write(stderr)
@@ -37,7 +43,7 @@ for (const { dir, bin } of PLATFORMS) {
     console.error(`Missing: dist/${dir} — run 'bun run build' first`)
     process.exit(1)
   }
-  fs.chmodSync(path.join(pkgDir, bin), 0o755)
+  fs.chmodSync(path.join(pkgDir, 'bin', bin), 0o755)
   await publish(pkgDir, `@multiplayer-app/cli-${dir}`)
 }
 

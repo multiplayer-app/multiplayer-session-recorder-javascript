@@ -1,65 +1,132 @@
 import { useState, useCallback, useEffect, useMemo, type ReactElement } from 'react'
-import { tuiAttrs } from '../../lib/tuiAttrs.js'
-import type { KeyEvent, MouseEvent } from '@opentui/core'
-import { MouseButton } from '@opentui/core'
+import type { KeyEvent } from '@opentui/core'
 import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import type { RuntimeState, SessionDetail } from '../../runtime/types.js'
-import type { AgentConfig, LogEntry } from '../../types/index.js'
-import { LogOutput } from '../LogOutput.js'
+import type { AgentConfig, AgentChatStatus, LogEntry } from '../../types/index.js'
+import { DashboardHeader } from '../DashboardHeader.js'
 import { SessionListPane } from '../panes/SessionListPane.js'
 import { SessionDetailPane } from '../panes/SessionDetailPane.js'
-import { FooterHints, type FooterHintItem } from '../panes/FooterHints.js'
+import { ChatComposer } from '../ChatComposer.js'
+import { ContextSidebar } from '../ContextSidebar.js'
+import { LogsDock } from '../LogsDock.js'
+import { StatusBar, type StatusBarHint } from '../StatusBar.js'
 
-type ConnectionState = RuntimeState['connection']
+// ── Constants ───────────────────────────────────────────────────────────────
 
-/** Below this width, stack sessions vs detail and use a multi-line header. */
-const NARROW_COLUMNS = 120
+/** Below this width, stack sessions vs detail and hide context sidebar. */
+const NARROW_BREAKPOINT = 120
 
-const CONNECTION_BADGE: Record<ConnectionState, { symbol: string; color: string }> = {
-  idle: { symbol: '○', color: '#6b7280' },
-  connecting: { symbol: '◌', color: '#f59e0b' },
-  connected: { symbol: '●', color: '#10b981' },
-  disconnected: { symbol: '○', color: '#6b7280' },
-  error: { symbol: '✕', color: '#ef4444' },
-}
+/** Below this width, hide the context sidebar even in wide mode. */
+const SIDEBAR_BREAKPOINT = 150
+
+/** CLI version (injected at build or read from package). */
+const CLI_VERSION = '2.0.7'
+
+type FocusedPane = 'list' | 'detail' | 'composer' | 'logs'
+
+// ── Props ───────────────────────────────────────────────────────────────────
 
 interface Props {
   state: RuntimeState
   config: AgentConfig
   sessionDetails: Map<string, SessionDetail>
   agentLogs: LogEntry[]
+  chatStatuses: Map<string, AgentChatStatus | string>
   onQuitRequest: () => void
   onLoadMessages: (chatId: string, before?: string) => void
+  onSendMessage: (chatId: string, content: string) => void
+  onAbortChat: (chatId: string) => void
   /** When true (e.g. quit dialog open), ignore keys so the overlay handles them. */
   suspendKeyboard?: boolean
 }
+
+// ── Component ───────────────────────────────────────────────────────────────
 
 export function DashboardScreen({
   state,
   config,
   sessionDetails,
   agentLogs,
+  chatStatuses,
   onQuitRequest,
   onLoadMessages,
-  suspendKeyboard = false,
+  onSendMessage,
+  onAbortChat,
+  suspendKeyboard = false
 }: Props): ReactElement {
-  const { width: columns, height: rows } = useTerminalDimensions()
-  const isNarrow = columns < NARROW_COLUMNS
+  // ── Dimensions ──────────────────────────────────────────────────────────────
 
-  // Wide: sidebar(32) + borders/padding ≈ 37. Narrow: single pane — borders/padding only.
+  const { width: columns, height: rows } = useTerminalDimensions()
+  const isNarrow = columns < NARROW_BREAKPOINT
+  const showContextSidebar = columns >= SIDEBAR_BREAKPOINT
+
   const contentWidth = isNarrow
-    ? Math.max(20, columns - 8)
-    : Math.max(20, columns - 37)
+    ? Math.max(20, columns - 10)
+    : showContextSidebar
+      ? Math.max(20, columns - 71) // list(32) + sidebar(30) + border(2) + pad(2) + scrollbar(1) + innerPad(2) + gap(2)
+      : Math.max(20, columns - 41)
   const listFluidTextWidth = Math.max(16, columns - 10)
+  const logBlockHeight = Math.min(28, Math.max(8, rows - 10))
+
+  // ── Focus & selection state ─────────────────────────────────────────────────
 
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [focusedPane, setFocusedPane] = useState<'list' | 'detail' | 'logs'>('list')
-  const [showAgentLogs, setShowAgentLogs] = useState(false)
-  /** Narrow layout: when detail is loaded, true = detail pane, false = session list. */
+  const [focusedPane, setFocusedPane] = useState<FocusedPane>('list')
+  const [showLogs, setShowLogs] = useState(false)
   const [narrowShowsDetail, setNarrowShowsDetail] = useState(false)
 
-  const toggleAgentLogs = useCallback(() => {
-    setShowAgentLogs((show) => {
+  // ── Derived values ──────────────────────────────────────────────────────────
+
+  const clampedIndex = Math.min(selectedIndex, Math.max(0, state.sessions.length - 1))
+  const selectedSession = state.sessions[clampedIndex]
+  const selectedDetail = selectedSession ? (sessionDetails.get(selectedSession.chatId) ?? null) : null
+  const selectedChatStatus = selectedSession ? (chatStatuses.get(selectedSession.chatId) ?? null) : null
+
+  const showListPane = !isNarrow || !selectedDetail || !narrowShowsDetail
+  const showDetailPane = !isNarrow || Boolean(selectedDetail && narrowShowsDetail)
+  const showComposer = showDetailPane && selectedDetail !== null
+  const hasSessions = state.sessions.length > 0
+
+  const activeCount = state.sessions.filter((s) => !['done', 'failed', 'aborted'].includes(s.status)).length
+
+  // ── Effects ─────────────────────────────────────────────────────────────────
+
+  // Auto-show detail in narrow mode when a session is first selected.
+  // Also kick focus out of composer if the session goes away.
+  useEffect(() => {
+    if (!selectedDetail) {
+      setNarrowShowsDetail(false)
+      setFocusedPane((fp) => (fp === 'composer' ? 'detail' : fp))
+      return
+    }
+    setNarrowShowsDetail(true)
+  }, [selectedDetail?.chatId])
+
+  // Load messages when a new session is highlighted.
+  useEffect(() => {
+    if (selectedSession) onLoadMessages(selectedSession.chatId)
+  }, [clampedIndex])
+
+  // ── Focus helpers ───────────────────────────────────────────────────────────
+
+  const focusNext = useCallback(() => {
+    const panes: FocusedPane[] = showComposer
+      ? showLogs
+        ? ['list', 'detail', 'composer', 'logs']
+        : ['list', 'detail', 'composer']
+      : showLogs
+        ? ['list', 'detail', 'logs']
+        : ['list', 'detail']
+    const idx = panes.indexOf(focusedPane)
+    const next = panes[(idx + 1) % panes.length]!
+    if (isNarrow && selectedDetail) {
+      setNarrowShowsDetail(next !== 'list')
+    }
+    setFocusedPane(next)
+  }, [focusedPane, showLogs, showComposer, isNarrow, selectedDetail])
+
+  const toggleLogs = useCallback(() => {
+    setShowLogs((show) => {
       if (show) {
         setFocusedPane((fp) => (fp === 'logs' ? 'list' : fp))
       } else {
@@ -68,23 +135,6 @@ export function DashboardScreen({
       return !show
     })
   }, [])
-
-  const logBlockHeight = Math.min(28, Math.max(8, rows - 10))
-
-  const clampedIndex = Math.min(selectedIndex, Math.max(0, state.sessions.length - 1))
-  const selectedSession = state.sessions[clampedIndex]
-  const selectedDetail = selectedSession ? (sessionDetails.get(selectedSession.chatId) ?? null) : null
-
-  const showListPane = !isNarrow || !selectedDetail || !narrowShowsDetail
-  const showDetailPane = !isNarrow || Boolean(selectedDetail && narrowShowsDetail)
-
-  useEffect(() => {
-    if (!selectedDetail) {
-      setNarrowShowsDetail(false)
-      return
-    }
-    setNarrowShowsDetail(true)
-  }, [selectedDetail?.chatId])
 
   const toggleNarrowStack = useCallback(() => {
     if (!isNarrow || !selectedDetail) return
@@ -95,151 +145,59 @@ export function DashboardScreen({
     })
   }, [isNarrow, selectedDetail])
 
-  const stackToggleHint = useMemo((): FooterHintItem | null => {
-    if (!isNarrow || !selectedDetail) return null
-    return {
-      id: 'stack',
-      keys: 'v',
-      label: narrowShowsDetail ? 'Sessions' : 'Detail',
-      onPress: toggleNarrowStack,
-    }
-  }, [isNarrow, selectedDetail?.chatId, narrowShowsDetail, toggleNarrowStack])
-
-  const listHints = useMemo((): FooterHintItem[] => {
-    const scrollListHints: FooterHintItem[] =
-      state.sessions.length > 0
-        ? [
-          { id: 'list-page', keys: 'PgUp/Dn', label: 'Scroll list' },
-          { id: 'list-ends', keys: 'Hm/End', label: 'List ends' },
-        ]
-        : []
-    return [
-      { id: 'nav', keys: '↑↓', label: 'Move' },
-      ...scrollListHints,
-      { id: 'detail', keys: 'Tab/↵', label: 'Detail' },
-      ...(stackToggleHint ? [stackToggleHint] : []),
-      {
-        id: 'logs',
-        keys: 'l',
-        label: showAgentLogs ? 'Hide logs' : 'Show logs',
-        onPress: toggleAgentLogs,
-      },
-      {
-        id: 'quit',
-        keys: 'q',
-        label: 'Quit',
-        alt: 'q / Ctrl+C',
-        onPress: () => onQuitRequest(),
-      },
-    ]
-  }, [
-    showAgentLogs,
-    onQuitRequest,
-    state.sessions.length,
-    toggleAgentLogs,
-    stackToggleHint,
-  ])
-
-  const detailHints = useMemo((): FooterHintItem[] => {
-    return [
-      { id: 'scroll', keys: '↑↓·jk·wheel', label: 'Scroll' },
-      { id: 'page', keys: 'PgUp/Dn', label: 'Page' },
-      { id: 'ends', keys: 'Hm/End', label: 'Ends' },
-      {
-        id: 'sessions',
-        keys: 'Tab/Esc',
-        label: showAgentLogs ? 'List · logs' : 'List',
-      },
-      ...(stackToggleHint ? [stackToggleHint] : []),
-      {
-        id: 'logs',
-        keys: 'l',
-        label: showAgentLogs ? 'Hide logs' : 'Show logs',
-        onPress: toggleAgentLogs,
-      },
-      {
-        id: 'quit',
-        keys: 'q',
-        label: 'Quit',
-        alt: 'q / Ctrl+C',
-        onPress: () => onQuitRequest(),
-      },
-    ]
-  }, [showAgentLogs, onQuitRequest, toggleAgentLogs, stackToggleHint])
-
-  const logsHints = useMemo((): FooterHintItem[] => {
-    return [
-      { id: 'scroll', keys: '↑↓·jk·wheel', label: 'Scroll logs' },
-      { id: 'page', keys: 'PgUp/Dn', label: 'Page' },
-      { id: 'ends', keys: 'Hm/End', label: 'Ends' },
-      {
-        id: 'focus',
-        keys: 'Tab',
-        label: showAgentLogs ? 'List · detail · logs' : 'List · detail',
-      },
-      { id: 'back', keys: 'Esc', label: 'List' },
-      ...(stackToggleHint ? [stackToggleHint] : []),
-      {
-        id: 'logs',
-        keys: 'l',
-        label: 'Hide logs',
-        onPress: toggleAgentLogs,
-      },
-      {
-        id: 'quit',
-        keys: 'q',
-        label: 'Quit',
-        alt: 'q / Ctrl+C',
-        onPress: () => onQuitRequest(),
-      },
-    ]
-  }, [showAgentLogs, onQuitRequest, toggleAgentLogs, stackToggleHint])
-
-  useEffect(() => {
-    const session = state.sessions[clampedIndex]
-    if (session) onLoadMessages(session.chatId)
-  }, [clampedIndex])
+  // ── Keyboard ────────────────────────────────────────────────────────────────
 
   useKeyboard(
     useCallback(
       (key: KeyEvent) => {
         if (suspendKeyboard) return
         const { name } = key
+
+        // ── Global shortcuts ──────────────────────────────────────────────
+
         if (name === 'tab') {
-          if (showAgentLogs) {
-            const next =
-              focusedPane === 'list' ? 'detail' : focusedPane === 'detail' ? 'logs' : 'list'
-            if (isNarrow && selectedDetail) {
-              if (next === 'detail') setNarrowShowsDetail(true)
-              if (next === 'list') setNarrowShowsDetail(false)
-            }
-            setFocusedPane(next)
-          } else if (isNarrow && selectedDetail) {
-            setNarrowShowsDetail((show) => {
-              const next = !show
-              setFocusedPane(next ? 'detail' : 'list')
-              return next
-            })
-          } else if (!isNarrow) {
-            setFocusedPane((p) => (p === 'list' ? 'detail' : 'list'))
+          focusNext()
+          key.stopPropagation()
+          return
+        }
+
+        if ((name === 'v' || name === 'V') && isNarrow && selectedDetail) {
+          toggleNarrowStack()
+          key.stopPropagation()
+          return
+        }
+
+        // Escape: context-sensitive back navigation (works in all panes incl. composer).
+        if (name === 'escape') {
+          if (focusedPane === 'composer') {
+            setFocusedPane('detail')
+          } else {
+            if (isNarrow && selectedDetail) setNarrowShowsDetail(false)
+            setFocusedPane('list')
           }
           key.stopPropagation()
           return
         }
 
-        if (name === 'v' || name === 'V') {
-          if (isNarrow && selectedDetail) {
-            toggleNarrowStack()
-            key.stopPropagation()
-          }
-          return
-        }
+        // Don't steal single-char keys while typing in the composer.
+        if (focusedPane === 'composer') return
 
         if (name === 'l' || name === 'L') {
-          toggleAgentLogs()
+          toggleLogs()
           key.stopPropagation()
           return
         }
+
+        if (name === 'i') {
+          if (showComposer) {
+            if (isNarrow) setNarrowShowsDetail(true)
+            setFocusedPane('composer')
+          }
+          key.stopPropagation()
+          return
+        }
+
+        // ── Pane-local shortcuts ──────────────────────────────────────────
 
         if (focusedPane === 'list') {
           if (name === 'up') {
@@ -253,12 +211,7 @@ export function DashboardScreen({
             setFocusedPane('detail')
             key.stopPropagation()
           }
-        } else if (name === 'escape') {
-          if (isNarrow && selectedDetail) setNarrowShowsDetail(false)
-          setFocusedPane('list')
-          key.stopPropagation()
         }
-        // Detail / logs: focused <scrollbox> handles ↑↓ j/k PgUp/Dn Home/End + wheel
 
         if (name === 'q' || name === 'Q') {
           onQuitRequest()
@@ -268,140 +221,90 @@ export function DashboardScreen({
       [
         suspendKeyboard,
         focusedPane,
+        focusNext,
         state.sessions.length,
         selectedDetail,
+        showComposer,
         onQuitRequest,
-        showAgentLogs,
-        toggleAgentLogs,
+        showLogs,
+        toggleLogs,
         isNarrow,
-        toggleNarrowStack,
-      ],
-    ),
+        toggleNarrowStack
+      ]
+    )
   )
 
-  const handleLogDockMouseUp = useCallback((e: MouseEvent) => {
-    if (e.button !== MouseButton.LEFT) return
-    e.stopPropagation()
-    setFocusedPane('logs')
-  }, [])
+  // ── Status bar hints ────────────────────────────────────────────────────────
 
-  const { symbol, color } = CONNECTION_BADGE[state.connection]
-  const activeCount = state.sessions.filter((s) => !['done', 'failed', 'aborted'].includes(s.status)).length
+  const hints = useMemo((): StatusBarHint[] => {
+    const base: StatusBarHint[] = [{ id: 'tab', keys: 'tab', label: 'navigate' }]
 
-  const headerWorkspaceLabel =
+    switch (focusedPane) {
+      case 'list':
+        base.push({ id: 'nav', keys: '↑↓', label: 'select' }, { id: 'enter', keys: '↵', label: 'open' })
+        break
+      case 'detail':
+        base.push({ id: 'scroll', keys: '↑↓', label: 'scroll' }, { id: 'page', keys: 'PgUp/Dn', label: 'page' })
+        break
+      case 'composer':
+        base.push({ id: 'send', keys: 'Ctrl+↵', label: 'send' }, { id: 'esc', keys: 'Esc', label: 'back' })
+        break
+      case 'logs':
+        base.push({ id: 'scroll', keys: '↑↓', label: 'scroll' })
+        break
+    }
+
+    if (showComposer && focusedPane !== 'composer') {
+      base.push({ id: 'compose', keys: 'i', label: 'compose' })
+    }
+
+    if (isNarrow && selectedDetail) {
+      base.push({
+        id: 'stack',
+        keys: 'v',
+        label: narrowShowsDetail ? 'sessions' : 'detail',
+        onPress: toggleNarrowStack
+      })
+    }
+
+    base.push(
+      { id: 'logs', keys: 'l', label: showLogs ? 'hide logs' : 'logs', onPress: toggleLogs },
+      { id: 'quit', keys: 'q', label: 'quit', onPress: onQuitRequest }
+    )
+
+    return base
+  }, [
+    focusedPane,
+    showComposer,
+    showLogs,
+    isNarrow,
+    selectedDetail,
+    narrowShowsDetail,
+    toggleNarrowStack,
+    toggleLogs,
+    onQuitRequest
+  ])
+
+  // Resolve display names for sidebar
+  const workspaceLabel =
     state.workspaceDisplayName?.trim() ||
     config.workspaceDisplayName?.trim() ||
     (config.workspace ? config.workspace.slice(-8) : '')
-  const headerProjectLabel =
+  const projectLabel =
     state.projectDisplayName?.trim() ||
     config.projectDisplayName?.trim() ||
     (config.project ? config.project.slice(-8) : '')
 
-  const headerWide = (
-    <box
-      border={true}
-      borderStyle='rounded'
-      borderColor='#374151'
-      padding={1}
-      flexDirection='row'
-      flexShrink={0}
-      gap={2}
-    >
-      <text fg='#6366f1' attributes={tuiAttrs({ bold: true })}>
-        ◆ MULTIPLAYER
-      </text>
-      <text attributes={tuiAttrs({ dim: true })}>│</text>
-      <text fg={color}>
-        {symbol} {state.connection}
-      </text>
-      {state.connectionError && <text fg='#ef4444'>{state.connectionError}</text>}
-      {config.workspace && (
-        <>
-          <text attributes={tuiAttrs({ dim: true })}>│ workspace:</text>
-          <text>{headerWorkspaceLabel}</text>
-        </>
-      )}
-      {config.project && (
-        <>
-          <text attributes={tuiAttrs({ dim: true })}>project:</text>
-          <text>{headerProjectLabel}</text>
-        </>
-      )}
-      <text attributes={tuiAttrs({ dim: true })}>│ model:</text>
-      <text>{config.model}</text>
-      <text attributes={tuiAttrs({ dim: true })}>│</text>
-      {activeCount > 0 && (
-        <>
-          <text fg='#f59e0b'>{activeCount} active</text>
-          <text attributes={tuiAttrs({ dim: true })}>│</text>
-        </>
-      )}
-      <text fg='#10b981'>{state.resolvedCount} resolved</text>
-    </box>
-  )
-
-  const headerNarrow = (
-    <box
-      border={true}
-      borderStyle='rounded'
-      borderColor='#374151'
-      padding={1}
-      flexDirection='column'
-      flexShrink={0}
-      gap={1}
-    >
-      <box flexDirection='row' flexWrap='wrap' gap={2}>
-        <text fg='#6366f1' attributes={tuiAttrs({ bold: true })}>
-          ◆ MULTIPLAYER
-        </text>
-        <text attributes={tuiAttrs({ dim: true })}>│</text>
-        <text fg={color}>
-          {symbol} {state.connection}
-        </text>
-        {state.connectionError ? <text fg='#ef4444'>{state.connectionError}</text> : null}
-      </box>
-      {(config.workspace || config.project) && (
-        <box flexDirection='row' flexWrap='wrap' gap={2}>
-          {config.workspace ? (
-            <>
-              <text attributes={tuiAttrs({ dim: true })}>workspace:</text>
-              <text>{headerWorkspaceLabel}</text>
-            </>
-          ) : null}
-          {config.workspace && config.project ? <text attributes={tuiAttrs({ dim: true })}>│</text> : null}
-          {config.project ? (
-            <>
-              <text attributes={tuiAttrs({ dim: true })}>project:</text>
-              <text>{headerProjectLabel}</text>
-            </>
-          ) : null}
-        </box>
-      )}
-      <box flexDirection='row' flexWrap='wrap' gap={2}>
-        <text attributes={tuiAttrs({ dim: true })}>model:</text>
-        <text>{config.model}</text>
-        {activeCount > 0 ? (
-          <>
-            <text attributes={tuiAttrs({ dim: true })}>│</text>
-            <text fg='#f59e0b'>{activeCount} active</text>
-          </>
-        ) : null}
-        <text attributes={tuiAttrs({ dim: true })}>│</text>
-        <text fg='#10b981'>{state.resolvedCount} resolved</text>
-      </box>
-    </box>
-  )
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <box flexDirection='column' height={rows} gap={0}>
-      {isNarrow ? headerNarrow : headerWide}
+      {/* Header - slim single line */}
+      <DashboardHeader state={state} config={config} isNarrow={isNarrow} />
 
-      <box
-        flexDirection='row'
-        flexGrow={1}
-        gap={showListPane && showDetailPane ? 1 : 0}
-      >
-        {showListPane ? (
+      {/* Main content: sidebar + detail + context */}
+      <box flexDirection='row' flexGrow={1} gap={showListPane && showDetailPane ? 1 : 0}>
+        {showListPane && (
           <SessionListPane
             sessions={state.sessions}
             selectedIndex={clampedIndex}
@@ -413,65 +316,63 @@ export function DashboardScreen({
               setFocusedPane('list')
             }}
           />
-        ) : null}
-        {showDetailPane ? (
-          <SessionDetailPane
+        )}
+
+        {showDetailPane && (
+          <box flexDirection='column' flexGrow={1}>
+            <SessionDetailPane
+              session={selectedDetail}
+              contentWidth={contentWidth}
+              isFocused={focusedPane === 'detail'}
+              hasSessions={hasSessions}
+              onRequestFocus={() => setFocusedPane('detail')}
+              onRequestLoadMore={() =>
+                selectedDetail?.messages[0]?.id &&
+                onLoadMessages(selectedSession?.chatId ?? '', selectedDetail.messages[0].id)
+              }
+            />
+            {showComposer && (
+              <ChatComposer
+                chatId={selectedSession?.chatId ?? null}
+                chatStatus={selectedChatStatus}
+                isFocused={focusedPane === 'composer'}
+                width={contentWidth}
+                onSend={onSendMessage}
+                onAbort={onAbortChat}
+                onRequestFocus={() => setFocusedPane('composer')}
+                onEscape={() => setFocusedPane('detail')}
+              />
+            )}
+          </box>
+        )}
+
+        {/* Context sidebar - right panel (wide screens only) */}
+        {showContextSidebar && showDetailPane && (
+          <ContextSidebar
             session={selectedDetail}
-            contentWidth={contentWidth}
-            isFocused={focusedPane === 'detail'}
-            onRequestFocus={() => setFocusedPane('detail')}
-            onRequestLoadMore={() =>
-              selectedDetail?.messages[0]?.id &&
-              onLoadMessages(selectedSession?.chatId ?? '', selectedDetail?.messages[0]?.id)
-            }
+            chatStatus={selectedChatStatus}
+            workspace={workspaceLabel || undefined}
+            project={projectLabel || undefined}
+            rateLimitState={state.rateLimitState}
+            activeCount={activeCount}
+            resolvedCount={state.resolvedCount}
+            isFocused={false}
           />
-        ) : null}
+        )}
       </box>
 
-      {/* Runtime logs (TUI only — headless still uses JSON lines on stdout/stderr) */}
-      {showAgentLogs && (
-        <box
-          border={true}
-          borderStyle='rounded'
-          borderColor='#374151'
-          padding={1}
-          flexShrink={0}
-          flexDirection='column'
-          gap={1}
+      {/* Logs dock (toggleable) */}
+      {showLogs && (
+        <LogsDock
+          logs={agentLogs}
           height={logBlockHeight}
-          onMouseUp={handleLogDockMouseUp}
-        >
-          <text flexShrink={0} attributes={tuiAttrs({ dim: true, bold: true })}>
-            Logs
-          </text>
-          <scrollbox
-            flexGrow={1}
-            scrollY
-            focused={focusedPane === 'logs'}
-            stickyScroll
-            stickyStart='bottom'
-            onMouseUp={handleLogDockMouseUp}
-            style={{
-              wrapperOptions: { flexGrow: 1 },
-              viewportOptions: { flexGrow: 1 },
-              scrollbarOptions: {
-                showArrows: true,
-                trackOptions: {
-                  foregroundColor: '#a78bfa',
-                  backgroundColor: '#374151',
-                },
-              },
-            }}
-          >
-            <LogOutput logs={agentLogs} showTitle={false} />
-          </scrollbox>
-        </box>
+          isFocused={focusedPane === 'logs'}
+          onRequestFocus={() => setFocusedPane('logs')}
+        />
       )}
 
-      {/* Footer */}
-      <FooterHints
-        hints={focusedPane === 'list' ? listHints : focusedPane === 'detail' ? detailHints : logsHints}
-      />
+      {/* Status bar - clean single line at bottom */}
+      <StatusBar hints={hints} version={CLI_VERSION} />
     </box>
   ) as ReactElement
 }

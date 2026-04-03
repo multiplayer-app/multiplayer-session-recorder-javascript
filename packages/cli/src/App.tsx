@@ -5,7 +5,7 @@ import { DashboardScreen } from './components/screens/DashboardScreen.js'
 import { QuitScreen } from './components/screens/QuitScreen.js'
 import { StartupScreen } from './components/screens/StartupScreen.js'
 import { RuntimeController } from './runtime/controller.js'
-import type { AgentConfig, LogEntry } from './types/index.js'
+import type { AgentChatStatus, AgentConfig, LogEntry } from './types/index.js'
 import type { QuitMode, RuntimeState, SessionDetail } from './runtime/types.js'
 
 type Screen = 'startup' | 'dashboard' | 'quit-confirm'
@@ -37,6 +37,7 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
   const [runtimeState, setRuntimeState] = useState<RuntimeState | null>(null)
   const [sessionDetails, setSessionDetails] = useState<Map<string, SessionDetail>>(new Map())
   const [agentLogs, setAgentLogs] = useState<LogEntry[]>([])
+  const [chatStatuses, setChatStatuses] = useState<Map<string, AgentChatStatus | string>>(new Map())
   const controllerRef = useRef<RuntimeController | null>(null)
 
   const handleStartupComplete = useCallback(
@@ -57,6 +58,10 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
 
       controller.on('session-detail', (chatId: string, detail: SessionDetail) => {
         setSessionDetails((prev) => new Map(prev).set(chatId, { ...detail }))
+      })
+
+      controller.on('chat-status', (chatId: string, status: AgentChatStatus | string) => {
+        setChatStatuses((prev) => new Map(prev).set(chatId, status))
       })
 
       controller.on('quit', () => {
@@ -85,8 +90,26 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
     setScreen('dashboard')
   }, [])
 
+  /** Sync chat status for a given session from the server. */
+  const syncChatStatus = useCallback(async (chatId: string) => {
+    const status = await controllerRef.current?.fetchChatStatus(chatId)
+    if (status) {
+      setChatStatuses((prev) => new Map(prev).set(chatId, status))
+    }
+  }, [])
+
   const handleLoadMessages = useCallback((chatId: string, before?: string) => {
     void controllerRef.current?.loadSessionMessages(chatId, before)
+    // Sync chat status on initial load (not pagination)
+    if (!before) void syncChatStatus(chatId)
+  }, [syncChatStatus])
+
+  const handleSendMessage = useCallback((chatId: string, content: string) => {
+    void controllerRef.current?.sendUserMessage(chatId, content)
+  }, [])
+
+  const handleAbortChat = useCallback((chatId: string) => {
+    void controllerRef.current?.abortChatSession(chatId)
   }, [])
 
   useEffect(() => {
@@ -108,8 +131,11 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
             config={controllerRef.current.config}
             sessionDetails={sessionDetails}
             agentLogs={agentLogs}
+            chatStatuses={chatStatuses}
             onQuitRequest={handleQuitRequest}
             onLoadMessages={handleLoadMessages}
+            onSendMessage={handleSendMessage}
+            onAbortChat={handleAbortChat}
             suspendKeyboard={screen === 'quit-confirm'}
           />
         </box>

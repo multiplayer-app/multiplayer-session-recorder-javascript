@@ -3,3 +3,8 @@
 node_modules
 README.md
 tsconfig.tsbuildinfo
+.turbo
+src
+eslint.config.js
+tsconfig.json
+examples
