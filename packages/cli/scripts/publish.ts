@@ -18,9 +18,10 @@ const PLATFORMS: { dir: string; bin: string }[] = [
 ]
 
 async function publish(pkgDir: string, label: string, ignoreScripts = false) {
+  const provenance = process.env.NPM_CONFIG_PROVENANCE === 'true' ? ['--provenance'] : []
   const result = ignoreScripts
-    ? await $`npm publish --access public --tag ${distTag} --ignore-scripts`.cwd(pkgDir).nothrow()
-    : await $`npm publish --access public --tag ${distTag}`.cwd(pkgDir).nothrow()
+    ? await $`npm publish --access public --tag ${distTag} --ignore-scripts ${provenance}`.cwd(pkgDir).nothrow()
+    : await $`npm publish --access public --tag ${distTag} ${provenance}`.cwd(pkgDir).nothrow()
   if (result.exitCode === 0) {
     console.log(`Published ${label}`)
   } else {

@@ -198,6 +198,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -239,11 +240,12 @@ jobs:
         run: bun run scripts/publish.ts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
       - name: Publish remaining packages
         run: |
           VERSION=${{ needs.version.outputs.version }}
           PRERELEASE=$(echo $VERSION | grep -oP '(?<=-)\w+' || echo "")
           TAG=${PRERELEASE:-latest}
-          pnpm changeset publish --tag $TAG
+          pnpm changeset publish --tag $TAG --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
