@@ -173,11 +173,11 @@ importers:
         specifier: 1.36.0
         version: 1.36.0
       '@rrweb/packer':
-        specifier: 2.0.0-alpha.15
-        version: 2.0.0-alpha.15
+        specifier: 2.0.0-alpha.20
+        version: 2.0.0-alpha.20
       '@rrweb/rrweb-plugin-console-record':
-        specifier: 2.0.0-alpha.15
-        version: 2.0.0-alpha.15(rrweb@2.0.0-alpha.15)
+        specifier: 2.0.0-alpha.20
+        version: 2.0.0-alpha.20(@rrweb/utils@2.0.0-alpha.20)(rrweb@2.0.0-alpha.20)
       dompurify:
         specifier: 3.2.5
         version: 3.2.5
@@ -185,8 +185,8 @@ importers:
         specifier: 0.2.82
         version: 0.2.82
       rrweb:
-        specifier: 2.0.0-alpha.15
-        version: 2.0.0-alpha.15
+        specifier: 2.0.0-alpha.20
+        version: 2.0.0-alpha.20
       socket.io-client:
         specifier: 4.7.5
         version: 4.7.5
@@ -2697,16 +2697,20 @@ packages:
     peerDependencies:
       release-it: ^18.0.0 || ^19.0.0
 
-  '@rrweb/packer@2.0.0-alpha.15':
-    resolution: {integrity: sha512-QnWh2pFrPOqMYCJZsClOwqZYmumx1SVkfJA3GTq3jAlc0Ukjg9Wy354+1hmFM13iPqZkSPuMCTuCt06id+X+2Q==}
+  '@rrweb/packer@2.0.0-alpha.20':
+    resolution: {integrity: sha512-GsByg2olGZ2n3To6keFG604QAboipuXZvjYxO2wITSwARBf/sZdy6cbUEjF0RS+QnuTM5GaVXeQapNMLmpKbrA==}
 
-  '@rrweb/rrweb-plugin-console-record@2.0.0-alpha.15':
-    resolution: {integrity: sha512-66iOkD99AS8WqQNAnDtkJsQnSD8E+tZx3tWMJltpRDovXs4GoBE9eYxQeTWSigz6iaqbrxYPIqQIRck+zqnheg==}
+  '@rrweb/rrweb-plugin-console-record@2.0.0-alpha.20':
+    resolution: {integrity: sha512-4v05qwW7C4AnGxkwf7YeIkSGrNJpZ4tFj2j5Wa6suHlDsDvpqHH/ZRNTqdNRjeWcceSMuqka/zULOGX/f0KcCA==}
     peerDependencies:
-      rrweb: ^2.0.0-alpha.15
+      '@rrweb/utils': ^2.0.0-alpha.20
+      rrweb: ^2.0.0-alpha.20
 
   '@rrweb/types@2.0.0-alpha.20':
     resolution: {integrity: sha512-RbnDgKxA/odwB1R4gF7eUUj+rdSrq6ROQJsnMw7MIsGzlbSYvJeZN8YY4XqU0G6sKJvXI6bSzk7w/G94jNwzhw==}
+
+  '@rrweb/utils@2.0.0-alpha.20':
+    resolution: {integrity: sha512-MTQOmhPRe39C0fYaCnnVYOufQsyGzwNXpUStKiyFSfGLUJrzuwhbRoUAKR5w6W2j5XuA0bIz3ZDIBztkquOhLw==}
 
   '@sideway/address@4.1.5':
     resolution: {integrity: sha512-IqO/DUQHUkPeixNQ8n0JA6102hT9CmaljNTPmQ1u8MEhBo/R4Q8eKLN/vGZxuebwOroDB4cbpjheD4+/sKFK4Q==}
@@ -7521,8 +7525,8 @@ packages:
   rrweb-snapshot@2.0.0-alpha.20:
     resolution: {integrity: sha512-YTNf9YVeaGRo/jxY3FKBge2c/Ojd/KTHmuWloUSB+oyPXuY73ZeeG873qMMmhIpqEn7hn7aBF1eWEQmP7wjf8A==}
 
-  rrweb@2.0.0-alpha.15:
-    resolution: {integrity: sha512-kunhB/pSYeYT9Lusmo5Q0h0kK7//GN3VzZ9vBkcDEeUKa8zk5KdgDmIJ7SM3qWcwR09UKW17FS9HjNGMKjeg/w==}
+  rrweb@2.0.0-alpha.20:
+    resolution: {integrity: sha512-CZKDlm+j1VA50Ko3gnMbpvguCAleljsTNXPnVk9aeNP8o6T6kolRbISHyDZpqZ4G+bdDLlQOignPP3jEsXs8Gg==}
 
   run-applescript@7.1.0:
     resolution: {integrity: sha512-DPe5pVFaAsinSaV6QjQ6gdiedWDcRCbUuiQfQa2wmWV7+xC9bGulGI8+TdRmoFkAPaBXk8CrAbnlY2ISniJ47Q==}
@@ -11763,16 +11767,19 @@ snapshots:
       - conventional-commits-filter
       - conventional-commits-parser
 
-  '@rrweb/packer@2.0.0-alpha.15':
+  '@rrweb/packer@2.0.0-alpha.20':
     dependencies:
       '@rrweb/types': 2.0.0-alpha.20
       fflate: 0.4.8
 
-  '@rrweb/rrweb-plugin-console-record@2.0.0-alpha.15(rrweb@2.0.0-alpha.15)':
+  '@rrweb/rrweb-plugin-console-record@2.0.0-alpha.20(@rrweb/utils@2.0.0-alpha.20)(rrweb@2.0.0-alpha.20)':
     dependencies:
-      rrweb: 2.0.0-alpha.15
+      '@rrweb/utils': 2.0.0-alpha.20
+      rrweb: 2.0.0-alpha.20
 
   '@rrweb/types@2.0.0-alpha.20': {}
+
+  '@rrweb/utils@2.0.0-alpha.20': {}
 
   '@sideway/address@4.1.5':
     dependencies:
@@ -17547,9 +17554,10 @@ snapshots:
     dependencies:
       postcss: 8.5.8
 
-  rrweb@2.0.0-alpha.15:
+  rrweb@2.0.0-alpha.20:
     dependencies:
       '@rrweb/types': 2.0.0-alpha.20
+      '@rrweb/utils': 2.0.0-alpha.20
       '@types/css-font-loading-module': 0.0.7
       '@xstate/fsm': 1.6.5
       base64-arraybuffer: 1.0.2
