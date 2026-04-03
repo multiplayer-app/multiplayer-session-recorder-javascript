@@ -43,7 +43,7 @@ for (const { dir, bin } of PLATFORMS) {
     console.error(`Missing: dist/${dir} — run 'bun run build' first`)
     process.exit(1)
   }
-  fs.chmodSync(path.join(pkgDir, 'src', bin), 0o755)
+  fs.chmodSync(path.join(pkgDir, 'bin', bin), 0o755)
   await publish(pkgDir, `@multiplayer-app/cli-${dir}`)
 }
 
