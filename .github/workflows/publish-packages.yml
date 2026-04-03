@@ -191,6 +191,12 @@ jobs:
           restore-keys: turbo-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm turbo build --filter=!@multiplayer-app/cli
+      - name: Upload package dists
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-dists
+          path: packages/*/dist/
+          retention-days: 1
 
   publish:
     name: Publish
@@ -222,19 +228,17 @@ jobs:
         with:
           path: "**/node_modules"
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-      - name: Cache turbo
-        uses: actions/cache@v4
-        with:
-          path: .turbo
-          key: turbo-${{ runner.os }}-${{ github.sha }}
-          restore-keys: turbo-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Download CLI binaries
         uses: actions/download-artifact@v4
         with:
           name: cli-binaries
           path: packages/cli/dist
-      - run: pnpm turbo build --filter=!@multiplayer-app/cli
+      - name: Download package dists
+        uses: actions/download-artifact@v4
+        with:
+          name: package-dists
+          path: packages
       - name: Publish CLI platform packages + wrapper
         working-directory: packages/cli
         run: bun run scripts/publish.ts
@@ -244,8 +248,20 @@ jobs:
       - name: Publish remaining packages
         run: |
           VERSION=${{ needs.version.outputs.version }}
-          PRERELEASE=$(echo $VERSION | grep -oP '(?<=-)\w+' || echo "")
+          PRERELEASE=$(echo "$VERSION" | grep -oP '(?<=-)\w+' || echo "")
           TAG=${PRERELEASE:-latest}
-          pnpm changeset publish --tag $TAG --provenance
+          for PKG_DIR in packages/session-recorder-common packages/session-recorder-browser packages/session-recorder-node packages/session-recorder-react packages/session-recorder-react-native; do
+            NAME=$(node -e "console.log(require('./$PKG_DIR/package.json').name)")
+            echo "Publishing $NAME..."
+            OUTPUT=$(cd "$PKG_DIR" && npm publish --access public --tag "$TAG" --provenance --ignore-scripts 2>&1) || true
+            if echo "$OUTPUT" | grep -q "previously published\|You cannot publish over"; then
+              echo "Skipping $NAME — already published"
+            elif echo "$OUTPUT" | grep -q "npm error"; then
+              echo "$OUTPUT"
+              exit 1
+            else
+              echo "Published $NAME"
+            fi
+          done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

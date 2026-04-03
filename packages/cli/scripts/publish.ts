@@ -26,7 +26,8 @@ async function publish(pkgDir: string, label: string, ignoreScripts = false) {
     console.log(`Published ${label}`)
   } else {
     const stderr = result.stderr.toString()
-    if (stderr.includes('You cannot publish over the previously published versions')) {
+    const output = stderr + result.stdout.toString()
+    if (output.includes('You cannot publish over the previously published versions') || output.includes('previously published')) {
       console.log(`Skipping ${label} — already published`)
     } else {
       process.stderr.write(stderr)
