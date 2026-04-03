@@ -38,6 +38,7 @@ for (const { target, platform, arch, os, cpu, entry, bin } of targets) {
     name: pkgName,
     version: pkg.version,
     description: `Multiplayer CLI binary for ${platform}-${arch}`,
+    repository: pkg.repository,
     os: [os],
     cpu: [cpu],
     bin: { multiplayer: `./${bin}` },

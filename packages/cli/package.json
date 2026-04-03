@@ -22,6 +22,10 @@
     "@multiplayer-app/cli-windows-arm64": "2.0.17-alpha.5"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/multiplayer-app/multiplayer-session-recorder-javascript.git"
+  },
   "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.2.89",
     "@anthropic-ai/sdk": "^0.78.0",
