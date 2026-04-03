@@ -8596,6 +8596,14 @@ packages:
   zone.js@0.15.1:
     resolution: {integrity: sha512-XE96n56IQpJM7NAoXswY3XRLcWFW83xe0BiAOeMD7K5k5xecOeul3Qcpx6GqEeeHNkW5DWL5zOyTbEfB4eti8w==}
 
+ignoredOptionalDependencies:
+  - '@multiplayer-app/cli-darwin-arm64'
+  - '@multiplayer-app/cli-darwin-x64'
+  - '@multiplayer-app/cli-linux-arm64'
+  - '@multiplayer-app/cli-linux-x64'
+  - '@multiplayer-app/cli-windows-arm64'
+  - '@multiplayer-app/cli-windows-x64'
+
 snapshots:
 
   '@anthropic-ai/claude-agent-sdk@0.2.89(zod@4.3.6)':
@@ -11665,9 +11673,7 @@ snapshots:
       metro-runtime: 0.83.5
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.81.1': {}
 
