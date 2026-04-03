@@ -32,7 +32,7 @@ for (const { target, platform, arch, os, cpu, entry, bin } of targets) {
   fs.mkdirSync(path.join(pkgDir, 'src'), { recursive: true })
 
   console.log(`  → ${target}`)
-  await $`bun build ${path.join(ROOT, entry)} --compile --target=${target} --outfile=${binPath} --sourcemap=none`.cwd(ROOT)
+  await $`${process.execPath} build ${path.join(ROOT, entry)} --compile --target=${target} --outfile=${binPath} --sourcemap=none`.cwd(ROOT)
 
   if (platform !== 'windows') fs.chmodSync(binPath, 0o755)
 
