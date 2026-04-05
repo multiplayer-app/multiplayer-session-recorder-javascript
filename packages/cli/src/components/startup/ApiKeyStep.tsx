@@ -5,13 +5,15 @@ import { createApiService } from '../../services/api.service.js'
 import type { AgentConfig } from '../../types/index.js'
 import { API_URL } from '../../config.js'
 import { decodeApiKeyPayload } from '../../services/radar.service.js'
+import { writeProfile } from '../../cli/profile.js'
 
 interface Props {
   config: Partial<AgentConfig>
+  profileName?: string
   onComplete: (updates: Partial<AgentConfig>) => void
 }
 
-export function ApiKeyStep({ config, onComplete }: Props): ReactElement {
+export function ApiKeyStep({ config, profileName, onComplete }: Props): ReactElement {
   const [value, setValue] = useState(config.apiKey ?? '')
   const [validating, setValidating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -42,6 +44,8 @@ export function ApiKeyStep({ config, onComplete }: Props): ReactElement {
         }
 
         setValidating(false)
+        const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
+        writeProfile(profile, { apiKey: trimmedApiKey })
         onComplete({
           apiKey: trimmedApiKey,
           workspace: workspaceId,

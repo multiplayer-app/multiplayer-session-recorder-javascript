@@ -1,6 +1,7 @@
 // ─── API ──────────────────────────────────────────────────────────────────────
 
 export const API_URL = process.env.MULTIPLAYER_URL || 'https://api.multiplayer.app/v0'
+export const BASE_API_URL = process.env.MULTIPLAYER_BASE_URL || 'https://api.multiplayer.app'
 
 // ─── Agent defaults ───────────────────────────────────────────────────────────
 

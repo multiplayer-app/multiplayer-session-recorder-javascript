@@ -2,6 +2,7 @@ import { Command } from 'commander'
 import { create as createRelease } from './releases/create.js'
 import { create as createDeployment } from './deployments/create.js'
 import { upload as uploadSourcemap } from './sourcemaps/upload.js'
+import { login, logout, status as authStatus } from './auth.js'
 import logger from '../logger.js'
 
 function handleResult(err: Error | null, response: unknown): void {
@@ -105,6 +106,35 @@ export function runCli(argv: string[]): void {
       if (!options.service) exitWithError('A service name is required.')
       if (!options.release) exitWithError('A release is required.')
       uploadSourcemap(directories, options as Parameters<typeof uploadSourcemap>[1], handleResult)
+    })
+
+  // auth
+  const auth = program.command('auth').description('Authenticate with Multiplayer')
+  auth
+    .command('login')
+    .description('Log in via browser OAuth flow')
+    .action(async () => {
+      try {
+        await login()
+      } catch (err: any) {
+        exitWithError(err.message)
+      }
+    })
+  auth
+    .command('logout')
+    .description('Log out and clear stored credentials')
+    .action(() => {
+      logout()
+    })
+  auth
+    .command('status')
+    .description('Check authentication status')
+    .action(async () => {
+      try {
+        await authStatus()
+      } catch (err: any) {
+        exitWithError(err.message)
+      }
     })
 
   program.parse(argv)
