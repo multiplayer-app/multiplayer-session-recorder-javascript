@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 import { query } from '@anthropic-ai/claude-agent-sdk'
+import cliPath from '@anthropic-ai/claude-agent-sdk/embed'
 import { simpleGit } from 'simple-git'
 import fs from 'fs'
 import path from 'path'
@@ -898,16 +899,23 @@ const resolveIssueWithClaudeCode = async (
   }
   const runningToolCalls = new Map<string, RunningToolCall>()
 
+  callbacks.onProgress?.(`[claude] starting (cwd=${projectDir}, cli=${cliPath})`)
+
   for await (const message of query({
     prompt,
     options: {
       cwd: projectDir,
       executable: 'node',
+      pathToClaudeCodeExecutable: cliPath,
       permissionMode: 'bypassPermissions',
       systemPrompt: buildSystemPrompt(projectDir),
       maxTurns: 1000,
       includePartialMessages: !!(callbacks.onProgress || callbacks.onToolCall),
       ...(model ? { model } : {}),
+      stderr: (data: string) => {
+        const line = data.trim()
+        if (line) callbacks.onProgress?.(`[claude stderr] ${line}`)
+      },
     },
   })) {
     if (abortSignal?.aborted) {
@@ -1017,11 +1025,16 @@ const continueChatWithClaudeCode = async (
     options: {
       cwd: projectDir,
       executable: 'node',
+      pathToClaudeCodeExecutable: cliPath,
       permissionMode: 'bypassPermissions',
       systemPrompt: buildSystemPrompt(projectDir),
       maxTurns: 250,
       includePartialMessages: !!(callbacks.onProgress || callbacks.onToolCall || callbacks.onToolCallResult),
       ...(model ? { model } : {}),
+      stderr: (data: string) => {
+        const line = data.trim()
+        if (line) callbacks.onProgress?.(`[claude stderr] ${line}`)
+      },
     },
   })) {
     if (abortSignal?.aborted) {

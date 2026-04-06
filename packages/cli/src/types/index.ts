@@ -167,6 +167,7 @@ export interface AgentChat {
   contextKey?: string
   model?: string
   agentName?: string
+  dir?: string
   metadata?: Record<string, unknown> & {
     issue?: {
       componentHash: string

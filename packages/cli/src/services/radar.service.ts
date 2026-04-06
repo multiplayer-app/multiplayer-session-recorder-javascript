@@ -55,9 +55,9 @@ export interface RadarService {
       repositoryUrl: string
       prTitle?: string
       prBody?: string
+      codeChanges?: { additions: number; deletions: number }
     }
     issue: { componentHash: string }
-    codeChanges?: { additions: number; deletions: number }
   }) => void
   notifyFixFailed: (payload: { chatId: string; issue: { componentHash: string }; error?: string }) => void
   emitAgentMessage: (message: AgentMessage) => void
@@ -336,7 +336,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     }
     // Don't consume SSE stream — socket handles message delivery.
     // Just close the response to free the connection.
-    try { res.body?.cancel() } catch {}
+    try { res.body?.cancel() } catch { }
   }
 
   const abortChat = async (
