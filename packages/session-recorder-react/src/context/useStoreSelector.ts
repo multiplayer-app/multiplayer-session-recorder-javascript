@@ -25,8 +25,15 @@ export function useStoreSelector<TState extends object, TSlice>(
       }
     }
     const unsubscribe = store.subscribe(handleChange)
-    // Sync once in case changed between render and effect
-    handleChange(store.getState(), store.getState())
+    // Sync once in case state changed between render and effect.
+    // Use the functional updater form so we compare against the already-stored
+    // slice rather than calling the selector twice on the same state (which would
+    // return different object references for non-primitive values and cause an
+    // unnecessary re-render that leads to infinite update loops with virtualizers).
+    setSlice(prev => {
+      const currentSlice = latestSelectorRef.current(store.getState())
+      return latestEqualityRef.current(prev, currentSlice) ? prev : currentSlice
+    })
     return unsubscribe
   }, [store])
 
