@@ -120,6 +120,19 @@ export const classifyAiError = (err: unknown): string => {
   ) {
     return `Network error connecting to AI service.\n${message}`
   }
+  if (lower.includes('claude code process exited with code')) {
+    const codeMatch = message.match(/code (\d+)/)
+    const code = codeMatch?.[1] ?? '1'
+    if (code === '1') return 'Claude Code exited unexpectedly (exit code 1). This usually means Claude Code is not authenticated or has a configuration error. Run `claude` in your terminal to check.'
+    if (code === '127') return 'Claude Code binary not found (exit code 127). Make sure `claude` is installed and available in PATH.'
+    return `Claude Code process exited with code ${code}.`
+  }
+  if (lower.includes('claude code executable not found') || lower.includes('claude code native binary not found')) {
+    return 'Claude Code executable not found. Make sure `claude` is installed and available in PATH.'
+  }
+  if (lower.includes('claude code process aborted')) {
+    return 'Claude Code process was aborted.'
+  }
 
   return message
 }
@@ -919,7 +932,17 @@ const resolveIssueWithClaudeCode = async (
     }
 
     if (message.type === 'result' && message.subtype !== 'success') {
-      throw new Error(`Claude Code exited with: ${message.subtype}`)
+      const msg = message as any
+      const errors: string[] = msg.errors ?? []
+      const detail = errors.length > 0 ? `\n${errors.join('\n')}` : ''
+      const subtypeLabel: Record<string, string> = {
+        error_during_execution: 'Error during execution',
+        error_max_turns: 'Max turns reached',
+        error_max_budget_usd: 'Budget limit exceeded',
+        error_max_structured_output_retries: 'Structured output retries exceeded',
+      }
+      const label = subtypeLabel[msg.subtype] ?? msg.subtype
+      throw new Error(`Claude Code process exited: ${label}${detail}`)
     }
   }
 
