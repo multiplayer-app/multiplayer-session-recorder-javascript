@@ -317,7 +317,7 @@ export class RuntimeController extends EventEmitter {
       await this.radar.sendStreamMessage(cfg.workspace, cfg.project, { chatId, content, contextKey, userId: 'guest' })
       // Stream request accepted — poll for completion since chat:update
       // socket events may not be delivered to the agent socket.
-      void this.pollChatUntilDone(chatId)
+      // void this.pollChatUntilDone(chatId)
     } catch (err: unknown) {
       this.log('error', `Failed to send message to ${chatId}: ${err instanceof Error ? err.message : String(err)}`)
       this.emit('chat-status', chatId, 'error')
