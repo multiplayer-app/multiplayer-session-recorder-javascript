@@ -1173,6 +1173,7 @@ export class RuntimeController extends EventEmitter {
         } catch (err: unknown) {
           this.log('error', `Failed to remove worktree ${context.worktreeDir}: ${(err as Error).message}`)
         }
+        context.worktreeDir = undefined
       }
 
       if ((this.quitMode as QuitMode | null) === 'after-current') {
@@ -1321,7 +1322,10 @@ export class RuntimeController extends EventEmitter {
       `Fix pushed: ${branchName} (${commitSha.slice(0, 7)}) +${codeChanges.additions}/-${codeChanges.deletions}`,
     )
 
-    const pushedMsg = `Fix pushed to branch \`${branchName}\` (${commitSha.slice(0, 7)})`
+    const branchUrl = repositoryUrl ? GitService.getBranchUrl(repositoryUrl, branchName) : ''
+    const pushedMsg = branchUrl
+      ? `Fix pushed to branch [\`${branchName}\`](${branchUrl}) (${commitSha.slice(0, 7)})`
+      : `Fix pushed to branch \`${branchName}\` (${commitSha.slice(0, 7)})`
     this.emitToRadar(chatId, pushedMsg, 'assistant', 'git')
     this.addSessionMessage(chatId, { role: 'assistant', content: pushedMsg, activity: 'git' })
 
