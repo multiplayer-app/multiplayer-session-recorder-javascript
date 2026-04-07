@@ -186,23 +186,27 @@ export function writeProfile(profileName: string, config: Partial<ProfileConfig>
  *   3. Named profile in home-dir config file
  *   4. `default` profile (same search order)
  */
-export function loadProfile(profileName: string, projectDir?: string): ProfileConfig {
-  const configPath = findConfigFile(projectDir)
-  if (!configPath) return {}
-
-  let content: string
+function readProfileFromFile(filePath: string, profileName: string): Record<string, string> {
   try {
-    content = fs.readFileSync(configPath, 'utf-8')
+    const content = fs.readFileSync(filePath, 'utf-8')
+    const parsed = parseIni(content)
+    const defaultRaw = parsed['default'] ?? {}
+    const profileRaw = profileName !== 'default' ? (parsed[profileName] ?? {}) : {}
+    return { ...defaultRaw, ...profileRaw }
   } catch {
     return {}
   }
+}
 
-  const parsed = parseIni(content)
+export function loadProfile(profileName: string, projectDir?: string): ProfileConfig {
+  const homePath = path.join(os.homedir(), '.multiplayer', 'config')
+  const projectPath = findConfigFile(projectDir)
 
-  // Merge default → named profile so named profile values take precedence
-  const defaultRaw = parsed['default'] ?? {}
-  const profileRaw = profileName !== 'default' ? (parsed[profileName] ?? {}) : {}
-  const merged = { ...defaultRaw, ...profileRaw }
+  // Home config is the base; project/ancestor config overrides it
+  const homeRaw = fs.existsSync(homePath) ? readProfileFromFile(homePath, profileName) : {}
+  const projectRaw = projectPath && projectPath !== homePath
+    ? readProfileFromFile(projectPath, profileName)
+    : {}
 
-  return iniToProfileConfig(merged)
+  return iniToProfileConfig({ ...homeRaw, ...projectRaw })
 }

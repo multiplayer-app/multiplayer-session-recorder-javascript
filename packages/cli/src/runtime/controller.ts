@@ -39,6 +39,18 @@ interface ChatContext {
 
 // ─── Path sanitization ────────────────────────────────────────────────────────
 
+const THINKING_VERBS = [
+  'Pondering', 'Cogitating', 'Ruminating', 'Contemplating', 'Deliberating',
+  'Noodling', 'Scheming', 'Concocting', 'Devising', 'Wrangling',
+  'Untangling', 'Deciphering', 'Spelunking', 'Excavating', 'Interrogating',
+  'Scrutinizing', 'Dissecting', 'Reverse-engineering', 'Theorizing', 'Hypothesizing',
+  'Philosophizing', 'Brainstorming', 'Percolating', 'Simmering', 'Marinating',
+]
+
+function randomThinkingVerb(): string {
+  return THINKING_VERBS[Math.floor(Math.random() * THINKING_VERBS.length)]!
+}
+
 const stripTerminalEscapes = (text: string): string =>
   text
     // OSC: ESC ] ... (BEL or ESC \)
@@ -569,6 +581,16 @@ export class RuntimeController extends EventEmitter {
         state.turnMsgId = new mongoose.Types.ObjectId().toString()
         state.streamContent = ''
         toolCallsMap.clear()
+        const verb = randomThinkingVerb()
+        const thinkingMsgId = new mongoose.Types.ObjectId().toString()
+        radar?.emitAgentMessage({
+          _id: thinkingMsgId,
+          chat: chatId,
+          role: 'reasoning',
+          content: `${verb}...`,
+          agentName: cfg.name,
+        })
+        this.addSessionMessage(chatId, { id: thinkingMsgId, role: 'reasoning', content: `${verb}...` })
       },
 
       onToolCall: ({ id, name, input }) => {
@@ -749,8 +771,11 @@ export class RuntimeController extends EventEmitter {
     if (componentHash) {
       const statusMap: Partial<Record<string, SessionStatus>> = {
         finished: 'done',
-        error: 'failed',
         aborted: 'aborted',
+        processing: 'analyzing',
+        streaming: 'analyzing',
+        waitingForUserAction: 'pending',
+        error: 'pending',
       }
       const tuiStatus = statusMap[chat.status ?? ''] ?? 'pending'
 
@@ -844,6 +869,7 @@ export class RuntimeController extends EventEmitter {
             contextKey: issue.componentHash,
             status: 'finished',
             agentName: cfg.name,
+            dir: cfg.dir,
           })
           this.radar?.notifyFixPushed({
             chatId,
@@ -852,9 +878,9 @@ export class RuntimeController extends EventEmitter {
               branchUrl: GitService.getBranchUrl(repositoryUrl ?? '', issue.solution.gitBranch),
               prUrl: prUrl ?? undefined,
               repositoryUrl: repositoryUrl ?? '',
+              codeChanges,
             },
             issue: { componentHash: issue.componentHash },
-            codeChanges,
           })
         } catch (err) {
           // Non-fatal — re-emit without PR
@@ -980,10 +1006,42 @@ export class RuntimeController extends EventEmitter {
       // Non-fatal — proceed with empty history
     }
 
-    const history: ConversationMessage[] = apiMessages.map((m) => ({
-      role: m.role as 'user' | 'assistant',
-      content: m.content,
-    }))
+    const history: ConversationMessage[] = apiMessages
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+
+    // If this chat already has history, it was previously processed.
+    // Restore context only — do not re-run full issue resolution.
+    if (history.length > 0) {
+      this.log('info', `Chat ${chatId} has existing history (${history.length} messages) — restoring context only`)
+      if (!this.chatContexts.has(chatId)) {
+        this.chatContexts.set(chatId, {
+          chatId,
+          issue,
+          history,
+          abortController: new AbortController(),
+          isProcessing: false,
+        })
+      }
+      // Register in TUI so the session is visible with the correct status
+      const summary: SessionSummary = {
+        chatId,
+        issueId: issue.componentHash,
+        issueTitle: issue.title,
+        issueService: issue.service.serviceName,
+        status: 'pending',
+        startedAt: new Date(),
+      }
+      this.setState(addSession(this._state, summary))
+      this.radar?.emitAgentChatUpdate({
+        _id: chatId,
+        contextKey: issue.componentHash,
+        status: 'processing',
+        agentName: cfg.name,
+        dir: cfg.dir,
+      })
+      return
+    }
 
     const abortController = new AbortController()
     const context: ChatContext = {
@@ -1057,18 +1115,21 @@ export class RuntimeController extends EventEmitter {
 
       if (abortController.signal.aborted) {
         this.setState(upsertSession(this._state, { chatId, status: 'aborted', error: 'Aborted by user' }))
+        this.emit('chat-status', chatId, 'aborted')
         this.log('info', `Aborted: ${issue.title}`)
         this.radar?.emitAgentChatUpdate({
           _id: chatId,
           contextKey: issue.componentHash,
           status: 'aborted',
           agentName: cfg.name,
+          dir: cfg.dir,
         })
         return
       }
 
       if (patches.length === 0) {
         this.setState(upsertSession(this._state, { chatId, status: 'failed', error: 'AI produced no patches' }))
+        this.emit('chat-status', chatId, 'error')
         this.log('error', `No patches for: ${issue.title}`)
         this.emitToRadar(chatId, 'No patches generated for this issue.', 'error', 'analyzing')
         this.addSessionMessage(chatId, { role: 'error', content: 'No patches generated for this issue.' })
@@ -1077,6 +1138,7 @@ export class RuntimeController extends EventEmitter {
           contextKey: issue.componentHash,
           status: 'error',
           agentName: cfg.name,
+          dir: cfg.dir,
         })
         return
       }
@@ -1098,6 +1160,7 @@ export class RuntimeController extends EventEmitter {
     } catch (err: unknown) {
       const message = AiService.classifyAiError(err)
       this.setState(upsertSession(this._state, { chatId, status: 'failed', error: message }))
+      this.emit('chat-status', chatId, 'error')
       this.log('error', `Failed ${issue.componentHash.slice(0, 8)}: ${message}`)
       this.emitToRadar(chatId, message, 'error')
       this.addSessionMessage(chatId, { role: 'error', content: message })
@@ -1106,6 +1169,7 @@ export class RuntimeController extends EventEmitter {
         contextKey: issue.componentHash,
         status: 'error',
         agentName: cfg.name,
+        dir: cfg.dir,
       })
       this.radar?.notifyFixFailed({ chatId, issue: { componentHash: issue.componentHash }, error: message })
     } finally {
@@ -1123,6 +1187,7 @@ export class RuntimeController extends EventEmitter {
         } catch (err: unknown) {
           this.log('error', `Failed to remove worktree ${context.worktreeDir}: ${(err as Error).message}`)
         }
+        context.worktreeDir = undefined
       }
 
       if ((this.quitMode as QuitMode | null) === 'after-current') {
@@ -1158,6 +1223,7 @@ export class RuntimeController extends EventEmitter {
           _id: chatId,
           contextKey: issue.componentHash,
           agentName: cfg.name,
+          dir: cfg.dir,
           metadata: {
             debugSession: {
               _id: debugResult.debugSessionId,
@@ -1199,6 +1265,7 @@ export class RuntimeController extends EventEmitter {
           contextKey: issue.componentHash,
           status: 'waitingForUserAction',
           agentName: cfg.name,
+          dir: cfg.dir,
         })
         return { proceed: false }
       }
@@ -1226,11 +1293,11 @@ export class RuntimeController extends EventEmitter {
   ): Promise<void> {
     if (!noGitBranch) {
       this.log('info', `Creating git worktree for branch ${branchName}...`)
-      const msg = `Preparing isolated workspace for branch \`${branchName}\`...`
-      this.emitToRadar(chatId, msg, 'assistant', 'git')
-      this.addSessionMessage(chatId, { role: 'assistant', content: msg, activity: 'git' })
       const actualWorktreeDir = await GitService.createWorktree(this._config.dir, worktreeDir!, branchName)
       context.worktreeDir = actualWorktreeDir
+      const msg = `Preparing isolated workspace for branch \`${branchName}\` in worktree \`${actualWorktreeDir.split('/').pop()}\`...`
+      this.emitToRadar(chatId, msg, 'assistant', 'git')
+      this.addSessionMessage(chatId, { role: 'assistant', content: msg, activity: 'git' })
     } else {
       this.log('info', 'Dry run: applying patches directly to current branch')
       const msg = 'Dry run: applying patches directly to current branch...'
@@ -1263,12 +1330,16 @@ export class RuntimeController extends EventEmitter {
 
     this.setState(upsertSession(this._state, { chatId, status: 'done', branchName }))
     this.setState(incrementResolved(this._state))
+    this.emit('chat-status', chatId, 'finished')
     this.log(
       'info',
       `Fix pushed: ${branchName} (${commitSha.slice(0, 7)}) +${codeChanges.additions}/-${codeChanges.deletions}`,
     )
 
-    const pushedMsg = `Fix pushed to branch \`${branchName}\` (${commitSha.slice(0, 7)})`
+    const branchUrl = repositoryUrl ? GitService.getBranchUrl(repositoryUrl, branchName) : ''
+    const pushedMsg = branchUrl
+      ? `Fix pushed to branch [\`${branchName}\`](${branchUrl}) (${commitSha.slice(0, 7)})`
+      : `Fix pushed to branch \`${branchName}\` (${commitSha.slice(0, 7)})`
     this.emitToRadar(chatId, pushedMsg, 'assistant', 'git')
     this.addSessionMessage(chatId, { role: 'assistant', content: pushedMsg, activity: 'git' })
 
@@ -1302,6 +1373,7 @@ export class RuntimeController extends EventEmitter {
       contextKey: issue.componentHash,
       status: 'finished',
       agentName: this._config.name,
+      dir: this._config.dir,
     })
     this.radar?.notifyFixPushed({
       chatId,
@@ -1311,9 +1383,9 @@ export class RuntimeController extends EventEmitter {
         prUrl: prUrl ?? undefined,
         repositoryUrl: repositoryUrl ?? '',
         ...(!prUrl ? { prTitle: prContent.title, prBody: prContent.body } : {}),
+        codeChanges,
       },
       issue: { componentHash: issue.componentHash },
-      codeChanges,
     })
   }
 
@@ -1348,6 +1420,7 @@ export class RuntimeController extends EventEmitter {
       contextKey: context.issue.componentHash,
       status: 'processing',
       agentName: cfg.name,
+      dir: cfg.dir,
     })
 
     const { callbacks, state: streamState } = this.makeStreamCallbacks(chatId, () => dirs)
@@ -1370,6 +1443,7 @@ export class RuntimeController extends EventEmitter {
         contextKey: context.issue.componentHash,
         status,
         agentName: cfg.name,
+        dir: cfg.dir,
       })
     } catch (err: unknown) {
       const message = AiService.classifyAiError(err)
@@ -1391,6 +1465,7 @@ export class RuntimeController extends EventEmitter {
         contextKey: context.issue.componentHash,
         status: 'error',
         agentName: cfg.name,
+        dir: cfg.dir,
       })
     } finally {
       context.isProcessing = false
