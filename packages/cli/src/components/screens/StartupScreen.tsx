@@ -22,27 +22,27 @@ const STEPS: StepId[] = ['auth-method', 'project-select', 'api-key', 'workspace'
 const STEP_LABELS: Record<StepId, { title: string; description: string }> = {
   'auth-method': {
     title: 'Authentication',
-    description: 'Choose how to authenticate with Multiplayer.'
+    description: 'Choose how to authenticate with Multiplayer.',
   },
   'project-select': {
     title: 'Select Project',
-    description: 'Choose the project this agent will monitor.'
+    description: 'Choose the project this agent will monitor.',
   },
   'api-key': {
     title: 'Project API Key',
-    description: 'Authenticate with Multiplayer and load workspace/project context.'
+    description: 'Authenticate with Multiplayer and load workspace/project context.',
   },
   workspace: {
     title: 'Workspace Confirmation',
-    description: 'Review the workspace and project that will receive agent updates.'
+    description: 'Review the workspace and project that will receive agent updates.',
   },
   directory: {
     title: 'Repository Directory',
-    description: 'Select the git repository where patches, commits, and branches are created.'
+    description: 'Select the git repository where patches, commits, and branches are created.',
   },
   model: { title: 'AI Model', description: 'Choose an AI provider and model for issue resolution.' },
   'rate-limits': { title: 'Concurrency', description: 'Set how many issues can be processed in parallel.' },
-  connecting: { title: 'Final Checks', description: 'Verify git and provider requirements before starting runtime.' }
+  connecting: { title: 'Final Checks', description: 'Verify git and provider requirements before starting runtime.' },
 }
 
 const STEP_SHORT: Record<StepId, string> = {
@@ -53,7 +53,7 @@ const STEP_SHORT: Record<StepId, string> = {
   directory: 'Directory',
   model: 'Model',
   'rate-limits': 'Concurrency',
-  connecting: 'Verify'
+  connecting: 'Verify',
 }
 
 const STEP_PANEL_WIDTH = 24
@@ -145,7 +145,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
           return {
             ...c,
             ...(workspaceDisplayName ? { workspaceDisplayName } : {}),
-            ...(projectDisplayName ? { projectDisplayName } : {})
+            ...(projectDisplayName ? { projectDisplayName } : {}),
           }
         })
       } catch {
@@ -166,15 +166,11 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
       const profile = profileName ?? 'default'
       writeProfile(profile, {
         apiKey: next.apiKey,
-        url: next.url,
         workspace: next.workspace,
         project: next.project,
-        dir: next.dir,
-        model: next.model,
         modelKey: next.modelKey,
         modelUrl: next.modelUrl,
         maxConcurrentIssues: next.maxConcurrentIssues,
-        noGitBranch: next.noGitBranch,
       })
 
       const currentIdx = STEPS.indexOf(step)
@@ -187,7 +183,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
       }
       setStep('connecting')
     },
-    [config, step]
+    [config, step],
   )
 
   /** Previous wizard screen (linear). Do not skip “already filled” steps — Esc from model must reach directory. */
