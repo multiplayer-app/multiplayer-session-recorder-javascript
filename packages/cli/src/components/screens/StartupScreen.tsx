@@ -4,7 +4,10 @@ import { useKeyboard } from '@opentui/react'
 import type { AgentConfig } from '../../types/index.js'
 import { createApiService } from '../../services/api.service.js'
 import { API_URL } from '../../config.js'
+import { writeProfile } from '../../cli/profile.js'
 import { Logo } from '../Logo.js'
+import { AuthMethodStep } from '../startup/AuthMethodStep.js'
+import { ProjectSelectStep, type SelectableWorkspace } from '../startup/ProjectSelectStep.js'
 import { ApiKeyStep } from '../startup/ApiKeyStep.js'
 import { WorkspaceStep } from '../startup/WorkspaceStep.js'
 import { DirectoryStep } from '../startup/DirectoryStep.js'
@@ -12,11 +15,19 @@ import { ModelStep } from '../startup/ModelStep.js'
 import { RateLimitsStep } from '../startup/RateLimitsStep.js'
 import { ConnectingStep } from '../startup/ConnectingStep.js'
 
-type StepId = 'api-key' | 'workspace' | 'directory' | 'model' | 'rate-limits' | 'connecting'
+type StepId = 'auth-method' | 'project-select' | 'api-key' | 'workspace' | 'directory' | 'model' | 'rate-limits' | 'connecting'
 
-const STEPS: StepId[] = ['api-key', 'workspace', 'directory', 'model', 'rate-limits', 'connecting']
+const STEPS: StepId[] = ['auth-method', 'project-select', 'api-key', 'workspace', 'directory', 'model', 'rate-limits', 'connecting']
 
 const STEP_LABELS: Record<StepId, { title: string; description: string }> = {
+  'auth-method': {
+    title: 'Authentication',
+    description: 'Choose how to authenticate with Multiplayer.'
+  },
+  'project-select': {
+    title: 'Select Project',
+    description: 'Choose the project this agent will monitor.'
+  },
   'api-key': {
     title: 'Project API Key',
     description: 'Authenticate with Multiplayer and load workspace/project context.'
@@ -35,6 +46,8 @@ const STEP_LABELS: Record<StepId, { title: string; description: string }> = {
 }
 
 const STEP_SHORT: Record<StepId, string> = {
+  'auth-method': 'Auth',
+  'project-select': 'Project',
   'api-key': 'API key',
   workspace: 'Workspace',
   directory: 'Directory',
@@ -53,6 +66,10 @@ function compactContextLabel(name: string | undefined, id: string | undefined): 
 
 function canSkip(step: StepId, config: Partial<AgentConfig>): boolean {
   switch (step) {
+    case 'auth-method':
+      return !!config.apiKey
+    case 'project-select':
+      return !!(config.workspace && config.project)
     case 'api-key':
       return !!config.apiKey
     case 'workspace':
@@ -85,6 +102,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
   const [config, setConfig] = useState<Partial<AgentConfig>>(initialConfig)
   const [step, setStep] = useState<StepId>(() => firstRequiredStep(initialConfig))
   const [ready, setReady] = useState(false)
+  const [oauthWorkspaces, setOauthWorkspaces] = useState<SelectableWorkspace[]>([])
 
   useLayoutEffect(() => {
     console.clear()
@@ -144,6 +162,21 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
     (updates: Partial<AgentConfig>) => {
       const next = { ...config, ...updates }
       setConfig(next)
+
+      const profile = profileName ?? 'default'
+      writeProfile(profile, {
+        apiKey: next.apiKey,
+        url: next.url,
+        workspace: next.workspace,
+        project: next.project,
+        dir: next.dir,
+        model: next.model,
+        modelKey: next.modelKey,
+        modelUrl: next.modelUrl,
+        maxConcurrentIssues: next.maxConcurrentIssues,
+        noGitBranch: next.noGitBranch,
+      })
+
       const currentIdx = STEPS.indexOf(step)
       for (let i = currentIdx + 1; i < STEPS.length; i++) {
         const nextStep = STEPS[i]!
@@ -257,7 +290,33 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
             </text>
           </box>
 
-          {step === 'api-key' && <ApiKeyStep config={config} onComplete={advance} />}
+          {step === 'auth-method' && (
+            <AuthMethodStep
+              profileName={profileName}
+              onComplete={(updates) => {
+                const method = (updates as any)._authMethod
+                if (method === 'api-token') {
+                  setStep('api-key')
+                } else if ((updates as any)._oauthWorkspaces) {
+                  const workspaces = (updates as any)._oauthWorkspaces as SelectableWorkspace[]
+                  setOauthWorkspaces(workspaces)
+                  const next = { ...config, apiKey: updates.apiKey }
+                  setConfig(next)
+                  setStep('project-select')
+                } else {
+                  advance(updates)
+                }
+              }}
+            />
+          )}
+          {step === 'project-select' && (
+            <ProjectSelectStep
+              workspaces={oauthWorkspaces}
+              profileName={profileName}
+              onComplete={advance}
+            />
+          )}
+          {step === 'api-key' && <ApiKeyStep config={config} profileName={profileName} onComplete={advance} />}
           {step === 'workspace' && <WorkspaceStep config={config} onComplete={advance} />}
           {step === 'directory' && <DirectoryStep config={config} onComplete={advance} />}
           {step === 'model' && <ModelStep config={config} onComplete={advance} />}

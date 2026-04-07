@@ -2,6 +2,7 @@ import { io, Socket } from 'socket.io-client'
 import jwt from 'jsonwebtoken'
 import { URL } from 'url'
 import { createApiService } from './api.service.js'
+import { getAuthHeaders, isOAuthToken } from '../lib/authHeaders.js'
 import {
   AgentConfig,
   AgentMessage,
@@ -131,7 +132,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
   const socket: Socket = io(`${host}/workspaces/${config.workspace}/projects/${config.project}/agents`, {
     path: '/v0/radar/ws',
     auth: {
-      'x-api-key': config.apiKey,
+      ...getAuthHeaders(config.apiKey),
       'x-is-debugging-agent': 'true',
       ...(config.name ? { 'x-agent-name': config.name } : {}),
       ...(config.dir ? { 'x-context-path': config.dir } : {}),
@@ -244,7 +245,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': config.apiKey,
+        ...getAuthHeaders(config.apiKey),
       },
       body: JSON.stringify({ filename, mimeType: 'text/markdown', size, chatId }),
     })
@@ -276,7 +277,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     const query = new URLSearchParams({ limit: '20', ...(before ? { before } : {}) })
     const res = await fetch(
       `${apiBase}/workspaces/${workspaceId}/projects/${projectId}/agents/chats/${chatId}/messages?${query.toString()}`,
-      { headers: { 'x-api-key': config.apiKey } },
+      { headers: getAuthHeaders(config.apiKey) },
     )
     if (!res.ok) throw new Error(`Failed to fetch messages: ${res.status}`)
     const data = (await res.json()) as { messages: AgentMessage[]; hasMore: boolean }
@@ -290,7 +291,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
   ): Promise<Issue | null> => {
     const params = new URLSearchParams({ componentHash, limit: '1' })
     const res = await fetch(`${apiBase}/workspaces/${workspaceId}/projects/${projectId}/issues?${params}`, {
-      headers: { 'x-api-key': config.apiKey },
+      headers: getAuthHeaders(config.apiKey),
     })
     if (!res.ok) return null
     const data = (await res.json()) as { data: Issue[] }
@@ -305,7 +306,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
   ): Promise<void> => {
     const res = await fetch(`${apiBase}/workspaces/${workspaceId}/projects/${projectId}/issues/bulk`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': config.apiKey },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders(config.apiKey) },
       body: JSON.stringify({ filter: { componentHash: [componentHash] }, payload }),
     })
     if (!res.ok) throw new Error(`Failed to update issue: ${res.status}`)
@@ -323,7 +324,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': config.apiKey,
+          ...getAuthHeaders(config.apiKey),
         },
         body: JSON.stringify(payload),
         signal,
@@ -349,7 +350,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': config.apiKey,
+          ...getAuthHeaders(config.apiKey),
         },
       },
     )
@@ -366,7 +367,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
   ): Promise<AgentChat | null> => {
     const res = await fetch(
       `${apiBase}/workspaces/${workspaceId}/projects/${projectId}/agents/chats/${chatId}`,
-      { headers: { 'x-api-key': config.apiKey } },
+      { headers: getAuthHeaders(config.apiKey) },
     )
     if (!res.ok) return null
     return (await res.json()) as AgentChat
@@ -429,16 +430,22 @@ export const decodeApiKeyPayload = (apiKey: string): ApiKeyPayload => {
   }
 }
 
-
 export const validateApiKey = async (url: string, apiKey: string): Promise<{ workspace: string; project: string }> => {
   const payload = decodeApiKeyPayload(apiKey)
 
-  if (
-    !payload.workspace
-    || !payload.project
-    || !payload.integration
-  ) {
-    throw new Error('Invalid API key')
+  // Project API keys are JWTs with workspace + project + integration embedded.
+  // Everything else (OAuth JWTs without integration, opaque tokens) uses Bearer auth.
+  if (!payload.workspace || !payload.project || !payload.integration) {
+    const api = createApiService({ url, apiKey: '', bearerToken: apiKey })
+    const session = await api.fetchUserSession()
+    const workspace = session?.workspaces?.[0]
+    if (!workspace) throw new Error('No workspace found for this account')
+
+    const projects = await api.fetchProjects(workspace._id)
+    const project = projects[0]
+    if (!project?._id) throw new Error('No project found for this account')
+
+    return { workspace: workspace._id, project: project._id }
   }
 
   const api = createApiService({ url, apiKey })

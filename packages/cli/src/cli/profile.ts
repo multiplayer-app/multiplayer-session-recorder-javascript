@@ -28,6 +28,8 @@ import os from 'os'
 export interface ProfileConfig {
   url?: string
   apiKey?: string
+  workspace?: string
+  project?: string
   name?: string
   dir?: string
   model?: string
@@ -72,6 +74,8 @@ function iniToProfileConfig(raw: Record<string, string>): ProfileConfig {
   const cfg: ProfileConfig = {}
   if (raw['url']) cfg.url = raw['url']
   if (raw['api_key']) cfg.apiKey = raw['api_key']
+  if (raw['workspace']) cfg.workspace = raw['workspace']
+  if (raw['project']) cfg.project = raw['project']
   if (raw['name']) cfg.name = raw['name']
   if (raw['dir']) cfg.dir = raw['dir']
   if (raw['model']) cfg.model = raw['model']
@@ -120,6 +124,57 @@ function findConfigFile(projectDir?: string): string | undefined {
   }
 
   return undefined
+}
+
+/**
+ * Serialize a map of profiles back to INI format.
+ */
+function serializeIni(profiles: Record<string, Record<string, string>>): string {
+  const lines: string[] = []
+  for (const [section, entries] of Object.entries(profiles)) {
+    lines.push(`[${section}]`)
+    for (const [key, value] of Object.entries(entries)) {
+      lines.push(`${key} = ${value}`)
+    }
+    lines.push('')
+  }
+  return lines.join('\n')
+}
+
+/**
+ * Write (merge) a partial ProfileConfig into the named profile inside
+ * `~/.multiplayer/config`, creating the file/directory if needed.
+ */
+export function writeProfile(profileName: string, config: Partial<ProfileConfig>): void {
+  const configPath = path.join(os.homedir(), '.multiplayer', 'config')
+  const dir = path.dirname(configPath)
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+
+  let profiles: Record<string, Record<string, string>> = {}
+  if (fs.existsSync(configPath)) {
+    try {
+      profiles = parseIni(fs.readFileSync(configPath, 'utf-8'))
+    } catch {
+      profiles = {}
+    }
+  }
+
+  if (!profiles[profileName]) profiles[profileName] = {}
+  const section = profiles[profileName]!
+
+  if (config.apiKey !== undefined) section['api_key'] = config.apiKey
+  if (config.url !== undefined) section['url'] = config.url
+  if (config.workspace !== undefined) section['workspace'] = config.workspace
+  if (config.project !== undefined) section['project'] = config.project
+  if (config.name !== undefined) section['name'] = config.name
+  if (config.dir !== undefined) section['dir'] = config.dir
+  if (config.model !== undefined) section['model'] = config.model
+  if (config.modelKey !== undefined) section['model_key'] = config.modelKey
+  if (config.modelUrl !== undefined) section['model_url'] = config.modelUrl
+  if (config.maxConcurrentIssues !== undefined) section['max_concurrent'] = String(config.maxConcurrentIssues)
+  if (config.noGitBranch !== undefined) section['no_git_branch'] = String(config.noGitBranch)
+
+  fs.writeFileSync(configPath, serializeIni(profiles), 'utf-8')
 }
 
 /**
