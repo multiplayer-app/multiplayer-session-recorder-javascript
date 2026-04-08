@@ -14,10 +14,11 @@ import { DirectoryStep } from '../startup/DirectoryStep.js'
 import { ModelStep } from '../startup/ModelStep.js'
 import { RateLimitsStep } from '../startup/RateLimitsStep.js'
 import { ConnectingStep } from '../startup/ConnectingStep.js'
+import { SessionRecorderStep } from '../startup/SessionRecorderStep.js'
 
-type StepId = 'auth-method' | 'project-select' | 'api-key' | 'workspace' | 'directory' | 'model' | 'rate-limits' | 'connecting'
+type StepId = 'auth-method' | 'project-select' | 'api-key' | 'workspace' | 'directory' | 'model' | 'rate-limits' | 'session-recorder' | 'connecting'
 
-const STEPS: StepId[] = ['auth-method', 'project-select', 'api-key', 'workspace', 'directory', 'model', 'rate-limits', 'connecting']
+const STEPS: StepId[] = ['auth-method', 'project-select', 'api-key', 'workspace', 'directory', 'model', 'rate-limits', 'session-recorder', 'connecting']
 
 const STEP_LABELS: Record<StepId, { title: string; description: string }> = {
   'auth-method': {
@@ -42,6 +43,10 @@ const STEP_LABELS: Record<StepId, { title: string; description: string }> = {
   },
   model: { title: 'AI Model', description: 'Choose an AI provider and model for issue resolution.' },
   'rate-limits': { title: 'Concurrency', description: 'Set how many issues can be processed in parallel.' },
+  'session-recorder': {
+    title: 'Session Recorder',
+    description: 'Detect your app stack and set up the Multiplayer Session Recorder SDK.',
+  },
   connecting: { title: 'Final Checks', description: 'Verify git and provider requirements before starting runtime.' },
 }
 
@@ -53,6 +58,7 @@ const STEP_SHORT: Record<StepId, string> = {
   directory: 'Directory',
   model: 'Model',
   'rate-limits': 'Concurrency',
+  'session-recorder': 'Recorder',
   connecting: 'Verify',
 }
 
@@ -76,6 +82,8 @@ function canSkip(step: StepId, config: Partial<AgentConfig>): boolean {
       return !!(config.workspace && config.project && config.apiKey)
     case 'directory':
       return !!config.dir
+    case 'session-recorder':
+      return !!config.sessionRecorderSetupDone || !!process.env.MULTIPLAYER_SKIP_SR_SETUP
     case 'model':
       return !!(config.model && (config.model.startsWith('claude') || config.modelKey))
     case 'rate-limits':
@@ -317,6 +325,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
           {step === 'directory' && <DirectoryStep config={config} onComplete={advance} />}
           {step === 'model' && <ModelStep config={config} onComplete={advance} />}
           {step === 'rate-limits' && <RateLimitsStep config={config} onComplete={advance} />}
+          {step === 'session-recorder' && <SessionRecorderStep config={config} onComplete={advance} />}
           {step === 'connecting' && (
             <ConnectingStep config={config as AgentConfig} onComplete={onComplete} onBack={goBack} />
           )}

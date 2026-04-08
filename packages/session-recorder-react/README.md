@@ -264,11 +264,21 @@ The options passed to `SessionRecorder.init(...)` are forwarded to the underlyin
 - `application`, `version`, `environment`, `apiKey`
 - `showWidget`, `showContinuousRecording`
 - `recordNavigation`, `recordCanvas`, `recordGestures`
+- `inlineImages` (default `false`; set `true` only if cross-origin image hosts send CORS headers such as `Access-Control-Allow-Origin` for your app—otherwise the browser cannot read pixels for base64 inlining)
+- `inlineStylesheet` (default `false`; opt in when stylesheet URLs allow reading rules—cross-origin hosts may need CORS)
 - `propagateTraceHeaderCorsUrls`, `ignoreUrls`
 - `masking`, `captureBody`, `captureHeaders`
 - `maxCapturingHttpPayloadSize` and other advanced HTTP controls
 
 Any time `recordNavigation` is enabled, the browser SDK will emit OpenTelemetry navigation spans and keep an in-memory stack of visited routes. You can access the navigation helpers through `SessionRecorder.navigation` if you need to introspect from React components.
+
+### Important: Inlining images and stylesheets (CORS)
+
+Options passed to `SessionRecorder.init` are forwarded to the browser SDK. By default, **`inlineImages`** and **`inlineStylesheet`** are **`false`**, which avoids failed cross-origin requests when assets come from hosts without CORS (for example S3 or a CDN).
+
+If you set either to **`true`**, the asset origin must allow your app via headers such as **`Access-Control-Allow-Origin`**, or you should serve those assets same-origin (for example through a proxy). With defaults off, replays still record normal URLs and load images and stylesheets like a regular page when links stay valid.
+
+Details match the [browser package README](../session-recorder-browser/README.md#important-inlining-images-and-stylesheets-cors).
 
 ## Capturing exceptions in React apps
 
@@ -544,6 +554,7 @@ All hooks and helpers ship with TypeScript types. To extend the navigation metad
 
 ## Troubleshooting
 
+- **CORS / DevTools errors when enabling `inlineImages` or `inlineStylesheet`:** See [Inlining images and stylesheets (CORS)](#important-inlining-images-and-stylesheets-cors) under Configuration reference. Defaults are off so you usually do not need to change CDN or bucket CORS unless you opt in.
 - Ensure the provider wraps your entire component tree so context hooks resolve.
 - Confirm `SessionRecorder.init` runs only once and before your app mounts.
 - Ensure the session recorder required options are passed and the API key is valid.
