@@ -25,12 +25,12 @@ interface ModelOption {
 const CLAUDE_MODELS: ModelOption[] = [
   { label: 'claude-sonnet-4-6', value: 'claude-sonnet-4-6', provider: 'claude', description: 'Fast, capable' },
   { label: 'claude-opus-4-6', value: 'claude-opus-4-6', provider: 'claude', description: 'Most powerful' },
-  { label: 'claude-haiku-4-5', value: 'claude-haiku-4-5-20251001', provider: 'claude', description: 'Fastest' }
+  { label: 'claude-haiku-4-5', value: 'claude-haiku-4-5-20251001', provider: 'claude', description: 'Fastest' },
 ]
 
 const OPENAI_MODELS: ModelOption[] = [
   { label: 'gpt-4o', value: 'gpt-4o', provider: 'openai' },
-  { label: 'gpt-4o-mini', value: 'gpt-4o-mini', provider: 'openai', description: 'Faster, cheaper' }
+  { label: 'gpt-4o-mini', value: 'gpt-4o-mini', provider: 'openai', description: 'Faster, cheaper' },
 ]
 
 interface Props {
@@ -62,7 +62,7 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
         setOptions([
           ...CLAUDE_MODELS,
           ...OPENAI_MODELS,
-          { label: 'Custom OpenAI-compatible...', value: '__custom__', provider: 'openai' }
+          { label: 'Custom OpenAI-compatible...', value: '__custom__', provider: 'openai' },
         ])
         setSubStep('select')
       })
@@ -70,12 +70,12 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
         setClaudeAvailable(false)
         setOptions([
           ...OPENAI_MODELS,
-          { label: 'Custom OpenAI-compatible...', value: '__custom__', provider: 'openai' }
+          { label: 'Custom OpenAI-compatible...', value: '__custom__', provider: 'openai' },
         ])
         setDetectError('Claude CLI not found — Claude models unavailable')
         setSubStep('select')
       })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   const selectModel = (opt: ModelOption) => {
     setSelectedModel(opt)

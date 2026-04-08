@@ -21,7 +21,7 @@ const IGNORED_DIRS = new Set([
   '.nuxt',
   '__pycache__',
   '.venv',
-  'venv'
+  'venv',
 ])
 
 function readDirs(dirPath: string): string[] {
@@ -48,9 +48,9 @@ const SCROLLBAR_STYLE = {
     showArrows: false,
     trackOptions: {
       foregroundColor: '#484f58',
-      backgroundColor: '#21262d'
-    }
-  }
+      backgroundColor: '#21262d',
+    },
+  },
 } as const
 
 function clickHandler(handler: () => void) {
@@ -102,7 +102,7 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
         .then((isGit) => {
           setValidating(false)
           if (!isGit) {
-            setError(`Not a git repository`)
+            setError('Not a git repository')
             return
           }
           onComplete({ dir: currentPath })
@@ -186,7 +186,7 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
               fg={i === breadcrumbs.length - 1 ? '#e6edf3' : hoveredBreadcrumb === i ? '#79c0ff' : '#58a6ff'}
               attributes={tuiAttrs({
                 bold: i === breadcrumbs.length - 1,
-                underline: hoveredBreadcrumb === i && i !== breadcrumbs.length - 1
+                underline: hoveredBreadcrumb === i && i !== breadcrumbs.length - 1,
               })}
               onMouseUp={clickHandler(() => navigateToBreadcrumb(i))}
               onMouseOver={() => setHoveredBreadcrumb(i)}

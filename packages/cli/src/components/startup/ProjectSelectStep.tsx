@@ -8,7 +8,7 @@ import { collapseForSingleLine } from '../../lib/formatDisplay.js'
 import { ApiProject } from '../../services/api.service.js'
 
 function sanitizeName(name: string): string {
-  return collapseForSingleLine(name.replace(/\\'/g, "'").replace(/\\"/g, '"'))
+  return collapseForSingleLine(name.replace(/\\'/g, '\'').replace(/\\"/g, '"'))
 }
 
 export interface SelectableWorkspace {
@@ -20,6 +20,7 @@ export interface SelectableWorkspace {
 interface Props {
   workspaces: SelectableWorkspace[]
   profileName?: string
+  loading?: boolean
   onComplete: (updates: Partial<AgentConfig>) => void
 }
 
@@ -35,7 +36,7 @@ const SCROLLBAR_STYLE = {
   }
 }
 
-export function ProjectSelectStep({ workspaces, profileName, onComplete }: Props): ReactElement {
+export function ProjectSelectStep({ workspaces, profileName, loading = false, onComplete }: Props): ReactElement {
   // Flatten to a single list of workspace+project pairs
   const options = workspaces.flatMap((ws) => ws.projects.map((proj) => ({ workspace: ws, project: proj })))
 
@@ -69,6 +70,14 @@ export function ProjectSelectStep({ workspaces, profileName, onComplete }: Props
     })
   }
 
+  if (loading) {
+    return (
+      <box flexDirection='column' gap={1}>
+        <text fg='#f59e0b'>◌ Loading projects...</text>
+      </box>
+    ) as ReactElement
+  }
+
   if (!options.length) {
     return (
       <box flexDirection='column' gap={1}>
@@ -86,9 +95,11 @@ export function ProjectSelectStep({ workspaces, profileName, onComplete }: Props
     if (opt.workspace._id !== lastWsId) {
       lastWsId = opt.workspace._id
       rows.push(
+        // eslint-disable-next-line
+        // @ts-ignore
         <box key={`ws-${opt.workspace._id}`} height={1} marginTop={rows.length === 0 ? 0 : 1}>
           <text attributes={tuiAttrs({ dim: true })}>{sanitizeName(opt.workspace.name)}</text>
-        </box>
+        </box>,
       )
     }
     rows.push(
@@ -97,7 +108,7 @@ export function ProjectSelectStep({ workspaces, profileName, onComplete }: Props
         <text fg={isCurrent ? '#22d3ee' : undefined} attributes={tuiAttrs({ bold: isCurrent })}>
           {sanitizeName(opt.project.name)}
         </text>
-      </box>
+      </box>,
     )
   }
 

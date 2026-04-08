@@ -79,14 +79,14 @@ export function AuthMethodStep({ profileName, onComplete }: Props): ReactElement
           session.workspaces.map(async (ws) => ({
             _id: ws._id,
             name: ws.name,
-            projects: await api.fetchProjects(ws._id)
-          }))
+            projects: await api.fetchProjects(ws._id),
+          })),
         )
 
         const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
-        writeProfile(profile, { apiKey: token })
+        writeProfile(profile, { apiKey: token, authType: 'oauth' })
 
-        onComplete({ apiKey: token, _oauthWorkspaces: workspaces })
+        onComplete({ apiKey: token, authType: 'oauth', _oauthWorkspaces: workspaces })
       } catch (err: any) {
         setOAuthState('error')
         setError(err.message)

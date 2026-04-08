@@ -65,29 +65,29 @@ export function ConnectingStep({ config, onComplete, onBack }: Props): ReactElem
 
     void run()
     return () => { cancelled = true }
-  }, [runId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [runId])
 
   const apiKeyPassed = status !== 'checking-api-key' && !(status === 'error' && !error?.includes('git') && !error?.includes('AI') && !error?.includes('model'))
   const apiKeyColor =
     status === 'checking-api-key' ? '#f59e0b'
-    : status === 'error' && !apiKeyPassed ? '#ef4444'
-    : '#10b981'
+      : status === 'error' && !apiKeyPassed ? '#ef4444'
+        : '#10b981'
   const apiKeySymbol =
     status === 'checking-api-key' ? '◌'
-    : status === 'error' && !apiKeyPassed ? '✕'
-    : '✓'
+      : status === 'error' && !apiKeyPassed ? '✕'
+        : '✓'
 
   const gitStarted = status !== 'checking-api-key' && status !== 'error' || (status === 'error' && (error?.includes('git') || apiKeyPassed))
   const gitColor =
     !gitStarted ? '#6b7280'
-    : status === 'checking-git' ? '#f59e0b'
-    : status === 'error' && error?.includes('git') ? '#ef4444'
-    : '#10b981'
+      : status === 'checking-git' ? '#f59e0b'
+        : status === 'error' && error?.includes('git') ? '#ef4444'
+          : '#10b981'
   const gitSymbol =
     !gitStarted ? '·'
-    : status === 'checking-git' ? '◌'
-    : status === 'error' && error?.includes('git') ? '✕'
-    : '✓'
+      : status === 'checking-git' ? '◌'
+        : status === 'error' && error?.includes('git') ? '✕'
+          : '✓'
 
   return (
     <box flexDirection="column" gap={1}>
