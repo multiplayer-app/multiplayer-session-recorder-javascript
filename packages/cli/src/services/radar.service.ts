@@ -420,6 +420,7 @@ export interface ApiKeyPayload {
   workspace?: string
   project?: string
   integration?: string
+  type?: string
 }
 
 export const decodeApiKeyPayload = (apiKey: string): ApiKeyPayload => {

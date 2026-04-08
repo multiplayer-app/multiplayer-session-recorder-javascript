@@ -1,6 +1,8 @@
 export interface AgentConfig {
   url: string
   apiKey: string
+  /** 'oauth' = token from browser login; 'api_key' = personal project token pasted by user */
+  authType?: 'oauth' | 'api_key'
   workspace?: string
   project?: string
   /** Human-readable name from GET /v0/api/workspaces/:id (optional, for UI) */

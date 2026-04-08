@@ -28,6 +28,8 @@ import os from 'os'
 export interface ProfileConfig {
   url?: string
   apiKey?: string
+  /** 'oauth' = token from browser login; 'api_key' = personal project token pasted by user */
+  authType?: 'oauth' | 'api_key'
   workspace?: string
   project?: string
   name?: string
@@ -74,6 +76,7 @@ function iniToProfileConfig(raw: Record<string, string>): ProfileConfig {
   const cfg: ProfileConfig = {}
   if (raw['url']) cfg.url = raw['url']
   if (raw['api_key']) cfg.apiKey = raw['api_key']
+  if (raw['auth_type'] === 'oauth' || raw['auth_type'] === 'api_key') cfg.authType = raw['auth_type']
   if (raw['workspace']) cfg.workspace = raw['workspace']
   if (raw['project']) cfg.project = raw['project']
   if (raw['name']) cfg.name = raw['name']
@@ -163,6 +166,7 @@ export function writeProfile(profileName: string, config: Partial<ProfileConfig>
   const section = profiles[profileName]!
 
   if (config.apiKey !== undefined) section['api_key'] = config.apiKey
+  if (config.authType !== undefined) section['auth_type'] = config.authType
   if (config.url !== undefined) section['url'] = config.url
   if (config.workspace !== undefined) section['workspace'] = config.workspace
   if (config.project !== undefined) section['project'] = config.project

@@ -25,6 +25,12 @@ export function ApiKeyStep({ config, profileName, onComplete }: Props): ReactEle
     }
 
     const apiKeyPayload = decodeApiKeyPayload(trimmedApiKey)
+
+    if (apiKeyPayload.type && apiKeyPayload.type !== 'API_KEY') {
+      setError(`Invalid key type "${apiKeyPayload.type}". Please use an Agent API key from the Multiplayer dashboard (Settings → API Keys).`)
+      return
+    }
+
     const workspaceId = apiKeyPayload.workspace!
     const projectId = apiKeyPayload.project!
 
@@ -45,9 +51,10 @@ export function ApiKeyStep({ config, profileName, onComplete }: Props): ReactEle
 
         setValidating(false)
         const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
-        writeProfile(profile, { apiKey: trimmedApiKey })
+        writeProfile(profile, { apiKey: trimmedApiKey, authType: 'api_key' })
         onComplete({
           apiKey: trimmedApiKey,
+          authType: 'api_key',
           workspace: workspaceId,
           project: projectId,
         })

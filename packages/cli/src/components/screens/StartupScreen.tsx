@@ -56,6 +56,8 @@ const STEP_SHORT: Record<StepId, string> = {
   connecting: 'Verify',
 }
 
+const AUTH_STEPS: StepId[] = ['auth-method', 'project-select', 'api-key', 'workspace']
+
 const STEP_PANEL_WIDTH = 24
 
 function compactContextLabel(name: string | undefined, id: string | undefined): string {
@@ -69,6 +71,8 @@ function canSkip(step: StepId, config: Partial<AgentConfig>): boolean {
     case 'auth-method':
       return !!config.apiKey
     case 'project-select':
+      // OAuth token without workspace/project must go through project selection
+      if (config.authType === 'oauth' && !(config.workspace && config.project)) return false
       return !!(config.workspace && config.project)
     case 'api-key':
       return !!config.apiKey
@@ -103,6 +107,36 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
   const [step, setStep] = useState<StepId>(() => firstRequiredStep(initialConfig))
   const [ready, setReady] = useState(false)
   const [oauthWorkspaces, setOauthWorkspaces] = useState<SelectableWorkspace[]>([])
+  const [fetchingWorkspaces, setFetchingWorkspaces] = useState(false)
+
+  // If we start on 'project-select' with a saved OAuth token, fetch workspaces automatically
+  useEffect(() => {
+    if (step !== 'project-select' || oauthWorkspaces.length > 0 || fetchingWorkspaces) return
+    const apiKey = config.apiKey?.trim()
+    if (!apiKey) return
+
+    setFetchingWorkspaces(true)
+    const url = config.url || API_URL
+    const api = createApiService({ url, apiKey: '', bearerToken: apiKey })
+    void api.fetchUserSession()
+      .then(async (session) => {
+        const workspaces: SelectableWorkspace[] = await Promise.all(
+          session.workspaces.map(async ws => ({
+            _id: ws._id,
+            name: ws.name,
+            projects: (await createApiService({ url, apiKey: '', bearerToken: apiKey }).fetchProjects(ws._id))
+              .filter((p): p is { _id: string; name: string } => !!p._id && !!p.name),
+          }))
+        )
+        // Persist auth_type so future startups go directly to project-select
+        const profile = profileName ?? 'default'
+        writeProfile(profile, { authType: 'oauth' })
+        setConfig(c => ({ ...c, authType: 'oauth' }))
+        setOauthWorkspaces(workspaces)
+      })
+      .catch(() => { /* will show empty list with error from ProjectSelectStep */ })
+      .finally(() => setFetchingWorkspaces(false))
+  }, [step])
 
   useLayoutEffect(() => {
     console.clear()
@@ -201,10 +235,33 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
   const currentStepIndex = STEPS.indexOf(step)
   const visibleSteps = STEPS.filter((s, i) => i <= currentStepIndex || !canSkip(s, config) || s === 'connecting')
   const currentVisibleIndex = visibleSteps.indexOf(step)
+
+  // Sidebar display: collapse all auth steps into one "Auth" entry
+  type SidebarEntry = { id: string; label: string; isDone: boolean; isCurrent: boolean }
+  const sidebarSteps: SidebarEntry[] = []
+  let authGroupAdded = false
+  for (const s of visibleSteps) {
+    if (AUTH_STEPS.includes(s)) {
+      if (!authGroupAdded) {
+        authGroupAdded = true
+        const lastAuthVisibleIdx = visibleSteps.reduce((acc, vs, i) => (AUTH_STEPS.includes(vs) ? i : acc), -1)
+        sidebarSteps.push({
+          id: 'auth-group',
+          label: 'Auth',
+          isDone: lastAuthVisibleIdx < currentVisibleIndex,
+          isCurrent: AUTH_STEPS.includes(step),
+        })
+      }
+    } else {
+      const i = visibleSteps.indexOf(s)
+      sidebarSteps.push({ id: s, label: STEP_SHORT[s], isDone: i < currentVisibleIndex, isCurrent: s === step })
+    }
+  }
+  const currentSidebarIndex = sidebarSteps.findIndex((e) => e.isCurrent)
   const label = STEP_LABELS[step]
-  const done = Math.max(0, currentVisibleIndex)
-  const total = Math.max(1, visibleSteps.length)
-  const progressPrefix = `${currentVisibleIndex + 1}/${visibleSteps.length}`
+  const done = Math.max(0, currentSidebarIndex)
+  const total = Math.max(1, sidebarSteps.length)
+  const progressPrefix = `${currentSidebarIndex + 1}/${sidebarSteps.length}`
   const progressWidth = Math.max(8, STEP_PANEL_WIDTH - 6 - progressPrefix.length)
   const filled = Math.round((done / (total - 1 || 1)) * progressWidth)
   const maskedApiKey = config.apiKey ? `${config.apiKey.slice(0, 4)}••••${config.apiKey.slice(-3)}` : '—'
@@ -226,14 +283,12 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
         {/* Left sidebar: step progress */}
         <box width={STEP_PANEL_WIDTH} flexDirection='column'>
           <text attributes={tuiAttrs({ bold: true })}>Setup Steps</text>
-          {visibleSteps.map((s, i) => {
-            const isCurrent = s === step
-            const isDone = i < currentVisibleIndex
-            const marker = isDone ? '✓' : isCurrent ? '❯' : '·'
-            const color = isDone ? '#10b981' : isCurrent ? '#22d3ee' : '#6b7280'
+          {sidebarSteps.map((entry) => {
+            const marker = entry.isDone ? '✓' : entry.isCurrent ? '❯' : '·'
+            const color = entry.isDone ? '#10b981' : entry.isCurrent ? '#22d3ee' : '#6b7280'
             return (
-              <text key={s} fg={color} attributes={tuiAttrs({ bold: isCurrent })}>
-                {marker} {STEP_SHORT[s]}
+              <text key={entry.id} fg={color} attributes={tuiAttrs({ bold: entry.isCurrent })}>
+                {marker} {entry.label}
               </text>
             )
           })}
@@ -309,6 +364,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
             <ProjectSelectStep
               workspaces={oauthWorkspaces}
               profileName={profileName}
+              loading={fetchingWorkspaces}
               onComplete={advance}
             />
           )}
