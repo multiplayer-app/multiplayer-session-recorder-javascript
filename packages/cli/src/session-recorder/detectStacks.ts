@@ -48,6 +48,16 @@ export type SdkPackage =
   | 'multiplayer-dotnet'
   | 'multiplayer-java'
 
+export type SdkRelevance =
+  /** SDK is needed and not yet installed */
+  | 'needed'
+  /** SDK is already installed */
+  | 'installed'
+  /** This package doesn't need the SDK (e.g., utility lib, types package) */
+  | 'not-needed'
+  /** SDK is provided by a dependency this package consumes */
+  | 'covered-by-dependency'
+
 export interface DetectedStack {
   /** Root directory of this app/package */
   root: string
@@ -73,6 +83,26 @@ export interface DetectedStack {
   entryFile?: string
   /** Language */
   language: 'typescript' | 'javascript' | 'python' | 'go' | 'ruby' | 'java' | 'kotlin' | 'csharp'
+  /** AI-determined SDK relevance (set after classification) */
+  sdkRelevance?: SdkRelevance
+  /** Human-readable reason for the relevance classification */
+  sdkRelevanceReason?: string
+  /** Package name from package.json (for monorepo graph) */
+  packageName?: string
+  /** Description from package.json */
+  packageDescription?: string
+  /** Internal monorepo packages this stack depends on */
+  internalDeps?: string[]
+  /** Internal monorepo packages that depend on this stack */
+  internalDependents?: string[]
+}
+
+/** Monorepo dependency graph: maps package name → list of internal package names it depends on */
+export interface MonorepoGraph {
+  /** All package names found in the monorepo */
+  packages: Map<string, { root: string; relativePath: string; deps: string[] }>
+  /** Reverse map: package name → packages that depend on it */
+  dependents: Map<string, string[]>
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -245,6 +275,73 @@ function findInstalledSdk(root: string): string | null {
   return null
 }
 
+/** The Multiplayer OTLP endpoint domain — backends can use standard OTel with this endpoint */
+const MULTIPLAYER_OTLP_DOMAIN = 'otlp.multiplayer.app'
+
+/** Known OTel OTLP packages that indicate OpenTelemetry is configured */
+const OTEL_PACKAGES = [
+  '@opentelemetry/sdk-trace-node',
+  '@opentelemetry/sdk-trace-base',
+  '@opentelemetry/sdk-node',
+  '@opentelemetry/exporter-trace-otlp-http',
+  '@opentelemetry/exporter-trace-otlp-grpc',
+  '@opentelemetry/exporter-trace-otlp-proto',
+  '@opentelemetry/exporter-logs-otlp-http',
+  '@opentelemetry/auto-instrumentations-node',
+] as const
+
+/**
+ * Check if a backend project has OpenTelemetry set up to export to the Multiplayer
+ * OTLP endpoint (otlp.multiplayer.app). This counts as "installed" because standard
+ * OTel with the Multiplayer endpoint is sufficient for backend tracing — no Multiplayer
+ * SDK package, ID generator, or exporter needed.
+ *
+ * Checks:
+ * 1. OTel packages in dependencies
+ * 2. Multiplayer OTLP endpoint in source files, env files, or OTel collector configs
+ */
+function hasOtelWithMultiplayerEndpoint(root: string): boolean {
+  const pkgJson = readJsonSafe(path.join(root, 'package.json'))
+  if (!pkgJson) return false
+
+  const allDeps = { ...pkgJson.dependencies, ...pkgJson.devDependencies }
+  const depNames = Object.keys(allDeps)
+  const hasOtel = OTEL_PACKAGES.some(pkg => depNames.includes(pkg))
+  if (!hasOtel) return false
+
+  // Check source files, env files, and OTel configs for the Multiplayer OTLP endpoint
+  const filesToCheck = [
+    // OTel config files
+    'src/opentelemetry.ts', 'src/opentelemetry.js',
+    'src/tracing.ts', 'src/tracing.js',
+    'src/instrumentation.ts', 'src/instrumentation.js',
+    'opentelemetry.ts', 'opentelemetry.js',
+    'tracing.ts', 'tracing.js',
+    // OTel collector configs
+    'otel-collector-config.yaml', 'otel-collector-config.yml',
+    // Env files (endpoint may be configured via OTEL_EXPORTER_OTLP_ENDPOINT)
+    '.env', '.env.example', '.env.local', '.env.production',
+    // Docker compose (may configure OTel collector with Multiplayer endpoint)
+    'docker-compose.yml', 'docker-compose.yaml',
+    // Entry files
+    'src/index.ts', 'src/index.js', 'src/main.ts', 'src/main.js',
+    'src/server.ts', 'src/server.js', 'src/app.ts', 'src/app.js',
+    'index.ts', 'index.js', 'server.ts', 'server.js', 'app.ts', 'app.js',
+  ]
+
+  for (const rel of filesToCheck) {
+    const abs = path.join(root, rel)
+    try {
+      if (!fs.existsSync(abs)) continue
+      const content = fs.readFileSync(abs, 'utf-8')
+      if (content.length > 100_000) continue // skip very large files
+      if (content.includes(MULTIPLAYER_OTLP_DOMAIN)) return true
+    } catch { /* skip unreadable */ }
+  }
+
+  return false
+}
+
 // ─── JS/TS project scanning ─────────────────────────────────────────────────
 
 function scanJsProject(root: string, relativePath: string): DetectedStack[] {
@@ -262,6 +359,9 @@ function scanJsProject(root: string, relativePath: string): DetectedStack[] {
   // Check if ANY Multiplayer session recorder SDK is already installed
   // (user may have used browser lib in a React app, etc.)
   const installedSdk = findInstalledSdk(root)
+  // For backends: also check if OTel is configured with Multiplayer OTLP endpoint
+  // (standard OTel + otlp.multiplayer.app is sufficient — no Multiplayer SDK package needed)
+  const hasOtelMultiplayer = hasOtelWithMultiplayerEndpoint(root)
   const isLanguageTs = depNames.includes('typescript') || fileExists(path.join(root, 'tsconfig.json'))
 
   // Detect frontend/fullstack framework (priority order matters)
@@ -297,6 +397,7 @@ function scanJsProject(root: string, relativePath: string): DetectedStack[] {
       const existingFullstack = results.find(r => r.type === 'fullstack')
       if (existingFullstack) break
 
+      const backendInstalled = installedSdk !== null || hasOtelMultiplayer
       results.push({
         root,
         relativePath,
@@ -306,8 +407,8 @@ function scanJsProject(root: string, relativePath: string): DetectedStack[] {
         sdkPackage,
         readmePath: getReadmePath(sdkPackage, info.framework),
         packageManager,
-        alreadyInstalled: installedSdk !== null,
-        installedSdkPackage: installedSdk ?? undefined,
+        alreadyInstalled: backendInstalled,
+        installedSdkPackage: installedSdk ?? (hasOtelMultiplayer ? 'otel+otlp.multiplayer.app' : undefined),
         entryFile: findEntryFile(root, info.framework),
         language: isLanguageTs ? 'typescript' : 'javascript',
       })
@@ -319,6 +420,7 @@ function scanJsProject(root: string, relativePath: string): DetectedStack[] {
   // If we have package.json with a backend-ish main/bin but no framework detected
   if (!frontendDetected && !backendDetected && (pkgJson.main || pkgJson.bin)) {
     const sdkPackage = getSdkPackage('node-generic', 'backend')
+    const backendInstalled = installedSdk !== null || hasOtelMultiplayer
     results.push({
       root,
       relativePath,
@@ -328,8 +430,8 @@ function scanJsProject(root: string, relativePath: string): DetectedStack[] {
       sdkPackage,
       readmePath: getReadmePath(sdkPackage, 'node-generic'),
       packageManager,
-      alreadyInstalled: installedSdk !== null,
-      installedSdkPackage: installedSdk ?? undefined,
+      alreadyInstalled: backendInstalled,
+      installedSdkPackage: installedSdk ?? (hasOtelMultiplayer ? 'otel+otlp.multiplayer.app' : undefined),
       entryFile: findEntryFile(root, 'node-generic'),
       language: isLanguageTs ? 'typescript' : 'javascript',
     })
@@ -498,6 +600,81 @@ function scanDirectory(dir: string, scanRoot: string, depth: number): DetectedSt
 }
 
 /**
+ * Build a dependency graph for all packages in a monorepo.
+ * Maps package names to their internal dependencies and dependents.
+ */
+export function buildMonorepoGraph(dir: string, _stacks: DetectedStack[]): MonorepoGraph {
+  const packages = new Map<string, { root: string; relativePath: string; deps: string[] }>()
+  const allPkgJsons = new Map<string, Record<string, any>>()
+
+  // First pass: collect all package names
+  const collectPackages = (searchDir: string, depth: number) => {
+    if (depth > MAX_DEPTH) return
+    const pkgJsonPath = path.join(searchDir, 'package.json')
+    const pkgJson = readJsonSafe(pkgJsonPath)
+    if (pkgJson?.name) {
+      const relativePath = path.relative(dir, searchDir) || '.'
+      allPkgJsons.set(pkgJson.name, pkgJson)
+      packages.set(pkgJson.name, { root: searchDir, relativePath, deps: [] })
+    }
+    try {
+      const entries = fs.readdirSync(searchDir, { withFileTypes: true })
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue
+        if (SKIP_DIRS.has(entry.name) || entry.name.startsWith('.')) continue
+        collectPackages(path.join(searchDir, entry.name), depth + 1)
+      }
+    } catch { /* ignore */ }
+  }
+  collectPackages(dir, 0)
+
+  const allPackageNames = new Set(packages.keys())
+
+  // Second pass: build dependency edges (only internal deps)
+  for (const [name, pkgJson] of allPkgJsons) {
+    const allDeps = { ...pkgJson.dependencies, ...pkgJson.devDependencies }
+    const internalDeps = Object.keys(allDeps).filter(d => allPackageNames.has(d))
+    const entry = packages.get(name)
+    if (entry) entry.deps = internalDeps
+  }
+
+  // Build reverse map (dependents)
+  const dependents = new Map<string, string[]>()
+  for (const [name, entry] of packages) {
+    for (const dep of entry.deps) {
+      const existing = dependents.get(dep) ?? []
+      existing.push(name)
+      dependents.set(dep, existing)
+    }
+  }
+
+  return { packages, dependents }
+}
+
+/**
+ * Enrich detected stacks with monorepo graph information.
+ */
+function enrichStacksWithGraph(stacks: DetectedStack[], graph: MonorepoGraph): void {
+  for (const stack of stacks) {
+    const pkgJson = readJsonSafe(path.join(stack.root, 'package.json'))
+    if (!pkgJson?.name) continue
+
+    stack.packageName = pkgJson.name
+    stack.packageDescription = pkgJson.description
+
+    const entry = graph.packages.get(pkgJson.name)
+    if (entry) {
+      stack.internalDeps = entry.deps
+    }
+
+    const deps = graph.dependents.get(pkgJson.name)
+    if (deps) {
+      stack.internalDependents = deps
+    }
+  }
+}
+
+/**
  * Scan a directory for detectable application stacks.
  * Returns a list of detected stacks with SDK recommendations.
  */
@@ -524,6 +701,10 @@ export function detectStacks(dir: string): DetectedStack[] {
       }
     }
   }
+
+  // Build monorepo graph and enrich stacks
+  const graph = buildMonorepoGraph(dir, deduped)
+  enrichStacksWithGraph(deduped, graph)
 
   return deduped
 }

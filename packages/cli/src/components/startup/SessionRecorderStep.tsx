@@ -13,21 +13,28 @@ import { MouseButton, ScrollBoxRenderable } from '@opentui/core'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import type { AgentConfig } from '../../types/index.js'
 import { detectStacks, summarizeDetection, type DetectedStack } from '../../session-recorder/detectStacks.js'
-import { generateSetupPlan, applySetupPlan, type SetupPlan } from '../../session-recorder/setupWithAi.js'
+import {
+  generateSetupPlan,
+  applySetupPlan,
+  classifyStacksWithAi,
+  applyClassifications,
+  type SetupPlan
+} from '../../session-recorder/setupWithAi.js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Phase =
-  | 'scanning' // Detecting stacks (heuristic)
-  | 'results' // Showing detected stacks, user picks action
-  | 'already-done' // All SDKs already installed
-  | 'no-stacks' // Nothing detected
-  | 'partial' // Only frontend or backend found
-  | 'ai-planning' // AI is generating the setup plan
-  | 'preview' // Showing AI-generated plan for user approval
-  | 'applying' // Applying the plan + running install
-  | 'done' // Setup complete
-  | 'error' // Something went wrong
+  | 'scanning' // 1. Detecting stacks (heuristic scan)
+  | 'classifying' // 2. AI analyzes which stacks need the SDK
+  | 'no-stacks' // 2a. Nothing detected — skip
+  | 'already-done' // 2b. All stacks configured (installed / not-needed / covered)
+  | 'results' // 3. Showing detected stacks, user picks action
+  | 'partial' // 3a. Only frontend or backend found — show with warning
+  | 'ai-planning' // 4. AI generating the setup plan for a stack
+  | 'preview' // 5. Showing AI-generated plan for user approval
+  | 'applying' // 6. Applying the plan + running install
+  | 'done' // 7. Setup complete
+  | 'error' // ✗ Something went wrong (retry / skip)
 
 interface Props {
   config: Partial<AgentConfig>
@@ -52,6 +59,7 @@ const PREVIEW_ACTIONS: { id: PreviewAction; label: string }[] = [
   { id: 'skip', label: 'Skip' }
 ]
 
+const STEP_TITLE = 'Multiplayer SDK'
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function clickHandler(handler: () => void) {
@@ -121,7 +129,7 @@ function ApplyLogView({ applyLog }: { applyLog: string[] }): ReactElement {
 function ScanningView(): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
-      <text attributes={tuiAttrs({ bold: true })}>Session Recorder Setup</text>
+      <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
       <box gap={2}>
         <text fg='#f59e0b'>◌</text>
         <text>Scanning project for application stacks...</text>
@@ -133,7 +141,7 @@ function ScanningView(): ReactElement {
 function NoStacksView(): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
-      <text attributes={tuiAttrs({ bold: true })}>Session Recorder Setup</text>
+      <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
       <box gap={2}>
         <text fg='#6b7280'>·</text>
         <text>No supported application stacks detected in this directory.</text>
@@ -149,25 +157,128 @@ function NoStacksView(): ReactElement {
   ) as ReactElement
 }
 
-function AlreadyDoneView({ stacks }: { stacks: DetectedStack[] }): ReactElement {
+function StackBadge({ stack }: { stack: DetectedStack }): ReactElement {
+  const s = stack
+  if (s.sdkRelevance === 'installed' || s.alreadyInstalled) {
+    return (
+      <text flexShrink={0} fg='#10b981'>
+        ✓ installed
+      </text>
+    ) as ReactElement
+  }
+  if (s.sdkRelevance === 'not-needed') {
+    return (
+      <text flexShrink={0} fg='#6b7280'>
+        SDK not needed
+      </text>
+    ) as ReactElement
+  }
+  if (s.sdkRelevance === 'covered-by-dependency') {
+    return (
+      <text flexShrink={0} fg='#8b5cf6'>
+        ✓ covered by dependency
+      </text>
+    ) as ReactElement
+  }
+  return (
+    <text flexShrink={0} fg='#f59e0b'>
+      Needs setup
+    </text>
+  ) as ReactElement
+}
+
+function StackRow({ stack, isLast }: { stack: DetectedStack; isLast: boolean }): ReactElement {
+  const s = stack
+  return (
+    <box flexDirection='column'>
+      <box flexDirection='row' gap={2} paddingRight={1}>
+        <box flexGrow={1} flexShrink={1} flexDirection='column'>
+          <box flexDirection='row' gap={1} paddingRight={1}>
+            <text flexShrink={0} fg='#e6edf3' attributes={tuiAttrs({ bold: true })}>
+              {s.relativePath !== '.' ? s.relativePath : s.label}
+            </text>
+            <box flexGrow={1} flexShrink={1}>
+              <text attributes={tuiAttrs({ dim: true })}>
+                {s.label} — {sdkDisplayName(s.sdkPackage)}
+              </text>
+            </box>
+          </box>
+          {s.sdkRelevanceReason && (s.sdkRelevance === 'not-needed' || s.sdkRelevance === 'covered-by-dependency') && (
+            <box flexGrow={1} flexShrink={1}>
+              <text attributes={tuiAttrs({ dim: true })} fg='#6b7280'>
+                {s.sdkRelevanceReason}
+              </text>
+            </box>
+          )}
+        </box>
+        <StackBadge stack={s} />
+      </box>
+      {!isLast && (
+        <box height={1} paddingLeft={1} paddingRight={1}>
+          <text fg='#21262d'>{'─'.repeat(999)}</text>
+        </box>
+      )}
+    </box>
+  ) as ReactElement
+}
+
+function AlreadyDoneView({ stacks, onContinue }: { stacks: DetectedStack[]; onContinue: () => void }): ReactElement {
+  const scrollRef = useRef<ScrollBoxRenderable | null>(null)
+  return (
+    <box flexDirection='column' gap={1} flexGrow={1}>
+      <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
+      <box gap={1} flexDirection='row'>
+        <text fg='#10b981'>✓</text>
+        <text fg='#10b981'>All detected stacks are configured</text>
+      </box>
+      <text attributes={tuiAttrs({ dim: true })}>Detected stacks in your project:</text>
+      <scrollbox ref={scrollRef} flexGrow={1} scrollY focused={false} style={PREVIEW_SCROLLBAR_STYLE}>
+        <box flexDirection='column'>
+          {stacks.map((s, i) => (
+            <StackRow key={i} stack={s} isLast={i === stacks.length - 1} />
+          ))}
+        </box>
+      </scrollbox>
+
+      <box
+        border={true}
+        flexShrink={0}
+        flexDirection='column'
+        borderStyle='rounded'
+        borderColor='#30363d'
+        overflow={'hidden' as const}
+        onMouseUp={clickHandler(onContinue)}
+      >
+        <box flexDirection='row' paddingLeft={1} paddingRight={1} backgroundColor='#161b22'>
+          <box width={3} flexShrink={0}>
+            <text fg='#10b981'>→</text>
+          </box>
+          <box flexGrow={1}>
+            <text fg='#e6edf3' attributes={tuiAttrs({ bold: true })}>
+              Continue
+            </text>
+          </box>
+        </box>
+      </box>
+
+      <box>
+        <text fg='#484f58'>Enter continue</text>
+      </box>
+    </box>
+  ) as ReactElement
+}
+
+function ClassifyingView(): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
-      <text attributes={tuiAttrs({ bold: true })}>Session Recorder Setup</text>
-      <box gap={2}>
-        <text fg='#10b981'>✓</text>
-        <text fg='#10b981'>Session Recorder SDK is already installed</text>
-      </box>
-      <box flexDirection='column' marginTop={1}>
-        {stacks.map((s, i) => (
-          <box key={i} gap={2}>
-            <text fg='#e6edf3'>{s.label}</text>
-            <text attributes={tuiAttrs({ dim: true })}>({s.relativePath})</text>
-            <text fg='#10b981'>— {sdkDisplayName(s.sdkPackage)} installed</text>
-          </box>
-        ))}
-      </box>
-      <box marginTop={1}>
-        <text attributes={tuiAttrs({ dim: true })}>Press Enter to continue</text>
+      <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
+      <AnimatedLoading
+        title='AI is analyzing your project structure'
+        subtitle='Determining which packages need the SDK...'
+        color='#a78bfa'
+      />
+      <box>
+        <text fg='#484f58'>Esc skip</text>
       </box>
     </box>
   ) as ReactElement
@@ -176,12 +287,15 @@ function AlreadyDoneView({ stacks }: { stacks: DetectedStack[] }): ReactElement 
 function AiPlanningView({ stackLabel }: { stackLabel: string }): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
-      <text attributes={tuiAttrs({ bold: true })}>Session Recorder Setup</text>
+      <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
       <AnimatedLoading
         title='AI is analyzing your project and generating setup plan'
         subtitle={`Reading integration guide + project files for ${stackLabel}`}
         color='#f59e0b'
       />
+      <box>
+        <text fg='#484f58'>Esc skip</text>
+      </box>
     </box>
   ) as ReactElement
 }
@@ -224,7 +338,7 @@ function PreviewView({
   const previewScrollRef = useRef<ScrollBoxRenderable | null>(null)
   return (
     <box flexDirection='column' gap={1} flexGrow={1}>
-      <text attributes={tuiAttrs({ bold: true })}>Session Recorder Setup — Review Plan</text>
+      <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE} — Review Plan</text>
 
       <scrollbox ref={previewScrollRef} flexGrow={1} scrollY focused={false} style={PREVIEW_SCROLLBAR_STYLE}>
         <box flexDirection='column' gap={1}>
@@ -246,11 +360,21 @@ function PreviewView({
               </text>
             </box>
             {det.existingSetup.hasOpenTelemetry && (
-              <box flexDirection='row' gap={1}>
-                <text fg='#f59e0b'>⚡</text>
-                <box flexGrow={1} flexShrink={1}>
-                  <text fg='#f59e0b'>Existing OpenTelemetry found — will add Multiplayer exporter only</text>
+              <box flexDirection='column'>
+                <box flexDirection='row' gap={1}>
+                  <text fg='#f59e0b'>⚡</text>
+                  <box flexGrow={1} flexShrink={1}>
+                    <text fg='#f59e0b'>
+                      Existing OpenTelemetry found — will add Multiplayer OTLP exporter alongside existing setup
+                    </text>
+                  </box>
                 </box>
+                {det.existingSetup.existingOtlpEndpoint && (
+                  <box flexDirection='row' gap={1} paddingLeft={3}>
+                    <text attributes={tuiAttrs({ dim: true })}>Current endpoint:</text>
+                    <text fg='#e6edf3'>{det.existingSetup.existingOtlpEndpoint}</text>
+                  </box>
+                )}
               </box>
             )}
             {det.existingSetup.hasMultiplayerSdk && (
@@ -419,7 +543,7 @@ function PreviewView({
 function ApplyingView({ applyLog }: { applyLog: string[] }): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
-      <text attributes={tuiAttrs({ bold: true })}>Session Recorder Setup — Applying</text>
+      <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE} — Applying</text>
       <AnimatedLoading title='Applying setup plan' />
       <ApplyLogView applyLog={applyLog} />
     </box>
@@ -429,7 +553,7 @@ function ApplyingView({ applyLog }: { applyLog: string[] }): ReactElement {
 function DoneView({ applyLog }: { applyLog: string[] }): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
-      <text attributes={tuiAttrs({ bold: true })}>Session Recorder Setup — Complete</text>
+      <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE} — Complete</text>
       <box gap={2}>
         <text fg='#10b981'>✓</text>
         <text fg='#10b981'>Session Recorder SDK has been set up</text>
@@ -445,7 +569,7 @@ function DoneView({ applyLog }: { applyLog: string[] }): ReactElement {
 function ErrorView({ error, applyLog }: { error: string | null; applyLog: string[] }): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
-      <text attributes={tuiAttrs({ bold: true })}>Session Recorder Setup</text>
+      <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
       <box gap={2}>
         <text fg='#ef4444'>✗</text>
         <text fg='#ef4444'>{error}</text>
@@ -484,37 +608,14 @@ function ResultsView({
 
   return (
     <box flexDirection='column' gap={1} flexGrow={1}>
-      <text attributes={tuiAttrs({ bold: true })}>Session Recorder Setup</text>
-      <text attributes={tuiAttrs({ dim: true })}>Detected stacks in your project:</text>
+      <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
+      <text attributes={tuiAttrs({ dim: true })} marginBottom={1}>
+        Detected stacks in your project:
+      </text>
       <scrollbox ref={resultsScrollRef} flexGrow={1} scrollY focused={false} style={PREVIEW_SCROLLBAR_STYLE}>
         <box flexDirection='column'>
           {stacks.map((s, i) => (
-            <box key={i} flexDirection='column'>
-              <box key={i} flexDirection='row' gap={1} paddingRight={1}>
-                <text flexShrink={0} fg='#e6edf3' attributes={tuiAttrs({ bold: true })}>
-                  {s.label}
-                </text>
-                <box flexGrow={1} flexShrink={1}>
-                  <text attributes={tuiAttrs({ dim: true })}>
-                    {s.relativePath !== '.' ? `(${s.relativePath})` : ''} — {sdkDisplayName(s.sdkPackage)}
-                  </text>
-                </box>
-                {s.alreadyInstalled ? (
-                  <text flexShrink={0} fg='#10b981'>
-                    ✓ installed
-                  </text>
-                ) : (
-                  <text flexShrink={0} fg='#f59e0b'>
-                    Needs setup
-                  </text>
-                )}
-              </box>
-              {!(stacks.length - 1 === i) && (
-                <box height={1} paddingLeft={1} paddingRight={1}>
-                  <text fg='#21262d'>{'─'.repeat(999)}</text>
-                </box>
-              )}
-            </box>
+            <StackRow key={i} stack={s} isLast={i === stacks.length - 1} />
           ))}
 
           {isPartial && (
@@ -529,9 +630,9 @@ function ResultsView({
       </scrollbox>
 
       <box
-        flexDirection='column'
         border={true}
         flexShrink={0}
+        flexDirection='column'
         borderStyle='rounded'
         borderColor='#30363d'
         overflow={'hidden' as const}
@@ -604,8 +705,9 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
   const [error, setError] = useState<string | null>(null)
   const [applyLog, setApplyLog] = useState<string[]>([])
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
-  const needsSetup = stacks.filter((s) => !s.alreadyInstalled)
+  const needsSetup = stacks.filter((s) => s.sdkRelevance === 'needed' || (!s.sdkRelevance && !s.alreadyInstalled))
 
   // ─── Scan on mount ─────────────────────────────────────────────────────────
 
@@ -630,6 +732,29 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
       return
     }
 
+    // If we have a model configured and multiple stacks, use AI to classify
+    if (config.model && detected.length > 1) {
+      setPhase('classifying')
+      void runAiClassification(detected)
+    } else {
+      // Fallback: use heuristic classification
+      for (const s of detected) {
+        s.sdkRelevance = s.alreadyInstalled ? 'installed' : 'needed'
+      }
+      setStacks([...detected])
+      transitionToResults(detected)
+    }
+  }, [config.dir])
+
+  const transitionToResults = (classified: DetectedStack[]) => {
+    const summary = summarizeDetection(classified)
+    // After classification, check if all relevant stacks are installed or not-needed
+    const actionable = classified.filter((s) => s.sdkRelevance === 'needed')
+    if (actionable.length === 0) {
+      setPhase('already-done')
+      return
+    }
+
     const onlyFrontend = summary.hasFrontend && !summary.hasBackend
     const onlyBackend = summary.hasBackend && !summary.hasFrontend
     if (onlyFrontend || onlyBackend) {
@@ -638,7 +763,41 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
     }
 
     setPhase('results')
-  }, [config.dir])
+  }
+
+  // ─── AI classification ────────────────────────────────────────────────────
+
+  const runAiClassification = async (detected: DetectedStack[]) => {
+    const controller = new AbortController()
+    abortRef.current = controller
+    try {
+      const result = await classifyStacksWithAi(detected, config.model!, config.modelKey ?? '', config.modelUrl)
+
+      if (controller.signal.aborted) return
+
+      if (result.success) {
+        applyClassifications(detected, result.classifications)
+      } else {
+        // Fallback to heuristic on AI failure
+        for (const s of detected) {
+          s.sdkRelevance = s.alreadyInstalled ? 'installed' : 'needed'
+        }
+      }
+
+      setStacks([...detected])
+      transitionToResults(detected)
+    } catch {
+      if (controller.signal.aborted) return
+      // Fallback to heuristic
+      for (const s of detected) {
+        s.sdkRelevance = s.alreadyInstalled ? 'installed' : 'needed'
+      }
+      setStacks([...detected])
+      transitionToResults(detected)
+    } finally {
+      abortRef.current = null
+    }
+  }
 
   // ─── AI planning ───────────────────────────────────────────────────────────
 
@@ -649,24 +808,37 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
       return
     }
 
+    const controller = new AbortController()
+    abortRef.current = controller
+
     setPhase('ai-planning')
     setError(null)
 
-    // For now, plan for the first stack that needs setup
-    // TODO: iterate over all stacks
-    const stack = needsSetup[0]!
+    try {
+      // For now, plan for the first stack that needs setup
+      // TODO: iterate over all stacks
+      const stack = needsSetup[0]!
 
-    // Find README relative to project dir (the CLI ships with SDKs in the monorepo)
-    // For deployed CLI, READMEs would be bundled or fetched
-    const result = await generateSetupPlan(stack, config.model, config.modelKey ?? '', config.modelUrl)
+      // Find README relative to project dir (the CLI ships with SDKs in the monorepo)
+      // For deployed CLI, READMEs would be bundled or fetched
+      const result = await generateSetupPlan(stack, config.model, config.modelKey ?? '', config.modelUrl)
 
-    if (result.success && result.plan) {
-      setPlan(result.plan)
-      setSelectedIndex(0)
-      setPhase('preview')
-    } else {
-      setError(result.error ?? 'Failed to generate setup plan')
+      if (controller.signal.aborted) return
+
+      if (result.success && result.plan) {
+        setPlan(result.plan)
+        setSelectedIndex(0)
+        setPhase('preview')
+      } else {
+        setError(result.error ?? 'Failed to generate setup plan')
+        setPhase('error')
+      }
+    } catch (err: unknown) {
+      if (controller.signal.aborted) return
+      setError((err as Error).message)
       setPhase('error')
+    } finally {
+      abortRef.current = null
     }
   }
 
@@ -718,7 +890,17 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
   // ─── Keyboard ──────────────────────────────────────────────────────────────
 
   useKeyboard(({ name }) => {
-    if (phase === 'scanning' || phase === 'ai-planning' || phase === 'applying') return
+    if (phase === 'scanning' || phase === 'applying') return
+
+    // Allow skipping during AI analysis
+    if (phase === 'classifying' || phase === 'ai-planning') {
+      if (name === 'escape') {
+        abortRef.current?.abort()
+        abortRef.current = null
+        onComplete({ sessionRecorderSetupDone: true })
+      }
+      return
+    }
 
     // Simple continue phases
     if (phase === 'no-stacks' || phase === 'already-done' || phase === 'done') {
@@ -777,39 +959,56 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
     scrollRef.current?.scrollChildIntoView(`action-${selectedIndex}`)
   }, [selectedIndex])
 
-  if (phase === 'scanning') return (<ScanningView />) as ReactElement
-  if (phase === 'no-stacks') return (<NoStacksView />) as ReactElement
-  if (phase === 'already-done') return (<AlreadyDoneView stacks={stacks} />) as ReactElement
-  if (phase === 'ai-planning')
-    return (<AiPlanningView stackLabel={needsSetup[0]?.label ?? 'detected stack'} />) as ReactElement
-  if (phase === 'preview' && plan) {
-    return (
-      <PreviewView
-        plan={plan}
-        selectedIndex={selectedIndex}
-        hoveredRow={hoveredRow}
-        setSelectedIndex={setSelectedIndex}
-        setHoveredRow={setHoveredRow}
-        onApply={() => void applyPlan()}
-        onRegenerate={() => void runAiPlanning()}
-        onSkip={() => onComplete({ sessionRecorderSetupDone: true })}
-      />
-    ) as ReactElement
+  const handleContinue = () => {
+    onComplete({ sessionRecorderSetupDone: true })
   }
-  if (phase === 'applying') return (<ApplyingView applyLog={applyLog} />) as ReactElement
-  if (phase === 'done') return (<DoneView applyLog={applyLog} />) as ReactElement
-  if (phase === 'error') return (<ErrorView error={error} applyLog={applyLog} />) as ReactElement
+  // ─── Render: ordered by phase flow ─────────────────────────────────────────
 
-  return (
-    <ResultsView
-      stacks={stacks}
-      isPartial={phase === 'partial'}
-      selectedIndex={selectedIndex}
-      hoveredRow={hoveredRow}
-      setSelectedIndex={setSelectedIndex}
-      setHoveredRow={setHoveredRow}
-      onSetup={() => void runAiPlanning()}
-      onSkip={() => onComplete({ sessionRecorderSetupDone: true })}
-    />
-  ) as ReactElement
+  switch (phase) {
+    case 'scanning':
+      return (<ScanningView />) as ReactElement
+    case 'classifying':
+      return (<ClassifyingView />) as ReactElement
+    case 'no-stacks':
+      return (<NoStacksView />) as ReactElement
+    case 'already-done':
+      return (<AlreadyDoneView stacks={stacks} onContinue={handleContinue} />) as ReactElement
+    case 'ai-planning':
+      return (<AiPlanningView stackLabel={needsSetup[0]?.label ?? 'detected stack'} />) as ReactElement
+    case 'preview':
+      return plan
+        ? ((
+            <PreviewView
+              plan={plan}
+              selectedIndex={selectedIndex}
+              hoveredRow={hoveredRow}
+              setSelectedIndex={setSelectedIndex}
+              setHoveredRow={setHoveredRow}
+              onApply={() => void applyPlan()}
+              onRegenerate={() => void runAiPlanning()}
+              onSkip={handleContinue}
+            />
+          ) as ReactElement)
+        : ((<ScanningView />) as ReactElement)
+    case 'applying':
+      return (<ApplyingView applyLog={applyLog} />) as ReactElement
+    case 'done':
+      return (<DoneView applyLog={applyLog} />) as ReactElement
+    case 'error':
+      return (<ErrorView error={error} applyLog={applyLog} />) as ReactElement
+    case 'results':
+    case 'partial':
+      return (
+        <ResultsView
+          stacks={stacks}
+          isPartial={phase === 'partial'}
+          selectedIndex={selectedIndex}
+          hoveredRow={hoveredRow}
+          setSelectedIndex={setSelectedIndex}
+          setHoveredRow={setHoveredRow}
+          onSetup={() => void runAiPlanning()}
+          onSkip={handleContinue}
+        />
+      ) as ReactElement
+  }
 }

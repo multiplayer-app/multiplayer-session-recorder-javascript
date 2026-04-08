@@ -4,7 +4,7 @@ import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import cliPath from '@anthropic-ai/claude-agent-sdk/embed'
-import type { DetectedStack } from './detectStacks.js'
+import type { DetectedStack, SdkRelevance } from './detectStacks.js'
 import { getReadmeContent } from './readmes.js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -20,6 +20,8 @@ export interface AiDetectionResult {
     otelPackages: string[]
     /** Existing OTel config file if found */
     otelConfigFile?: string
+    /** Existing OTLP exporter endpoint if found (e.g. http://localhost:4318, https://otel.datadog.com) */
+    existingOtlpEndpoint?: string
   }
   /** What integration approach the AI recommends */
   approach: 'full-sdk' | 'exporter-only' | 'already-complete' | 'minimal-patch'
@@ -209,7 +211,8 @@ Return ONLY a JSON object (no markdown fences, no explanation outside JSON) with
       "hasOpenTelemetry": false,
       "hasMultiplayerSdk": false,
       "otelPackages": [],
-      "otelConfigFile": null
+      "otelConfigFile": null,
+      "existingOtlpEndpoint": "the current OTLP endpoint if found (e.g. http://localhost:4318), or null"
     },
     "approach": "full-sdk | exporter-only | already-complete | minimal-patch",
     "reasoning": "Brief explanation of why this approach"
@@ -244,11 +247,18 @@ Return ONLY a JSON object (no markdown fences, no explanation outside JSON) with
 ## Integration Approach Rules
 
 1. **If OpenTelemetry is already configured** (e.g. @opentelemetry/sdk-trace-node, @opentelemetry/sdk-trace-web):
-   - Use approach "exporter-only"
-   - DON'T install the full session-recorder SDK
-   - Instead: add the Multiplayer exporter and ID generator to the existing OTel setup
-   - Import from @multiplayer-app/session-recorder-node or session-recorder-browser as needed
-   - Add MultiplayerSpanExporter and MultiplierIdGenerator to the existing tracer provider
+   - Check if the OTLP exporter is already pointing to otlp.multiplayer.app (in code, env vars, or OTel collector config)
+   - If OTel + Multiplayer endpoint already configured: approach "already-complete" — no SDK package needed
+   - If OTel exists but exporter points to a DIFFERENT endpoint (e.g. Datadog, Jaeger, custom collector): approach "exporter-only"
+     - Do NOT replace the existing exporter — the user needs their current telemetry pipeline
+     - ADD a second OTLP exporter alongside the existing one, pointing to Multiplayer:
+       - Traces: https://otlp.multiplayer.app/v1/traces
+       - Logs: https://otlp.multiplayer.app/v1/logs
+     - Use a CompositeSpanExporter (or multiple exporters in the TracerProvider) so both the existing and Multiplayer exporters run in parallel
+     - The Multiplayer exporter needs an authorization header: \`Authorization: Bearer <MULTIPLAYER_API_KEY>\`
+     - Add MULTIPLAYER_API_KEY to envVars
+     - If the project uses an OTel Collector: add a second OTLP exporter in the collector config pipelines instead of modifying app code
+   - Standard OTel OTLP exporters are sufficient — no Multiplayer SDK package, ID generator, or exporter needed for backends
 
 2. **If Multiplayer SDK is already installed** (any @multiplayer-app/session-recorder-* package):
    - Check if it's actually initialized in the code
@@ -268,7 +278,8 @@ Return ONLY a JSON object (no markdown fences, no explanation outside JSON) with
    - Keep changes minimal
    - Include CORS URL config if a backend API URL pattern is visible
    - Set application name from package.json name field
-   - For backend: if the project already has OTel, just add the Multiplayer exporter — don't restructure their setup
+   - For backend: if the project already has OTel, ADD a Multiplayer OTLP exporter alongside the existing one — NEVER remove or replace the existing exporter/endpoint
+   - Use CompositeSpanExporter or add to the exporters array so both pipelines receive data in parallel
 
 5. **Quality of response**:
    - "steps" should be short, imperative, and ordered
@@ -284,7 +295,8 @@ function normalizePlan(plan: Partial<SetupPlan>): SetupPlan {
         hasOpenTelemetry: plan.detection?.existingSetup?.hasOpenTelemetry ?? false,
         hasMultiplayerSdk: plan.detection?.existingSetup?.hasMultiplayerSdk ?? false,
         otelPackages: plan.detection?.existingSetup?.otelPackages ?? [],
-        otelConfigFile: plan.detection?.existingSetup?.otelConfigFile ?? undefined
+        otelConfigFile: plan.detection?.existingSetup?.otelConfigFile ?? undefined,
+        existingOtlpEndpoint: plan.detection?.existingSetup?.existingOtlpEndpoint ?? undefined
       },
       approach: plan.detection?.approach ?? 'minimal-patch',
       reasoning: plan.detection?.reasoning ?? 'No reasoning provided'
@@ -296,6 +308,201 @@ function normalizePlan(plan: Partial<SetupPlan>): SetupPlan {
     steps: Array.isArray(plan.steps) ? plan.steps : [],
     warnings: Array.isArray(plan.warnings) ? plan.warnings : [],
     confidence: typeof plan.confidence === 'number' ? Math.max(0, Math.min(1, plan.confidence)) : 0.7
+  }
+}
+
+// ─── Stack classification with AI ───────────────────────────────────────────
+
+interface StackClassification {
+  /** The relativePath of the stack (used to match back) */
+  relativePath: string
+  /** AI-determined relevance */
+  sdkRelevance: SdkRelevance
+  /** Human-readable reason */
+  reason: string
+}
+
+interface ClassifyResult {
+  success: boolean
+  classifications: StackClassification[]
+  error?: string
+}
+
+function buildClassifyPrompt(stacks: DetectedStack[], sdkSummary: string): string {
+  const stackDescriptions = stacks.map(s => {
+    const parts = [
+      `- **${s.relativePath}** (${s.label})`,
+      `  Package: ${s.packageName ?? 'unknown'}`,
+      `  Description: ${s.packageDescription ?? 'none'}`,
+      `  Framework: ${s.framework}, Type: ${s.type}`,
+      `  SDK installed: ${s.alreadyInstalled ? `yes (${s.installedSdkPackage})` : 'no'}${s.installedSdkPackage === 'otel+otlp.multiplayer.app' ? ' — using standard OTel with Multiplayer OTLP endpoint' : ''}`,
+      `  Recommended SDK: ${s.sdkPackage}`,
+    ]
+    if (s.internalDeps?.length) {
+      parts.push(`  Depends on (internal): ${s.internalDeps.join(', ')}`)
+    }
+    if (s.internalDependents?.length) {
+      parts.push(`  Used by (internal): ${s.internalDependents.join(', ')}`)
+    }
+    return parts.join('\n')
+  }).join('\n\n')
+
+  return `You are an expert at analyzing monorepo project structures and understanding which packages need the Multiplayer Session Recorder SDK.
+
+## What is the Multiplayer SDK?
+
+${sdkSummary}
+
+## Detected Stacks
+
+The following packages/apps were detected in a monorepo:
+
+${stackDescriptions}
+
+## Your Task
+
+For EACH detected stack, classify whether it actually needs the Multiplayer Session Recorder SDK.
+
+### Classification Rules
+
+1. **"installed"** — The SDK is already present in this package's dependencies, OR the package has OpenTelemetry configured to export to the Multiplayer OTLP endpoint (otlp.multiplayer.app). No action needed.
+
+2. **"needed"** — This is a deployable application or service that handles HTTP requests, serves a frontend, or runs as a standalone process AND doesn't already have the SDK or OTel+Multiplayer endpoint. These are the packages where session recording should be initialized.
+
+3. **"not-needed"** — This package does NOT need the SDK. Common reasons:
+   - It's a shared library/utility (name contains -lib, -shared, -common, -types, -utils)
+   - It's a types/interfaces package with no runtime code
+   - It's a build tool, config package, or dev dependency
+   - It's an infrastructure library (database adapters, message queue clients, etc.) that doesn't handle user sessions
+   - It has no server entry point and is not a frontend app
+
+4. **"covered-by-dependency"** — This package depends on (imports from) another internal package that already has the SDK installed. The SDK context (traces, spans) will propagate through OpenTelemetry automatically. The package itself doesn't need a separate SDK installation.
+
+### Important Considerations
+
+- In a monorepo, a shared library that sets up the SDK can propagate tracing to all services that import it
+- Libraries that are purely consumed by other packages (have dependents but no server/app entry point) generally don't need the SDK
+- Only deployable services and frontend apps need the SDK initialized directly
+- If a package's internal dependency already has the SDK, traces will flow through OpenTelemetry context propagation
+
+## Response Format
+
+Return ONLY a JSON array (no markdown fences, no explanation outside JSON):
+
+[
+  {
+    "relativePath": "path/to/package",
+    "sdkRelevance": "needed | installed | not-needed | covered-by-dependency",
+    "reason": "Brief explanation"
+  }
+]
+
+Include an entry for EVERY detected stack.`
+}
+
+function getSdkSummary(): string {
+  return `The Multiplayer Session Recorder SDK is a full-stack session recording and debugging platform built on OpenTelemetry. It provides:
+- Frontend session replays (screen recording, user interactions) via @multiplayer-app/session-recorder-react or session-recorder-browser
+- Backend trace correlation via @multiplayer-app/session-recorder-node
+- The SDK needs to be initialized in deployable applications (web apps, API servers, standalone services)
+- Shared libraries do NOT need to install the SDK — they receive tracing context automatically through OpenTelemetry propagation when consumed by an app that has the SDK
+- The SDK packages are: session-recorder-react (React/Next.js), session-recorder-browser (Angular/Vue/Svelte), session-recorder-node (Node.js backends), session-recorder-react-native (mobile)
+
+IMPORTANT for backend services: A backend does NOT need the Multiplayer SDK package if it has standard OpenTelemetry configured to export to the Multiplayer OTLP endpoint:
+- Traces: https://otlp.multiplayer.app/v1/traces
+- Logs: https://otlp.multiplayer.app/v1/logs
+This can be set via environment variable (OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp.multiplayer.app) or directly in OTel config code.
+If a backend has OTel + the Multiplayer OTLP endpoint, it is fully set up — no Multiplayer ID generator or exporter package needed.`
+}
+
+/**
+ * Use AI to classify which detected stacks actually need the Multiplayer SDK.
+ * Analyzes monorepo relationships, package purposes, and dependency graphs.
+ */
+export async function classifyStacksWithAi(
+  stacks: DetectedStack[],
+  model: string,
+  modelKey: string,
+  modelUrl?: string,
+): Promise<ClassifyResult> {
+  if (stacks.length === 0) return { success: true, classifications: [] }
+
+  const sdkSummary = getSdkSummary()
+  const prompt = buildClassifyPrompt(stacks, sdkSummary)
+
+  try {
+    let responseText: string
+
+    if (isAnthropicModel(model)) {
+      if (modelKey) {
+        const client = new Anthropic({ apiKey: modelKey })
+        const response = await client.messages.create({
+          model: model === 'claude-code' ? 'claude-sonnet-4-6' : model,
+          max_tokens: 4096,
+          messages: [{ role: 'user', content: prompt }],
+        })
+        const block = response.content[0]
+        responseText = block?.type === 'text' ? block.text : ''
+      } else {
+        responseText = await generateWithClaudeCli(prompt, model, process.cwd())
+      }
+    } else {
+      const client = new OpenAI({
+        apiKey: modelKey,
+        ...(modelUrl ? { baseURL: modelUrl } : {}),
+      })
+      const response = await client.chat.completions.create({
+        model,
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }],
+      })
+      responseText = response.choices[0]?.message?.content ?? ''
+    }
+
+    // Parse JSON array from response
+    const jsonMatch = responseText.match(/\[[\s\S]*\]/)
+    if (!jsonMatch) {
+      return { success: false, classifications: [], error: 'AI did not return valid JSON array' }
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]) as StackClassification[]
+    if (!Array.isArray(parsed)) {
+      return { success: false, classifications: [], error: 'AI response is not an array' }
+    }
+
+    // Validate and normalize
+    const validRelevances = new Set<SdkRelevance>(['needed', 'installed', 'not-needed', 'covered-by-dependency'])
+    const classifications: StackClassification[] = parsed.map(c => ({
+      relativePath: String(c.relativePath ?? ''),
+      sdkRelevance: validRelevances.has(c.sdkRelevance) ? c.sdkRelevance : 'needed',
+      reason: String(c.reason ?? 'No reason provided'),
+    }))
+
+    return { success: true, classifications }
+  } catch (err: unknown) {
+    return {
+      success: false,
+      classifications: [],
+      error: (err as Error).message,
+    }
+  }
+}
+
+/**
+ * Apply AI classifications back to the detected stacks (mutates in place).
+ */
+export function applyClassifications(stacks: DetectedStack[], classifications: StackClassification[]): void {
+  const classMap = new Map(classifications.map(c => [c.relativePath, c]))
+  for (const stack of stacks) {
+    const classification = classMap.get(stack.relativePath)
+    if (classification) {
+      stack.sdkRelevance = classification.sdkRelevance
+      stack.sdkRelevanceReason = classification.reason
+    } else {
+      // Fallback: use heuristic
+      stack.sdkRelevance = stack.alreadyInstalled ? 'installed' : 'needed'
+      stack.sdkRelevanceReason = stack.alreadyInstalled ? 'SDK found in dependencies' : 'No AI classification available'
+    }
   }
 }
 

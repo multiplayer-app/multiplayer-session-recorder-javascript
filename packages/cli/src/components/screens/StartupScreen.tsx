@@ -16,38 +16,57 @@ import { RateLimitsStep } from '../startup/RateLimitsStep.js'
 import { ConnectingStep } from '../startup/ConnectingStep.js'
 import { SessionRecorderStep } from '../startup/SessionRecorderStep.js'
 
-type StepId = 'auth-method' | 'project-select' | 'api-key' | 'workspace' | 'directory' | 'model' | 'rate-limits' | 'session-recorder' | 'connecting'
+type StepId =
+  | 'auth-method'
+  | 'project-select'
+  | 'api-key'
+  | 'workspace'
+  | 'directory'
+  | 'model'
+  | 'rate-limits'
+  | 'session-recorder'
+  | 'connecting'
 
-const STEPS: StepId[] = ['auth-method', 'project-select', 'api-key', 'workspace', 'directory', 'model', 'rate-limits', 'session-recorder', 'connecting']
+const STEPS: StepId[] = [
+  'auth-method',
+  'project-select',
+  'api-key',
+  'workspace',
+  'directory',
+  'model',
+  'rate-limits',
+  'session-recorder',
+  'connecting'
+]
 
 const STEP_LABELS: Record<StepId, { title: string; description: string }> = {
   'auth-method': {
     title: 'Authentication',
-    description: 'Choose how to authenticate with Multiplayer.',
+    description: 'Choose how to authenticate with Multiplayer.'
   },
   'project-select': {
     title: 'Select Project',
-    description: 'Choose the project this agent will monitor.',
+    description: 'Choose the project this agent will monitor.'
   },
   'api-key': {
     title: 'Project API Key',
-    description: 'Authenticate with Multiplayer and load workspace/project context.',
+    description: 'Authenticate with Multiplayer and load workspace/project context.'
   },
   workspace: {
     title: 'Workspace Confirmation',
-    description: 'Review the workspace and project that will receive agent updates.',
+    description: 'Review the workspace and project that will receive agent updates.'
   },
   directory: {
     title: 'Repository Directory',
-    description: 'Select the git repository where patches, commits, and branches are created.',
+    description: 'Select the git repository where patches, commits, and branches are created.'
   },
   model: { title: 'AI Model', description: 'Choose an AI provider and model for issue resolution.' },
   'rate-limits': { title: 'Concurrency', description: 'Set how many issues can be processed in parallel.' },
   'session-recorder': {
     title: 'Session Recorder',
-    description: 'Detect your app stack and set up the Multiplayer Session Recorder SDK.',
+    description: 'Detect your app stack and set up the Multiplayer Session Recorder SDK.'
   },
-  connecting: { title: 'Final Checks', description: 'Verify git and provider requirements before starting runtime.' },
+  connecting: { title: 'Final Checks', description: 'Verify git and provider requirements before starting runtime.' }
 }
 
 const STEP_SHORT: Record<StepId, string> = {
@@ -58,8 +77,8 @@ const STEP_SHORT: Record<StepId, string> = {
   directory: 'Directory',
   model: 'Model',
   'rate-limits': 'Concurrency',
-  'session-recorder': 'Recorder',
-  connecting: 'Verify',
+  'session-recorder': 'Multiplayer SDK',
+  connecting: 'Verify'
 }
 
 const STEP_PANEL_WIDTH = 24
@@ -153,7 +172,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
           return {
             ...c,
             ...(workspaceDisplayName ? { workspaceDisplayName } : {}),
-            ...(projectDisplayName ? { projectDisplayName } : {}),
+            ...(projectDisplayName ? { projectDisplayName } : {})
           }
         })
       } catch {
@@ -178,7 +197,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
         project: next.project,
         modelKey: next.modelKey,
         modelUrl: next.modelUrl,
-        maxConcurrentIssues: next.maxConcurrentIssues,
+        maxConcurrentIssues: next.maxConcurrentIssues
       })
 
       const currentIdx = STEPS.indexOf(step)
@@ -191,7 +210,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
       }
       setStep('connecting')
     },
-    [config, step],
+    [config, step]
   )
 
   /** Previous wizard screen (linear). Do not skip “already filled” steps — Esc from model must reach directory. */
@@ -314,11 +333,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
             />
           )}
           {step === 'project-select' && (
-            <ProjectSelectStep
-              workspaces={oauthWorkspaces}
-              profileName={profileName}
-              onComplete={advance}
-            />
+            <ProjectSelectStep workspaces={oauthWorkspaces} profileName={profileName} onComplete={advance} />
           )}
           {step === 'api-key' && <ApiKeyStep config={config} profileName={profileName} onComplete={advance} />}
           {step === 'workspace' && <WorkspaceStep config={config} onComplete={advance} />}

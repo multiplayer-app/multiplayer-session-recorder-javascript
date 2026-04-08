@@ -448,7 +448,10 @@ export class RuntimeController extends EventEmitter {
         skip,
         limit: 30
       })
-
+      this.log(
+        'debug',
+        `fetchAgentChats result,cfg.dir: ${cfg.dir}, cfg.name: ${cfg.name}, skip: ${skip}, limit: 30, result: ${JSON.stringify(result, null, 2)}`
+      )
       const { data: chats, cursor } = result
       const hasMore = cursor.skip + cursor.limit < cursor.total
 
