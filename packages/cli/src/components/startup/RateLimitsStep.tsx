@@ -1,6 +1,8 @@
 import React, { useState, type ReactElement } from 'react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { useKeyboard } from '@opentui/react'
+import type { MouseEvent } from '@opentui/core'
+import { MouseButton } from '@opentui/core'
 import type { AgentConfig } from '../../types/index.js'
 
 const OPTIONS = [1, 2, 3, 4, 5] as const
@@ -17,6 +19,14 @@ const CONCURRENCY_HINT: Record<ConcurrencyOption, string> = {
 interface Props {
   config: Partial<AgentConfig>
   onComplete: (updates: Partial<AgentConfig>) => void
+}
+
+function clickHandler(handler: () => void) {
+  return (e: MouseEvent) => {
+    if (e.button !== MouseButton.LEFT) return
+    e.stopPropagation()
+    handler()
+  }
 }
 
 export function RateLimitsStep({ config, onComplete }: Props): ReactElement {
@@ -55,7 +65,13 @@ export function RateLimitsStep({ config, onComplete }: Props): ReactElement {
         {OPTIONS.map((n, i) => {
           const isActive = i === selectedIndex
           return (
-            <box key={n}>
+            <box
+              key={n}
+              onMouseUp={clickHandler(() => {
+                setSelectedIndex(i)
+                if (isActive) onComplete({ maxConcurrentIssues: n })
+              })}
+            >
               <text fg={isActive ? '#22d3ee' : undefined} attributes={tuiAttrs({ bold: isActive })}>
                 {isActive ? `[${n}]` : ` ${n} `}
               </text>

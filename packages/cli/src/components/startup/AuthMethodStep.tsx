@@ -12,7 +12,7 @@ type AuthMethod = 'oauth' | 'api-token'
 
 const OPTIONS: { id: AuthMethod; label: string; description: string }[] = [
   { id: 'oauth', label: 'Browser login (OAuth)', description: 'Opens your browser to authenticate with Multiplayer' },
-  { id: 'api-token', label: 'API token', description: 'Paste a personal API key from the Multiplayer dashboard' },
+  { id: 'api-token', label: 'API token', description: 'Paste a personal API key from the Multiplayer dashboard' }
 ]
 
 type OAuthState = 'idle' | 'loading' | 'waiting' | 'error'
@@ -31,8 +31,8 @@ export function AuthMethodStep({ profileName, onComplete }: Props): ReactElement
   useKeyboard(({ name }) => {
     if (oauthState !== 'idle') return
 
-    if (name === 'up' || name === 'k') setSelected(s => Math.max(0, s - 1))
-    else if (name === 'down' || name === 'j') setSelected(s => Math.min(OPTIONS.length - 1, s + 1))
+    if (name === 'up' || name === 'k') setSelected((s) => Math.max(0, s - 1))
+    else if (name === 'down' || name === 'j') setSelected((s) => Math.min(OPTIONS.length - 1, s + 1))
     else if (name === 'return') handleConfirm()
   })
 
@@ -58,14 +58,14 @@ export function AuthMethodStep({ profileName, onComplete }: Props): ReactElement
           authorizationServerUrl: data.issuer,
           authorizationEndpoint: data.authorization_endpoint,
           tokenEndpoint: data.token_endpoint,
-          registrationEndpoint: data.registration_endpoint,
+          registrationEndpoint: data.registration_endpoint
         }
 
         const oauthManager = new OAuthManager()
         await oauthManager.init(oauthParams)
 
         setOAuthState('waiting')
-        await oauthManager.authenticate(url => setOAuthUrl(url))
+        await oauthManager.authenticate((url) => setOAuthUrl(url))
 
         const token = await oauthManager.getAccessToken()
         if (!token) throw new Error('Authentication failed. Please try again.')
@@ -76,7 +76,7 @@ export function AuthMethodStep({ profileName, onComplete }: Props): ReactElement
         if (!session.workspaces.length) throw new Error('No workspace found for this account')
 
         const workspaces: SelectableWorkspace[] = await Promise.all(
-          session.workspaces.map(async ws => ({
+          session.workspaces.map(async (ws) => ({
             _id: ws._id,
             name: ws.name,
             projects: await api.fetchProjects(ws._id),
@@ -95,17 +95,17 @@ export function AuthMethodStep({ profileName, onComplete }: Props): ReactElement
   }
 
   return (
-    <box flexDirection="column" gap={1}>
+    <box flexDirection='column' gap={1}>
       {oauthState === 'idle' && (
         <>
           <text attributes={tuiAttrs({ dim: true })}>Choose how to authenticate with Multiplayer.</text>
-          <box flexDirection="column" gap={1} marginTop={1}>
+          <box flexDirection='column' gap={1} marginTop={1}>
             {OPTIONS.map((opt, i) => {
               const isCurrent = i === selected
               return (
-                <box key={opt.id} flexDirection="row" gap={1}>
+                <box key={opt.id} flexDirection='row' gap={1}>
                   <text fg={isCurrent ? '#22d3ee' : '#6b7280'}>{isCurrent ? '❯' : ' '}</text>
-                  <box flexDirection="column">
+                  <box flexDirection='column'>
                     <text fg={isCurrent ? '#22d3ee' : undefined} attributes={tuiAttrs({ bold: isCurrent })}>
                       {opt.label}
                     </text>
@@ -115,30 +115,30 @@ export function AuthMethodStep({ profileName, onComplete }: Props): ReactElement
               )
             })}
           </box>
-          <text attributes={tuiAttrs({ dim: true })} marginTop={1}>↑↓ to select · Enter to confirm</text>
+          <text attributes={tuiAttrs({ dim: true })} marginTop={1}>
+            ↑↓ to select · Enter to confirm
+          </text>
         </>
       )}
 
-      {oauthState === 'loading' && (
-        <text fg="#f59e0b">◌ Setting up OAuth...</text>
-      )}
+      {oauthState === 'loading' && <text fg='#f59e0b'>◌ Setting up OAuth...</text>}
 
       {oauthState === 'waiting' && (
-        <box flexDirection="column" gap={1}>
-          <text fg="#10b981">✓ Browser opened — complete login in your browser.</text>
+        <box flexDirection='column' gap={1}>
+          <text fg='#10b981'>✓ Browser opened — complete login in your browser.</text>
           {oauthUrl && (
-            <box flexDirection="column" gap={0}>
+            <box flexDirection='column' gap={0}>
               <text attributes={tuiAttrs({ dim: true })}>If the browser did not open, visit:</text>
-              <text fg="#22d3ee">{oauthUrl}</text>
+              <text fg='#22d3ee'>{oauthUrl}</text>
             </box>
           )}
-          <text fg="#f59e0b">◌ Waiting for authentication...</text>
+          <text fg='#f59e0b'>◌ Waiting for authentication...</text>
         </box>
       )}
 
       {oauthState === 'error' && (
-        <box flexDirection="column" gap={1}>
-          <text fg="#ef4444">✗ {error}</text>
+        <box flexDirection='column' gap={1}>
+          <text fg='#ef4444'>✗ {error}</text>
           <text attributes={tuiAttrs({ dim: true })}>Press Enter to retry</text>
         </box>
       )}

@@ -89,16 +89,19 @@ export interface SessionRecorderOptions {
   /**
    * (Optional) If true, inlines images as base64 data URLs in the recording
    * so they remain available during replay even if the original assets are gone.
+   * Cross-origin images require CORS (e.g. `Access-Control-Allow-Origin`) on the asset server;
+   * otherwise the browser blocks reading pixels and you may see failed network requests.
    * Increases payload size.
-   * @default true
+   * @default false
    */
   inlineImages?: boolean
 
   /**
    * (Optional) If true, inlines stylesheets in the recording so they remain
    * available during replay even if the original assets are gone.
+   * Cross-origin stylesheets may require CORS on the asset host when enabled.
    * Increases payload size.
-   * @default true
+   * @default false
    */
   inlineStylesheet?: boolean
 

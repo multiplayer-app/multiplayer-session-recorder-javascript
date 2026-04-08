@@ -14,35 +14,59 @@ import { DirectoryStep } from '../startup/DirectoryStep.js'
 import { ModelStep } from '../startup/ModelStep.js'
 import { RateLimitsStep } from '../startup/RateLimitsStep.js'
 import { ConnectingStep } from '../startup/ConnectingStep.js'
+import { SessionRecorderStep } from '../startup/SessionRecorderStep.js'
 
-type StepId = 'auth-method' | 'project-select' | 'api-key' | 'workspace' | 'directory' | 'model' | 'rate-limits' | 'connecting'
+type StepId =
+  | 'auth-method'
+  | 'project-select'
+  | 'api-key'
+  | 'workspace'
+  | 'directory'
+  | 'model'
+  | 'rate-limits'
+  | 'session-recorder'
+  | 'connecting'
 
-const STEPS: StepId[] = ['auth-method', 'project-select', 'api-key', 'workspace', 'directory', 'model', 'rate-limits', 'connecting']
+const STEPS: StepId[] = [
+  'auth-method',
+  'project-select',
+  'api-key',
+  'workspace',
+  'directory',
+  'model',
+  'rate-limits',
+  'session-recorder',
+  'connecting'
+]
 
 const STEP_LABELS: Record<StepId, { title: string; description: string }> = {
   'auth-method': {
     title: 'Authentication',
-    description: 'Choose how to authenticate with Multiplayer.',
+    description: 'Choose how to authenticate with Multiplayer.'
   },
   'project-select': {
     title: 'Select Project',
-    description: 'Choose the project this agent will monitor.',
+    description: 'Choose the project this agent will monitor.'
   },
   'api-key': {
     title: 'Project API Key',
-    description: 'Authenticate with Multiplayer and load workspace/project context.',
+    description: 'Authenticate with Multiplayer and load workspace/project context.'
   },
   workspace: {
     title: 'Workspace Confirmation',
-    description: 'Review the workspace and project that will receive agent updates.',
+    description: 'Review the workspace and project that will receive agent updates.'
   },
   directory: {
     title: 'Repository Directory',
-    description: 'Select the git repository where patches, commits, and branches are created.',
+    description: 'Select the git repository where patches, commits, and branches are created.'
   },
   model: { title: 'AI Model', description: 'Choose an AI provider and model for issue resolution.' },
   'rate-limits': { title: 'Concurrency', description: 'Set how many issues can be processed in parallel.' },
-  connecting: { title: 'Final Checks', description: 'Verify git and provider requirements before starting runtime.' },
+  'session-recorder': {
+    title: 'Session Recorder',
+    description: 'Detect your app stack and set up the Multiplayer Session Recorder SDK.'
+  },
+  connecting: { title: 'Final Checks', description: 'Verify git and provider requirements before starting runtime.' }
 }
 
 const STEP_SHORT: Record<StepId, string> = {
@@ -53,7 +77,8 @@ const STEP_SHORT: Record<StepId, string> = {
   directory: 'Directory',
   model: 'Model',
   'rate-limits': 'Concurrency',
-  connecting: 'Verify',
+  'session-recorder': 'Multiplayer SDK',
+  connecting: 'Verify'
 }
 
 const AUTH_STEPS: StepId[] = ['auth-method', 'project-select', 'api-key', 'workspace']
@@ -80,6 +105,8 @@ function canSkip(step: StepId, config: Partial<AgentConfig>): boolean {
       return !!(config.workspace && config.project && config.apiKey)
     case 'directory':
       return !!config.dir
+    case 'session-recorder':
+      return !!config.sessionRecorderSetupDone || !!process.env.MULTIPLAYER_SKIP_SR_SETUP
     case 'model':
       return !!(config.model && (config.model.startsWith('claude') || config.modelKey))
     case 'rate-limits':
@@ -179,7 +206,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
           return {
             ...c,
             ...(workspaceDisplayName ? { workspaceDisplayName } : {}),
-            ...(projectDisplayName ? { projectDisplayName } : {}),
+            ...(projectDisplayName ? { projectDisplayName } : {})
           }
         })
       } catch {
@@ -204,7 +231,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
         project: next.project,
         modelKey: next.modelKey,
         modelUrl: next.modelUrl,
-        maxConcurrentIssues: next.maxConcurrentIssues,
+        maxConcurrentIssues: next.maxConcurrentIssues
       })
 
       const currentIdx = STEPS.indexOf(step)
@@ -217,7 +244,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
       }
       setStep('connecting')
     },
-    [config, step],
+    [config, step]
   )
 
   /** Previous wizard screen (linear). Do not skip “already filled” steps — Esc from model must reach directory. */
@@ -364,8 +391,6 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
             <ProjectSelectStep
               workspaces={oauthWorkspaces}
               profileName={profileName}
-              // eslint-disable-next-line
-              // @ts-ignore
               loading={fetchingWorkspaces}
               onComplete={advance}
             />
@@ -375,6 +400,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
           {step === 'directory' && <DirectoryStep config={config} onComplete={advance} />}
           {step === 'model' && <ModelStep config={config} onComplete={advance} />}
           {step === 'rate-limits' && <RateLimitsStep config={config} onComplete={advance} />}
+          {step === 'session-recorder' && <SessionRecorderStep config={config} onComplete={advance} />}
           {step === 'connecting' && (
             <ConnectingStep config={config as AgentConfig} onComplete={onComplete} onBack={goBack} />
           )}

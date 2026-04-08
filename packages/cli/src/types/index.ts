@@ -16,6 +16,10 @@ export interface AgentConfig {
   modelUrl?: string
   maxConcurrentIssues: number
   noGitBranch?: boolean
+  /** Whether session recorder setup step has been completed or skipped */
+  sessionRecorderSetupDone?: boolean
+  /** Detected stacks that need session recorder SDK setup (populated when user confirms setup) */
+  sessionRecorderStacks?: import('../session-recorder/detectStacks.js').DetectedStack[]
 }
 
 export interface IssueMetadata {

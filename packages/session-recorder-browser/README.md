@@ -98,8 +98,8 @@ SessionRecorder.init({
 
   showWidget: true, // show in‑app recording widget (default: true)
   recordCanvas: true, // record canvas elements (default: false)
-  inlineImages: true, // inline images as base64 so they survive asset removal (default: true)
-  inlineStylesheet: true, // inline stylesheets so they survive asset removal (default: true)
+  inlineImages: true, // opt-in: inline images as base64 (requires CORS on cross-origin asset hosts; default: false)
+  inlineStylesheet: true, // opt-in: inline stylesheets (cross-origin hosts may need CORS; default: false)
   // Add domains to not capture OTLP data in the session recording
   ignoreUrls: [
     /https:\/\/domain\.to\.ignore\/.*/, // can be regex or string
@@ -221,6 +221,15 @@ SessionRecorder.init({
   }
 })
 ```
+
+### Important: Inlining images and stylesheets (CORS)
+
+By default, **`inlineImages`** and **`inlineStylesheet`** are **`false`**. That avoids failed cross-origin requests and DevTools noise when assets are served from another host (for example S3 or a CDN) that does not send CORS headers such as **`Access-Control-Allow-Origin`** for your app.
+
+If you enable either option:
+
+- The browser must be allowed to **read** those resources from script (image pixels for base64 inlining, or stylesheet text for inlining). Configure CORS on the asset host for your frontend origin, or serve assets same-origin via a proxy.
+- With defaults left off, recordings still store normal **`src`** and stylesheet links; replay loads them like a normal page when URLs remain valid.
 
 ### Manual session recording
 
@@ -387,6 +396,8 @@ For React Native applications (iOS and Android), use the dedicated React Native 
 ## Documentation
 
 For more details on how the Multiplayer Session Recorder integrates with your backend architecture and system auto-documentation, check out our [official documentation](https://www.multiplayer.app/docs/features/system-auto-documentation/).
+
+**Inlining and CORS:** See [Inlining images and stylesheets (CORS)](#important-inlining-images-and-stylesheets-cors) above for defaults and when you must configure CORS on asset hosts.
 
 ## License
 
