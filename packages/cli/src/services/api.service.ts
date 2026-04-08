@@ -14,10 +14,27 @@ export interface ApiProject {
   _id: string
 }
 
+/** Response from POST /v0/git/workspaces/:workspaceId/integrations */
+export interface ApiIntegration {
+  _id: string
+  workspace: string
+  project: string
+  type: string
+  name: string
+  otel: {
+    apiKey: string
+    autoMergeEnabled: boolean
+    autoCreateRelease: boolean
+  }
+  createdAt: string
+  updatedAt: string
+}
+
 export interface MultiplayerApiService {
   fetchWorkspace: (workspaceId: string) => Promise<ApiWorkspace | null>
   fetchProject: (workspaceId: string, projectId: string) => Promise<ApiProject | null>
   fetchProjects: (workspaceId: string) => Promise<ApiProject[]>
+  createIntegration: (workspaceId: string, projectId: string, name: string) => Promise<ApiIntegration>
 }
 
 /** Only `url` and `apiKey` are used; accepts full AgentConfig for convenience. */
@@ -73,5 +90,22 @@ export const createApiService = (
     return session as UserSession
   }
 
-  return { fetchWorkspace, fetchProject, fetchProjects, fetchUserSession }
+  const createIntegration = async (
+    workspaceId: string,
+    projectId: string,
+    name: string
+  ): Promise<ApiIntegration> => {
+    const res = await fetch(`${apiBase}/git/workspaces/${workspaceId}/integrations`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, project: projectId, type: 'OTEL' })
+    })
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      throw new Error(`Failed to create integration: ${res.status} ${res.statusText} ${body}`)
+    }
+    return (await res.json()) as ApiIntegration
+  }
+
+  return { fetchWorkspace, fetchProject, fetchProjects, fetchUserSession, createIntegration }
 }

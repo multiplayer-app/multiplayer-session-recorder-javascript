@@ -18,6 +18,8 @@ import {
   applySetupPlan,
   classifyStacksWithAi,
   applyClassifications,
+  createApiKeysForSetup,
+  injectApiKeysIntoPlan,
   type SetupPlan
 } from '../../session-recorder/setupWithAi.js'
 
@@ -850,13 +852,40 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
     const log: string[] = []
 
     try {
-      // 1. Write file changes
+      // 1. Create Multiplayer API keys automatically
+      const currentStack = needsSetup[0]
+      if (config.workspace && config.project && config.apiKey) {
+        log.push('◌ Creating Multiplayer API key...')
+        setApplyLog([...log])
+
+        const { keys, errors: keyErrors } = await createApiKeysForSetup(
+          needsSetup,
+          { url: config.url!, apiKey: config.apiKey, workspace: config.workspace, project: config.project }
+        )
+
+        for (const err of keyErrors) {
+          log.push(`⚠ ${err}`)
+        }
+
+        if (keys.length > 0) {
+          injectApiKeysIntoPlan(plan, keys, currentStack?.type ?? 'backend')
+          for (const k of keys) {
+            log[log.length - 1 - keyErrors.length] = `✓ Created ${k.stackType} API key: ${k.name}`
+          }
+        } else if (keyErrors.length === 0) {
+          log[log.length - 1] = '· No API keys needed'
+        }
+
+        setApplyLog([...log])
+      }
+
+      // 2. Write file changes
       const written = applySetupPlan(plan, config.dir)
       for (const f of written) {
         log.push(`✓ ${f}`)
       }
 
-      // 2. Run install command if needed
+      // 3. Run install command if needed
       if (plan.installCommand) {
         log.push(`◌ Running: ${plan.installCommand}`)
         setApplyLog([...log])
@@ -868,7 +897,7 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
         log[log.length - 1] = `✓ ${plan.installCommand}`
       }
 
-      // 3. Note env vars
+      // 4. Note env vars
       if (plan.envVars.length > 0) {
         log.push('')
         log.push('Environment variables to configure:')

@@ -4,8 +4,10 @@ import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import cliPath from '@anthropic-ai/claude-agent-sdk/embed'
+import crypto from 'crypto'
 import type { DetectedStack, SdkRelevance } from './detectStacks.js'
 import { getReadmeContent } from './readmes.js'
+import { createApiService, type ApiServiceAuth } from '../services/api.service.js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -263,28 +265,101 @@ Return ONLY a JSON object (no markdown fences, no explanation outside JSON) with
 2. **If Multiplayer SDK is already installed** (any @multiplayer-app/session-recorder-* package):
    - Check if it's actually initialized in the code
    - If initialized: approach "already-complete", empty installCommand, no fileChanges
-   - If installed but not initialized: approach "minimal-patch", just add init code
+   - If installed but not initialized: approach "minimal-patch", add full init code with all features below
 
 3. **If nothing is set up** (most common case):
    - Use approach "full-sdk"
    - Install the recommended SDK package
-   - Follow the README integration guide exactly
-   - Choose the simplest pattern that works for this project
+   - Follow the README integration guide
+   - Generate a PRODUCTION-GRADE integration, not a minimal stub — include ALL applicable features listed below
 
-4. **General rules**:
-   - Use environment variables for API keys (never hardcode)
-   - Use the project's package manager: ${stack.packageManager}
-   - If modifying an existing file, include the COMPLETE file content
-   - Keep changes minimal
-   - Include CORS URL config if a backend API URL pattern is visible
-   - Set application name from package.json name field
-   - For backend: if the project already has OTel, ADD a Multiplayer OTLP exporter alongside the existing one — NEVER remove or replace the existing exporter/endpoint
-   - Use CompositeSpanExporter or add to the exporters array so both pipelines receive data in parallel
+## Production-Grade Integration Checklist
 
-5. **Quality of response**:
-   - "steps" should be short, imperative, and ordered
-   - "warnings" should include only actionable caveats (empty array if none)
-   - "confidence" should reflect certainty from available files (0.0 to 1.0)`
+Generate code that includes ALL applicable features for the detected stack. Do NOT generate a bare-minimum init() call.
+
+### For React / Browser frontends (@multiplayer-app/session-recorder-react or session-recorder-browser):
+
+**Core init with full options:**
+- \`application\` — from package.json name
+- \`version\` — from package.json version
+- \`environment\` — from env var (e.g. NEXT_PUBLIC_ENVIRONMENT or VITE_ENVIRONMENT)
+- \`apiKey\` — from env var (NEXT_PUBLIC_MULTIPLAYER_API_KEY or VITE_MULTIPLAYER_API_KEY)
+- \`showWidget: true\` — enable the built-in recording widget
+- \`showContinuousRecording: true\` — enable continuous recording mode option
+
+**Exception capture — ALWAYS include:**
+- \`SessionRecorder.captureException(error)\` integrated into the app's error handling
+- For React: wrap the app with \`<ErrorBoundary>\` from the SDK (import { ErrorBoundary } from '@multiplayer-app/session-recorder-react')
+- For React 18/19 createRoot: add \`onUncaughtError\`, \`onCaughtError\`, \`onRecoverableError\` callbacks that call \`SessionRecorder.captureException(error)\`
+- For Next.js: add error capture in error.tsx / global-error.tsx files
+
+**Navigation tracking — ALWAYS include for SPAs:**
+- For React Router: use \`useNavigationRecorder(pathname)\` hook in the root layout
+- For Next.js: use \`useNavigationRecorder(pathname)\` with \`usePathname()\` in the root layout
+- For Vue Router / Nuxt: use \`SessionRecorder.navigation.record({ path })\` in router afterEach hook
+
+**HTTP instrumentation:**
+- \`propagateTraceHeaderCorsUrls\` — set to the app's API backend domains (detect from code if possible, otherwise add a TODO comment)
+- \`captureBody: true\`
+- \`captureHeaders: true\`
+
+**Privacy / masking — set sensible defaults:**
+- \`masking: { maskInputOptions: { password: true }, maskHeadersList: ['authorization', 'cookie', 'x-api-key'] }\`
+
+**Session attributes — if auth/user context is available in the project:**
+- Show how to call \`SessionRecorder.setSessionAttributes({ userId, userName })\` where user context is available (e.g. after login, in auth provider)
+- Add a TODO comment if user context location is unclear
+
+**Next.js specific:**
+- Next.js 15.3+: use \`instrumentation-client.ts\` for early initialization, export \`onRouterTransitionStart\`
+- Next.js < 15.3: use dynamic import in a client Providers component
+- Always use \`NEXT_PUBLIC_\` prefixed env vars for client-side config
+
+### For Node.js backends (@multiplayer-app/session-recorder-node):
+
+**OpenTelemetry setup — create a dedicated instrumentation file (e.g. src/opentelemetry.ts):**
+- Import BEFORE any other code (must be first import in entry file)
+- Use \`@opentelemetry/sdk-node\` NodeSDK or manual TracerProvider setup
+- Include \`@opentelemetry/auto-instrumentations-node\` for automatic HTTP/Express/etc instrumentation
+- Use \`SessionRecorderIdGenerator\` for trace ID generation
+- Use \`SessionRecorderHttpTraceExporter\` + \`SessionRecorderHttpLogsExporter\` for direct export, OR configure OTLP exporter to https://otlp.multiplayer.app
+
+**HTTP request/response capture — ALWAYS include:**
+- Add \`SessionRecorderHttpInstrumentationHooksNode\` hooks to \`@opentelemetry/instrumentation-http\`:
+  - \`requestHook\` with: \`maskHeadersList: ['Authorization', 'cookie', 'x-api-key']\`, \`maxPayloadSizeBytes: 500000\`
+  - \`responseHook\` with: \`maskHeadersList: ['set-cookie']\`, \`maxPayloadSizeBytes: 500000\`
+
+**Session recorder init with full options:**
+- \`apiKey\` from env var \`MULTIPLAYER_API_KEY\`
+- \`traceIdGenerator\` — use \`SessionRecorderIdGenerator\`
+- \`resourceAttributes\` with \`componentName\`, \`version\`, \`environment\`
+
+**Session management — set up continuous recording for long-running services:**
+- Start with \`SessionType.CONTINUOUS\` for server processes
+- Include auto-save on exceptions via span attributes
+- Show \`sessionRecorder.start()\` and \`sessionRecorder.stop()\` lifecycle
+
+**Multi-exporter support — if existing OTel exporters found:**
+- Chain exporters: keep existing + add Multiplayer exporter
+- Use \`SessionRecorderTraceExporterWrapper\` to wrap existing OTLP exporters
+
+## General Rules
+
+- Use environment variables for ALL secrets (API keys, endpoints) — never hardcode
+- Use the project's package manager: ${stack.packageManager}
+- If modifying an existing file, include the COMPLETE file content after changes
+- Set application name and version from package.json
+- For backend: if the project already has OTel, ADD a Multiplayer exporter alongside — NEVER remove or replace existing exporters
+- Install ALL required peer dependencies (e.g. @opentelemetry/api for frontend, auto-instrumentations for backend)
+- Add TypeScript types where the project uses TypeScript
+
+## Quality of Response
+
+- "steps" should be short, imperative, and ordered
+- "warnings" should include only actionable caveats (empty array if none)
+- "confidence" should reflect certainty from available files (0.0 to 1.0)
+- Every fileChange must include complete, runnable code — not stubs or pseudocode
+- Include inline comments only where the user needs to customize something (e.g. // TODO: add your API domains)`
 }
 
 function normalizePlan(plan: Partial<SetupPlan>): SetupPlan {
@@ -586,4 +661,112 @@ export function applySetupPlan(plan: SetupPlan, projectRoot: string): string[] {
     written.push(change.filePath)
   }
   return written
+}
+
+// ─── API key creation ───────────────────────────────────────────────────────
+
+/** Generate a short random suffix for unique integration names */
+function randomSuffix(): string {
+  return crypto.randomBytes(3).toString('hex') // e.g. "a1b2c3"
+}
+
+/** Placeholder values the AI uses for API keys in generated code */
+const API_KEY_PLACEHOLDERS = [
+  'your-api-key-here',
+  'your_api_key_here',
+  'YOUR_API_KEY',
+  'YOUR_MULTIPLAYER_API_KEY',
+  '<MULTIPLAYER_API_KEY>',
+  'MULTIPLAYER_API_KEY',
+]
+
+export interface CreatedApiKey {
+  name: string
+  apiKey: string
+  stackType: 'frontend' | 'backend'
+}
+
+/**
+ * Create Multiplayer OTEL integration API keys for the stacks that need setup.
+ * Creates separate keys for frontend and backend stacks.
+ */
+export async function createApiKeysForSetup(
+  stacks: DetectedStack[],
+  auth: ApiServiceAuth & { workspace: string; project: string }
+): Promise<{ keys: CreatedApiKey[]; errors: string[] }> {
+  const api = createApiService(auth)
+  const keys: CreatedApiKey[] = []
+  const errors: string[] = []
+
+  const needsFrontendKey = stacks.some(
+    s => s.sdkRelevance === 'needed' && (s.type === 'frontend' || s.type === 'fullstack' || s.type === 'mobile')
+  )
+  const needsBackendKey = stacks.some(
+    s => s.sdkRelevance === 'needed' && s.type === 'backend'
+  )
+
+  const suffix = randomSuffix()
+
+  if (needsFrontendKey) {
+    try {
+      const integration = await api.createIntegration(
+        auth.workspace,
+        auth.project,
+        `session-recorder-frontend-${suffix}`
+      )
+      keys.push({
+        name: integration.name,
+        apiKey: integration.otel.apiKey,
+        stackType: 'frontend'
+      })
+    } catch (err: unknown) {
+      errors.push(`Failed to create frontend API key: ${(err as Error).message}`)
+    }
+  }
+
+  if (needsBackendKey) {
+    try {
+      const integration = await api.createIntegration(
+        auth.workspace,
+        auth.project,
+        `session-recorder-backend-${suffix}`
+      )
+      keys.push({
+        name: integration.name,
+        apiKey: integration.otel.apiKey,
+        stackType: 'backend'
+      })
+    } catch (err: unknown) {
+      errors.push(`Failed to create backend API key: ${(err as Error).message}`)
+    }
+  }
+
+  return { keys, errors }
+}
+
+/**
+ * Inject real API keys into a setup plan, replacing placeholder values
+ * in envVars and fileChanges content.
+ */
+export function injectApiKeysIntoPlan(plan: SetupPlan, keys: CreatedApiKey[], stackType: DetectedStack['type']): void {
+  // Pick the right key for this stack type
+  const key = stackType === 'backend'
+    ? keys.find(k => k.stackType === 'backend')
+    : keys.find(k => k.stackType === 'frontend')
+
+  if (!key) return
+
+  // Replace in envVars
+  for (const envVar of plan.envVars) {
+    if (API_KEY_PLACEHOLDERS.some(p => envVar.value === p || envVar.value.includes(p))) {
+      envVar.value = key.apiKey
+    }
+  }
+
+  // Replace in fileChanges content
+  for (const change of plan.fileChanges) {
+    for (const placeholder of API_KEY_PLACEHOLDERS) {
+      change.content = change.content.replaceAll(placeholder, key.apiKey)
+    }
+  }
 }
