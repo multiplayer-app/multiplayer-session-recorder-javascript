@@ -8,12 +8,12 @@ interface Props {
 }
 
 const statusLabel: Record<string, { label: string; color: string }> = {
-  pending:   { label: 'PENDING',   color: '#6b7280' },
+  pending: { label: 'PENDING', color: '#6b7280' },
   analyzing: { label: 'ANALYZING', color: '#22d3ee' },
-  applying:  { label: 'APPLYING',  color: '#f59e0b' },
-  pushing:   { label: 'PUSHING',   color: '#f59e0b' },
-  done:      { label: 'DONE',      color: '#10b981' },
-  failed:    { label: 'FAILED',    color: '#ef4444' },
+  applying: { label: 'APPLYING', color: '#f59e0b' },
+  pushing: { label: 'PUSHING', color: '#f59e0b' },
+  done: { label: 'DONE', color: '#10b981' },
+  failed: { label: 'FAILED', color: '#ef4444' },
 }
 
 export const IssueItem: React.FC<Props> = ({ activeIssue }) => {

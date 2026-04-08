@@ -10,8 +10,8 @@ export interface ApiWorkspace {
 
 /** Subset of GET /v0/api/workspaces/:workspaceId/projects/:projectId */
 export interface ApiProject {
-  name?: string
-  _id?: string
+  name: string
+  _id: string
 }
 
 export interface MultiplayerApiService {

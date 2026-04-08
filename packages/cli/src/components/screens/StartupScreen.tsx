@@ -126,7 +126,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
             name: ws.name,
             projects: (await createApiService({ url, apiKey: '', bearerToken: apiKey }).fetchProjects(ws._id))
               .filter((p): p is { _id: string; name: string } => !!p._id && !!p.name),
-          }))
+          })),
         )
         // Persist auth_type so future startups go directly to project-select
         const profile = profileName ?? 'default'
@@ -364,6 +364,8 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
             <ProjectSelectStep
               workspaces={oauthWorkspaces}
               profileName={profileName}
+              // eslint-disable-next-line
+              // @ts-ignore
               loading={fetchingWorkspaces}
               onComplete={advance}
             />

@@ -15,22 +15,22 @@ interface Field {
 }
 
 const FIELDS: Field[] = [
-  { key: 'apiKey',    label: 'Project API key',          placeholder: 'eyJ...',                 secret: true },
-  { key: 'dir',       label: 'Project directory',        placeholder: process.cwd() },
-  { key: 'model',     label: 'AI model',                 placeholder: 'claude-sonnet-4-6 or gpt-4o' },
-  { key: 'modelKey',  label: 'AI API key',               placeholder: 'sk-...',                 secret: true },
-  { key: 'modelUrl',  label: 'AI base URL (optional)',   placeholder: 'leave empty for default' },
+  { key: 'apiKey', label: 'Project API key', placeholder: 'eyJ...', secret: true },
+  { key: 'dir', label: 'Project directory', placeholder: process.cwd() },
+  { key: 'model', label: 'AI model', placeholder: 'claude-sonnet-4-6 or gpt-4o' },
+  { key: 'modelKey', label: 'AI API key', placeholder: 'sk-...', secret: true },
+  { key: 'modelUrl', label: 'AI base URL (optional)', placeholder: 'leave empty for default' },
 ]
 
 const isClaudeModel = (model?: string): boolean => !!(model?.startsWith('claude'))
 
 const MODEL_OPTIONS = [
-  { label: 'claude-sonnet-4-6',          value: 'claude-sonnet-4-6' },
-  { label: 'claude-opus-4-6',            value: 'claude-opus-4-6' },
-  { label: 'claude-haiku-4-5-20251001',  value: 'claude-haiku-4-5-20251001' },
-  { label: 'gpt-4o',                     value: 'gpt-4o' },
-  { label: 'gpt-4o-mini',               value: 'gpt-4o-mini' },
-  { label: 'Custom...',                  value: '__custom__' },
+  { label: 'claude-sonnet-4-6', value: 'claude-sonnet-4-6' },
+  { label: 'claude-opus-4-6', value: 'claude-opus-4-6' },
+  { label: 'claude-haiku-4-5-20251001', value: 'claude-haiku-4-5-20251001' },
+  { label: 'gpt-4o', value: 'gpt-4o' },
+  { label: 'gpt-4o-mini', value: 'gpt-4o-mini' },
+  { label: 'Custom...', value: '__custom__' },
 ]
 
 function readDirs(dirPath: string): string[] {

@@ -52,7 +52,7 @@ export function DashboardScreen({
   onLoadMessages,
   onSendMessage,
   onAbortChat,
-  suspendKeyboard = false
+  suspendKeyboard = false,
 }: Props): ReactElement {
   // ── Dimensions ──────────────────────────────────────────────────────────────
 
@@ -229,9 +229,9 @@ export function DashboardScreen({
         showLogs,
         toggleLogs,
         isNarrow,
-        toggleNarrowStack
-      ]
-    )
+        toggleNarrowStack,
+      ],
+    ),
   )
 
   // ── Status bar hints ────────────────────────────────────────────────────────
@@ -263,13 +263,13 @@ export function DashboardScreen({
         id: 'stack',
         keys: 'v',
         label: narrowShowsDetail ? 'sessions' : 'detail',
-        onPress: toggleNarrowStack
+        onPress: toggleNarrowStack,
       })
     }
 
     base.push(
       { id: 'logs', keys: 'l', label: showLogs ? 'hide logs' : 'logs', onPress: toggleLogs },
-      { id: 'quit', keys: 'q', label: 'quit', onPress: onQuitRequest }
+      { id: 'quit', keys: 'q', label: 'quit', onPress: onQuitRequest },
     )
 
     return base
@@ -282,7 +282,7 @@ export function DashboardScreen({
     narrowShowsDetail,
     toggleNarrowStack,
     toggleLogs,
-    onQuitRequest
+    onQuitRequest,
   ])
 
   // Resolve display names for sidebar
