@@ -1,6 +1,7 @@
 import http from 'http'
 import net from 'net'
 import { exec } from 'child_process'
+import { readFileSync } from 'fs'
 import { URL, parse as parseUrl } from 'url'
 import { TokenStore, OauthClient, AuthData } from './token-store.js'
 
@@ -71,6 +72,24 @@ function openBrowser(url: string): void {
         ? `open "${url}"`
         : `xdg-open "${url}"`
   exec(cmd)
+}
+
+function readLocalHtmlTemplate(fileName: string): string | null {
+  try {
+    const path = new URL(fileName, import.meta.url)
+    return readFileSync(path, 'utf8')
+  } catch {
+    return null
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 export class OAuthManager {
@@ -230,13 +249,20 @@ export class OAuthManager {
 
           await this.handleCallback(code, state)
           res.writeHead(200, { 'Content-Type': 'text/html' })
+          const successHtml = readLocalHtmlTemplate('oauth-success.html')
           res.end(
-            '<html><body><h1>Authentication successful!</h1><p>You can close this window and return to the terminal.</p></body></html>',
+            successHtml ??
+              '<html><body><h1>Authentication successful!</h1><p>You can close this window and return to the terminal.</p></body></html>',
           )
           this._callbackResolve?.()
         } catch (err: any) {
           res.writeHead(400, { 'Content-Type': 'text/html' })
-          res.end(`<html><body><h1>Authentication failed</h1><p>${err.message}</p></body></html>`)
+          const failedHtml = readLocalHtmlTemplate('oauth-failed.html')
+          const errorMessage = escapeHtml(err?.message ?? String(err))
+          res.end(
+            failedHtml?.replace('{{error}}', errorMessage) ??
+              `<html><body><h1>Authentication failed</h1><p>${errorMessage}</p></body></html>`,
+          )
           this._callbackReject?.(err)
         } finally {
           await this.stopCallbackServer()

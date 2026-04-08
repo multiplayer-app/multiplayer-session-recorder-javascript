@@ -1,10 +1,11 @@
-import { useState, useLayoutEffect, useRef, type ReactElement } from 'react'
+import { useState, useLayoutEffect, useRef, type ReactElement, type ReactNode } from 'react'
 import { ScrollBoxRenderable } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import type { AgentConfig } from '../../types/index.js'
 import { writeProfile } from '../../cli/profile.js'
 import { collapseForSingleLine } from '../../lib/formatDisplay.js'
+import { ApiProject } from '../../services/api.service.js'
 
 function sanitizeName(name: string): string {
   return collapseForSingleLine(name.replace(/\\'/g, "'").replace(/\\"/g, '"'))
@@ -13,7 +14,7 @@ function sanitizeName(name: string): string {
 export interface SelectableWorkspace {
   _id: string
   name: string
-  projects: { _id: string; name: string }[]
+  projects: ApiProject[]
 }
 
 interface Props {
@@ -29,16 +30,14 @@ const SCROLLBAR_STYLE = {
     showArrows: true,
     trackOptions: {
       foregroundColor: '#22d3ee',
-      backgroundColor: '#374151',
-    },
-  },
+      backgroundColor: '#374151'
+    }
+  }
 }
 
 export function ProjectSelectStep({ workspaces, profileName, onComplete }: Props): ReactElement {
   // Flatten to a single list of workspace+project pairs
-  const options = workspaces.flatMap(ws =>
-    ws.projects.map(proj => ({ workspace: ws, project: proj }))
-  )
+  const options = workspaces.flatMap((ws) => ws.projects.map((proj) => ({ workspace: ws, project: proj })))
 
   const [selected, setSelected] = useState(0)
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
@@ -50,8 +49,8 @@ export function ProjectSelectStep({ workspaces, profileName, onComplete }: Props
   }, [selected])
 
   useKeyboard(({ name }) => {
-    if (name === 'up' || name === 'k') setSelected(s => Math.max(0, s - 1))
-    else if (name === 'down' || name === 'j') setSelected(s => Math.min(options.length - 1, s + 1))
+    if (name === 'up' || name === 'k') setSelected((s) => Math.max(0, s - 1))
+    else if (name === 'down' || name === 'j') setSelected((s) => Math.min(options.length - 1, s + 1))
     else if (name === 'return') handleConfirm()
   })
 
@@ -66,20 +65,20 @@ export function ProjectSelectStep({ workspaces, profileName, onComplete }: Props
       workspace: opt.workspace._id,
       project: opt.project._id,
       workspaceDisplayName: sanitizeName(opt.workspace.name),
-      projectDisplayName: sanitizeName(opt.project.name),
+      projectDisplayName: sanitizeName(opt.project.name)
     })
   }
 
   if (!options.length) {
     return (
-      <box flexDirection="column" gap={1}>
-        <text fg="#ef4444">No projects found for this account.</text>
+      <box flexDirection='column' gap={1}>
+        <text fg='#ef4444'>No projects found for this account.</text>
       </box>
     ) as ReactElement
   }
 
   // Build a flat list of rows: workspace headers + project rows
-  const rows: ReactElement[] = []
+  const rows: ReactNode[] = []
   let lastWsId = ''
   for (let i = 0; i < options.length; i++) {
     const opt = options[i]!
@@ -93,7 +92,7 @@ export function ProjectSelectStep({ workspaces, profileName, onComplete }: Props
       )
     }
     rows.push(
-      <box key={`proj-${opt.workspace._id}-${opt.project._id}`} flexDirection="row" height={1} gap={1}>
+      <box key={`proj-${opt.workspace._id}-${opt.project._id}`} flexDirection='row' height={1} gap={1}>
         <text fg={isCurrent ? '#22d3ee' : '#6b7280'}>{isCurrent ? '❯' : ' '}</text>
         <text fg={isCurrent ? '#22d3ee' : undefined} attributes={tuiAttrs({ bold: isCurrent })}>
           {sanitizeName(opt.project.name)}
@@ -103,21 +102,14 @@ export function ProjectSelectStep({ workspaces, profileName, onComplete }: Props
   }
 
   return (
-    <box flexDirection="column" flexGrow={1}>
+    <box flexDirection='column' flexGrow={1}>
       <text attributes={tuiAttrs({ dim: true })}>Select the project for this agent to monitor.</text>
-      <scrollbox
-        ref={scrollRef}
-        flexGrow={1}
-        scrollY
-        focused={false}
-        style={SCROLLBAR_STYLE}
-        marginTop={1}
-      >
-        <box flexDirection="column">
-          {rows}
-        </box>
+      <scrollbox ref={scrollRef} flexGrow={1} scrollY focused={false} style={SCROLLBAR_STYLE} marginTop={1}>
+        <box flexDirection='column'>{rows}</box>
       </scrollbox>
-      <text attributes={tuiAttrs({ dim: true })} marginTop={1}>↑↓ to select · Enter to confirm</text>
+      <text attributes={tuiAttrs({ dim: true })} marginTop={1}>
+        ↑↓ to select · Enter to confirm
+      </text>
     </box>
   ) as ReactElement
 }

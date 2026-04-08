@@ -4,14 +4,14 @@ import { getAuthHeaders } from '../lib/authHeaders.js'
 
 /** Subset of GET /v0/api/workspaces/:workspaceId */
 export interface ApiWorkspace {
-  name?: string
-  _id?: string
+  name: string
+  _id: string
 }
 
 /** Subset of GET /v0/api/workspaces/:workspaceId/projects/:projectId */
 export interface ApiProject {
-  name?: string
-  _id?: string
+  name: string
+  _id: string
 }
 
 export interface MultiplayerApiService {
@@ -33,7 +33,9 @@ export interface UserSession {
   workspaces: UserSessionWorkspace[]
 }
 
-export const createApiService = (config: ApiServiceAuth): MultiplayerApiService & {
+export const createApiService = (
+  config: ApiServiceAuth
+): MultiplayerApiService & {
   fetchUserSession: () => Promise<UserSession>
 } => {
   const host = new URL(config.url).origin

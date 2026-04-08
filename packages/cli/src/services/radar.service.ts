@@ -93,6 +93,11 @@ export interface RadarService {
   ) => Promise<AgentChat | null>
   subscribeChat: (chatId: string) => void
   unsubscribeChat: (chatId: string) => void
+  fetchAgentChats: (
+    workspaceId: string,
+    projectId: string,
+    options?: { dir?: string; agentName?: string; skip?: number; limit?: number },
+  ) => Promise<{ data: AgentChat[]; cursor: { total: number; skip: number; limit: number } }>
 }
 
 const computeAvailableModels = (config: AgentConfig): string[] => {
@@ -373,6 +378,25 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     return (await res.json()) as AgentChat
   }
 
+  const fetchAgentChats = async (
+    workspaceId: string,
+    projectId: string,
+    options?: { dir?: string; agentName?: string; skip?: number; limit?: number },
+  ): Promise<{ data: AgentChat[]; cursor: { total: number; skip: number; limit: number } }> => {
+    const params = new URLSearchParams()
+    if (options?.dir) params.set('dir', options.dir)
+    if (options?.agentName) params.set('agentName', options.agentName)
+    if (options?.skip != null) params.set('skip', String(options.skip))
+    params.set('limit', String(options?.limit ?? 30))
+
+    const res = await fetch(
+      `${apiBase}/workspaces/${workspaceId}/projects/${projectId}/agents/chats?${params.toString()}`,
+      { headers: getAuthHeaders(config.apiKey) },
+    )
+    if (!res.ok) throw new Error(`Failed to fetch agent chats: ${res.status}`)
+    return (await res.json()) as { data: AgentChat[]; cursor: { total: number; skip: number; limit: number } }
+  }
+
   const subscribeChat = (chatId: string) => {
     console.log(`[RADAR] chat:subscribe emitting for ${chatId}, connected=${socket.connected}`)
     socket.emit('chat:subscribe', { chatId })
@@ -413,6 +437,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     unsubscribeChat,
     abortChat,
     fetchChat,
+    fetchAgentChats,
   }
 }
 

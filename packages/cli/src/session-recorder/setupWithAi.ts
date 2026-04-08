@@ -2,6 +2,8 @@ import fs from 'fs'
 import path from 'path'
 import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
+import { query } from '@anthropic-ai/claude-agent-sdk'
+import cliPath from '@anthropic-ai/claude-agent-sdk/embed'
 import type { DetectedStack } from './detectStacks.js'
 import { getReadmeContent } from './readmes.js'
 
@@ -45,6 +47,12 @@ export interface SetupPlan {
     value: string
     description: string
   }>
+  /** Ordered steps to apply/verify this setup. */
+  steps: string[]
+  /** Potential risks or manual follow-ups the user should review. */
+  warnings: string[]
+  /** AI confidence from 0-1 based on available context. */
+  confidence: number
 }
 
 export interface SetupResult {
@@ -56,6 +64,39 @@ export interface SetupResult {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const isAnthropicModel = (model: string): boolean => model.startsWith('claude')
+
+async function generateWithClaudeCli(prompt: string, model: string, cwd: string): Promise<string> {
+  let responseText = ''
+
+  for await (const message of query({
+    prompt,
+    options: {
+      cwd,
+      executable: 'node',
+      pathToClaudeCodeExecutable: cliPath,
+      permissionMode: 'bypassPermissions',
+      maxTurns: 3,
+      includePartialMessages: true,
+      ...(model ? { model } : {}),
+    },
+  })) {
+    const msg = message as any
+    if (msg.type === 'stream_event') {
+      const event = msg.event
+      if (event?.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+        responseText += event.delta.text ?? ''
+      }
+    } else if (msg.type === 'result' && msg.subtype !== 'success') {
+      throw new Error(`Claude Code process exited: ${msg.subtype}`)
+    }
+  }
+
+  if (!responseText.trim()) {
+    throw new Error('Claude Code returned an empty response')
+  }
+
+  return responseText
+}
 
 function readFilesSafe(root: string, relativePaths: string[]): string {
   const parts: string[] = []
@@ -189,7 +230,15 @@ Return ONLY a JSON object (no markdown fences, no explanation outside JSON) with
       "value": "your-api-key-here",
       "description": "description"
     }
-  ]
+  ],
+  "steps": [
+    "Step 1",
+    "Step 2"
+  ],
+  "warnings": [
+    "Any caveat that needs user attention"
+  ],
+  "confidence": 0.85
 }
 
 ## Integration Approach Rules
@@ -219,7 +268,35 @@ Return ONLY a JSON object (no markdown fences, no explanation outside JSON) with
    - Keep changes minimal
    - Include CORS URL config if a backend API URL pattern is visible
    - Set application name from package.json name field
-   - For backend: if the project already has OTel, just add the Multiplayer exporter — don't restructure their setup`
+   - For backend: if the project already has OTel, just add the Multiplayer exporter — don't restructure their setup
+
+5. **Quality of response**:
+   - "steps" should be short, imperative, and ordered
+   - "warnings" should include only actionable caveats (empty array if none)
+   - "confidence" should reflect certainty from available files (0.0 to 1.0)`
+}
+
+function normalizePlan(plan: Partial<SetupPlan>): SetupPlan {
+  return {
+    detection: {
+      framework: plan.detection?.framework ?? 'unknown',
+      existingSetup: {
+        hasOpenTelemetry: plan.detection?.existingSetup?.hasOpenTelemetry ?? false,
+        hasMultiplayerSdk: plan.detection?.existingSetup?.hasMultiplayerSdk ?? false,
+        otelPackages: plan.detection?.existingSetup?.otelPackages ?? [],
+        otelConfigFile: plan.detection?.existingSetup?.otelConfigFile ?? undefined
+      },
+      approach: plan.detection?.approach ?? 'minimal-patch',
+      reasoning: plan.detection?.reasoning ?? 'No reasoning provided'
+    },
+    summary: plan.summary ?? 'No summary provided',
+    installCommand: plan.installCommand ?? '',
+    fileChanges: Array.isArray(plan.fileChanges) ? plan.fileChanges : [],
+    envVars: Array.isArray(plan.envVars) ? plan.envVars : [],
+    steps: Array.isArray(plan.steps) ? plan.steps : [],
+    warnings: Array.isArray(plan.warnings) ? plan.warnings : [],
+    confidence: typeof plan.confidence === 'number' ? Math.max(0, Math.min(1, plan.confidence)) : 0.7
+  }
 }
 
 // ─── AI call ─────────────────────────────────────────────────────────────────
@@ -243,14 +320,18 @@ export async function generateSetupPlan(
     let responseText: string
 
     if (isAnthropicModel(model)) {
-      const client = new Anthropic({ apiKey: modelKey })
-      const response = await client.messages.create({
-        model: model === 'claude-code' ? 'claude-sonnet-4-6' : model,
-        max_tokens: 8192,
-        messages: [{ role: 'user', content: prompt }],
-      })
-      const block = response.content[0]
-      responseText = block?.type === 'text' ? block.text : ''
+      if (modelKey) {
+        const client = new Anthropic({ apiKey: modelKey })
+        const response = await client.messages.create({
+          model: model === 'claude-code' ? 'claude-sonnet-4-6' : model,
+          max_tokens: 8192,
+          messages: [{ role: 'user', content: prompt }],
+        })
+        const block = response.content[0]
+        responseText = block?.type === 'text' ? block.text : ''
+      } else {
+        responseText = await generateWithClaudeCli(prompt, model, stack.root)
+      }
     } else {
       const client = new OpenAI({
         apiKey: modelKey,
@@ -270,7 +351,8 @@ export async function generateSetupPlan(
       return { success: false, plan: null, error: 'AI did not return valid JSON' }
     }
 
-    const plan = JSON.parse(jsonMatch[0]) as SetupPlan
+    const parsed = JSON.parse(jsonMatch[0]) as Partial<SetupPlan>
+    const plan = normalizePlan(parsed)
     return { success: true, plan }
   } catch (err: unknown) {
     return {

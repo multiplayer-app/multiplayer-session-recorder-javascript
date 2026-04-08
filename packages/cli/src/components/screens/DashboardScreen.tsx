@@ -38,6 +38,8 @@ interface Props {
   onAbortChat: (chatId: string) => void
   onSubscribeSession: (chatId: string) => void
   onUnsubscribeSession: (chatId: string) => void
+  onLoadMoreSessions?: () => void
+  hasMoreSessions?: boolean
   /** When true (e.g. quit dialog open), ignore keys so the overlay handles them. */
   suspendKeyboard?: boolean
 }
@@ -56,6 +58,8 @@ export function DashboardScreen({
   onAbortChat,
   onSubscribeSession,
   onUnsubscribeSession,
+  onLoadMoreSessions,
+  hasMoreSessions = false,
   suspendKeyboard = false
 }: Props): ReactElement {
   // ── Dimensions ──────────────────────────────────────────────────────────────
@@ -327,6 +331,8 @@ export function DashboardScreen({
               setSelectedIndex(index)
               setFocusedPane('list')
             }}
+            hasMore={hasMoreSessions}
+            onLoadMore={onLoadMoreSessions}
           />
         )}
 
