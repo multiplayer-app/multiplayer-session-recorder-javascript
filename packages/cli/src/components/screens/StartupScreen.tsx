@@ -135,6 +135,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
   const [ready, setReady] = useState(false)
   const [oauthWorkspaces, setOauthWorkspaces] = useState<SelectableWorkspace[]>([])
   const [fetchingWorkspaces, setFetchingWorkspaces] = useState(false)
+  const [oauthApi, setOauthApi] = useState<ReturnType<typeof createApiService> | null>(null)
 
   // If we start on 'project-select' with a saved OAuth token, fetch workspaces automatically
   useEffect(() => {
@@ -145,14 +146,14 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
     setFetchingWorkspaces(true)
     const url = config.url || API_URL
     const api = createApiService({ url, apiKey: '', bearerToken: apiKey })
+    setOauthApi(api)
     void api.fetchUserSession()
       .then(async (session) => {
         const workspaces: SelectableWorkspace[] = await Promise.all(
           session.workspaces.map(async ws => ({
             _id: ws._id,
             name: ws.name,
-            projects: (await createApiService({ url, apiKey: '', bearerToken: apiKey }).fetchProjects(ws._id))
-              .filter((p): p is { _id: string; name: string } => !!p._id && !!p.name),
+            projects: (await api.fetchProjects(ws._id)).filter(p => !!p._id && !!p.name),
           })),
         )
         // Persist auth_type so future startups go directly to project-select
@@ -370,6 +371,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
 
           {step === 'auth-method' && (
             <AuthMethodStep
+              url={config.url || API_URL}
               profileName={profileName}
               onComplete={(updates) => {
                 const method = (updates as any)._authMethod
@@ -380,6 +382,8 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
                   setOauthWorkspaces(workspaces)
                   const next = { ...config, apiKey: updates.apiKey }
                   setConfig(next)
+                  const url = next.url || API_URL
+                  setOauthApi(createApiService({ url, apiKey: '', bearerToken: updates.apiKey! }))
                   setStep('project-select')
                 } else {
                   advance(updates)
@@ -393,6 +397,13 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
               profileName={profileName}
               loading={fetchingWorkspaces}
               onComplete={advance}
+              onCreateWorkspace={oauthApi ? async (name, handle) => {
+                const ws = await oauthApi.createWorkspace(name, handle)
+                return { _id: ws._id!, name: ws.name!, projects: [] }
+              } : undefined}
+              onCreateProject={oauthApi ? async (workspaceId, name) => {
+                return oauthApi.createProject(workspaceId, name)
+              } : undefined}
             />
           )}
           {step === 'api-key' && <ApiKeyStep config={config} profileName={profileName} onComplete={advance} />}

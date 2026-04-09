@@ -3,7 +3,6 @@ import { useKeyboard } from '@opentui/react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import type { AgentConfig } from '../../types/index.js'
 import { OAuthManager } from '../../auth/oauth-manager.js'
-import { BASE_API_URL, API_URL } from '../../config.js'
 import { writeProfile } from '../../cli/profile.js'
 import { createApiService } from '../../services/api.service.js'
 import type { SelectableWorkspace } from './ProjectSelectStep.js'
@@ -18,11 +17,12 @@ const OPTIONS: { id: AuthMethod; label: string; description: string }[] = [
 type OAuthState = 'idle' | 'loading' | 'waiting' | 'error'
 
 interface Props {
+  url: string
   profileName?: string
   onComplete: (updates: Partial<AgentConfig> & { _oauthWorkspaces?: SelectableWorkspace[] }) => void
 }
 
-export function AuthMethodStep({ profileName, onComplete }: Props): ReactElement {
+export function AuthMethodStep({ url, profileName, onComplete }: Props): ReactElement {
   const [selected, setSelected] = useState(0)
   const [oauthState, setOAuthState] = useState<OAuthState>('idle')
   const [oauthUrl, setOAuthUrl] = useState<string | null>(null)
@@ -51,7 +51,8 @@ export function AuthMethodStep({ profileName, onComplete }: Props): ReactElement
 
     void (async () => {
       try {
-        const response = await fetch(`${BASE_API_URL}/.well-known/oauth-authorization-server`)
+        const baseUrl = url.replace(/\/v\d+\/?$/, '')
+        const response = await fetch(`${baseUrl}/.well-known/oauth-authorization-server`)
         if (!response.ok) throw new Error(`Failed to fetch OAuth config: ${response.status}`)
         const data = (await response.json()) as any
         const oauthParams = {
@@ -71,7 +72,7 @@ export function AuthMethodStep({ profileName, onComplete }: Props): ReactElement
         if (!token) throw new Error('Authentication failed. Please try again.')
 
         // OAuth tokens don't embed workspace/project — fetch all for user selection
-        const api = createApiService({ url: API_URL, apiKey: '', bearerToken: token })
+        const api = createApiService({ url, apiKey: '', bearerToken: token })
         const session = await api.fetchUserSession()
         if (!session.workspaces.length) throw new Error('No workspace found for this account')
 
@@ -79,7 +80,7 @@ export function AuthMethodStep({ profileName, onComplete }: Props): ReactElement
           session.workspaces.map(async (ws) => ({
             _id: ws._id,
             name: ws.name,
-            projects: await api.fetchProjects(ws._id),
+            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name),
           })),
         )
 
