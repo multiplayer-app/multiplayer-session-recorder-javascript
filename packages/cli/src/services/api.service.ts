@@ -35,6 +35,8 @@ export interface MultiplayerApiService {
   fetchProject: (workspaceId: string, projectId: string) => Promise<ApiProject | null>
   fetchProjects: (workspaceId: string) => Promise<ApiProject[]>
   createIntegration: (workspaceId: string, projectId: string, name: string) => Promise<ApiIntegration>
+  createWorkspace: (name: string, handle: string) => Promise<ApiWorkspace>
+  createProject: (workspaceId: string, name: string) => Promise<ApiProject>
 }
 
 /** Only `url` and `apiKey` are used; accepts full AgentConfig for convenience. */
@@ -43,7 +45,6 @@ export type ApiServiceAuth = Pick<AgentConfig, 'url' | 'apiKey'> & { bearerToken
 export interface UserSessionWorkspace {
   _id: string
   name: string
-  projects: { _id: string; name: string; role: string }[]
 }
 
 export interface UserSession {
@@ -51,7 +52,7 @@ export interface UserSession {
 }
 
 export const createApiService = (
-  config: ApiServiceAuth
+  config: ApiServiceAuth,
 ): MultiplayerApiService & {
   fetchUserSession: () => Promise<UserSession>
 } => {
@@ -93,12 +94,12 @@ export const createApiService = (
   const createIntegration = async (
     workspaceId: string,
     projectId: string,
-    name: string
+    name: string,
   ): Promise<ApiIntegration> => {
     const res = await fetch(`${apiBase}/git/workspaces/${workspaceId}/integrations`, {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, project: projectId, type: 'OTEL' })
+      body: JSON.stringify({ name, project: projectId, type: 'OTEL' }),
     })
     if (!res.ok) {
       const body = await res.text().catch(() => '')
@@ -107,5 +108,34 @@ export const createApiService = (
     return (await res.json()) as ApiIntegration
   }
 
-  return { fetchWorkspace, fetchProject, fetchProjects, fetchUserSession, createIntegration }
+
+  const createWorkspace = async (name: string, handle: string): Promise<ApiWorkspace> => {
+    const res = await fetch(`${apiBase}/api/workspaces`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, handle }),
+    })
+    if (!res.ok) throw new Error(`Failed to create workspace: ${res.status} ${res.statusText}`)
+    return (await res.json()) as ApiWorkspace
+  }
+
+  const createProject = async (workspaceId: string, name: string): Promise<ApiProject> => {
+    const res = await fetch(`${apiBase}/api/workspaces/${workspaceId}/projects`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    if (!res.ok) throw new Error(`Failed to create project: ${res.status} ${res.statusText}`)
+    return (await res.json()) as ApiProject
+  }
+
+  return {
+    fetchWorkspace,
+    fetchProject,
+    fetchProjects,
+    fetchUserSession,
+    createWorkspace,
+    createProject,
+    createIntegration,
+  }
 }

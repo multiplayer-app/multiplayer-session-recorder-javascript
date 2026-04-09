@@ -24,6 +24,7 @@ export interface AuthData {
 
 interface StoredData {
   oauth_client?: OauthClient
+  oauth_clients?: Record<string, OauthClient>
   oauth_data?: AuthData
 }
 
@@ -68,14 +69,20 @@ export class TokenStore {
     return { ...this.authParams, codeChallenge }
   }
 
-  storeOauthClient(client: OauthClient): void {
+  storeOauthClient(client: OauthClient, serverUrl?: string): void {
     const store = readStore()
-    store.oauth_client = client
+    if (serverUrl) {
+      store.oauth_clients = { ...store.oauth_clients, [serverUrl]: client }
+    } else {
+      store.oauth_client = client
+    }
     writeStore(store)
   }
 
-  getOauthClient(): OauthClient | undefined {
-    return readStore().oauth_client
+  getOauthClient(serverUrl?: string): OauthClient | undefined {
+    const store = readStore()
+    if (serverUrl) return store.oauth_clients?.[serverUrl]
+    return store.oauth_client
   }
 
   storeAuthData(data: AuthData): void {
@@ -88,10 +95,16 @@ export class TokenStore {
     return readStore().oauth_data
   }
 
-  cleanup(force = false): void {
+  cleanup(force = false, serverUrl?: string): void {
     const store = readStore()
     delete store.oauth_data
-    if (force) delete store.oauth_client
+    if (force) {
+      if (serverUrl && store.oauth_clients) {
+        delete store.oauth_clients[serverUrl]
+      } else {
+        delete store.oauth_client
+      }
+    }
     writeStore(store)
     this.authParams = undefined
   }

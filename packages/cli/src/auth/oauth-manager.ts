@@ -127,6 +127,7 @@ export class OAuthManager {
   }
 
   private async registerClient(redirectUri: string): Promise<OauthClient> {
+    const serverUrl = this.authorizationServerUrl
     const clientMetadata = {
       client_name: 'Multiplayer CLI',
       client_uri: 'https://multiplayer.app',
@@ -155,7 +156,7 @@ export class OAuthManager {
         clientSecretExpiresAt: resp.client_secret_expires_at,
       }
 
-      this.tokenStore.storeOauthClient(clientData)
+      this.tokenStore.storeOauthClient(clientData, serverUrl)
       return clientData
     } catch (error) {
       if (isLikelyOfflineError(error)) {
@@ -171,7 +172,8 @@ export class OAuthManager {
   }
 
   private async getClientCredentials(): Promise<OauthClient> {
-    let clientData = this.tokenStore.getOauthClient()
+    const serverUrl = this.authorizationServerUrl
+    let clientData = this.tokenStore.getOauthClient(serverUrl)
 
     if (!clientData) {
       const callbackPort = await getAvailablePort()
@@ -353,8 +355,9 @@ export class OAuthManager {
           errorData.error_description?.toLowerCase().includes('client secret')
 
         if (isExpiredSecret && onExpiredSecret) {
-          const current = this.tokenStore.getOauthClient()
-          this.tokenStore.cleanup(true)
+          const serverUrl = this.authorizationServerUrl
+          const current = this.tokenStore.getOauthClient(serverUrl)
+          this.tokenStore.cleanup(true, serverUrl)
           return onExpiredSecret(current!)
         }
 
@@ -404,7 +407,7 @@ export class OAuthManager {
 
     try {
       const tokenData = await this.fetchToken(tokenParams, current => {
-        this.tokenStore.cleanup(true)
+        this.tokenStore.cleanup(true, this.authorizationServerUrl)
         return this.registerClient(current?.redirectUri ?? redirectUri).then(newClient => {
           const retryParams = new URLSearchParams({
             grant_type: 'refresh_token',
