@@ -24,13 +24,28 @@ const IGNORED_DIRS = new Set([
   'venv',
 ])
 
-function readDirs(dirPath: string): string[] {
+interface DirEntry {
+  name: string
+  createdAt: Date
+  modifiedAt: Date
+}
+
+type SortField = 'name' | 'createdAt' | 'modifiedAt'
+const SORT_OPTIONS: { id: SortField; label: string }[] = [
+  { id: 'name', label: 'Name' },
+  { id: 'modifiedAt', label: 'Modified' },
+  { id: 'createdAt', label: 'Created' },
+]
+
+function readDirs(dirPath: string): DirEntry[] {
   try {
     return fs
       .readdirSync(dirPath, { withFileTypes: true })
       .filter((e) => e.isDirectory() && !e.name.startsWith('.') && !IGNORED_DIRS.has(e.name))
-      .map((e) => e.name)
-      .sort()
+      .map((e) => {
+        const stat = fs.statSync(path.join(dirPath, e.name))
+        return { name: e.name, createdAt: stat.birthtime, modifiedAt: stat.mtime }
+      })
   } catch {
     return []
   }
@@ -53,6 +68,22 @@ const SCROLLBAR_STYLE = {
   },
 } as const
 
+function formatRelativeDate(date: Date): string {
+  const now = Date.now()
+  const diff = now - date.getTime()
+  const seconds = Math.floor(diff / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months}mo ago`
+  return `${Math.floor(months / 12)}y ago`
+}
+
 function clickHandler(handler: () => void) {
   return (e: MouseEvent) => {
     if (e.button !== MouseButton.LEFT) return
@@ -70,10 +101,37 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
   const [hoveredRow, setHoveredRow] = useState<number | null>(null)
   const [hoveredBreadcrumb, setHoveredBreadcrumb] = useState<number | null>(null)
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
+  const [sortBy, setSortBy] = useState<SortField>('name')
+  const [sortAsc, setSortAsc] = useState(true)
 
   const isRoot = currentPath === path.parse(currentPath).root
-  const subdirs = useMemo(() => readDirs(currentPath), [currentPath])
-  const items = useMemo(() => [...(isRoot ? [] : [UP_ITEM]), ...subdirs], [isRoot, subdirs])
+  const dirs = useMemo(() => readDirs(currentPath), [currentPath])
+  const sortedDirs = useMemo(() => {
+    const sorted = [...dirs]
+    sorted.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name)
+        case 'createdAt':
+          return a.createdAt.getTime() - b.createdAt.getTime()
+        case 'modifiedAt':
+          return a.modifiedAt.getTime() - b.modifiedAt.getTime()
+      }
+    })
+    if (!sortAsc) sorted.reverse()
+    return sorted
+  }, [dirs, sortBy, sortAsc])
+  const dirMap = useMemo(() => new Map(sortedDirs.map((d) => [d.name, d])), [sortedDirs])
+  const items = useMemo(() => [...(isRoot ? [] : [UP_ITEM]), ...sortedDirs.map((d) => d.name)], [isRoot, sortedDirs])
+
+  const toggleSort = (field: SortField) => {
+    if (sortBy === field) {
+      setSortAsc((v) => !v)
+    } else {
+      setSortBy(field)
+      setSortAsc(field === 'name')
+    }
+  }
 
   // Breadcrumb segments
   const breadcrumbs = useMemo(() => {
@@ -165,6 +223,11 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
         const item = items[selectedIndex]
         if (item) activateItem(item)
       }
+    } else if (name === 'tab') {
+      stopPropagation()
+      const idx = SORT_OPTIONS.findIndex((o) => o.id === sortBy)
+      const next = SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length]!
+      toggleSort(next.id)
     }
   })
 
@@ -214,7 +277,44 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
         marginTop={1}
         overflow={'hidden' as const}
       >
-        {/* Sticky confirm button at top */}
+        {/* Column headers — aligned with row layout */}
+        <box flexDirection='row' flexShrink={0} height={1} paddingLeft={1} paddingRight={1}>
+          <box width={3} flexShrink={0} />
+          <box flexGrow={1}>
+            <text
+              fg={sortBy === 'name' ? '#58a6ff' : '#484f58'}
+              attributes={tuiAttrs({ bold: sortBy === 'name' })}
+              onMouseUp={clickHandler(() => toggleSort('name'))}
+            >
+              Name{sortBy === 'name' ? (sortAsc ? ' ↑' : ' ↓') : ''}
+            </text>
+          </box>
+          <box flexShrink={0} flexDirection='row' gap={1}>
+            <box width={11} flexShrink={0}>
+              <text
+                fg={sortBy === 'modifiedAt' ? '#58a6ff' : '#484f58'}
+                attributes={tuiAttrs({ bold: sortBy === 'modifiedAt' })}
+                onMouseUp={clickHandler(() => toggleSort('modifiedAt'))}
+              >
+                Modified{sortBy === 'modifiedAt' ? (sortAsc ? ' ↑' : ' ↓') : ''}
+              </text>
+            </box>
+            <text fg='#30363d'>│</text>
+            <box width={11} flexShrink={0}>
+              <text
+                fg={sortBy === 'createdAt' ? '#58a6ff' : '#484f58'}
+                attributes={tuiAttrs({ bold: sortBy === 'createdAt' })}
+                onMouseUp={clickHandler(() => toggleSort('createdAt'))}
+              >
+                Created{sortBy === 'createdAt' ? (sortAsc ? ' ↑' : ' ↓') : ''}
+              </text>
+            </box>
+          </box>
+          <box width={2} flexShrink={0} />
+        </box>
+        <box height={1} paddingLeft={1} paddingRight={1} flexShrink={0}>
+          <text fg='#21262d'>{'─'.repeat(999)}</text>
+        </box>
 
         <scrollbox ref={scrollRef} flexGrow={1} scrollY focused={false} style={SCROLLBAR_STYLE}>
           <box flexDirection='column' flexShrink={0} width='100%'>
@@ -226,6 +326,7 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
               const icon = isUp ? '' : '📁'
               const label = isUp ? '../' : item
               const nameFg = isActive ? '#e6edf3' : isUp ? '#8b949e' : '#c9d1d9'
+              const entry = isUp ? null : dirMap.get(item)
 
               const isHovered = hoveredRow === i
               return (
@@ -257,6 +358,18 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
                         {label}
                       </text>
                     </box>
+                    {/* Timestamps */}
+                    {entry && (
+                      <box flexShrink={0} flexDirection='row' gap={1}>
+                        <box width={11} flexShrink={0}>
+                          <text fg='#484f58'>{formatRelativeDate(entry.modifiedAt)}</text>
+                        </box>
+                        <text fg='#30363d'>│</text>
+                        <box width={11} flexShrink={0}>
+                          <text fg='#484f58'>{formatRelativeDate(entry.createdAt)}</text>
+                        </box>
+                      </box>
+                    )}
                     {/* Arrow indicator for folders */}
                     {!isUp && (
                       <box width={2} flexShrink={0}>
@@ -303,7 +416,7 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
 
       {/* Footer */}
       <box flexDirection='row' flexShrink={0} paddingLeft={1} marginTop={1} gap={2}>
-        <text fg='#484f58'>↑↓ navigate ← back →/Enter open Click to select</text>
+        <text fg='#484f58'>↑↓ navigate ← back →/Enter open Tab sort</text>
       </box>
     </box>
   ) as ReactElement

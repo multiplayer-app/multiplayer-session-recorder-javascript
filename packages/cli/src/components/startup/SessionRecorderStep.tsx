@@ -22,6 +22,7 @@ import {
   injectApiKeysIntoPlan,
   type SetupPlan
 } from '../../session-recorder/setupWithAi.js'
+import { Divider } from '../shared/Divider.js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -49,8 +50,8 @@ type PreviewAction = 'apply' | 'regenerate' | 'skip'
 const ACTIONS: { id: Action; label: string; description: string }[] = [
   {
     id: 'setup',
-    label: 'Set up with AI',
-    description: 'AI will analyze your project and generate integration code'
+    label: 'Set up SDK',
+    description: 'Analyze your project and generate integration changes'
   },
   { id: 'skip', label: 'Skip for now', description: 'You can set this up later' }
 ]
@@ -62,6 +63,29 @@ const PREVIEW_ACTIONS: { id: PreviewAction; label: string }[] = [
 ]
 
 const STEP_TITLE = 'Multiplayer SDK'
+
+type StatusGroup = 'needs-setup' | 'installed' | 'not-needed' | 'covered'
+const STATUS_ORDER: StatusGroup[] = ['needs-setup', 'installed', 'covered', 'not-needed']
+const STATUS_LABELS: Record<StatusGroup, string> = {
+  'needs-setup': 'Needs Setup',
+  installed: 'Installed',
+  covered: 'Covered by Dependency',
+  'not-needed': 'Not Needed'
+}
+const STATUS_COLORS: Record<StatusGroup, string> = {
+  'needs-setup': '#f59e0b',
+  installed: '#10b981',
+  covered: '#8b5cf6',
+  'not-needed': '#6b7280'
+}
+
+function getStatusGroup(s: DetectedStack): StatusGroup {
+  if (s.sdkRelevance === 'installed' || (!s.sdkRelevance && s.alreadyInstalled)) return 'installed'
+  if (s.sdkRelevance === 'not-needed') return 'not-needed'
+  if (s.sdkRelevance === 'covered-by-dependency') return 'covered'
+  return 'needs-setup'
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function clickHandler(handler: () => void) {
@@ -90,14 +114,21 @@ function AnimatedLoading({ title, subtitle, color = '#22d3ee' }: AnimatedLoading
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setFrameIndex((i) => (i + 1) % spinnerFrames.length)
-    }, 85)
+      setFrameIndex((i) => (i + 1) % 120)
+    }, 90)
     return () => clearInterval(timer)
   }, [])
 
-  const spinner = spinnerFrames[frameIndex] ?? spinnerFrames[0]
+  const spinner = spinnerFrames[frameIndex % spinnerFrames.length] ?? spinnerFrames[0]
   const pulseText = pulseFrames[Math.floor(frameIndex / 2) % pulseFrames.length] ?? pulseFrames[0]
-  const barProgress = (frameIndex % 12) + 4
+
+  const BAR_WIDTH = 28
+  const SEGMENT = 6
+  const travel = BAR_WIDTH - SEGMENT
+  const raw = frameIndex % (travel * 2)
+  const pos = raw < travel ? raw : travel * 2 - raw
+  const before = pos
+  const after = BAR_WIDTH - SEGMENT - (pos || 1)
 
   return (
     <box flexDirection='column' gap={1}>
@@ -109,8 +140,9 @@ function AnimatedLoading({ title, subtitle, color = '#22d3ee' }: AnimatedLoading
       </box>
       <text attributes={tuiAttrs({ dim: true })}>{subtitle ?? pulseText}</text>
       <box flexDirection='row'>
-        <text fg={color}>{'━'.repeat(barProgress)}</text>
-        <text fg='#30363d'>{'─'.repeat(28 - barProgress)}</text>
+        <text fg='#30363d'>{'─'.repeat(before)}</text>
+        <text fg={color}>{'━'.repeat(SEGMENT)}</text>
+        <text fg='#30363d'>{'─'.repeat(after)}</text>
       </box>
     </box>
   ) as ReactElement
@@ -189,11 +221,30 @@ function StackBadge({ stack }: { stack: DetectedStack }): ReactElement {
   ) as ReactElement
 }
 
-function StackRow({ stack, isLast }: { stack: DetectedStack; isLast: boolean }): ReactElement {
+function StackRow({
+  stack,
+  isLast,
+  checkbox
+}: {
+  stack: DetectedStack
+  isLast: boolean
+  checkbox?: { checked: boolean; focused: boolean; onToggle: () => void }
+}): ReactElement {
   const s = stack
   return (
     <box flexDirection='column'>
-      <box flexDirection='row' gap={2} paddingRight={1}>
+      <box
+        flexDirection='row'
+        gap={2}
+        paddingRight={1}
+        backgroundColor={checkbox?.focused ? '#161b22' : undefined}
+        onMouseUp={checkbox ? clickHandler(checkbox.onToggle) : undefined}
+      >
+        {checkbox && (
+          <text flexShrink={0} fg={checkbox.checked ? '#22d3ee' : '#484f58'}>
+            {checkbox.checked ? '[✓]' : '[ ]'}
+          </text>
+        )}
         <box flexGrow={1} flexShrink={1} flexDirection='column'>
           <box flexDirection='row' gap={1} paddingRight={1}>
             <text flexShrink={0} fg='#e6edf3' attributes={tuiAttrs({ bold: true })}>
@@ -215,11 +266,7 @@ function StackRow({ stack, isLast }: { stack: DetectedStack; isLast: boolean }):
         </box>
         <StackBadge stack={s} />
       </box>
-      {!isLast && (
-        <box height={1} paddingLeft={1} paddingRight={1}>
-          <text fg='#21262d'>{'─'.repeat(999)}</text>
-        </box>
-      )}
+      {!isLast && <Divider />}
     </box>
   ) as ReactElement
 }
@@ -275,7 +322,7 @@ function ClassifyingView(): ReactElement {
     <box flexDirection='column' gap={1}>
       <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
       <AnimatedLoading
-        title='AI is analyzing your project structure'
+        title='Analyzing your project structure'
         subtitle='Determining which packages need the SDK...'
         color='#a78bfa'
       />
@@ -291,7 +338,7 @@ function AiPlanningView({ stackLabel }: { stackLabel: string }): ReactElement {
     <box flexDirection='column' gap={1}>
       <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
       <AnimatedLoading
-        title='AI is analyzing your project and generating setup plan'
+        title='Preparing your setup plan'
         subtitle={`Reading integration guide + project files for ${stackLabel}`}
         color='#f59e0b'
       />
@@ -525,11 +572,7 @@ function PreviewView({
                   </text>
                 </box>
               </box>
-              {!isLast && (
-                <box height={1} paddingLeft={1} paddingRight={1}>
-                  <text fg='#21262d'>{'─'.repeat(999)}</text>
-                </box>
-              )}
+              {!isLast && <Divider />}
             </box>
           )
         })}
@@ -589,6 +632,8 @@ interface ResultsViewProps {
   hoveredRow: number | null
   setSelectedIndex: (index: number) => void
   setHoveredRow: Dispatch<SetStateAction<number | null>>
+  selectedStacks: Set<string>
+  onToggleStack: (relativePath: string) => void
   onSetup: () => void
   onSkip: () => void
 }
@@ -600,6 +645,8 @@ function ResultsView({
   hoveredRow,
   setSelectedIndex,
   setHoveredRow,
+  selectedStacks,
+  onToggleStack,
   onSetup,
   onSkip
 }: ResultsViewProps): ReactElement {
@@ -607,6 +654,25 @@ function ResultsView({
   const detectedSide = summary.hasFrontend ? 'frontend' : 'backend'
   const missingSide = summary.hasFrontend ? 'backend' : 'frontend'
   const resultsScrollRef = useRef<ScrollBoxRenderable | null>(null)
+
+  // Group stacks by status in display order
+  const grouped = STATUS_ORDER.map((status) => ({
+    status,
+    stacks: stacks.filter((s) => getStatusGroup(s) === status)
+  })).filter((g) => g.stacks.length > 0)
+
+  // Build checkable items in display order for cursor mapping
+  const checkableInOrder: DetectedStack[] = []
+  for (const group of grouped) {
+    for (const s of group.stacks) {
+      if (getStatusGroup(s) === 'needs-setup') {
+        checkableInOrder.push(s)
+      }
+    }
+  }
+
+  const checkableCount = checkableInOrder.length
+  const actionIdx = selectedIndex >= checkableCount ? selectedIndex - checkableCount : -1
 
   return (
     <box flexDirection='column' gap={1} flexGrow={1}>
@@ -616,8 +682,39 @@ function ResultsView({
       </text>
       <scrollbox ref={resultsScrollRef} flexGrow={1} scrollY focused={false} style={PREVIEW_SCROLLBAR_STYLE}>
         <box flexDirection='column'>
-          {stacks.map((s, i) => (
-            <StackRow key={i} stack={s} isLast={i === stacks.length - 1} />
+          {grouped.map((group, gi) => (
+            <box key={group.status} flexDirection='column'>
+              <box paddingTop={gi > 0 ? 1 : 0}>
+                <text fg={STATUS_COLORS[group.status]} attributes={tuiAttrs({ bold: true, underline: true })}>
+                  {STATUS_LABELS[group.status]} ({group.stacks.length})
+                </text>
+              </box>
+              <Divider />
+              {group.stacks.map((s, si) => {
+                const isCheckable = getStatusGroup(s) === 'needs-setup'
+                const checkIdx = isCheckable ? checkableInOrder.indexOf(s) : -1
+                const isFocused = checkIdx >= 0 && checkIdx === selectedIndex
+                const isChecked = selectedStacks.has(s.relativePath)
+                const isLastStack = gi === grouped.length - 1 && si === group.stacks.length - 1
+
+                return (
+                  <StackRow
+                    key={si}
+                    stack={s}
+                    isLast={isLastStack}
+                    checkbox={
+                      isCheckable
+                        ? {
+                            checked: isChecked,
+                            focused: isFocused,
+                            onToggle: () => onToggleStack(s.relativePath)
+                          }
+                        : undefined
+                    }
+                  />
+                )
+              })}
+            </box>
           ))}
 
           {isPartial && (
@@ -640,20 +737,25 @@ function ResultsView({
         overflow={'hidden' as const}
       >
         {ACTIONS.map((action, i) => {
-          const isActive = i === selectedIndex
+          const isDisabled = action.id === 'setup' && selectedStacks.size === 0
+          const isActive = actionIdx === i && !isDisabled
           const isHovered = hoveredRow === i
           const isLast = i === ACTIONS.length - 1
           const icon = action.id === 'setup' ? '◆' : '→'
-          const iconColor = action.id === 'setup' ? '#22d3ee' : '#8b949e'
+          const iconColor = isDisabled ? '#484f58' : action.id === 'setup' ? '#22d3ee' : '#8b949e'
           return (
             <box
               key={action.id}
               flexDirection='column'
-              onMouseUp={clickHandler(() => {
-                setSelectedIndex(i)
-                if (action.id === 'skip') onSkip()
-                else onSetup()
-              })}
+              onMouseUp={
+                isDisabled
+                  ? undefined
+                  : clickHandler(() => {
+                      setSelectedIndex(checkableCount + i)
+                      if (action.id === 'skip') onSkip()
+                      else onSetup()
+                    })
+              }
               onMouseOver={() => setHoveredRow(i)}
               onMouseOut={() => setHoveredRow((v) => (v === i ? null : v))}
             >
@@ -662,35 +764,33 @@ function ResultsView({
                 flexDirection='row'
                 paddingLeft={1}
                 paddingRight={1}
-                backgroundColor={isActive ? '#161b22' : isHovered ? '#21262d' : undefined}
+                backgroundColor={isActive ? '#161b22' : isHovered && !isDisabled ? '#21262d' : undefined}
               >
                 <box width={3} flexShrink={0}>
                   <text fg={iconColor}>{icon}</text>
                 </box>
                 <box flexDirection='column' flexGrow={1} flexShrink={1}>
                   <text
-                    fg={isActive ? '#e6edf3' : action.id === 'setup' ? '#c9d1d9' : '#8b949e'}
+                    fg={isDisabled ? '#484f58' : isActive ? '#e6edf3' : action.id === 'setup' ? '#c9d1d9' : '#8b949e'}
                     attributes={tuiAttrs({ bold: isActive })}
                   >
                     {action.label}
                   </text>
                   <box flexGrow={1} flexShrink={1}>
-                    <text attributes={tuiAttrs({ dim: true })}>{action.description}</text>
+                    <text attributes={tuiAttrs({ dim: true })}>
+                      {isDisabled ? 'Select at least one stack above' : action.description}
+                    </text>
                   </box>
                 </box>
               </box>
-              {!isLast && (
-                <box height={1} paddingLeft={1} paddingRight={1}>
-                  <text fg='#21262d'>{'─'.repeat(999)}</text>
-                </box>
-              )}
+              {!isLast && <Divider />}
             </box>
           )
         })}
       </box>
 
       <box>
-        <text fg='#484f58'>↑↓ select · Enter confirm · Esc back</text>
+        <text fg='#484f58'>↑↓ navigate · Space toggle · Enter confirm</text>
       </box>
     </box>
   ) as ReactElement
@@ -708,8 +808,19 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
   const [applyLog, setApplyLog] = useState<string[]>([])
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const [selectedStacks, setSelectedStacks] = useState<Set<string>>(new Set())
 
-  const needsSetup = stacks.filter((s) => s.sdkRelevance === 'needed' || (!s.sdkRelevance && !s.alreadyInstalled))
+  const needsSetup = stacks.filter((s) => getStatusGroup(s) === 'needs-setup')
+  const selectedForSetup = needsSetup.filter((s) => selectedStacks.has(s.relativePath))
+
+  const toggleStack = (relativePath: string) => {
+    setSelectedStacks((prev) => {
+      const next = new Set(prev)
+      if (next.has(relativePath)) next.delete(relativePath)
+      else next.add(relativePath)
+      return next
+    })
+  }
 
   // ─── Scan on mount ─────────────────────────────────────────────────────────
 
@@ -752,6 +863,7 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
     const summary = summarizeDetection(classified)
     // After classification, check if all relevant stacks are installed or not-needed
     const actionable = classified.filter((s) => s.sdkRelevance === 'needed')
+    setSelectedStacks(new Set(actionable.map((s) => s.relativePath)))
     if (actionable.length === 0) {
       setPhase('already-done')
       return
@@ -804,8 +916,8 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
   // ─── AI planning ───────────────────────────────────────────────────────────
 
   const runAiPlanning = async () => {
-    if (!config.model || needsSetup.length === 0) {
-      setError('AI model not configured — cannot generate setup plan')
+    if (!config.model || selectedForSetup.length === 0) {
+      setError('Model is not configured or no stacks selected')
       setPhase('error')
       return
     }
@@ -817,9 +929,9 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
     setError(null)
 
     try {
-      // For now, plan for the first stack that needs setup
+      // For now, plan for the first selected stack
       // TODO: iterate over all stacks
-      const stack = needsSetup[0]!
+      const stack = selectedForSetup[0]!
 
       // Find README relative to project dir (the CLI ships with SDKs in the monorepo)
       // For deployed CLI, READMEs would be bundled or fetched
@@ -853,15 +965,17 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
 
     try {
       // 1. Create Multiplayer API keys automatically
-      const currentStack = needsSetup[0]
+      const currentStack = selectedForSetup[0]
       if (config.workspace && config.project && config.apiKey) {
         log.push('◌ Creating Multiplayer API key...')
         setApplyLog([...log])
 
-        const { keys, errors: keyErrors } = await createApiKeysForSetup(
-          needsSetup,
-          { url: config.url!, apiKey: config.apiKey, workspace: config.workspace, project: config.project }
-        )
+        const { keys, errors: keyErrors } = await createApiKeysForSetup(needsSetup, {
+          url: config.url!,
+          apiKey: config.apiKey,
+          workspace: config.workspace,
+          project: config.project
+        })
 
         for (const err of keyErrors) {
           log.push(`⚠ ${err}`)
@@ -947,18 +1061,28 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
       return
     }
 
-    // Results & partial: navigate action buttons
+    // Results & partial: navigate checkboxes + action buttons
     if (phase === 'results' || phase === 'partial') {
+      const checkableCount = needsSetup.length
+      const totalItems = checkableCount + ACTIONS.length
       if (name === 'up' || name === 'left') {
         setSelectedIndex((i) => Math.max(0, i - 1))
       } else if (name === 'down' || name === 'right') {
-        setSelectedIndex((i) => Math.min(ACTIONS.length - 1, i + 1))
+        setSelectedIndex((i) => Math.min(totalItems - 1, i + 1))
+      } else if (name === 'space') {
+        if (selectedIndex < checkableCount) {
+          const stack = needsSetup[selectedIndex]
+          if (stack) toggleStack(stack.relativePath)
+        }
       } else if (name === 'return') {
-        const action = ACTIONS[selectedIndex]
-        if (action?.id === 'skip') {
-          onComplete({ sessionRecorderSetupDone: true })
-        } else if (action?.id === 'setup') {
-          void runAiPlanning()
+        if (selectedIndex >= checkableCount) {
+          const actionIdx = selectedIndex - checkableCount
+          const action = ACTIONS[actionIdx]
+          if (action?.id === 'skip') {
+            onComplete({ sessionRecorderSetupDone: true })
+          } else if (action?.id === 'setup' && selectedForSetup.length > 0) {
+            void runAiPlanning()
+          }
         }
       }
       return
@@ -1035,6 +1159,8 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
           hoveredRow={hoveredRow}
           setSelectedIndex={setSelectedIndex}
           setHoveredRow={setHoveredRow}
+          selectedStacks={selectedStacks}
+          onToggleStack={toggleStack}
           onSetup={() => void runAiPlanning()}
           onSkip={handleContinue}
         />
