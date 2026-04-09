@@ -27,6 +27,10 @@ interface Props {
   layout?: 'sidebar' | 'fluid'
   /** Inner text width for session titles when `layout="fluid"` (parent supplies terminal-derived value). */
   fluidTextWidth?: number
+  /** Whether more sessions can be loaded from the server. */
+  hasMore?: boolean
+  /** Called when user clicks "Load More". */
+  onLoadMore?: () => void
 }
 
 const SCROLLBAR_STYLE = {
@@ -47,7 +51,9 @@ function SessionListPaneImpl({
   isFocused,
   onSelectSession,
   layout = 'sidebar',
-  fluidTextWidth
+  fluidTextWidth,
+  hasMore = false,
+  onLoadMore,
 }: Props): ReactElement {
   const borderColor = isFocused ? '#22d3ee' : '#374151'
   const sidebarInner = SIDEBAR_WIDTH - 4 // border(2) + padding(2)
@@ -149,6 +155,22 @@ function SessionListPaneImpl({
               )
             })}
           </box>
+          {hasMore && onLoadMore && (
+            <box
+              marginTop={1}
+              flexShrink={0}
+              justifyContent="center"
+              onMouseUp={(e: MouseEvent) => {
+                if (e.button !== MouseButton.LEFT) return
+                e.stopPropagation()
+                onLoadMore()
+              }}
+            >
+              <text attributes={tuiAttrs({ bold: true })} fg="#22d3ee">
+                ▼ Load more
+              </text>
+            </box>
+          )}
         </scrollbox>
       )}
     </box>

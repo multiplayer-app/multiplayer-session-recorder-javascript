@@ -11,7 +11,7 @@ interface Props {
 }
 
 const levelColor: Record<string, string> = {
-  info:  '#f8fafc',
+  info: '#f8fafc',
   error: '#ef4444',
   debug: '#6b7280',
 }

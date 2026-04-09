@@ -10,7 +10,7 @@ const CONNECTION_BADGE: Record<ConnectionState, { symbol: string; color: string;
   connecting: { symbol: '◌', color: '#f59e0b', label: 'connecting' },
   connected: { symbol: '●', color: '#10b981', label: 'connected' },
   disconnected: { symbol: '○', color: '#6b7280', label: 'disconnected' },
-  error: { symbol: '✕', color: '#ef4444', label: 'error' }
+  error: { symbol: '✕', color: '#ef4444', label: 'error' },
 }
 
 interface Props {

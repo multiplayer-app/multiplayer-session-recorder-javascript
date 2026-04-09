@@ -8,7 +8,7 @@ import {
   ConversationMessage,
   ChatSessionPayload,
   Release,
-  ResolveIssuePayload,
+  ResolveIssuePayload
 } from '../types/index.js'
 import { createRadarService, RadarService } from '../services/radar.service.js'
 import { createApiService } from '../services/api.service.js'
@@ -22,7 +22,7 @@ import {
   upsertSession,
   setConnection,
   incrementResolved,
-  setRateLimitActive,
+  setRateLimitActive
 } from './state.js'
 
 type ConfirmResolver = (result: { approved: boolean; userResponse?: string }) => void
@@ -40,11 +40,31 @@ interface ChatContext {
 // ─── Path sanitization ────────────────────────────────────────────────────────
 
 const THINKING_VERBS = [
-  'Pondering', 'Cogitating', 'Ruminating', 'Contemplating', 'Deliberating',
-  'Noodling', 'Scheming', 'Concocting', 'Devising', 'Wrangling',
-  'Untangling', 'Deciphering', 'Spelunking', 'Excavating', 'Interrogating',
-  'Scrutinizing', 'Dissecting', 'Reverse-engineering', 'Theorizing', 'Hypothesizing',
-  'Philosophizing', 'Brainstorming', 'Percolating', 'Simmering', 'Marinating',
+  'Pondering',
+  'Cogitating',
+  'Ruminating',
+  'Contemplating',
+  'Deliberating',
+  'Noodling',
+  'Scheming',
+  'Concocting',
+  'Devising',
+  'Wrangling',
+  'Untangling',
+  'Deciphering',
+  'Spelunking',
+  'Excavating',
+  'Interrogating',
+  'Scrutinizing',
+  'Dissecting',
+  'Reverse-engineering',
+  'Theorizing',
+  'Hypothesizing',
+  'Philosophizing',
+  'Brainstorming',
+  'Percolating',
+  'Simmering',
+  'Marinating'
 ]
 
 function randomThinkingVerb(): string {
@@ -83,7 +103,7 @@ const sanitizeValue = (value: unknown, dirs: string[]): unknown => {
   if (Array.isArray(value)) return value.map((v) => sanitizeValue(v, dirs))
   if (value !== null && typeof value === 'object') {
     return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, sanitizeValue(v, dirs)]),
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, sanitizeValue(v, dirs)])
     )
   }
   return value
@@ -94,7 +114,7 @@ const sanitizeMessage = (msg: AgentMessage, dirs: string[]): AgentMessage => {
   if (active.length === 0) {
     return {
       ...msg,
-      content: normalizeStreamContent(msg.content),
+      content: normalizeStreamContent(msg.content)
     }
   }
   return {
@@ -103,8 +123,8 @@ const sanitizeMessage = (msg: AgentMessage, dirs: string[]): AgentMessage => {
     toolCalls: msg.toolCalls?.map((tc) => ({
       ...tc,
       input: sanitizeValue(tc.input, active) as Record<string, unknown>,
-      output: tc.output ? (sanitizeValue(tc.output, active) as Record<string, unknown>) : undefined,
-    })),
+      output: tc.output ? (sanitizeValue(tc.output, active) as Record<string, unknown>) : undefined
+    }))
   }
 }
 
@@ -128,7 +148,7 @@ export class RuntimeController extends EventEmitter {
     this._state = {
       ...initialRuntimeState(config.maxConcurrentIssues),
       ...(config.workspaceDisplayName?.trim() ? { workspaceDisplayName: config.workspaceDisplayName.trim() } : {}),
-      ...(config.projectDisplayName?.trim() ? { projectDisplayName: config.projectDisplayName.trim() } : {}),
+      ...(config.projectDisplayName?.trim() ? { projectDisplayName: config.projectDisplayName.trim() } : {})
     }
     this.log =
       logger ??
@@ -172,21 +192,21 @@ export class RuntimeController extends EventEmitter {
         toolCalls: m.toolCalls?.map((tc: AgentToolCall) => ({
           ...tc,
           input: sanitizeValue(tc.input, dirs) as Record<string, unknown>,
-          output: tc.output ? (sanitizeValue(tc.output, dirs) as Record<string, unknown>) : undefined,
+          output: tc.output ? (sanitizeValue(tc.output, dirs) as Record<string, unknown>) : undefined
         })),
-        createdAt: new Date(m.createdAt ?? Date.now()),
+        createdAt: new Date(m.createdAt ?? Date.now())
       }))
       detail.messages = before ? [...messages, ...detail.messages] : messages
       detail.hasMore = rawMessages.hasMore ?? false
       this.log(
         'info',
-        `Loaded ${messages.length} messages for chatId: ${chatId}, before: ${before}, hasMore: ${detail.hasMore}`,
+        `Loaded ${messages.length} messages for chatId: ${chatId}, before: ${before}, hasMore: ${detail.hasMore}`
       )
       this.emit('session-detail', chatId, { ...detail })
     } catch (err: unknown) {
       this.log(
         'error',
-        `Failed to fetch messages for chatId: ${chatId}, before: ${before}, error: ${err instanceof Error ? err.message : String(err)}`,
+        `Failed to fetch messages for chatId: ${chatId}, before: ${before}, error: ${err instanceof Error ? err.message : String(err)}`
       )
     }
   }
@@ -237,7 +257,7 @@ export class RuntimeController extends EventEmitter {
           id: msg._id,
           role: msg.role,
           content: msg.content ?? '',
-          activity: msg.activity,
+          activity: msg.activity
         })
       }
     })
@@ -287,7 +307,7 @@ export class RuntimeController extends EventEmitter {
       this.setState({
         ...this._state,
         ...(workspaceDisplayName ? { workspaceDisplayName } : {}),
-        ...(projectDisplayName ? { projectDisplayName } : {}),
+        ...(projectDisplayName ? { projectDisplayName } : {})
       })
     } catch (err: unknown) {
       this.log('debug', `Could not load workspace/project labels: ${err instanceof Error ? err.message : String(err)}`)
@@ -412,6 +432,73 @@ export class RuntimeController extends EventEmitter {
     }
   }
 
+  /**
+   * Fetch paginated agent chats from the API, filtered by dir and agentName.
+   * Converts AgentChat objects to SessionSummary and adds them to state.
+   * Returns whether there are more chats to load.
+   */
+  async loadAgentChats(skip = 0): Promise<boolean> {
+    const cfg = this._config
+    if (!this.radar || !cfg.workspace || !cfg.project) return false
+
+    try {
+      const result = await this.radar.fetchAgentChats(cfg.workspace, cfg.project, {
+        dir: cfg.dir,
+        agentName: cfg.name,
+        skip,
+        limit: 30
+      })
+      this.log(
+        'debug',
+        `fetchAgentChats result,cfg.dir: ${cfg.dir}, cfg.name: ${cfg.name}, skip: ${skip}, limit: 30, result: ${JSON.stringify(result, null, 2)}`
+      )
+      const { data: chats, cursor } = result
+      const hasMore = cursor.skip + cursor.limit < cursor.total
+
+      const statusMap: Partial<Record<string, SessionStatus>> = {
+        finished: 'done',
+        aborted: 'aborted',
+        processing: 'analyzing',
+        streaming: 'analyzing',
+        waitingForUserAction: 'pending',
+        error: 'pending'
+      }
+      const existingChatIds = new Set(this._state.sessions.map((s) => s.chatId))
+      for (const chat of chats) {
+        const chatId = chat._id
+        // Skip chats already in state (e.g. from socket events)
+        if (existingChatIds.has(chatId)) continue
+
+        const componentHash = chat.metadata?.issue?.componentHash ?? ''
+        const tuiStatus = statusMap[chat.status ?? ''] ?? 'pending'
+
+        const summary: SessionSummary = {
+          chatId,
+          status: tuiStatus,
+          issueId: componentHash,
+          issueTitle: chat.title ?? 'Untitled',
+          issueService: chat.metadata?.component?.name ?? '',
+          startedAt: new Date(chat.createdAt ?? Date.now())
+        }
+        this.setState(addSession(this._state, summary))
+
+        const detail: SessionDetail = { ...summary, hasMore: false, messages: [] }
+        this.sessionDetails.set(chatId, detail)
+        this.emit('session-detail', chatId, { ...detail })
+
+        if (chat.status) {
+          this.emit('chat-status', chatId, chat.status)
+        }
+      }
+
+      this.log('info', `Loaded ${chats.length} agent chats (skip=${skip}, hasMore=${hasMore})`)
+      return hasMore
+    } catch (err: unknown) {
+      this.log('error', `Failed to load agent chats: ${err instanceof Error ? err.message : String(err)}`)
+      return false
+    }
+  }
+
   // ─── Internal state helpers ──────────────────────────────────────────────────
 
   /**
@@ -451,7 +538,7 @@ export class RuntimeController extends EventEmitter {
     const full: SessionMessage = {
       id: msg.id ?? new mongoose.Types.ObjectId().toString(),
       createdAt: new Date(),
-      ...msg,
+      ...msg
     }
     detail.messages = [...detail.messages, full]
     this.emit('session-detail', chatId, { ...detail })
@@ -469,8 +556,8 @@ export class RuntimeController extends EventEmitter {
           createdAt: new Date(),
           role: 'assistant',
           content: '',
-          ...updates,
-        } as SessionMessage,
+          ...updates
+        } as SessionMessage
       ]
     } else {
       const msgs = [...detail.messages]
@@ -486,7 +573,7 @@ export class RuntimeController extends EventEmitter {
     content: string,
     role: AgentMessage['role'] = 'assistant',
     activity?: string,
-    msgId?: string,
+    msgId?: string
   ): void {
     const dirs = this.getDirs(chatId)
 
@@ -496,7 +583,7 @@ export class RuntimeController extends EventEmitter {
       role,
       content: sanitizePaths(content, dirs),
       agentName: this._config.name,
-      activity,
+      activity
     })
   }
 
@@ -511,7 +598,7 @@ export class RuntimeController extends EventEmitter {
   private makeStreamCallbacks(
     chatId: string,
     getDirs: () => string[],
-    activity?: string,
+    activity?: string
   ): {
     callbacks: AiService.StreamCallbacks
     state: { turnMsgId: string; streamContent: string }
@@ -520,7 +607,7 @@ export class RuntimeController extends EventEmitter {
     const radar = this.radar
     const state = {
       turnMsgId: new mongoose.Types.ObjectId().toString(),
-      streamContent: '',
+      streamContent: ''
     }
     const toolCallsMap = new Map<string, AgentToolCall>()
 
@@ -536,19 +623,19 @@ export class RuntimeController extends EventEmitter {
             content: normalized,
             agentName: cfg.name,
             activity,
-            toolCalls: calls,
+            toolCalls: calls
           },
-          getDirs(),
-        ),
+          getDirs()
+        )
       )
       const sanitizedCalls = calls.map((tc) => ({
         ...tc,
-        input: sanitizeValue(tc.input, getDirs()) as Record<string, unknown>,
+        input: sanitizeValue(tc.input, getDirs()) as Record<string, unknown>
       }))
       this.upsertSessionMessage(chatId, state.turnMsgId, {
         role: 'assistant',
         activity,
-        toolCalls: sanitizedCalls,
+        toolCalls: sanitizedCalls
       })
     }
 
@@ -565,15 +652,15 @@ export class RuntimeController extends EventEmitter {
               role: 'assistant',
               content: normalized,
               agentName: cfg.name,
-              activity,
+              activity
             },
-            getDirs(),
-          ),
+            getDirs()
+          )
         )
         this.upsertSessionMessage(chatId, state.turnMsgId, {
           role: 'assistant',
           content: sanitized,
-          activity,
+          activity
         })
       },
 
@@ -588,7 +675,7 @@ export class RuntimeController extends EventEmitter {
           chat: chatId,
           role: 'reasoning',
           content: `${verb}...`,
-          agentName: cfg.name,
+          agentName: cfg.name
         })
         this.addSessionMessage(chatId, { id: thinkingMsgId, role: 'reasoning', content: `${verb}...` })
       },
@@ -603,7 +690,7 @@ export class RuntimeController extends EventEmitter {
         emitToolCallsToRadarAndSession()
       },
 
-      confirmToolCall: this.makeConfirmFn(chatId),
+      confirmToolCall: this.makeConfirmFn(chatId)
     }
 
     return { callbacks, state }
@@ -626,12 +713,12 @@ export class RuntimeController extends EventEmitter {
                 name: toolName,
                 input,
                 status: 'pending',
-                requiresConfirmation: true,
-              },
-            ],
+                requiresConfirmation: true
+              }
+            ]
           },
-          dirs,
-        ),
+          dirs
+        )
       )
       return new Promise((resolve) => {
         this.pendingConfirmations.set(toolCallId, resolve)
@@ -663,7 +750,7 @@ export class RuntimeController extends EventEmitter {
       this.radar?.notifyFixFailed({
         chatId,
         issue: { componentHash },
-        error: `Session restore failed: ${message}`,
+        error: `Session restore failed: ${message}`
       })
     }
   }
@@ -680,7 +767,7 @@ export class RuntimeController extends EventEmitter {
       archived: false,
       category: '',
       metadata: {},
-      service: { serviceName: '', serviceNameSlug: '' },
+      service: { serviceName: '', serviceNameSlug: '' }
     }
   }
 
@@ -688,7 +775,7 @@ export class RuntimeController extends EventEmitter {
     chatId: string,
     chat: ChatSessionPayload['chat'],
     cfg: AgentConfig,
-    componentHash: string,
+    componentHash: string
   ): Promise<void> {
     // Fetch the real issue from the API; fall back to a minimal stub if unavailable
     let issue: Issue
@@ -765,7 +852,7 @@ export class RuntimeController extends EventEmitter {
       history,
       abortController: new AbortController(),
       isProcessing: false,
-      worktreeDir: restoredWorktreeDir,
+      worktreeDir: restoredWorktreeDir
     })
 
     if (componentHash) {
@@ -775,7 +862,7 @@ export class RuntimeController extends EventEmitter {
         processing: 'analyzing',
         streaming: 'analyzing',
         waitingForUserAction: 'pending',
-        error: 'pending',
+        error: 'pending'
       }
       const tuiStatus = statusMap[chat.status ?? ''] ?? 'pending'
 
@@ -785,7 +872,7 @@ export class RuntimeController extends EventEmitter {
         issueTitle: issue.title,
         issueService: issue.service.serviceName,
         status: tuiStatus,
-        startedAt: new Date(chat.createdAt ?? Date.now()),
+        startedAt: new Date(chat.createdAt ?? Date.now())
       }
       this.setState(addSession(this._state, summary))
 
@@ -800,9 +887,9 @@ export class RuntimeController extends EventEmitter {
         toolCalls: m.toolCalls?.map((tc: AgentToolCall) => ({
           ...tc,
           input: sanitizeValue(tc.input, dirs) as Record<string, unknown>,
-          output: tc.output ? (sanitizeValue(tc.output, dirs) as Record<string, unknown>) : undefined,
+          output: tc.output ? (sanitizeValue(tc.output, dirs) as Record<string, unknown>) : undefined
         })),
-        createdAt: new Date(m.createdAt ?? Date.now()),
+        createdAt: new Date(m.createdAt ?? Date.now())
       }))
 
       const detail: SessionDetail = { ...summary, hasMore, messages: sessionMessages }
@@ -839,7 +926,7 @@ export class RuntimeController extends EventEmitter {
         try {
           const [codeChanges, repositoryUrl] = await Promise.all([
             GitService.getDiffStats(restoredWorktreeDir),
-            GitService.getRemoteUrl(restoredWorktreeDir),
+            GitService.getRemoteUrl(restoredWorktreeDir)
           ])
           const context = this.chatContexts.get(chatId)
           const prContent = await AiService.generatePrContent(
@@ -848,7 +935,7 @@ export class RuntimeController extends EventEmitter {
             codeChanges,
             cfg.model,
             cfg.modelKey,
-            cfg.modelUrl,
+            cfg.modelUrl
           )
 
           const prUrl = await PrService.createPullRequest(
@@ -856,7 +943,7 @@ export class RuntimeController extends EventEmitter {
             cfg,
             issue.solution.gitBranch,
             prContent.title,
-            prContent.body,
+            prContent.body
           )
           if (prUrl) {
             const prMsg = `Pull request created: [${prUrl}](${prUrl})`
@@ -869,7 +956,7 @@ export class RuntimeController extends EventEmitter {
             contextKey: issue.componentHash,
             status: 'finished',
             agentName: cfg.name,
-            dir: cfg.dir,
+            dir: cfg.dir
           })
           this.radar?.notifyFixPushed({
             chatId,
@@ -878,9 +965,9 @@ export class RuntimeController extends EventEmitter {
               branchUrl: GitService.getBranchUrl(repositoryUrl ?? '', issue.solution.gitBranch),
               prUrl: prUrl ?? undefined,
               repositoryUrl: repositoryUrl ?? '',
-              codeChanges,
+              codeChanges
             },
-            issue: { componentHash: issue.componentHash },
+            issue: { componentHash: issue.componentHash }
           })
         } catch (err) {
           // Non-fatal — re-emit without PR
@@ -891,9 +978,9 @@ export class RuntimeController extends EventEmitter {
               branchName: issue.solution.gitBranch,
               branchUrl: GitService.getBranchUrl(issue.solution.gitRepositoryUrl ?? '', issue.solution.gitBranch),
               prUrl: undefined,
-              repositoryUrl: issue.solution.gitRepositoryUrl ?? '',
+              repositoryUrl: issue.solution.gitRepositoryUrl ?? ''
             },
-            issue: { componentHash: issue.componentHash },
+            issue: { componentHash: issue.componentHash }
           })
         } finally {
           try {
@@ -912,9 +999,9 @@ export class RuntimeController extends EventEmitter {
             branchName: issue.solution.gitBranch,
             branchUrl: GitService.getBranchUrl(issue.solution.gitRepositoryUrl ?? '', issue.solution.gitBranch),
             prUrl: issue.solution.prUrl ?? undefined,
-            repositoryUrl: issue.solution.gitRepositoryUrl ?? '',
+            repositoryUrl: issue.solution.gitRepositoryUrl ?? ''
           },
-          issue: { componentHash: issue.componentHash },
+          issue: { componentHash: issue.componentHash }
         })
         this.log('info', `Re-emitted fix-pushed for already-fixed issue ${componentHash}`)
         try {
@@ -933,9 +1020,9 @@ export class RuntimeController extends EventEmitter {
           branchName: issue.solution.gitBranch,
           branchUrl: GitService.getBranchUrl(issue.solution.gitRepositoryUrl ?? '', issue.solution.gitBranch),
           prUrl: issue.solution.prUrl ?? undefined,
-          repositoryUrl: issue.solution.gitRepositoryUrl ?? '',
+          repositoryUrl: issue.solution.gitRepositoryUrl ?? ''
         },
-        issue: { componentHash: issue.componentHash },
+        issue: { componentHash: issue.componentHash }
       })
       this.log('info', `Re-emitted fix-pushed for already-fixed issue ${componentHash}`)
     }
@@ -966,19 +1053,19 @@ export class RuntimeController extends EventEmitter {
           title: payload.issue.title,
           status: 'processing',
           metadata: {
-            issue: { componentHash: payload.issue.componentHash },
-          },
-        },
+            issue: { componentHash: payload.issue.componentHash }
+          }
+        }
       },
       { issue: payload.issue, release: payload.release },
-      payload.agentSettings,
+      payload.agentSettings
     )
   }
 
   private async processIssue(
     { chatId, chat }: ChatSessionPayload,
     enriched: { issue: Issue; release?: Release },
-    agentSettings?: { fixabilityScoreThreshold?: number },
+    agentSettings?: { fixabilityScoreThreshold?: number }
   ): Promise<void> {
     if (this.quitMode === 'after-current') return
 
@@ -1020,7 +1107,7 @@ export class RuntimeController extends EventEmitter {
           issue,
           history,
           abortController: new AbortController(),
-          isProcessing: false,
+          isProcessing: false
         })
       }
       // Register in TUI so the session is visible with the correct status
@@ -1030,7 +1117,7 @@ export class RuntimeController extends EventEmitter {
         issueTitle: issue.title,
         issueService: issue.service.serviceName,
         status: 'pending',
-        startedAt: new Date(),
+        startedAt: new Date()
       }
       this.setState(addSession(this._state, summary))
       this.radar?.emitAgentChatUpdate({
@@ -1038,7 +1125,7 @@ export class RuntimeController extends EventEmitter {
         contextKey: issue.componentHash,
         status: 'processing',
         agentName: cfg.name,
-        dir: cfg.dir,
+        dir: cfg.dir
       })
       return
     }
@@ -1049,7 +1136,7 @@ export class RuntimeController extends EventEmitter {
       issue,
       history,
       abortController,
-      isProcessing: true,
+      isProcessing: true
     }
     this.chatContexts.set(chatId, context)
 
@@ -1060,7 +1147,7 @@ export class RuntimeController extends EventEmitter {
       issueTitle: issue.title,
       issueService: issue.service.serviceName,
       status: 'analyzing',
-      startedAt: new Date(),
+      startedAt: new Date()
     }
     this.setState(addSession(this._state, summary))
     const detail: SessionDetail = { ...summary, messages: [] }
@@ -1084,7 +1171,7 @@ export class RuntimeController extends EventEmitter {
           chat: chatId,
           role: 'agent',
           content: issuePrompt,
-          agentName: cfg.name,
+          agentName: cfg.name
         })
         this.addSessionMessage(chatId, { role: 'agent', content: issuePrompt })
       }
@@ -1103,13 +1190,13 @@ export class RuntimeController extends EventEmitter {
         cfg.modelKey,
         cfg.modelUrl,
         abortController.signal,
-        callbacks,
+        callbacks
       )
 
       if (streamState.streamContent) {
         context.history.push({
           role: 'assistant',
-          content: normalizeStreamContent(streamState.streamContent),
+          content: normalizeStreamContent(streamState.streamContent)
         })
       }
 
@@ -1122,7 +1209,7 @@ export class RuntimeController extends EventEmitter {
           contextKey: issue.componentHash,
           status: 'aborted',
           agentName: cfg.name,
-          dir: cfg.dir,
+          dir: cfg.dir
         })
         return
       }
@@ -1138,7 +1225,7 @@ export class RuntimeController extends EventEmitter {
           contextKey: issue.componentHash,
           status: 'error',
           agentName: cfg.name,
-          dir: cfg.dir,
+          dir: cfg.dir
         })
         return
       }
@@ -1169,7 +1256,7 @@ export class RuntimeController extends EventEmitter {
         contextKey: issue.componentHash,
         status: 'error',
         agentName: cfg.name,
-        dir: cfg.dir,
+        dir: cfg.dir
       })
       this.radar?.notifyFixFailed({ chatId, issue: { componentHash: issue.componentHash }, error: message })
     } finally {
@@ -1209,7 +1296,7 @@ export class RuntimeController extends EventEmitter {
     chatId: string,
     issue: Issue,
     enriched: { issue: Issue; release?: Release },
-    agentSettings?: { fixabilityScoreThreshold?: number },
+    agentSettings?: { fixabilityScoreThreshold?: number }
   ): Promise<{ proceed: boolean; debugContext?: string }> {
     const cfg = this._config
     const radar = this.radar
@@ -1226,9 +1313,9 @@ export class RuntimeController extends EventEmitter {
           dir: cfg.dir,
           metadata: {
             debugSession: {
-              _id: debugResult.debugSessionId,
-            },
-          },
+              _id: debugResult.debugSessionId
+            }
+          }
         })
       }
 
@@ -1241,7 +1328,7 @@ export class RuntimeController extends EventEmitter {
           role: 'assistant',
           content: '',
           agentName: cfg.name,
-          attachments: [attachment],
+          attachments: [attachment]
         })
       }
 
@@ -1265,14 +1352,14 @@ export class RuntimeController extends EventEmitter {
           contextKey: issue.componentHash,
           status: 'waitingForUserAction',
           agentName: cfg.name,
-          dir: cfg.dir,
+          dir: cfg.dir
         })
         return { proceed: false }
       }
 
       return {
         proceed: true,
-        debugContext: debugResult?.context,
+        debugContext: debugResult?.context
       }
     } catch {
       // Context doc upload/analysis failure is non-fatal — proceed without it
@@ -1289,7 +1376,7 @@ export class RuntimeController extends EventEmitter {
     context: ChatContext,
     branchName: string,
     worktreeDir: string | undefined,
-    noGitBranch: boolean | undefined,
+    noGitBranch: boolean | undefined
   ): Promise<void> {
     if (!noGitBranch) {
       this.log('info', `Creating git worktree for branch ${branchName}...`)
@@ -1320,12 +1407,12 @@ export class RuntimeController extends EventEmitter {
 
     const commitSha = await GitService.commitAll(
       workDir,
-      `fix: resolve issue ${issue.title} (${issue.componentHash.slice(0, 8)}) - \n\nAuto-generated by multiplayer debugging agent.`,
+      `fix: resolve issue ${issue.title} (${issue.componentHash.slice(0, 8)}) - \n\nAuto-generated by multiplayer debugging agent.`
     )
     await GitService.push(workDir, branchName)
     const [codeChanges, repositoryUrl] = await Promise.all([
       GitService.getDiffStats(workDir),
-      GitService.getRemoteUrl(workDir),
+      GitService.getRemoteUrl(workDir)
     ])
 
     this.setState(upsertSession(this._state, { chatId, status: 'done', branchName }))
@@ -1333,7 +1420,7 @@ export class RuntimeController extends EventEmitter {
     this.emit('chat-status', chatId, 'finished')
     this.log(
       'info',
-      `Fix pushed: ${branchName} (${commitSha.slice(0, 7)}) +${codeChanges.additions}/-${codeChanges.deletions}`,
+      `Fix pushed: ${branchName} (${commitSha.slice(0, 7)}) +${codeChanges.additions}/-${codeChanges.deletions}`
     )
 
     const branchUrl = repositoryUrl ? GitService.getBranchUrl(repositoryUrl, branchName) : ''
@@ -1350,7 +1437,7 @@ export class RuntimeController extends EventEmitter {
       codeChanges ?? { additions: 0, deletions: 0 },
       this._config.model,
       this._config.modelKey,
-      this._config.modelUrl,
+      this._config.modelUrl
     )
 
     this.emitToRadar(chatId, 'Creating pull request...', 'assistant', 'git')
@@ -1373,7 +1460,7 @@ export class RuntimeController extends EventEmitter {
       contextKey: issue.componentHash,
       status: 'finished',
       agentName: this._config.name,
-      dir: this._config.dir,
+      dir: this._config.dir
     })
     this.radar?.notifyFixPushed({
       chatId,
@@ -1383,9 +1470,9 @@ export class RuntimeController extends EventEmitter {
         prUrl: prUrl ?? undefined,
         repositoryUrl: repositoryUrl ?? '',
         ...(!prUrl ? { prTitle: prContent.title, prBody: prContent.body } : {}),
-        codeChanges,
+        codeChanges
       },
-      issue: { componentHash: issue.componentHash },
+      issue: { componentHash: issue.componentHash }
     })
   }
 
@@ -1420,7 +1507,7 @@ export class RuntimeController extends EventEmitter {
       contextKey: context.issue.componentHash,
       status: 'processing',
       agentName: cfg.name,
-      dir: cfg.dir,
+      dir: cfg.dir
     })
 
     const { callbacks, state: streamState } = this.makeStreamCallbacks(chatId, () => dirs)
@@ -1433,7 +1520,7 @@ export class RuntimeController extends EventEmitter {
         cfg.modelKey,
         cfg.modelUrl,
         abortController.signal,
-        callbacks,
+        callbacks
       )
       const final = normalizeStreamContent(streamState.streamContent || response)
       if (final) context.history.push({ role: 'assistant', content: final })
@@ -1443,7 +1530,7 @@ export class RuntimeController extends EventEmitter {
         contextKey: context.issue.componentHash,
         status,
         agentName: cfg.name,
-        dir: cfg.dir,
+        dir: cfg.dir
       })
     } catch (err: unknown) {
       const message = AiService.classifyAiError(err)
@@ -1455,17 +1542,17 @@ export class RuntimeController extends EventEmitter {
             chat: chatId,
             role: 'error',
             content: `Error: ${message}`,
-            agentName: cfg.name,
+            agentName: cfg.name
           },
-          dirs,
-        ),
+          dirs
+        )
       )
       this.radar?.emitAgentChatUpdate({
         _id: chatId,
         contextKey: context.issue.componentHash,
         status: 'error',
         agentName: cfg.name,
-        dir: cfg.dir,
+        dir: cfg.dir
       })
     } finally {
       context.isProcessing = false
@@ -1487,7 +1574,7 @@ export class RuntimeController extends EventEmitter {
   private handleAction({
     toolCallId,
     action,
-    data,
+    data
   }: {
     chatId: string
     toolCallId: string
@@ -1499,7 +1586,7 @@ export class RuntimeController extends EventEmitter {
     this.pendingConfirmations.delete(toolCallId)
     resolve({
       approved: action === 'approve',
-      userResponse: data?.userResponse as string | undefined,
+      userResponse: data?.userResponse as string | undefined
     })
   }
 }

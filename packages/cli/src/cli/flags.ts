@@ -62,6 +62,7 @@ export function parseFlags(argv: string[]): ParsedFlags {
   const initialConfig: Partial<AgentConfig> = {
     url: opts.url || process.env.MULTIPLAYER_URL || profile.url || API_URL,
     apiKey: opts.apiKey || process.env.MULTIPLAYER_API_KEY || profile.apiKey,
+    authType: profile.authType,
     workspace: profile.workspace,
     project: profile.project,
     name: opts.name || process.env.MULTIPLAYER_AGENT_NAME || profile.name || os.hostname(),

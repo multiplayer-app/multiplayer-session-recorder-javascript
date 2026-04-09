@@ -38,6 +38,8 @@ interface Props {
   onAbortChat: (chatId: string) => void
   onSubscribeSession: (chatId: string) => void
   onUnsubscribeSession: (chatId: string) => void
+  onLoadMoreSessions?: () => void
+  hasMoreSessions?: boolean
   /** When true (e.g. quit dialog open), ignore keys so the overlay handles them. */
   suspendKeyboard?: boolean
 }
@@ -56,7 +58,9 @@ export function DashboardScreen({
   onAbortChat,
   onSubscribeSession,
   onUnsubscribeSession,
-  suspendKeyboard = false
+  onLoadMoreSessions,
+  hasMoreSessions = false,
+  suspendKeyboard = false,
 }: Props): ReactElement {
   // ── Dimensions ──────────────────────────────────────────────────────────────
 
@@ -241,9 +245,9 @@ export function DashboardScreen({
         showLogs,
         toggleLogs,
         isNarrow,
-        toggleNarrowStack
-      ]
-    )
+        toggleNarrowStack,
+      ],
+    ),
   )
 
   // ── Status bar hints ────────────────────────────────────────────────────────
@@ -275,13 +279,13 @@ export function DashboardScreen({
         id: 'stack',
         keys: 'v',
         label: narrowShowsDetail ? 'sessions' : 'detail',
-        onPress: toggleNarrowStack
+        onPress: toggleNarrowStack,
       })
     }
 
     base.push(
       { id: 'logs', keys: 'l', label: showLogs ? 'hide logs' : 'logs', onPress: toggleLogs },
-      { id: 'quit', keys: 'q', label: 'quit', onPress: onQuitRequest }
+      { id: 'quit', keys: 'q', label: 'quit', onPress: onQuitRequest },
     )
 
     return base
@@ -294,7 +298,7 @@ export function DashboardScreen({
     narrowShowsDetail,
     toggleNarrowStack,
     toggleLogs,
-    onQuitRequest
+    onQuitRequest,
   ])
 
   // Resolve display names for sidebar
@@ -327,6 +331,8 @@ export function DashboardScreen({
               setSelectedIndex(index)
               setFocusedPane('list')
             }}
+            hasMore={hasMoreSessions}
+            onLoadMore={onLoadMoreSessions}
           />
         )}
 

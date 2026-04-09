@@ -14,35 +14,59 @@ import { DirectoryStep } from '../startup/DirectoryStep.js'
 import { ModelStep } from '../startup/ModelStep.js'
 import { RateLimitsStep } from '../startup/RateLimitsStep.js'
 import { ConnectingStep } from '../startup/ConnectingStep.js'
+import { SessionRecorderStep } from '../startup/SessionRecorderStep.js'
 
-type StepId = 'auth-method' | 'project-select' | 'api-key' | 'workspace' | 'directory' | 'model' | 'rate-limits' | 'connecting'
+type StepId =
+  | 'auth-method'
+  | 'project-select'
+  | 'api-key'
+  | 'workspace'
+  | 'directory'
+  | 'model'
+  | 'rate-limits'
+  | 'session-recorder'
+  | 'connecting'
 
-const STEPS: StepId[] = ['auth-method', 'project-select', 'api-key', 'workspace', 'directory', 'model', 'rate-limits', 'connecting']
+const STEPS: StepId[] = [
+  'auth-method',
+  'project-select',
+  'api-key',
+  'workspace',
+  'directory',
+  'model',
+  'rate-limits',
+  'session-recorder',
+  'connecting'
+]
 
 const STEP_LABELS: Record<StepId, { title: string; description: string }> = {
   'auth-method': {
     title: 'Authentication',
-    description: 'Choose how to authenticate with Multiplayer.',
+    description: 'Choose how to authenticate with Multiplayer.'
   },
   'project-select': {
     title: 'Select Project',
-    description: 'Choose the project this agent will monitor.',
+    description: 'Choose the project this agent will monitor.'
   },
   'api-key': {
     title: 'Project API Key',
-    description: 'Authenticate with Multiplayer and load workspace/project context.',
+    description: 'Authenticate with Multiplayer and load workspace/project context.'
   },
   workspace: {
     title: 'Workspace Confirmation',
-    description: 'Review the workspace and project that will receive agent updates.',
+    description: 'Review the workspace and project that will receive agent updates.'
   },
   directory: {
     title: 'Repository Directory',
-    description: 'Select the git repository where patches, commits, and branches are created.',
+    description: 'Select the git repository where patches, commits, and branches are created.'
   },
   model: { title: 'AI Model', description: 'Choose an AI provider and model for issue resolution.' },
   'rate-limits': { title: 'Concurrency', description: 'Set how many issues can be processed in parallel.' },
-  connecting: { title: 'Final Checks', description: 'Verify git and provider requirements before starting runtime.' },
+  'session-recorder': {
+    title: 'Session Recorder',
+    description: 'Detect your app stack and set up the Multiplayer Session Recorder SDK.'
+  },
+  connecting: { title: 'Final Checks', description: 'Verify git and provider requirements before starting runtime.' }
 }
 
 const STEP_SHORT: Record<StepId, string> = {
@@ -53,8 +77,11 @@ const STEP_SHORT: Record<StepId, string> = {
   directory: 'Directory',
   model: 'Model',
   'rate-limits': 'Concurrency',
-  connecting: 'Verify',
+  'session-recorder': 'Multiplayer SDK',
+  connecting: 'Verify'
 }
+
+const AUTH_STEPS: StepId[] = ['auth-method', 'project-select', 'api-key', 'workspace']
 
 const STEP_PANEL_WIDTH = 24
 
@@ -69,6 +96,8 @@ function canSkip(step: StepId, config: Partial<AgentConfig>): boolean {
     case 'auth-method':
       return !!config.apiKey
     case 'project-select':
+      // OAuth token without workspace/project must go through project selection
+      if (config.authType === 'oauth' && !(config.workspace && config.project)) return false
       return !!(config.workspace && config.project)
     case 'api-key':
       return !!config.apiKey
@@ -76,6 +105,8 @@ function canSkip(step: StepId, config: Partial<AgentConfig>): boolean {
       return !!(config.workspace && config.project && config.apiKey)
     case 'directory':
       return !!config.dir
+    case 'session-recorder':
+      return !!config.sessionRecorderSetupDone || !!process.env.MULTIPLAYER_SKIP_SR_SETUP
     case 'model':
       return !!(config.model && (config.model.startsWith('claude') || config.modelKey))
     case 'rate-limits':
@@ -103,6 +134,37 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
   const [step, setStep] = useState<StepId>(() => firstRequiredStep(initialConfig))
   const [ready, setReady] = useState(false)
   const [oauthWorkspaces, setOauthWorkspaces] = useState<SelectableWorkspace[]>([])
+  const [fetchingWorkspaces, setFetchingWorkspaces] = useState(false)
+  const [oauthApi, setOauthApi] = useState<ReturnType<typeof createApiService> | null>(null)
+
+  // If we start on 'project-select' with a saved OAuth token, fetch workspaces automatically
+  useEffect(() => {
+    if (step !== 'project-select' || oauthWorkspaces.length > 0 || fetchingWorkspaces) return
+    const apiKey = config.apiKey?.trim()
+    if (!apiKey) return
+
+    setFetchingWorkspaces(true)
+    const url = config.url || API_URL
+    const api = createApiService({ url, apiKey: '', bearerToken: apiKey })
+    setOauthApi(api)
+    void api.fetchUserSession()
+      .then(async (session) => {
+        const workspaces: SelectableWorkspace[] = await Promise.all(
+          session.workspaces.map(async ws => ({
+            _id: ws._id,
+            name: ws.name,
+            projects: (await api.fetchProjects(ws._id)).filter(p => !!p._id && !!p.name),
+          })),
+        )
+        // Persist auth_type so future startups go directly to project-select
+        const profile = profileName ?? 'default'
+        writeProfile(profile, { authType: 'oauth' })
+        setConfig(c => ({ ...c, authType: 'oauth' }))
+        setOauthWorkspaces(workspaces)
+      })
+      .catch(() => { /* will show empty list with error from ProjectSelectStep */ })
+      .finally(() => setFetchingWorkspaces(false))
+  }, [step])
 
   useLayoutEffect(() => {
     console.clear()
@@ -145,7 +207,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
           return {
             ...c,
             ...(workspaceDisplayName ? { workspaceDisplayName } : {}),
-            ...(projectDisplayName ? { projectDisplayName } : {}),
+            ...(projectDisplayName ? { projectDisplayName } : {})
           }
         })
       } catch {
@@ -170,7 +232,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
         project: next.project,
         modelKey: next.modelKey,
         modelUrl: next.modelUrl,
-        maxConcurrentIssues: next.maxConcurrentIssues,
+        maxConcurrentIssues: next.maxConcurrentIssues
       })
 
       const currentIdx = STEPS.indexOf(step)
@@ -183,7 +245,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
       }
       setStep('connecting')
     },
-    [config, step],
+    [config, step]
   )
 
   /** Previous wizard screen (linear). Do not skip “already filled” steps — Esc from model must reach directory. */
@@ -201,10 +263,33 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
   const currentStepIndex = STEPS.indexOf(step)
   const visibleSteps = STEPS.filter((s, i) => i <= currentStepIndex || !canSkip(s, config) || s === 'connecting')
   const currentVisibleIndex = visibleSteps.indexOf(step)
+
+  // Sidebar display: collapse all auth steps into one "Auth" entry
+  type SidebarEntry = { id: string; label: string; isDone: boolean; isCurrent: boolean }
+  const sidebarSteps: SidebarEntry[] = []
+  let authGroupAdded = false
+  for (const s of visibleSteps) {
+    if (AUTH_STEPS.includes(s)) {
+      if (!authGroupAdded) {
+        authGroupAdded = true
+        const lastAuthVisibleIdx = visibleSteps.reduce((acc, vs, i) => (AUTH_STEPS.includes(vs) ? i : acc), -1)
+        sidebarSteps.push({
+          id: 'auth-group',
+          label: 'Auth',
+          isDone: lastAuthVisibleIdx < currentVisibleIndex,
+          isCurrent: AUTH_STEPS.includes(step),
+        })
+      }
+    } else {
+      const i = visibleSteps.indexOf(s)
+      sidebarSteps.push({ id: s, label: STEP_SHORT[s], isDone: i < currentVisibleIndex, isCurrent: s === step })
+    }
+  }
+  const currentSidebarIndex = sidebarSteps.findIndex((e) => e.isCurrent)
   const label = STEP_LABELS[step]
-  const done = Math.max(0, currentVisibleIndex)
-  const total = Math.max(1, visibleSteps.length)
-  const progressPrefix = `${currentVisibleIndex + 1}/${visibleSteps.length}`
+  const done = Math.max(0, currentSidebarIndex)
+  const total = Math.max(1, sidebarSteps.length)
+  const progressPrefix = `${currentSidebarIndex + 1}/${sidebarSteps.length}`
   const progressWidth = Math.max(8, STEP_PANEL_WIDTH - 6 - progressPrefix.length)
   const filled = Math.round((done / (total - 1 || 1)) * progressWidth)
   const maskedApiKey = config.apiKey ? `${config.apiKey.slice(0, 4)}••••${config.apiKey.slice(-3)}` : '—'
@@ -226,14 +311,12 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
         {/* Left sidebar: step progress */}
         <box width={STEP_PANEL_WIDTH} flexDirection='column'>
           <text attributes={tuiAttrs({ bold: true })}>Setup Steps</text>
-          {visibleSteps.map((s, i) => {
-            const isCurrent = s === step
-            const isDone = i < currentVisibleIndex
-            const marker = isDone ? '✓' : isCurrent ? '❯' : '·'
-            const color = isDone ? '#10b981' : isCurrent ? '#22d3ee' : '#6b7280'
+          {sidebarSteps.map((entry) => {
+            const marker = entry.isDone ? '✓' : entry.isCurrent ? '❯' : '·'
+            const color = entry.isDone ? '#10b981' : entry.isCurrent ? '#22d3ee' : '#6b7280'
             return (
-              <text key={s} fg={color} attributes={tuiAttrs({ bold: isCurrent })}>
-                {marker} {STEP_SHORT[s]}
+              <text key={entry.id} fg={color} attributes={tuiAttrs({ bold: entry.isCurrent })}>
+                {marker} {entry.label}
               </text>
             )
           })}
@@ -288,6 +371,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
 
           {step === 'auth-method' && (
             <AuthMethodStep
+              url={config.url || API_URL}
               profileName={profileName}
               onComplete={(updates) => {
                 const method = (updates as any)._authMethod
@@ -298,6 +382,8 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
                   setOauthWorkspaces(workspaces)
                   const next = { ...config, apiKey: updates.apiKey }
                   setConfig(next)
+                  const url = next.url || API_URL
+                  setOauthApi(createApiService({ url, apiKey: '', bearerToken: updates.apiKey! }))
                   setStep('project-select')
                 } else {
                   advance(updates)
@@ -309,7 +395,15 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
             <ProjectSelectStep
               workspaces={oauthWorkspaces}
               profileName={profileName}
+              loading={fetchingWorkspaces}
               onComplete={advance}
+              onCreateWorkspace={oauthApi ? async (name, handle) => {
+                const ws = await oauthApi.createWorkspace(name, handle)
+                return { _id: ws._id!, name: ws.name!, projects: [] }
+              } : undefined}
+              onCreateProject={oauthApi ? async (workspaceId, name) => {
+                return oauthApi.createProject(workspaceId, name)
+              } : undefined}
             />
           )}
           {step === 'api-key' && <ApiKeyStep config={config} profileName={profileName} onComplete={advance} />}
@@ -317,6 +411,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
           {step === 'directory' && <DirectoryStep config={config} onComplete={advance} />}
           {step === 'model' && <ModelStep config={config} onComplete={advance} />}
           {step === 'rate-limits' && <RateLimitsStep config={config} onComplete={advance} />}
+          {step === 'session-recorder' && <SessionRecorderStep config={config} onComplete={advance} />}
           {step === 'connecting' && (
             <ConnectingStep config={config as AgentConfig} onComplete={onComplete} onBack={goBack} />
           )}

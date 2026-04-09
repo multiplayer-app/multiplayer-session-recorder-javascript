@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Authentication successful</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="https://go.multiplayer.app/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="https://go.multiplayer.app/favicon-16x16.png" />
+    <link rel="manifest" href="https://go.multiplayer.app/site.webmanifest" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: white;
+        --panel: #121826;
+        --text: #e6edf3;
+        --muted: #9aa4b2;
+        --accent: #8b5cf6;
+        --accent-2: #22d3ee;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        -webkit-text-size-adjust: 100%;
+        text-rendering: optimizeLegibility;
+
+        font-feature-settings: 'kern';
+        font-family: 'Inter', sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: -180px; /* lifts the band partly above the viewport like the SVG */
+        height: 340px; /* approximate visual height of the blurred band */
+        background: linear-gradient(90deg, #5047e5 0%, #1ae6f3 100%);
+        opacity: 0.3;
+        filter: blur(125px);
+        pointer-events: none;
+        z-index: -1;
+      }
+      .card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin-top: 3rem;
+        padding: 3rem;
+        position: relative;
+      }
+      .logo {
+        width: 120px;
+        height: 120px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 100%;
+        background: #473cfb;
+        margin-bottom: 14px;
+        transition: background 0.2s;
+        overflow: visible;
+        position: relative;
+      }
+      .cyrcles {
+        position: absolute;
+        margin: 2px;
+        top: 50%;
+        left: 50%;
+        -webkit-transform: translate(-50%, -50%);
+        -moz-transform: translate(-50%, -50%);
+        -ms-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%);
+        z-index: 1;
+        border-radius: 50%;
+        border: 1px solid transparent;
+        background: linear-gradient(180deg, rgba(102, 102, 102, 0.15) 0%, rgba(0, 0, 0, 0) 100%);
+        -webkit-mask:
+          linear-gradient(#000 0 0) padding-box,
+          linear-gradient(#000 0 0);
+        mask:
+          linear-gradient(#000 0 0) padding-box,
+          linear-gradient(#000 0 0);
+        -webkit-mask-composite: exclude;
+        mask-composite: exclude;
+        background-position-y: 1px;
+        pointer-events: none;
+      }
+      .cyrcles:nth-child(1) {
+        padding: 118px;
+        background: linear-gradient(180deg, rgba(102, 102, 102, 0.15) 0%, rgba(0, 0, 0, 0.1) 100%);
+      }
+      .cyrcles:nth-child(2) {
+        padding: 178px;
+      }
+      .cyrcles:nth-child(3) {
+        padding: 238px;
+      }
+      .cyrcles:nth-child(4) {
+        padding: 298px;
+      }
+      h1 {
+        color: #394150;
+        -webkit-font-smoothing: antialiased;
+        outline: none;
+        border-width: 0;
+        border-style: solid;
+        box-sizing: border-box;
+        word-wrap: break-word;
+        margin: 0;
+        font-size: 24px;
+        font-weight: 500;
+        text-align: center;
+        line-height: 36px;
+      }
+      p {
+        color: var(--muted);
+        margin: 0;
+      }
+      .hint {
+        margin-top: 14px;
+        font-size: 13px;
+      }
+      .small {
+        font-size: 12px;
+        opacity: 0.8;
+      }
+      .ok {
+        display: inline-block;
+        margin-top: 14px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        background: #473cfb;
+        color: #fff;
+        text-decoration: none;
+        font-weight: 400;
+        appearance: none;
+        border: none;
+      }
+    </style>
+    <script>
+      // Try to auto-close the window after a short delay.
+      // window.addEventListener('load', () => {
+      //   setTimeout(() => {
+      //     try {
+      //       window.close()
+      //     } catch (_) {}
+      //   }, 3000)
+      // })
+    </script>
+  </head>
+  <body>
+    <div class="logo">
+      <div class="cyrcles"></div>
+      <div class="cyrcles"></div>
+      <div class="cyrcles"></div>
+      <div class="cyrcles"></div>
+      <svg
+        width="80px"
+        height="80px"
+        viewBox="0 0 512 512"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        style="display: block; color: white"
+      >
+        <path
+          d="M477.319 237.383L392.793 205.737L359.769 193.369L393.601 103L256 154.523L118.394 103L152.231 193.374L119.207 205.742L34.6811 237.388L26 240.636L161.615 289.569C177.426 295.277 190.722 306.024 199.613 319.923C202.611 324.613 205.111 329.657 207.036 334.991L256 470.521L304.964 334.991C306.889 329.657 309.389 324.608 312.387 319.923C321.283 306.024 334.579 295.272 350.385 289.569L486 240.636L477.319 237.388V237.383ZM332.464 266.295C308.596 274.906 289.802 293.7 281.19 317.569L256.225 386.768L200.291 237.383L188.442 205.737L179.93 183.001L169.179 154.284L212.909 170.658L306.61 205.742L349.172 221.677L391.131 237.388L401.663 241.329L332.464 266.3V266.295Z"
+          fill="currentColor"
+        ></path>
+      </svg>
+    </div>
+    <div class="card">
+      <h1>Authentication successful</h1>
+      <p class="hint">You can close this window and return to terminal.</p>
+    </div>
+  </body>
+</html>

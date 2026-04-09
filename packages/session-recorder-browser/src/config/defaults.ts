@@ -59,8 +59,11 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
   exporterEndpoint: MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
 
   recordCanvas: false,
-  inlineImages: true,
-  inlineStylesheet: true,
+  // Off by default: inlining reads pixels via canvas and requires CORS on cross-origin hosts (e.g. S3).
+  // Set true when asset URLs send Access-Control-Allow-Origin for your app origin.
+  inlineImages: false,
+  // Off by default: inlining fetches stylesheet text; cross-origin <link> assets need CORS when enabled.
+  inlineStylesheet: false,
   recordNavigation: true,
   schemifyDocSpanPayload: true,
 

@@ -38,6 +38,7 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
   const [sessionDetails, setSessionDetails] = useState<Map<string, SessionDetail>>(new Map())
   const [agentLogs, setAgentLogs] = useState<LogEntry[]>([])
   const [chatStatuses, setChatStatuses] = useState<Map<string, AgentChatStatus | string>>(new Map())
+  const [hasMoreSessions, setHasMoreSessions] = useState(false)
   const controllerRef = useRef<RuntimeController | null>(null)
 
   const handleStartupComplete = useCallback(
@@ -72,6 +73,9 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
       controllerRef.current = controller
       setRuntimeState(controller.getState())
       setScreen('dashboard')
+
+      // Load initial agent chats from API
+      void controller.loadAgentChats(0).then((more) => setHasMoreSessions(more))
     },
     [onExit]
   )
@@ -120,6 +124,13 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
     controllerRef.current?.unsubscribeSession(chatId)
   }, [])
 
+  const handleLoadMoreSessions = useCallback(() => {
+    const controller = controllerRef.current
+    if (!controller) return
+    const currentCount = runtimeState?.sessions.length ?? 0
+    void controller.loadAgentChats(currentCount).then((more) => setHasMoreSessions(more))
+  }, [runtimeState?.sessions.length])
+
   useEffect(() => {
     return () => {
       controllerRef.current?.disconnect()
@@ -146,6 +157,8 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
             onAbortChat={handleAbortChat}
             onSubscribeSession={handleSubscribeSession}
             onUnsubscribeSession={handleUnsubscribeSession}
+            onLoadMoreSessions={handleLoadMoreSessions}
+            hasMoreSessions={hasMoreSessions}
             suspendKeyboard={screen === 'quit-confirm'}
           />
         </box>

@@ -6,21 +6,21 @@ import type { AgentChatStatus } from '../types/index.js'
 const SIDEBAR_WIDTH = 30
 
 const STATUS_LABEL: Record<SessionStatus, { label: string; color: string }> = {
-  pending:   { label: 'Pending',   color: '#6b7280' },
+  pending: { label: 'Pending', color: '#6b7280' },
   analyzing: { label: 'Analyzing', color: '#f59e0b' },
-  pushing:   { label: 'Pushing',   color: '#6366f1' },
-  done:      { label: 'Done',      color: '#10b981' },
-  failed:    { label: 'Failed',    color: '#ef4444' },
-  aborted:   { label: 'Aborted',   color: '#6b7280' },
+  pushing: { label: 'Pushing', color: '#6366f1' },
+  done: { label: 'Done', color: '#10b981' },
+  failed: { label: 'Failed', color: '#ef4444' },
+  aborted: { label: 'Aborted', color: '#6b7280' },
 }
 
 const STATUS_SYMBOL: Record<SessionStatus, string> = {
-  pending:   '○',
+  pending: '○',
   analyzing: '◐',
-  pushing:   '◑',
-  done:      '●',
-  failed:    '✕',
-  aborted:   '◌',
+  pushing: '◑',
+  done: '●',
+  failed: '✕',
+  aborted: '◌',
 }
 
 interface Props {

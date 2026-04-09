@@ -1,6 +1,8 @@
 export interface AgentConfig {
   url: string
   apiKey: string
+  /** 'oauth' = token from browser login; 'api_key' = personal project token pasted by user */
+  authType?: 'oauth' | 'api_key'
   workspace?: string
   project?: string
   /** Human-readable name from GET /v0/api/workspaces/:id (optional, for UI) */
@@ -14,6 +16,10 @@ export interface AgentConfig {
   modelUrl?: string
   maxConcurrentIssues: number
   noGitBranch?: boolean
+  /** Whether session recorder setup step has been completed or skipped */
+  sessionRecorderSetupDone?: boolean
+  /** Detected stacks that need session recorder SDK setup (populated when user confirms setup) */
+  sessionRecorderStacks?: import('../session-recorder/detectStacks.js').DetectedStack[]
 }
 
 export interface IssueMetadata {
