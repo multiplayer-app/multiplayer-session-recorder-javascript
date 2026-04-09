@@ -16,21 +16,39 @@ const STATUS_LABEL: Record<SessionStatus, { label: string; color: string }> = {
   aborted: { label: 'aborted', color: '#6b7280' }
 }
 
-const TOOL_STATUS_COLOR: Record<AgentToolCall['status'], string> = {
-  pending: '#f59e0b',
-  running: '#f59e0b',
-  succeeded: '#10b981',
-  failed: '#ef4444'
+const TOOL_STATUS: Record<AgentToolCall['status'], { icon: string; color: string }> = {
+  pending: { icon: '○', color: '#f59e0b' },
+  running: { icon: '◐', color: '#f59e0b' },
+  succeeded: { icon: '✓', color: '#10b981' },
+  failed: { icon: '✗', color: '#ef4444' }
 }
 
-const getToolStatusColor = (status: AgentToolCall['status'] | undefined): string =>
-  TOOL_STATUS_COLOR[status ?? 'pending'] ?? '#f59e0b'
+const getToolStatus = (status: AgentToolCall['status'] | undefined): { icon: string; color: string } =>
+  TOOL_STATUS[status ?? 'pending'] ?? TOOL_STATUS.pending
 
 function getToolDetail(tc: AgentToolCall): string | null {
   const input = tc.input
   switch (tc.name) {
-    case 'Read':
-    case 'Edit':
+    case 'Read': {
+      if (typeof input.file_path === 'string') {
+        const parts = (input.file_path as string).split('/')
+        const short = parts.slice(-2).join('/')
+        const offset = typeof input.offset === 'number' ? (input.offset as number) : undefined
+        const limit = typeof input.limit === 'number' ? (input.limit as number) : undefined
+        if (offset != null && limit != null) return `${short} (lines ${offset}–${offset + limit})`
+        if (offset != null) return `${short} (from line ${offset})`
+        if (limit != null) return `${short} (${limit} lines)`
+        return short
+      }
+      return null
+    }
+    case 'Edit': {
+      if (typeof input.file_path === 'string') {
+        const parts = (input.file_path as string).split('/')
+        return parts.slice(-2).join('/')
+      }
+      return null
+    }
     case 'Write': {
       if (typeof input.file_path === 'string') {
         const parts = (input.file_path as string).split('/')
@@ -38,14 +56,34 @@ function getToolDetail(tc: AgentToolCall): string | null {
       }
       return null
     }
-    case 'Glob':
-      return typeof input.pattern === 'string' ? (input.pattern as string) : null
-    case 'Grep': {
-      if (typeof input.pattern === 'string') {
-        const p = input.pattern as string
-        return p.length > 35 ? p.slice(0, 33) + '…' : p
+    case 'Glob': {
+      const pat = typeof input.pattern === 'string' ? (input.pattern as string) : null
+      if (!pat) return null
+      // Append match count from output if available
+      const gOut = tc.output?.content
+      if (tc.status === 'succeeded' && typeof gOut === 'string') {
+        const matchCount = gOut
+          .trim()
+          .split('\n')
+          .filter((l: string) => l.trim()).length
+        if (matchCount > 0) return `${pat} → ${matchCount} file${matchCount === 1 ? '' : 's'}`
       }
-      return null
+      return pat
+    }
+    case 'Grep': {
+      if (typeof input.pattern !== 'string') return null
+      const p = input.pattern as string
+      const short = p.length > 35 ? p.slice(0, 33) + '…' : p
+      // Append match count from output if available
+      const rOut = tc.output?.content
+      if (tc.status === 'succeeded' && typeof rOut === 'string') {
+        const matchCount = rOut
+          .trim()
+          .split('\n')
+          .filter((l: string) => l.trim()).length
+        if (matchCount > 0) return `${short} → ${matchCount} match${matchCount === 1 ? '' : 'es'}`
+      }
+      return short
     }
     case 'Bash': {
       if (typeof input.command === 'string') {
@@ -54,13 +92,15 @@ function getToolDetail(tc: AgentToolCall): string | null {
       }
       return null
     }
-    case 'Agent':
+    case 'Agent': {
+      const parts: string[] = []
+      if (typeof input.subagent_type === 'string') parts.push(input.subagent_type as string)
       if (typeof input.description === 'string') {
         const d = input.description as string
-        return d.length > 40 ? d.slice(0, 38) + '…' : d
+        parts.push(d.length > 40 ? d.slice(0, 38) + '…' : d)
       }
-      if (typeof input.subagent_type === 'string') return input.subagent_type as string
-      return null
+      return parts.length > 0 ? parts.join(': ') : null
+    }
     case 'ToolSearch': {
       const q = input.query
       if (typeof q !== 'string') return null
@@ -73,7 +113,6 @@ function getToolDetail(tc: AgentToolCall): string | null {
 
 const TOOL_OUTPUT_MAX_LINES = 5
 const TOOL_OUTPUT_MAX_CHARS = 2800
-const TOOL_DETAIL_CONT_COLOR = '#64748b'
 
 /** Transcript styling for `role: user` (accent bar + green-tinted text). */
 const USER_MSG = {
@@ -107,23 +146,23 @@ function activityAccent(activity: string): string {
   return ACTIVITY_ACCENT[activity] ?? '#94a3b8'
 }
 
-/** Role / activity label before message body (similar to Kilocode’s part boundaries). */
-function getContentPrefix(msg: SessionMessage): { text: string; color: string } | null {
+/** Role / activity label before message body. */
+function getContentPrefix(msg: SessionMessage): { text: string; color: string; icon?: string } | null {
   switch (msg.role) {
     case 'user':
-      return { text: 'user', color: '#4ade80' }
+      return { text: 'user', color: '#4ade80', icon: '\u25C6' }
     case 'assistant':
-      return msg.activity ? { text: `[${msg.activity}]`, color: activityAccent(msg.activity) } : null
+      return msg.activity ? { text: msg.activity, color: activityAccent(msg.activity), icon: '\u25B8' } : null
     case 'agent':
-      return { text: 'issue', color: '#eab308' }
+      return { text: 'issue', color: '#eab308', icon: '\u25B2' }
     case 'error':
-      return { text: 'error', color: '#ef4444' }
-    case 'reasoning':
-      return { text: 'reasoning', color: '#a78bfa' }
+      return { text: 'error', color: '#ef4444', icon: '\u2717' }
     case 'system':
-      return { text: 'system', color: '#6b7280' }
+      return { text: 'system', color: '#6b7280', icon: '\u25CF' }
     case 'tool':
-      return { text: 'tool', color: '#94a3b8' }
+      return { text: 'tool', color: '#94a3b8', icon: '\u2699' }
+    // case 'reasoning':
+    //   return { text: 'thinking', color: '#a78bfa', icon: '\u2026' }
     default:
       return null
   }
@@ -460,11 +499,12 @@ function UserAccentRow({ rowKey, children }: { rowKey: string; children: ReactNo
 // ─── Row model ───────────────────────────────────────────────────────────────
 
 type DetailRow =
-  | { key: string; type: 'toolLine'; roleColor: string; text: string }
-  | { key: string; type: 'prefix'; roleColor: string; prefix: string; userHighlight?: boolean }
+  | { key: string; type: 'toolLine'; icon: string; iconColor: string; nameColor: string; name: string; detail: string }
+  | { key: string; type: 'toolError'; text: string }
+  | { key: string; type: 'prefix'; roleColor: string; prefix: string; icon?: string; userHighlight?: boolean }
   | { key: string; type: 'attachmentLine'; text: string; fromUser?: boolean }
   | { key: string; type: 'toolOutputLine'; text: string }
-  | { key: string; type: 'line'; line: string; fromUser?: boolean }
+  | { key: string; type: 'line'; line: string; fromUser?: boolean; muted?: boolean }
   | { key: string; type: 'codeStart'; lang: string; fromUser?: boolean }
   | { key: string; type: 'codeLine'; line: string; fromUser?: boolean }
   | { key: string; type: 'codeEnd'; fromUser?: boolean }
@@ -495,6 +535,7 @@ const buildMessageRows = (msg: SessionMessage, contentWidth?: number): DetailRow
       type: 'prefix',
       roleColor: prefixInfo.color,
       prefix: prefixInfo.text,
+      icon: prefixInfo.icon,
       userHighlight: fromUser
     })
   }
@@ -509,13 +550,15 @@ const buildMessageRows = (msg: SessionMessage, contentWidth?: number): DetailRow
     })
   }
 
+  const isReasoning = msg.role === 'reasoning'
+
   if (hasContent) {
     const body = msg.role === 'user' ? msg.content : stripAgentDisplayNoise(msg.content) || msg.content
     for (const [i, b] of parseBlocks(body, contentWidth).entries()) {
       if (b.type === 'spacer') {
         rows.push({ key: `spacer-${msg.id}-${i}`, type: 'spacer', fromUser })
       } else if (b.type === 'line') {
-        rows.push({ key: `line-${msg.id}-${i}`, type: 'line', line: b.line, fromUser })
+        rows.push({ key: `line-${msg.id}-${i}`, type: 'line', line: b.line, fromUser, muted: isReasoning })
       } else {
         rows.push({
           key: `code-start-${msg.id}-${i}`,
@@ -531,38 +574,35 @@ const buildMessageRows = (msg: SessionMessage, contentWidth?: number): DetailRow
     }
   }
 
+  // Tools where raw output is noisy — detail line already conveys what happened.
+  const SUPPRESS_OUTPUT = new Set(['Read', 'Edit', 'Write', 'Glob', 'Grep', 'Agent', 'ToolSearch'])
+
   for (const tc of toolCalls) {
-    // One role/activity prefix row per message; tool lines stay compact (cf. Kilocode tool blocks).
-    const base = `[${tc.name}]`
-    const detail = getToolDetail(tc)
-    if (!detail) {
+    const { icon, color: iconColor } = getToolStatus(tc.status)
+    const detail = getToolDetail(tc) ?? ''
+
+    rows.push({
+      key: `tool-${msg.id}-${tc.id}-0`,
+      type: 'toolLine',
+      icon,
+      iconColor,
+      nameColor: '#94a3b8',
+      name: tc.name,
+      detail
+    })
+
+    // Inline error for failed tools
+    if (tc.status === 'failed' && tc.error) {
+      const errText = tc.error.length > 120 ? tc.error.slice(0, 118) + '…' : tc.error
       rows.push({
-        key: `tool-${msg.id}-${tc.id}-0`,
-        type: 'toolLine',
-        roleColor: getToolStatusColor(tc.status),
-        text: base
+        key: `tool-err-${msg.id}-${tc.id}`,
+        type: 'toolError',
+        text: errText
       })
-    } else {
-      const available = Math.max(10, width - base.length - 1)
-      const chunks = wrapParagraph(detail, available)
-      rows.push({
-        key: `tool-${msg.id}-${tc.id}-0`,
-        type: 'toolLine',
-        roleColor: getToolStatusColor(tc.status),
-        text: `${base} ${chunks[0] ?? ''}`.trimEnd()
-      })
-      const indent = ' '.repeat(base.length + 1)
-      for (let i = 1; i < chunks.length; i++) {
-        rows.push({
-          key: `tool-${msg.id}-${tc.id}-wrap-${i}`,
-          type: 'toolLine',
-          roleColor: TOOL_DETAIL_CONT_COLOR,
-          text: `${indent}${chunks[i]}`
-        })
-      }
     }
 
-    const preview = tc.status === 'succeeded' ? toolOutputPreviewText(tc) : null
+    // Output preview only for tools where raw output is useful (e.g. Bash)
+    const preview = tc.status === 'succeeded' && !SUPPRESS_OUTPUT.has(tc.name) ? toolOutputPreviewText(tc) : null
     if (preview) {
       const lines = preview.split('\n').slice(0, TOOL_OUTPUT_MAX_LINES)
       let oi = 0
@@ -585,14 +625,35 @@ const buildMessageRows = (msg: SessionMessage, contentWidth?: number): DetailRow
 
 const buildSessionRows = (session: SessionDetail | null, contentWidth?: number): DetailRow[] => {
   if (!session) return []
-  return session.messages.flatMap((msg) => buildMessageRows(msg, contentWidth))
+  const allRows = session.messages.flatMap((msg) => buildMessageRows(msg, contentWidth))
+
+  // Collapse consecutive messageGap rows (tool-only messages create adjacent gaps)
+  const collapsed: DetailRow[] = []
+  for (const row of allRows) {
+    if (row.type === 'messageGap' && collapsed.length > 0 && collapsed[collapsed.length - 1]!.type === 'messageGap') {
+      continue
+    }
+    collapsed.push(row)
+  }
+  return collapsed
 }
 
 function renderDetailRow(row: DetailRow): ReactElement | null {
   switch (row.type) {
     case 'toolLine':
       return (
-        <text key={row.key} fg={row.roleColor}>
+        <text key={row.key}>
+          <span fg={row.iconColor}>{row.icon} </span>
+          <span fg={row.nameColor} attributes={tuiAttrs({ dim: true })}>
+            {row.name}
+          </span>
+          {row.detail ? <span fg='#64748b'>{` ${row.detail}`}</span> : null}
+        </text>
+      ) as ReactElement
+    case 'toolError':
+      return (
+        <text key={row.key} fg='#ef4444' attributes={tuiAttrs({ dim: true })}>
+          {'  ✗ '}
           {row.text}
         </text>
       ) as ReactElement
@@ -626,14 +687,15 @@ function renderDetailRow(row: DetailRow): ReactElement | null {
             </text>
             <box flexGrow={1} backgroundColor={USER_MSG.background}>
               <text fg={row.roleColor} attributes={tuiAttrs({ bold: true })}>
-                ◆ {row.prefix}{' '}
+                {row.icon ?? '◆'} {row.prefix}{' '}
               </text>
             </box>
           </box>
         ) as ReactElement
       }
       return (
-        <text key={row.key} fg={row.roleColor} attributes={tuiAttrs({ dim: true })}>
+        <text key={row.key} fg={row.roleColor} attributes={tuiAttrs({ bold: true })}>
+          {row.icon ? `${row.icon} ` : ''}
           {row.prefix}{' '}
         </text>
       ) as ReactElement
@@ -645,7 +707,7 @@ function renderDetailRow(row: DetailRow): ReactElement | null {
           </UserAccentRow>
         ) as ReactElement
       }
-      return (<MarkdownLine key={row.key} line={row.line} muted={false} />) as ReactElement
+      return (<MarkdownLine key={row.key} line={row.line} muted={row.muted ?? false} />) as ReactElement
     case 'spacer':
       if (row.fromUser) {
         return (

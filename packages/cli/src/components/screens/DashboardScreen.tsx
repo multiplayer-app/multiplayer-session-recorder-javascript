@@ -121,7 +121,7 @@ export function DashboardScreen({
   // Load messages when a new session is highlighted.
   useEffect(() => {
     if (selectedSession) onLoadMessages(selectedSession.chatId)
-  }, [clampedIndex])
+  }, [selectedSession?.chatId])
 
   // ── Focus helpers ───────────────────────────────────────────────────────────
 

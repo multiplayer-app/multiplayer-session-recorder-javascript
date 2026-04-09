@@ -21,8 +21,11 @@ import {
   EVENT_DEBUGGING_AGENT_RESOLVE_ISSUE,
   EVENT_DEBUGGING_AGENT_READY,
   EVENT_DEBUGGING_AGENT_FIX_PUSHED,
-  EVENT_DEBUGGING_AGENT_FIX_FAILED
+  EVENT_DEBUGGING_AGENT_FIX_FAILED,
+  EVENT_CHAT_SUBSCRIBE,
+  EVENT_CHAT_UNSUBSCRIBE
 } from '../config.js'
+import { Logger } from 'openai/client'
 
 export interface RadarService {
   socket: Socket
@@ -121,7 +124,7 @@ const computeAvailableModels = (config: AgentConfig): string[] => {
   return [...new Set(models)]
 }
 
-export const createRadarService = (config: AgentConfig): RadarService => {
+export const createRadarService = (config: AgentConfig, logger: Logger): RadarService => {
   // URL.origin never has a trailing slash, so we use it directly as the API base
   const host = new URL(config.url).origin
   const apiBase = `${host}/v0/radar`
@@ -148,7 +151,7 @@ export const createRadarService = (config: AgentConfig): RadarService => {
 
   // Debug: log all incoming socket events
   socket.onAny((event: string, ...args: unknown[]) => {
-    console.log(`[SOCKET] event=${event}`, JSON.stringify(args).slice(0, 200))
+    logger.info(`[SOCKET] event=${event}`, JSON.stringify(args).slice(0, 200))
   })
 
   const onConnect = (handler: () => void) => {
@@ -217,6 +220,14 @@ export const createRadarService = (config: AgentConfig): RadarService => {
     socket.emit(EVENT_DEBUGGING_AGENT_READY)
   }
 
+  const subscribeChat = (chatId: string) => {
+    socket.emit(EVENT_CHAT_SUBSCRIBE, { chatId })
+  }
+
+  const unsubscribeChat = (chatId: string) => {
+    socket.emit(EVENT_CHAT_UNSUBSCRIBE, { chatId })
+  }
+
   const onChatUpdate = (handler: (chat: AgentChat) => void) => {
     socket.on(EVENT_CHAT_UPDATE, (chat: AgentChat) => handler(chat))
   }
@@ -227,6 +238,10 @@ export const createRadarService = (config: AgentConfig): RadarService => {
 
   const onSessionStart = (handler: (payload: ChatSessionPayload) => void) => {
     socket.on(EVENT_CHAT_NEW, (payload: ChatSessionPayload) => handler(payload))
+  }
+
+  const disconnect = () => {
+    socket.disconnect()
   }
 
   const uploadContextDoc = async (
@@ -328,11 +343,16 @@ export const createRadarService = (config: AgentConfig): RadarService => {
       const text = await res.text().catch(() => '')
       throw new Error(`Failed to send message: ${res.status} ${text}`)
     }
-    // Don't consume SSE stream — socket handles message delivery.
-    // Just close the response to free the connection.
+    // Consume the SSE stream so we know when the server finishes processing.
+    // Messages are delivered via socket — we just drain the body here.
     try {
-      res.body?.cancel()
-    } catch {}
+      const reader = res.body?.getReader()
+      if (reader) {
+        while (!(await reader.read()).done) {}
+      }
+    } catch {
+      // Stream may be interrupted (e.g. abort signal)
+    }
   }
 
   const abortChat = async (workspaceId: string, projectId: string, chatId: string): Promise<void> => {
@@ -376,19 +396,6 @@ export const createRadarService = (config: AgentConfig): RadarService => {
       throw new Error(`Failed to fetch agent chats: ${res.status}`)
     }
     return (await res.json()) as { data: AgentChat[]; cursor: { total: number; skip: number; limit: number } }
-  }
-
-  const subscribeChat = (chatId: string) => {
-    console.log(`[RADAR] chat:subscribe emitting for ${chatId}, connected=${socket.connected}`)
-    socket.emit('chat:subscribe', { chatId })
-  }
-
-  const unsubscribeChat = (chatId: string) => {
-    socket.emit('chat:unsubscribe', { chatId })
-  }
-
-  const disconnect = () => {
-    socket.disconnect()
   }
 
   return {

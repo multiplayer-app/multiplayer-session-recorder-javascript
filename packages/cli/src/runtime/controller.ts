@@ -24,13 +24,15 @@ import {
   incrementResolved,
   setRateLimitActive
 } from './state.js'
+import logger from '../logger.js'
 
 type ConfirmResolver = (result: { approved: boolean; userResponse?: string }) => void
 type Logger = (level: 'info' | 'error' | 'debug', msg: string) => void
 
 interface ChatContext {
   chatId: string
-  issue: Issue
+  issue?: Issue
+  componentHash?: string
   history: ConversationMessage[]
   abortController: AbortController | null
   isProcessing: boolean
@@ -225,7 +227,7 @@ export class RuntimeController extends EventEmitter {
     this.setState(setConnection(this._state, 'connecting'))
     this.log('info', `Connecting to ${this._config.url}`)
 
-    const radar = createRadarService(this._config)
+    const radar = createRadarService(this._config, logger)
     this.radar = radar
 
     radar.onConnect(() => {
@@ -355,48 +357,23 @@ export class RuntimeController extends EventEmitter {
     this.radar.subscribeChat(chatId)
 
     const ctx = this.chatContexts.get(chatId)
-    const contextKey = ctx?.issue?.componentHash
+    const contextKey = ctx?.issue?.componentHash || 'agent'
 
     try {
-      await this.radar.sendStreamMessage(cfg.workspace, cfg.project, { chatId, content, contextKey, userId: 'guest' })
-      // Stream request accepted — poll for completion since chat:update
-      // socket events may not be delivered to the agent socket.
-      // void this.pollChatUntilDone(chatId)
+      const body = { chatId, content, contextKey, userId: 'guest' }
+      this.log('debug', `sending stream message to ${chatId}`)
+      await this.radar.sendStreamMessage(cfg.workspace, cfg.project, body)
+
+      // Stream finished — fetch final status since socket may miss the update
+      const status = await this.fetchChatStatus(chatId)
+      if (status) {
+        this.emit('chat-status', chatId, status)
+      }
     } catch (err: unknown) {
       this.log('error', `Failed to send message to ${chatId}: ${err instanceof Error ? err.message : String(err)}`)
       this.emit('chat-status', chatId, 'error')
-      throw err
+      // throw err
     }
-  }
-
-  /**
-   * Poll the chat status until it leaves 'processing'/'streaming', then sync messages.
-   */
-  private async pollChatUntilDone(chatId: string): Promise<void> {
-    const cfg = this._config
-    if (!this.radar || !cfg.workspace || !cfg.project) return
-
-    const POLL_INTERVAL = 3000
-    const MAX_POLLS = 100
-
-    for (let i = 0; i < MAX_POLLS; i++) {
-      await new Promise((r) => setTimeout(r, POLL_INTERVAL))
-
-      try {
-        const chat = await this.radar.fetchChat(cfg.workspace!, cfg.project!, chatId)
-        this.log('debug', `poll ${i + 1}: chatId=${chatId} status=${chat?.status}`)
-
-        if (chat?.status && chat.status !== 'processing' && chat.status !== 'streaming') {
-          this.emit('chat-status', chatId, chat.status)
-          await this.loadSessionMessages(chatId)
-          return
-        }
-      } catch {
-        this.log('error', `poll failed for ${chatId}`)
-      }
-    }
-
-    this.log('error', `poll timeout for ${chatId}`)
   }
 
   /**
@@ -448,10 +425,7 @@ export class RuntimeController extends EventEmitter {
         skip,
         limit: 30
       })
-      this.log(
-        'debug',
-        `fetchAgentChats result,cfg.dir: ${cfg.dir}, cfg.name: ${cfg.name}, skip: ${skip}, limit: 30, result: ${JSON.stringify(result, null, 2)}`
-      )
+
       const { data: chats, cursor } = result
       const hasMore = cursor.skip + cursor.limit < cursor.total
 
@@ -485,6 +459,17 @@ export class RuntimeController extends EventEmitter {
         const detail: SessionDetail = { ...summary, hasMore: false, messages: [] }
         this.sessionDetails.set(chatId, detail)
         this.emit('session-detail', chatId, { ...detail })
+
+        // Create chat context so the user can continue this session
+        if (!this.chatContexts.has(chatId)) {
+          this.chatContexts.set(chatId, {
+            chatId,
+            componentHash,
+            history: [],
+            abortController: null,
+            isProcessing: false
+          })
+        }
 
         if (chat.status) {
           this.emit('chat-status', chatId, chat.status)
@@ -874,7 +859,8 @@ export class RuntimeController extends EventEmitter {
         status: tuiStatus,
         startedAt: new Date(chat.createdAt ?? Date.now())
       }
-      this.setState(addSession(this._state, summary))
+      const exists = this._state.sessions.some((s) => s.chatId === chatId)
+      this.setState(exists ? upsertSession(this._state, summary) : addSession(this._state, summary))
 
       const dirs = [cfg.dir, restoredWorktreeDir].filter(Boolean) as string[]
       const sessionMessages: SessionMessage[] = apiMessages.map((m) => ({
@@ -1482,7 +1468,10 @@ export class RuntimeController extends EventEmitter {
     const { chat: chatId, content } = msg
     const context = this.chatContexts.get(chatId)
     if (!context) {
-      this.log('info', `User message for unknown chat ${chatId}, buffering until restored`)
+      this.log(
+        'info',
+        `User message for unknown chat ${chatId}, buffering until restored ${JSON.stringify(this.chatContexts.keys(), null, 2)}`
+      )
       const queue = this.pendingMessages.get(chatId) ?? []
       queue.push(msg)
       this.pendingMessages.set(chatId, queue)
@@ -1504,7 +1493,7 @@ export class RuntimeController extends EventEmitter {
     context.isProcessing = true
     this.radar?.emitAgentChatUpdate({
       _id: chatId,
-      contextKey: context.issue.componentHash,
+      contextKey: context.issue?.componentHash ?? context.componentHash ?? '',
       status: 'processing',
       agentName: cfg.name,
       dir: cfg.dir
@@ -1527,7 +1516,7 @@ export class RuntimeController extends EventEmitter {
       const status = abortController.signal.aborted ? 'aborted' : 'finished'
       this.radar?.emitAgentChatUpdate({
         _id: chatId,
-        contextKey: context.issue.componentHash,
+        contextKey: context.issue?.componentHash ?? context.componentHash ?? '',
         status,
         agentName: cfg.name,
         dir: cfg.dir
@@ -1549,7 +1538,7 @@ export class RuntimeController extends EventEmitter {
       )
       this.radar?.emitAgentChatUpdate({
         _id: chatId,
-        contextKey: context.issue.componentHash,
+        contextKey: context.issue?.componentHash ?? context.componentHash ?? '',
         status: 'error',
         agentName: cfg.name,
         dir: cfg.dir
