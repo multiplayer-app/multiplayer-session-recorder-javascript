@@ -250,11 +250,10 @@ export class RuntimeController extends EventEmitter {
     })
 
     // Listen for all incoming messages (assistant responses from server-side streaming).
-    // User messages are added optimistically by sendUserMessage, so skip them here
     // to avoid duplicates (optimistic messages lack a server _id for deduplication).
     radar.onMessage((msg) => {
       this.log('debug', `message:new received: role=${msg.role} chat=${msg.chat}`)
-      if (msg.chat && msg.role !== 'user') {
+      if (msg.chat) {
         this.addSessionMessage(msg.chat, {
           id: msg._id,
           role: msg.role,
@@ -348,9 +347,6 @@ export class RuntimeController extends EventEmitter {
     if (!this.radar || !cfg.workspace || !cfg.project) return
 
     this.log('info', `Sending user message to ${chatId}: ${content.slice(0, 80)}`)
-
-    // Optimistically add user message to the local UI
-    this.addSessionMessage(chatId, { role: 'user', content })
     this.emit('chat-status', chatId, 'processing')
 
     // Subscribe to chat events so we receive chat:update and message:new
