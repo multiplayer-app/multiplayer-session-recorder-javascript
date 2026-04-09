@@ -33,9 +33,11 @@ export function Logo(): ReactElement {
     return (
       <box flexDirection='column' alignItems='center' marginTop={1} marginBottom={1} flexShrink={0}>
         <ascii-font font='block' color={BRAND_PRIMARY} text='MULTIPLAYER' />
-        <text fg={BRAND_ACCENT} attributes={tuiAttrs({ dim: true })}>
-          {center('Automated issue triage, patching, and PR workflow', Math.min(width - 4, 80))}
-        </text>
+        <box width='100%' alignItems='center'>
+          <text fg={BRAND_ACCENT} attributes={tuiAttrs({ dim: true })}>
+            Automated issue triage, patching, and PR workflow
+          </text>
+        </box>
       </box>
     ) as ReactElement
   }
