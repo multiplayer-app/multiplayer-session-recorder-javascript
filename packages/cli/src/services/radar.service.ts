@@ -85,7 +85,7 @@ export interface RadarService {
     signal?: AbortSignal
   ) => Promise<void>
   abortChat: (workspaceId: string, projectId: string, chatId: string) => Promise<void>
-  fetchChat: (workspaceId: string, projectId: string, chatId: string) => Promise<AgentChat | null>
+  fetchChat: (workspaceId: string, projectId: string, chatId: string) => Promise<AgentChat>
   subscribeChat: (chatId: string) => void
   unsubscribeChat: (chatId: string) => void
   fetchAgentChats: (
@@ -128,6 +128,47 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
   // URL.origin never has a trailing slash, so we use it directly as the API base
   const host = new URL(config.url).origin
   const apiBase = `${host}/v0/radar`
+
+  /** Build a fully-qualified project-scoped API URL. */
+  const projectUrl = (workspaceId: string, projectId: string, path: string) =>
+    `${apiBase}/workspaces/${workspaceId}/projects/${projectId}${path}`
+
+  /** Authenticated fetch with JSON support. Throws on non-ok responses. */
+  async function fetchJson<T>(
+    url: string,
+    init: RequestInit = {},
+  ): Promise<T> {
+    const headers: Record<string, string> = {
+      ...getAuthHeaders(config.apiKey),
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init.headers as Record<string, string> ?? {}),
+    }
+    const res = await fetch(url, { ...init, headers })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`Request failed: ${init.method ?? 'GET'} ${url} ${res.status} ${text}`.trim())
+    }
+    const contentType = res.headers.get('content-type') ?? ''
+    if (contentType.includes('application/json')) {
+      return (await res.json()) as T
+    }
+    return undefined as unknown as T
+  }
+
+  /** Authenticated fetch that returns the raw Response (for streams, presigned URLs, etc.). */
+  async function fetchRaw(url: string, init: RequestInit = {}): Promise<Response> {
+    const headers: Record<string, string> = {
+      ...getAuthHeaders(config.apiKey),
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init.headers as Record<string, string> ?? {}),
+    }
+    const res = await fetch(url, { ...init, headers })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`Request failed: ${init.method ?? 'GET'} ${url} ${res.status} ${text}`.trim())
+    }
+    return res
+  }
 
   const socket: Socket = io(`${host}/workspaces/${config.workspace}/projects/${config.project}/agents`, {
     path: '/v0/radar/ws',
@@ -253,16 +294,10 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     const filename = 'context-doc.md'
     const size = Buffer.byteLength(markdown, 'utf8')
 
-    const presignRes = await fetch(`${apiBase}/workspaces/${workspaceId}/projects/${projectId}/files/presigned-url`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders(config.apiKey)
-      },
-      body: JSON.stringify({ filename, mimeType: 'text/markdown', size, chatId })
-    })
-    if (!presignRes.ok) throw new Error(`Failed to get presigned URL: ${presignRes.status}`)
-    const { url, key, bucket } = (await presignRes.json()) as { url: string; key: string; bucket: string }
+    const { url, key, bucket } = await fetchJson<{ url: string; key: string; bucket: string }>(
+      projectUrl(workspaceId, projectId, '/files/presigned-url'),
+      { method: 'POST', body: JSON.stringify({ filename, mimeType: 'text/markdown', size, chatId }) },
+    )
 
     const uploadRes = await fetch(url, {
       method: 'PUT',
@@ -287,13 +322,9 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     before?: string
   ): Promise<{ messages: AgentMessage[]; hasMore: boolean }> => {
     const query = new URLSearchParams({ limit: '20', ...(before ? { before } : {}) })
-    const res = await fetch(
-      `${apiBase}/workspaces/${workspaceId}/projects/${projectId}/agents/chats/${chatId}/messages?${query.toString()}`,
-      { headers: getAuthHeaders(config.apiKey) }
+    return fetchJson<{ messages: AgentMessage[]; hasMore: boolean }>(
+      projectUrl(workspaceId, projectId, `/agents/chats/${chatId}/messages?${query}`),
     )
-    if (!res.ok) throw new Error(`Failed to fetch messages: ${res.status}`)
-    const data = (await res.json()) as { messages: AgentMessage[]; hasMore: boolean }
-    return data
   }
 
   const fetchIssueByComponentHash = async (
@@ -302,11 +333,9 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     componentHash: string
   ): Promise<Issue | null> => {
     const params = new URLSearchParams({ componentHash, limit: '1' })
-    const res = await fetch(`${apiBase}/workspaces/${workspaceId}/projects/${projectId}/issues?${params}`, {
-      headers: getAuthHeaders(config.apiKey)
-    })
-    if (!res.ok) return null
-    const data = (await res.json()) as { data: Issue[] }
+    const data = await fetchJson<{ data: Issue[] }>(
+      projectUrl(workspaceId, projectId, `/issues?${params}`),
+    )
     return data.data?.[0] ?? null
   }
 
@@ -316,12 +345,10 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     componentHash: string,
     payload: Record<string, unknown>
   ): Promise<void> => {
-    const res = await fetch(`${apiBase}/workspaces/${workspaceId}/projects/${projectId}/issues/bulk`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders(config.apiKey) },
-      body: JSON.stringify({ filter: { componentHash: [componentHash] }, payload })
-    })
-    if (!res.ok) throw new Error(`Failed to update issue: ${res.status}`)
+    await fetchJson(
+      projectUrl(workspaceId, projectId, '/issues/bulk'),
+      { method: 'PATCH', body: JSON.stringify({ filter: { componentHash: [componentHash] }, payload }) },
+    )
   }
 
   const sendStreamMessage = async (
@@ -330,19 +357,10 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     payload: { chatId?: string; content: string; contextKey?: string; userId?: string },
     signal?: AbortSignal
   ): Promise<void> => {
-    const res = await fetch(`${apiBase}/workspaces/${workspaceId}/projects/${projectId}/agents/chats/stream`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders(config.apiKey)
-      },
-      body: JSON.stringify(payload),
-      signal
-    })
-    if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      throw new Error(`Failed to send message: ${res.status} ${text}`)
-    }
+    const res = await fetchRaw(
+      projectUrl(workspaceId, projectId, '/agents/chats/stream'),
+      { method: 'POST', body: JSON.stringify(payload), signal },
+    )
     // Consume the SSE stream so we know when the server finishes processing.
     // Messages are delivered via socket — we just drain the body here.
     try {
@@ -356,25 +374,16 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
   }
 
   const abortChat = async (workspaceId: string, projectId: string, chatId: string): Promise<void> => {
-    const res = await fetch(`${apiBase}/workspaces/${workspaceId}/projects/${projectId}/agents/chats/${chatId}/abort`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders(config.apiKey)
-      }
-    })
-    if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      throw new Error(`Failed to abort chat: ${res.status} ${text}`)
-    }
+    await fetchRaw(
+      projectUrl(workspaceId, projectId, `/agents/chats/${chatId}/abort`),
+      { method: 'POST' },
+    )
   }
 
-  const fetchChat = async (workspaceId: string, projectId: string, chatId: string): Promise<AgentChat | null> => {
-    const res = await fetch(`${apiBase}/workspaces/${workspaceId}/projects/${projectId}/agents/chats/${chatId}`, {
-      headers: getAuthHeaders(config.apiKey)
-    })
-    if (!res.ok) return null
-    return (await res.json()) as AgentChat
+  const fetchChat = async (workspaceId: string, projectId: string, chatId: string): Promise<AgentChat> => {
+    return fetchJson<AgentChat>(
+      projectUrl(workspaceId, projectId, `/agents/chats/${chatId}`),
+    )
   }
 
   const fetchAgentChats = async (
@@ -388,14 +397,9 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     if (options?.skip != null) params.set('skip', String(options.skip))
     params.set('limit', String(options?.limit ?? 30))
 
-    const res = await fetch(
-      `${apiBase}/workspaces/${workspaceId}/projects/${projectId}/agents/chats?${params.toString()}`,
-      { headers: getAuthHeaders(config.apiKey) }
+    return fetchJson<{ data: AgentChat[]; cursor: { total: number; skip: number; limit: number } }>(
+      projectUrl(workspaceId, projectId, `/agents/chats?${params}`),
     )
-    if (!res.ok) {
-      throw new Error(`Failed to fetch agent chats: ${res.status}`)
-    }
-    return (await res.json()) as { data: AgentChat[]; cursor: { total: number; skip: number; limit: number } }
   }
 
   return {

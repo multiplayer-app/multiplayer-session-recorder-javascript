@@ -39,6 +39,39 @@ interface ChatContext {
   worktreeDir?: string
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const getErrorMessage = (err: unknown): string =>
+  err instanceof Error ? err.message : String(err)
+
+const generateMessageId = (): string =>
+  new mongoose.Types.ObjectId().toString()
+
+/** Map backend chat status → TUI session status. */
+const CHAT_STATUS_TO_SESSION: Partial<Record<string, SessionStatus>> = {
+  finished: 'done',
+  aborted: 'aborted',
+  processing: 'analyzing',
+  streaming: 'analyzing',
+  waitingForUserAction: 'pending',
+  error: 'pending',
+}
+
+const toSessionStatus = (chatStatus: string | undefined): SessionStatus =>
+  CHAT_STATUS_TO_SESSION[chatStatus ?? ''] ?? 'pending'
+
+/** How long a tool confirmation may wait before timing out (ms). */
+const CONFIRMATION_TIMEOUT_MS = 5 * 60 * 1000
+
+/** Max buffered user messages for an unknown/busy chat before oldest-first eviction. */
+const MAX_PENDING_MESSAGES = 50
+
+/** Debounce interval for session-detail emissions (~one animation frame). */
+const DETAIL_EMIT_DEBOUNCE_MS = 16
+
+/** Default page size when loading agent chats from the API. */
+const AGENT_CHATS_PAGE_SIZE = 30
+
 // ─── Path sanitization ────────────────────────────────────────────────────────
 
 const THINKING_VERBS = [
@@ -185,7 +218,7 @@ export class RuntimeController extends EventEmitter {
 
       const dirs = this.getDirs(chatId)
       const messages: SessionMessage[] = rawMessages.messages.map((m) => ({
-        id: m._id ?? new mongoose.Types.ObjectId().toString(),
+        id: m._id ?? generateMessageId(),
         role: m.role,
         content: m.content ? sanitizePaths(m.content, dirs) : '',
         activity: m.activity,
@@ -208,7 +241,7 @@ export class RuntimeController extends EventEmitter {
     } catch (err: unknown) {
       this.log(
         'error',
-        `Failed to fetch messages for chatId: ${chatId}, before: ${before}, error: ${err instanceof Error ? err.message : String(err)}`
+        `Failed to fetch messages for chatId: ${chatId}, before: ${before}, error: ${getErrorMessage(err)}`
       )
     }
   }
@@ -311,7 +344,7 @@ export class RuntimeController extends EventEmitter {
         ...(projectDisplayName ? { projectDisplayName } : {})
       })
     } catch (err: unknown) {
-      this.log('debug', `Could not load workspace/project labels: ${err instanceof Error ? err.message : String(err)}`)
+      this.log('debug', `Could not load workspace/project labels: ${getErrorMessage(err)}`)
     }
   }
 
@@ -366,7 +399,7 @@ export class RuntimeController extends EventEmitter {
         this.emit('chat-status', chatId, status)
       }
     } catch (err: unknown) {
-      this.log('error', `Failed to send message to ${chatId}: ${err instanceof Error ? err.message : String(err)}`)
+      this.log('error', `Failed to send message to ${chatId}: ${getErrorMessage(err)}`)
       this.emit('chat-status', chatId, 'error')
       // throw err
     }
@@ -384,7 +417,7 @@ export class RuntimeController extends EventEmitter {
     try {
       await this.radar.abortChat(cfg.workspace, cfg.project, chatId)
     } catch (err: unknown) {
-      this.log('error', `Failed to abort ${chatId}: ${err instanceof Error ? err.message : String(err)}`)
+      this.log('error', `Failed to abort ${chatId}: ${getErrorMessage(err)}`)
       throw err
     }
   }
@@ -419,20 +452,12 @@ export class RuntimeController extends EventEmitter {
         dir: cfg.dir,
         agentName: cfg.name,
         skip,
-        limit: 30
+        limit: AGENT_CHATS_PAGE_SIZE
       })
 
       const { data: chats, cursor } = result
       const hasMore = cursor.skip + cursor.limit < cursor.total
 
-      const statusMap: Partial<Record<string, SessionStatus>> = {
-        finished: 'done',
-        aborted: 'aborted',
-        processing: 'analyzing',
-        streaming: 'analyzing',
-        waitingForUserAction: 'pending',
-        error: 'pending'
-      }
       const existingChatIds = new Set(this._state.sessions.map((s) => s.chatId))
       for (const chat of chats) {
         const chatId = chat._id
@@ -440,7 +465,7 @@ export class RuntimeController extends EventEmitter {
         if (existingChatIds.has(chatId)) continue
 
         const componentHash = chat.metadata?.issue?.componentHash ?? ''
-        const tuiStatus = statusMap[chat.status ?? ''] ?? 'pending'
+        const tuiStatus = toSessionStatus(chat.status)
 
         const summary: SessionSummary = {
           chatId,
@@ -475,7 +500,7 @@ export class RuntimeController extends EventEmitter {
       this.log('info', `Loaded ${chats.length} agent chats (skip=${skip}, hasMore=${hasMore})`)
       return hasMore
     } catch (err: unknown) {
-      this.log('error', `Failed to load agent chats: ${err instanceof Error ? err.message : String(err)}`)
+      this.log('error', `Failed to load agent chats: ${getErrorMessage(err)}`)
       return false
     }
   }
@@ -497,7 +522,7 @@ export class RuntimeController extends EventEmitter {
     entry.timer = setTimeout(() => {
       this._pendingDetailEmit.delete(chatId)
       this.emit('session-detail', chatId, entry.detail)
-    }, 16)
+    }, DETAIL_EMIT_DEBOUNCE_MS)
     this._pendingDetailEmit.set(chatId, entry)
   }
 
@@ -517,7 +542,7 @@ export class RuntimeController extends EventEmitter {
     // Skip if a message with this id already exists (e.g. optimistic add + socket echo)
     if (msg.id && detail.messages.some((m) => m.id === msg.id)) return
     const full: SessionMessage = {
-      id: msg.id ?? new mongoose.Types.ObjectId().toString(),
+      id: msg.id ?? generateMessageId(),
       createdAt: new Date(),
       ...msg
     }
@@ -587,7 +612,7 @@ export class RuntimeController extends EventEmitter {
     const cfg = this._config
     const radar = this.radar
     const state = {
-      turnMsgId: new mongoose.Types.ObjectId().toString(),
+      turnMsgId: generateMessageId(),
       streamContent: ''
     }
     const toolCallsMap = new Map<string, AgentToolCall>()
@@ -646,11 +671,11 @@ export class RuntimeController extends EventEmitter {
       },
 
       onTurnStart: () => {
-        state.turnMsgId = new mongoose.Types.ObjectId().toString()
+        state.turnMsgId = generateMessageId()
         state.streamContent = ''
         toolCallsMap.clear()
         const verb = randomThinkingVerb()
-        const thinkingMsgId = new mongoose.Types.ObjectId().toString()
+        const thinkingMsgId = generateMessageId()
         radar?.emitAgentMessage({
           _id: thinkingMsgId,
           chat: chatId,
@@ -703,6 +728,25 @@ export class RuntimeController extends EventEmitter {
       )
       return new Promise((resolve) => {
         this.pendingConfirmations.set(toolCallId, resolve)
+
+        // Auto-reject if the chat's AbortController fires (e.g. user abort / disconnect)
+        const ctx = this.chatContexts.get(chatId)
+        const onAbort = () => {
+          if (this.pendingConfirmations.has(toolCallId)) {
+            this.pendingConfirmations.delete(toolCallId)
+            resolve({ approved: false })
+          }
+        }
+        ctx?.abortController?.signal.addEventListener('abort', onAbort, { once: true })
+
+        // Hard timeout — prevent hanging forever if no response arrives
+        setTimeout(() => {
+          if (this.pendingConfirmations.has(toolCallId)) {
+            this.log('info', `Tool confirmation timed out for ${toolCallId} in chat ${chatId}`)
+            this.pendingConfirmations.delete(toolCallId)
+            resolve({ approved: false })
+          }
+        }, CONFIRMATION_TIMEOUT_MS)
       })
     }
   }
@@ -726,7 +770,7 @@ export class RuntimeController extends EventEmitter {
     try {
       await this.restoreChatInner(chatId, chat, cfg, componentHash)
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
+      const message = getErrorMessage(err)
       this.log('error', `Session restore failed for chat ${chatId}: ${message}`)
       this.radar?.notifyFixFailed({
         chatId,
@@ -817,7 +861,7 @@ export class RuntimeController extends EventEmitter {
           this.log('info', `Restored worktree for branch ${branchName} at ${restoredWorktreeDir}`)
         }
       } catch (err) {
-        this.log('debug', `Could not restore worktree for branch ${branchName}: ${(err as Error).message}`)
+        this.log('debug', `Could not restore worktree for branch ${branchName}: ${getErrorMessage(err)}`)
       }
     }
 
@@ -837,15 +881,7 @@ export class RuntimeController extends EventEmitter {
     })
 
     if (componentHash) {
-      const statusMap: Partial<Record<string, SessionStatus>> = {
-        finished: 'done',
-        aborted: 'aborted',
-        processing: 'analyzing',
-        streaming: 'analyzing',
-        waitingForUserAction: 'pending',
-        error: 'pending'
-      }
-      const tuiStatus = statusMap[chat.status ?? ''] ?? 'pending'
+      const tuiStatus = toSessionStatus(chat.status)
 
       const summary: SessionSummary = {
         chatId,
@@ -860,7 +896,7 @@ export class RuntimeController extends EventEmitter {
 
       const dirs = [cfg.dir, restoredWorktreeDir].filter(Boolean) as string[]
       const sessionMessages: SessionMessage[] = apiMessages.map((m) => ({
-        id: m.id ?? m._id ?? new mongoose.Types.ObjectId().toString(),
+        id: m.id ?? m._id ?? generateMessageId(),
         role: m.role,
         content: m.content ? sanitizePaths(m.content, dirs) : '',
         activity: m.activity,
@@ -882,132 +918,7 @@ export class RuntimeController extends EventEmitter {
     this.log('info', `Session restored: ${chatId} (${history.length} messages)`)
 
     // Resume or re-notify depending on how far the previous session got
-    if (!cfg.noGitBranch && restoredWorktreeDir && restoredBranchName) {
-      const hasChanges = await GitService.hasUncommittedChanges(restoredWorktreeDir)
-      if (hasChanges) {
-        // Uncommitted changes exist — complete the fix (commit, push, PR, notify)
-        this.log('info', `Uncommitted changes found in restored worktree — completing fix for ${componentHash}`)
-        try {
-          await this.commitPushAndNotify(chatId, issue, restoredWorktreeDir, restoredBranchName)
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err)
-          this.log('error', `Restore: commit/push failed: ${message}`)
-          this.radar?.notifyFixFailed({ chatId, issue: { componentHash }, error: `Restore push failed: ${message}` })
-        } finally {
-          try {
-            await GitService.removeWorktree(cfg.dir, restoredWorktreeDir)
-            const ctx = this.chatContexts.get(chatId)
-            if (ctx) ctx.worktreeDir = undefined
-          } catch {
-            /* best-effort */
-          }
-        }
-      } else if (issue.solution?.gitBranch && !issue.solution.prUrl) {
-        // Branch pushed but PR not yet created — create it now
-        this.log('info', `Branch pushed but no PR — creating PR for ${componentHash}`)
-        try {
-          const [codeChanges, repositoryUrl] = await Promise.all([
-            GitService.getDiffStats(restoredWorktreeDir),
-            GitService.getRemoteUrl(restoredWorktreeDir)
-          ])
-          const context = this.chatContexts.get(chatId)
-          const prContent = await AiService.generatePrContent(
-            issue,
-            context?.history ?? [],
-            codeChanges,
-            cfg.model,
-            cfg.modelKey,
-            cfg.modelUrl
-          )
-
-          const prUrl = await PrService.createPullRequest(
-            restoredWorktreeDir,
-            cfg,
-            issue.solution.gitBranch,
-            prContent.title,
-            prContent.body
-          )
-          if (prUrl) {
-            const prMsg = `Pull request created: [${prUrl}](${prUrl})`
-            this.emitToRadar(chatId, prMsg, 'assistant', 'git')
-            this.addSessionMessage(chatId, { role: 'assistant', content: prMsg, activity: 'git' })
-            this.setState(upsertSession(this._state, { chatId, prUrl }))
-          }
-          this.radar?.emitAgentChatUpdate({
-            _id: chatId,
-            contextKey: issue.componentHash,
-            status: 'finished',
-            agentName: cfg.name,
-            dir: cfg.dir
-          })
-          this.radar?.notifyFixPushed({
-            chatId,
-            git: {
-              branchName: issue.solution.gitBranch,
-              branchUrl: GitService.getBranchUrl(repositoryUrl ?? '', issue.solution.gitBranch),
-              prUrl: prUrl ?? undefined,
-              repositoryUrl: repositoryUrl ?? '',
-              codeChanges
-            },
-            issue: { componentHash: issue.componentHash }
-          })
-        } catch (err) {
-          // Non-fatal — re-emit without PR
-          this.log('error', `Restore: PR creation failed: ${(err as Error).message}`)
-          this.radar?.notifyFixPushed({
-            chatId,
-            git: {
-              branchName: issue.solution.gitBranch,
-              branchUrl: GitService.getBranchUrl(issue.solution.gitRepositoryUrl ?? '', issue.solution.gitBranch),
-              prUrl: undefined,
-              repositoryUrl: issue.solution.gitRepositoryUrl ?? ''
-            },
-            issue: { componentHash: issue.componentHash }
-          })
-        } finally {
-          try {
-            await GitService.removeWorktree(cfg.dir, restoredWorktreeDir)
-            const ctx = this.chatContexts.get(chatId)
-            if (ctx) ctx.worktreeDir = undefined
-          } catch {
-            /* best-effort */
-          }
-        }
-      } else if (issue.solution?.gitBranch) {
-        // Already fully fixed — re-emit so radar reflects the current state
-        this.radar?.notifyFixPushed({
-          chatId,
-          git: {
-            branchName: issue.solution.gitBranch,
-            branchUrl: GitService.getBranchUrl(issue.solution.gitRepositoryUrl ?? '', issue.solution.gitBranch),
-            prUrl: issue.solution.prUrl ?? undefined,
-            repositoryUrl: issue.solution.gitRepositoryUrl ?? ''
-          },
-          issue: { componentHash: issue.componentHash }
-        })
-        this.log('info', `Re-emitted fix-pushed for already-fixed issue ${componentHash}`)
-        try {
-          await GitService.removeWorktree(cfg.dir, restoredWorktreeDir)
-          const ctx = this.chatContexts.get(chatId)
-          if (ctx) ctx.worktreeDir = undefined
-        } catch {
-          /* best-effort */
-        }
-      }
-    } else if (issue.solution?.gitBranch) {
-      // No worktree available — just re-emit if already fixed
-      this.radar?.notifyFixPushed({
-        chatId,
-        git: {
-          branchName: issue.solution.gitBranch,
-          branchUrl: GitService.getBranchUrl(issue.solution.gitRepositoryUrl ?? '', issue.solution.gitBranch),
-          prUrl: issue.solution.prUrl ?? undefined,
-          repositoryUrl: issue.solution.gitRepositoryUrl ?? ''
-        },
-        issue: { componentHash: issue.componentHash }
-      })
-      this.log('info', `Re-emitted fix-pushed for already-fixed issue ${componentHash}`)
-    }
+    await this.resumeRestoredSession(chatId, issue, componentHash, cfg, restoredWorktreeDir, restoredBranchName)
 
     const queued = this.pendingMessages.get(chatId)
     if (queued?.length) {
@@ -1016,6 +927,143 @@ export class RuntimeController extends EventEmitter {
       for (const pendingMsg of queued) {
         void this.handleUserMessage(pendingMsg)
       }
+    }
+  }
+
+  /**
+   * Re-emits fix-pushed for an already-fixed issue so the backend reflects
+   * the current state after a session restore.
+   */
+  private reemitFixPushed(chatId: string, issue: Issue): void {
+    const solution = issue.solution!
+    this.radar?.notifyFixPushed({
+      chatId,
+      git: {
+        branchName: solution.gitBranch!,
+        branchUrl: GitService.getBranchUrl(solution.gitRepositoryUrl ?? '', solution.gitBranch!),
+        prUrl: solution.prUrl ?? undefined,
+        repositoryUrl: solution.gitRepositoryUrl ?? '',
+      },
+      issue: { componentHash: issue.componentHash },
+    })
+    this.log('info', `Re-emitted fix-pushed for already-fixed issue ${issue.componentHash}`)
+  }
+
+  /** Best-effort worktree cleanup after a restore operation. */
+  private async cleanupWorktree(chatId: string, baseDir: string, worktreeDir: string): Promise<void> {
+    try {
+      await GitService.removeWorktree(baseDir, worktreeDir)
+      const ctx = this.chatContexts.get(chatId)
+      if (ctx) ctx.worktreeDir = undefined
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  /**
+   * Handles the "resume or re-notify" logic after restoring a chat session.
+   * Determines how far the previous session got and takes appropriate action.
+   */
+  private async resumeRestoredSession(
+    chatId: string,
+    issue: Issue,
+    componentHash: string,
+    cfg: AgentConfig,
+    worktreeDir?: string,
+    branchName?: string,
+  ): Promise<void> {
+    if (!cfg.noGitBranch && worktreeDir && branchName) {
+      const hasChanges = await GitService.hasUncommittedChanges(worktreeDir)
+
+      if (hasChanges) {
+        // Uncommitted changes exist — complete the fix
+        this.log('info', `Uncommitted changes found in restored worktree — completing fix for ${componentHash}`)
+        try {
+          await this.commitPushAndNotify(chatId, issue, worktreeDir, branchName)
+        } catch (err) {
+          const message = getErrorMessage(err)
+          this.log('error', `Restore: commit/push failed: ${message}`)
+          this.radar?.notifyFixFailed({ chatId, issue: { componentHash }, error: `Restore push failed: ${message}` })
+        } finally {
+          await this.cleanupWorktree(chatId, cfg.dir, worktreeDir)
+        }
+        return
+      }
+
+      if (issue.solution?.gitBranch && !issue.solution.prUrl) {
+        // Branch pushed but PR not yet created
+        await this.resumeCreatePr(chatId, issue, cfg, worktreeDir)
+        return
+      }
+
+      if (issue.solution?.gitBranch) {
+        this.reemitFixPushed(chatId, issue)
+      }
+      await this.cleanupWorktree(chatId, cfg.dir, worktreeDir)
+    } else if (issue.solution?.gitBranch) {
+      this.reemitFixPushed(chatId, issue)
+    }
+  }
+
+  /**
+   * Resume a session where the branch was pushed but the PR wasn't created yet.
+   */
+  private async resumeCreatePr(
+    chatId: string,
+    issue: Issue,
+    cfg: AgentConfig,
+    worktreeDir: string,
+  ): Promise<void> {
+    const componentHash = issue.componentHash
+    const gitBranch = issue.solution!.gitBranch!
+    this.log('info', `Branch pushed but no PR — creating PR for ${componentHash}`)
+
+    try {
+      const [codeChanges, repositoryUrl] = await Promise.all([
+        GitService.getDiffStats(worktreeDir),
+        GitService.getRemoteUrl(worktreeDir),
+      ])
+      const context = this.chatContexts.get(chatId)
+      const prContent = await AiService.generatePrContent(
+        issue,
+        context?.history ?? [],
+        codeChanges,
+        cfg.model,
+        cfg.modelKey,
+        cfg.modelUrl,
+      )
+
+      const prUrl = await PrService.createPullRequest(worktreeDir, cfg, gitBranch, prContent.title, prContent.body)
+      if (prUrl) {
+        const prMsg = `Pull request created: [${prUrl}](${prUrl})`
+        this.emitToRadar(chatId, prMsg, 'assistant', 'git')
+        this.addSessionMessage(chatId, { role: 'assistant', content: prMsg, activity: 'git' })
+        this.setState(upsertSession(this._state, { chatId, prUrl }))
+      }
+
+      this.radar?.emitAgentChatUpdate({
+        _id: chatId,
+        contextKey: componentHash,
+        status: 'finished',
+        agentName: cfg.name,
+        dir: cfg.dir,
+      })
+      this.radar?.notifyFixPushed({
+        chatId,
+        git: {
+          branchName: gitBranch,
+          branchUrl: GitService.getBranchUrl(repositoryUrl ?? '', gitBranch),
+          prUrl: prUrl ?? undefined,
+          repositoryUrl: repositoryUrl ?? '',
+          codeChanges,
+        },
+        issue: { componentHash },
+      })
+    } catch (err) {
+      this.log('error', `Restore: PR creation failed: ${getErrorMessage(err)}`)
+      this.reemitFixPushed(chatId, issue)
+    } finally {
+      await this.cleanupWorktree(chatId, cfg.dir, worktreeDir)
     }
   }
 
@@ -1254,7 +1302,7 @@ export class RuntimeController extends EventEmitter {
         try {
           await GitService.removeWorktree(cfg.dir, context.worktreeDir)
         } catch (err: unknown) {
-          this.log('error', `Failed to remove worktree ${context.worktreeDir}: ${(err as Error).message}`)
+          this.log('error', `Failed to remove worktree ${context.worktreeDir}: ${getErrorMessage(err)}`)
         }
         context.worktreeDir = undefined
       }
@@ -1469,12 +1517,19 @@ export class RuntimeController extends EventEmitter {
         `User message for unknown chat ${chatId}, buffering until restored ${JSON.stringify(this.chatContexts.keys(), null, 2)}`
       )
       const queue = this.pendingMessages.get(chatId) ?? []
+      if (queue.length >= MAX_PENDING_MESSAGES) {
+        this.log('info', `Pending message queue overflow for chat ${chatId}, dropping oldest`)
+        queue.shift()
+      }
       queue.push(msg)
       this.pendingMessages.set(chatId, queue)
       return
     }
     if (context.isProcessing) {
-      this.log('info', `User message while processing (${chatId}), ignoring`)
+      this.log('info', `User message while processing (${chatId}), queuing for after current turn`)
+      const queue = this.pendingMessages.get(chatId) ?? []
+      queue.push(msg)
+      this.pendingMessages.set(chatId, queue)
       return
     }
 
@@ -1542,6 +1597,14 @@ export class RuntimeController extends EventEmitter {
     } finally {
       context.isProcessing = false
       context.abortController = null
+
+      // Drain any user messages that arrived while processing
+      const queued = this.pendingMessages.get(chatId)
+      if (queued?.length) {
+        const next = queued.shift()!
+        if (!queued.length) this.pendingMessages.delete(chatId)
+        void this.handleUserMessage(next)
+      }
     }
   }
 
