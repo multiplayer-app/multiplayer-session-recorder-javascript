@@ -1,12 +1,12 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import type { MouseEvent } from '@opentui/core'
-import { MouseButton, ScrollBoxRenderable } from '@opentui/core'
+import { ScrollBoxRenderable } from '@opentui/core'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import fs from 'fs'
 import path from 'path'
 import type { AgentConfig } from '../../types/index.js'
 import * as GitService from '../../services/git.service.js'
+import { clickHandler, ActionButton, FooterHints, Divider } from '../shared/index.js'
 
 const CONFIRM_ITEM = '__confirm__'
 const UP_ITEM = '__up__'
@@ -21,7 +21,7 @@ const IGNORED_DIRS = new Set([
   '.nuxt',
   '__pycache__',
   '.venv',
-  'venv',
+  'venv'
 ])
 
 interface DirEntry {
@@ -34,7 +34,7 @@ type SortField = 'name' | 'createdAt' | 'modifiedAt'
 const SORT_OPTIONS: { id: SortField; label: string }[] = [
   { id: 'name', label: 'Name' },
   { id: 'modifiedAt', label: 'Modified' },
-  { id: 'createdAt', label: 'Created' },
+  { id: 'createdAt', label: 'Created' }
 ]
 
 function readDirs(dirPath: string): DirEntry[] {
@@ -63,9 +63,9 @@ const SCROLLBAR_STYLE = {
     showArrows: false,
     trackOptions: {
       foregroundColor: '#484f58',
-      backgroundColor: '#21262d',
-    },
-  },
+      backgroundColor: '#21262d'
+    }
+  }
 } as const
 
 function formatRelativeDate(date: Date): string {
@@ -82,14 +82,6 @@ function formatRelativeDate(date: Date): string {
   const months = Math.floor(days / 30)
   if (months < 12) return `${months}mo ago`
   return `${Math.floor(months / 12)}y ago`
-}
-
-function clickHandler(handler: () => void) {
-  return (e: MouseEvent) => {
-    if (e.button !== MouseButton.LEFT) return
-    e.stopPropagation()
-    handler()
-  }
 }
 
 export function DirectoryStep({ config, onComplete }: Props): ReactElement {
@@ -184,8 +176,9 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
     scrollRef.current?.scrollChildIntoView(`dir-item-${selectedIndex}`)
   }, [selectedIndex, items])
 
-  useKeyboard(({ name, stopPropagation }) => {
+  useKeyboard((key) => {
     if (validating) return
+    const { name } = key
     if (name === 'up') {
       setSelectedIndex((i) => Math.max(-1, i - 1))
     } else if (name === 'down') {
@@ -194,14 +187,14 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
       const sb = scrollRef.current
       if (sb) {
         sb.scrollBy(-0.5, 'viewport')
-        stopPropagation()
+        key.stopPropagation()
       }
       setSelectedIndex((i) => Math.max(-1, i - 10))
     } else if (name === 'pagedown') {
       const sb = scrollRef.current
       if (sb) {
         sb.scrollBy(0.5, 'viewport')
-        stopPropagation()
+        key.stopPropagation()
       }
       setSelectedIndex((i) => Math.min(items.length - 1, i + 10))
     } else if (name === 'home') {
@@ -224,10 +217,14 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
         if (item) activateItem(item)
       }
     } else if (name === 'tab') {
-      stopPropagation()
-      const idx = SORT_OPTIONS.findIndex((o) => o.id === sortBy)
-      const next = SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length]!
-      toggleSort(next.id)
+      key.stopPropagation()
+      if (key.shift) {
+        setSortAsc((v) => !v)
+      } else {
+        const idx = SORT_OPTIONS.findIndex((o) => o.id === sortBy)
+        const next = SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length]!
+        setSortBy(next.id)
+      }
     }
   })
 
@@ -249,7 +246,7 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
               fg={i === breadcrumbs.length - 1 ? '#e6edf3' : hoveredBreadcrumb === i ? '#79c0ff' : '#58a6ff'}
               attributes={tuiAttrs({
                 bold: i === breadcrumbs.length - 1,
-                underline: hoveredBreadcrumb === i && i !== breadcrumbs.length - 1,
+                underline: hoveredBreadcrumb === i && i !== breadcrumbs.length - 1
               })}
               onMouseUp={clickHandler(() => navigateToBreadcrumb(i))}
               onMouseOver={() => setHoveredBreadcrumb(i)}
@@ -312,9 +309,7 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
           </box>
           <box width={2} flexShrink={0} />
         </box>
-        <box height={1} paddingLeft={1} paddingRight={1} flexShrink={0}>
-          <text fg='#21262d'>{'─'.repeat(999)}</text>
-        </box>
+        <Divider />
 
         <scrollbox ref={scrollRef} flexGrow={1} scrollY focused={false} style={SCROLLBAR_STYLE}>
           <box flexDirection='column' flexShrink={0} width='100%'>
@@ -378,46 +373,28 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
                     )}
                   </box>
                   {/* Row separator */}
-                  {!isLast && (
-                    <box height={1} paddingLeft={1} paddingRight={1}>
-                      <text fg='#21262d'>{'─'.repeat(999)}</text>
-                    </box>
-                  )}
+                  {!isLast && <Divider />}
                 </box>
               )
             })}
           </box>
         </scrollbox>
 
-        <box
-          flexShrink={0}
-          border={true}
-          borderStyle='rounded'
-          borderColor='#30363d'
-          flexDirection='column'
-          onMouseUp={clickHandler(() => {
-            if (!validating) activateItem(CONFIRM_ITEM)
-          })}
-          marginLeft={1}
-          marginRight={1}
-        >
-          <box flexDirection='row' height={1} paddingLeft={1} paddingRight={1}>
-            <box width={3} flexShrink={0}>
-              <text fg='#3fb950'>✓</text>
-            </box>
-            <box flexGrow={1}>
-              <text fg='#3fb950' attributes={tuiAttrs({ bold: true })}>
-                Use this directory
-              </text>
-            </box>
-          </box>
+        <box marginLeft={1} marginRight={1} flexShrink={0}>
+          <ActionButton
+            label='Use this directory'
+            icon='✓'
+            iconColor='#3fb950'
+            labelColor='#3fb950'
+            onClick={() => {
+              if (!validating) activateItem(CONFIRM_ITEM)
+            }}
+          />
         </box>
       </box>
 
       {/* Footer */}
-      <box flexDirection='row' flexShrink={0} paddingLeft={1} marginTop={1} gap={2}>
-        <text fg='#484f58'>↑↓ navigate ← back →/Enter open Tab sort</text>
-      </box>
+      <FooterHints hints='↑↓ navigate ← back →/Enter open Tab sort ⇧Tab reverse' paddingLeft={1} marginTop={1} />
     </box>
   ) as ReactElement
 }

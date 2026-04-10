@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect, useRef, type ReactElement } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, type ReactElement } from 'react'
 import { ScrollBoxRenderable } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
@@ -7,9 +7,10 @@ import { writeProfile } from '../../cli/profile.js'
 import { collapseForSingleLine } from '../../lib/formatDisplay.js'
 import type { ApiProject } from '../../services/api.service.js'
 import { stringFromInputSubmit } from '../../lib/inputSubmit.js'
+import { InputField, FooterHints, Divider, clickHandler } from '../shared/index.js'
 
 function sanitizeName(name: string): string {
-  return collapseForSingleLine(name.replace(/\\'/g, '\'').replace(/\\"/g, '"'))
+  return collapseForSingleLine(name.replace(/\\'/g, "'").replace(/\\"/g, '"'))
 }
 
 export interface SelectableWorkspace {
@@ -28,6 +29,7 @@ interface Props {
   profileName?: string
   loading?: boolean
   onComplete: (updates: Partial<AgentConfig>) => void
+  onBack?: () => void
   onCreateWorkspace?: (name: string, handle: string) => Promise<SelectableWorkspace>
   onCreateProject?: (workspaceId: string, name: string) => Promise<{ _id: string; name: string }>
 }
@@ -39,15 +41,26 @@ const SCROLLBAR_STYLE = {
     showArrows: true,
     trackOptions: {
       foregroundColor: '#22d3ee',
-      backgroundColor: '#374151',
-    },
-  },
+      backgroundColor: '#374151'
+    }
+  }
 }
 
-export function ProjectSelectStep({ workspaces: initialWorkspaces, profileName, loading, onComplete, onCreateWorkspace, onCreateProject }: Props): ReactElement {
+export function ProjectSelectStep({
+  workspaces: initialWorkspaces,
+  profileName,
+  loading,
+  onComplete,
+  onBack,
+  onCreateWorkspace,
+  onCreateProject
+}: Props): ReactElement {
   const [workspaces, setWorkspaces] = useState(initialWorkspaces)
   const [selected, setSelected] = useState(0)
-  const [inputMode, setInputMode] = useState<null | { kind: 'workspace' } | { kind: 'project'; workspaceId: string }>(null)
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null)
+  const [inputMode, setInputMode] = useState<null | { kind: 'workspace' } | { kind: 'project'; workspaceId: string }>(
+    null
+  )
   const [inputValue, setInputValue] = useState('')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,9 +72,9 @@ export function ProjectSelectStep({ workspaces: initialWorkspaces, profileName, 
   }, [initialWorkspaces])
 
   const buildOptions = (wsList: SelectableWorkspace[]): FlatOption[] => {
-    const opts: FlatOption[] = wsList.flatMap(ws => [
-      ...ws.projects.map(proj => ({ type: 'project' as const, workspace: ws, project: proj })),
-      ...(onCreateProject ? [{ type: 'new-project' as const, workspace: ws }] : []),
+    const opts: FlatOption[] = wsList.flatMap((ws) => [
+      ...ws.projects.map((proj) => ({ type: 'project' as const, workspace: ws, project: proj })),
+      ...(onCreateProject ? [{ type: 'new-project' as const, workspace: ws }] : [])
     ])
     if (onCreateWorkspace) opts.push({ type: 'new-workspace' as const })
     return opts
@@ -69,7 +82,7 @@ export function ProjectSelectStep({ workspaces: initialWorkspaces, profileName, 
 
   const options = buildOptions(workspaces)
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const opt = options[selected]
     if (!opt) return
     if (opt.type === 'project') {
@@ -79,7 +92,7 @@ export function ProjectSelectStep({ workspaces: initialWorkspaces, profileName, 
     } else {
       scrollRef.current?.scrollChildIntoView('new-workspace')
     }
-  }, [selected])
+  }, [selected, options.length])
 
   useKeyboard(({ name }) => {
     if (inputMode) {
@@ -90,13 +103,17 @@ export function ProjectSelectStep({ workspaces: initialWorkspaces, profileName, 
       }
       return
     }
-    if (name === 'up' || name === 'k') setSelected(s => Math.max(0, s - 1))
-    else if (name === 'down' || name === 'j') setSelected(s => Math.min(options.length - 1, s + 1))
-    else if (name === 'return') handleConfirm()
+    if (name === 'escape' && onBack) {
+      onBack()
+      return
+    }
+    if (name === 'up' || name === 'k') setSelected((s) => Math.max(0, s - 1))
+    else if (name === 'down' || name === 'j') setSelected((s) => Math.min(options.length - 1, s + 1))
+    else if (name === 'return') selectOption(selected)
   })
 
-  const handleConfirm = () => {
-    const opt = options[selected]
+  const selectOption = (index: number) => {
+    const opt = options[index]
     if (!opt) return
 
     if (opt.type === 'new-workspace') {
@@ -120,7 +137,7 @@ export function ProjectSelectStep({ workspaces: initialWorkspaces, profileName, 
       workspace: opt.workspace._id,
       project: opt.project._id,
       workspaceDisplayName: sanitizeName(opt.workspace.name),
-      projectDisplayName: sanitizeName(opt.project.name),
+      projectDisplayName: sanitizeName(opt.project.name)
     })
   }
 
@@ -131,39 +148,29 @@ export function ProjectSelectStep({ workspaces: initialWorkspaces, profileName, 
     setError(null)
     try {
       if (inputMode.kind === 'workspace' && onCreateWorkspace) {
-        const handle = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+        const handle = name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '')
         const newWs = await onCreateWorkspace(name, handle)
         const updated = [...workspaces, newWs]
         setWorkspaces(updated)
         setInputMode(null)
         setInputValue('')
         const newOpts = buildOptions(updated)
-        const idx = newOpts.findIndex(o => o.type === 'new-project' && o.workspace._id === newWs._id)
+        const idx = newOpts.findIndex((o) => o.type === 'new-project' && o.workspace._id === newWs._id)
         if (idx >= 0) setSelected(idx)
       } else if (inputMode.kind === 'project' && onCreateProject) {
         const newProj = await onCreateProject(inputMode.workspaceId, name)
-        const updated = workspaces.map(ws =>
-          ws._id === inputMode.workspaceId
-            ? { ...ws, projects: [...ws.projects, newProj] }
-            : ws,
+        const updated = workspaces.map((ws) =>
+          ws._id === inputMode.workspaceId ? { ...ws, projects: [...ws.projects, newProj] } : ws
         )
         setWorkspaces(updated)
         setInputMode(null)
         setInputValue('')
         const newOpts = buildOptions(updated)
-        const idx = newOpts.findIndex(o => o.type === 'project' && o.project._id === newProj._id)
-        if (idx >= 0) {
-          setSelected(idx)
-          const ws = updated.find(w => w._id === inputMode.workspaceId)!
-          const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
-          writeProfile(profile, { workspace: ws._id, project: newProj._id })
-          onComplete({
-            workspace: ws._id,
-            project: newProj._id,
-            workspaceDisplayName: sanitizeName(ws.name),
-            projectDisplayName: sanitizeName(newProj.name),
-          })
-        }
+        const idx = newOpts.findIndex((o) => o.type === 'project' && o.project._id === newProj._id)
+        if (idx >= 0) setSelected(idx)
       }
     } catch (err: any) {
       setError(err?.message ?? 'Creation failed')
@@ -174,16 +181,16 @@ export function ProjectSelectStep({ workspaces: initialWorkspaces, profileName, 
 
   if (loading) {
     return (
-      <box flexDirection="column" gap={1}>
-        <text fg="#f59e0b">◌ Loading workspaces...</text>
+      <box flexDirection='column' gap={1}>
+        <text fg='#f59e0b'>◌ Loading workspaces...</text>
       </box>
     ) as ReactElement
   }
 
   if (!options.length) {
     return (
-      <box flexDirection="column" gap={1}>
-        <text fg="#ef4444">No projects found for this account.</text>
+      <box flexDirection='column' gap={1}>
+        <text fg='#ef4444'>No projects found for this account.</text>
       </box>
     ) as ReactElement
   }
@@ -192,95 +199,143 @@ export function ProjectSelectStep({ workspaces: initialWorkspaces, profileName, 
     const label = inputMode.kind === 'workspace' ? 'New workspace name' : 'New project name'
     const placeholder = inputMode.kind === 'workspace' ? 'My Workspace' : 'My Project'
     return (
-      <box flexDirection="column" gap={1}>
-        <text attributes={tuiAttrs({ dim: true })}>{label}</text>
-        {error && <text fg="#ef4444">✗ {error}</text>}
+      <box flexDirection='column' gap={1}>
+        <text fg='#6b7280'>{label}</text>
+        {error && <text fg='#ef4444'>✗ {error}</text>}
         {creating ? (
-          <text fg="#f59e0b">◌ Creating...</text>
+          <text fg='#f59e0b'>◌ Creating...</text>
         ) : (
-          <box border={true} borderStyle="rounded" borderColor="#22d3ee" padding={1} flexDirection="row" gap={1}>
-            <text fg="#22d3ee">❯</text>
-            <input
-              width={40}
-              value={inputValue}
-              onInput={setInputValue}
-              onSubmit={(p) => { void handleCreateSubmit(stringFromInputSubmit(p, inputValue)) }}
-              placeholder={placeholder}
-              focusedBackgroundColor="transparent"
-            />
-          </box>
+          <InputField
+            value={inputValue}
+            onInput={setInputValue}
+            onSubmit={(p) => {
+              void handleCreateSubmit(stringFromInputSubmit(p, inputValue))
+            }}
+            placeholder={placeholder}
+            width={40}
+          />
         )}
-        <text attributes={tuiAttrs({ dim: true })}>Enter to create · Esc to cancel</text>
+        <FooterHints hints='Enter create · Esc cancel' />
       </box>
     ) as ReactElement
   }
 
-  // Build a flat list of rows: workspace headers + project rows + create entries
+  // Build rows grouped by workspace
   const rows: ReactElement[] = []
   let lastWsId = ''
   for (let i = 0; i < options.length; i++) {
     const opt = options[i]!
-    const isCurrent = i === selected
+    const isActive = i === selected
+    const isHovered = hoveredRow === i
+    const bg = isActive ? '#161b22' : isHovered ? '#21262d' : undefined
+
+    const mouse = {
+      onMouseUp: clickHandler(() => selectOption(i)),
+      onMouseOver: () => setHoveredRow(i),
+      onMouseOut: () => setHoveredRow((v: number | null) => (v === i ? null : v))
+    }
 
     if (opt.type === 'new-workspace') {
+      if (rows.length > 0) rows.push((<Divider key='div-new-ws' marginTop={1} />) as ReactElement)
       rows.push(
-        // eslint-disable-next-line
         // @ts-ignore
-        <box key="new-workspace" flexDirection="row" height={1} gap={1} marginTop={1}>
-          <text fg={isCurrent ? '#22d3ee' : '#6b7280'}>{isCurrent ? '❯' : ' '}</text>
-          <text fg={isCurrent ? '#22d3ee' : '#6b7280'} attributes={tuiAttrs({ bold: isCurrent })}>
-            + New workspace
+        <box
+          key='new-workspace'
+          id='new-workspace'
+          flexDirection='row'
+          paddingLeft={1}
+          paddingRight={1}
+          backgroundColor={bg}
+          marginBottom={1}
+          {...mouse}
+        >
+          <box width={3} flexShrink={0}>
+            <text fg='#f59e0b'>+</text>
+          </box>
+          <text fg={isActive ? '#e6edf3' : '#f59e0b'} attributes={tuiAttrs({ bold: isActive })}>
+            New workspace
           </text>
-        </box>,
+        </box>
       )
       continue
     }
 
+    // Workspace group header
     if (opt.workspace._id !== lastWsId) {
+      if (lastWsId) rows.push((<Divider key={`div-${opt.workspace._id}`} marginTop={1} />) as ReactElement)
       lastWsId = opt.workspace._id
       rows.push(
-        // eslint-disable-next-line
         // @ts-ignore
-        <box key={`ws-${opt.workspace._id}`} height={1} marginTop={rows.length === 0 ? 0 : 1}>
-          <text attributes={tuiAttrs({ dim: true })}>{sanitizeName(opt.workspace.name)}</text>
-        </box>,
+        <box key={`ws-${opt.workspace._id}`} paddingLeft={1} paddingRight={1} marginTop={0} flexDirection='column'>
+          <text fg='#6b7280' attributes={tuiAttrs({ bold: true })}>
+            {sanitizeName(opt.workspace.name)}
+          </text>
+          <Divider />
+        </box>
       )
     }
+
     if (opt.type === 'new-project') {
       rows.push(
-        // eslint-disable-next-line
         // @ts-ignore
-        <box key={`new-proj-${opt.workspace._id}`} flexDirection="row" height={1} gap={1}>
-          <text fg={isCurrent ? '#22d3ee' : '#6b7280'}>{isCurrent ? '❯' : ' '}</text>
-          <text fg={isCurrent ? '#22d3ee' : '#6b7280'} attributes={tuiAttrs({ bold: isCurrent })}>
-            + New project
+        <box
+          key={`new-proj-${opt.workspace._id}`}
+          id={`new-proj-${opt.workspace._id}`}
+          flexDirection='row'
+          paddingLeft={1}
+          paddingRight={1}
+          backgroundColor={bg}
+          {...mouse}
+        >
+          <box width={3} flexShrink={0}>
+            <text fg='#f59e0b'>+</text>
+          </box>
+          <text fg={isActive ? '#e6edf3' : '#f59e0b'} attributes={tuiAttrs({ bold: isActive })}>
+            New project
           </text>
-        </box>,
+        </box>
       )
       continue
     }
 
     rows.push(
-      // eslint-disable-next-line
       // @ts-ignore
-      <box key={`proj-${opt.workspace._id}-${opt.project._id}`} flexDirection="row" height={1} gap={1}>
-        <text fg={isCurrent ? '#22d3ee' : '#6b7280'}>{isCurrent ? '❯' : ' '}</text>
-        <text fg={isCurrent ? '#22d3ee' : undefined} attributes={tuiAttrs({ bold: isCurrent })}>
+      <box
+        key={`proj-${opt.workspace._id}-${opt.project._id}`}
+        id={`proj-${opt.workspace._id}-${opt.project._id}`}
+        flexDirection='row'
+        paddingLeft={1}
+        paddingRight={1}
+        backgroundColor={bg}
+        {...mouse}
+      >
+        <box width={3} flexShrink={0}>
+          <text fg={isActive ? '#22d3ee' : '#6b7280'}>{isActive ? '◆' : '◇'}</text>
+        </box>
+        <text fg={isActive ? '#e6edf3' : '#c9d1d9'} attributes={tuiAttrs({ bold: isActive })}>
           {sanitizeName(opt.project.name)}
         </text>
-      </box>,
+      </box>
     )
   }
 
   return (
-    <box flexDirection="column" flexGrow={1}>
-      <text attributes={tuiAttrs({ dim: true })}>Select the project for this agent to monitor.</text>
-      <scrollbox ref={scrollRef} flexGrow={1} scrollY focused={false} style={SCROLLBAR_STYLE} marginTop={1}>
-        <box flexDirection="column">{rows}</box>
-      </scrollbox>
-      <text attributes={tuiAttrs({ dim: true })} marginTop={1}>
-        ↑↓ to select · Enter to confirm
-      </text>
+    <box flexDirection='column' flexGrow={1}>
+      <text fg='#6b7280'>Select the project for this agent to monitor.</text>
+      <box
+        flexDirection='column'
+        border={true}
+        borderStyle='rounded'
+        borderColor='#30363d'
+        flexGrow={1}
+        overflow={'hidden' as const}
+        marginTop={1}
+      >
+        <scrollbox ref={scrollRef} flexGrow={1} scrollY focused={false} style={SCROLLBAR_STYLE}>
+          <box flexDirection='column'>{rows}</box>
+        </scrollbox>
+      </box>
+      <FooterHints hints='↑↓ navigate · Enter select · Click to select · Esc back' marginTop={1} />
     </box>
   ) as ReactElement
 }

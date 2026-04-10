@@ -52,7 +52,7 @@ export interface UserSession {
 }
 
 export const createApiService = (
-  config: ApiServiceAuth,
+  config: ApiServiceAuth
 ): MultiplayerApiService & {
   fetchUserSession: () => Promise<UserSession>
 } => {
@@ -91,15 +91,11 @@ export const createApiService = (
     return session as UserSession
   }
 
-  const createIntegration = async (
-    workspaceId: string,
-    projectId: string,
-    name: string,
-  ): Promise<ApiIntegration> => {
+  const createIntegration = async (workspaceId: string, projectId: string, name: string): Promise<ApiIntegration> => {
     const res = await fetch(`${apiBase}/git/workspaces/${workspaceId}/integrations`, {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, project: projectId, type: 'OTEL' }),
+      body: JSON.stringify({ name, project: projectId, type: 'OTEL' })
     })
     if (!res.ok) {
       const body = await res.text().catch(() => '')
@@ -108,14 +104,13 @@ export const createApiService = (
     return (await res.json()) as ApiIntegration
   }
 
-
   const createWorkspace = async (name: string, handle: string): Promise<ApiWorkspace> => {
     const res = await fetch(`${apiBase}/api/workspaces`, {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, handle }),
+      body: JSON.stringify({ name, handle })
     })
-    if (!res.ok) throw new Error(`Failed to create workspace: ${res.status} ${res.statusText}`)
+    if (!res.ok) throw new Error(`Failed to create workspace: ${res.status} ${res.statusText} ${await res.text()}`)
     return (await res.json()) as ApiWorkspace
   }
 
@@ -123,7 +118,7 @@ export const createApiService = (
     const res = await fetch(`${apiBase}/api/workspaces/${workspaceId}/projects`, {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name })
     })
     if (!res.ok) throw new Error(`Failed to create project: ${res.status} ${res.statusText}`)
     return (await res.json()) as ApiProject
@@ -136,6 +131,6 @@ export const createApiService = (
     fetchUserSession,
     createWorkspace,
     createProject,
-    createIntegration,
+    createIntegration
   }
 }

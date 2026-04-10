@@ -263,7 +263,7 @@ export function DashboardScreen({
         base.push({ id: 'scroll', keys: '↑↓', label: 'scroll' }, { id: 'page', keys: 'PgUp/Dn', label: 'page' })
         break
       case 'composer':
-        base.push({ id: 'send', keys: 'Ctrl+↵', label: 'send' }, { id: 'esc', keys: 'Esc', label: 'back' })
+        base.push({ id: 'send', keys: '↵', label: 'send' }, { id: 'esc', keys: 'Esc', label: 'back' })
         break
       case 'logs':
         base.push({ id: 'scroll', keys: '↑↓', label: 'scroll' })
