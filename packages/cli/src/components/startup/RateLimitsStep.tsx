@@ -1,9 +1,8 @@
 import React, { useState, type ReactElement } from 'react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { useKeyboard } from '@opentui/react'
-import type { MouseEvent } from '@opentui/core'
-import { MouseButton } from '@opentui/core'
 import type { AgentConfig } from '../../types/index.js'
+import { clickHandler, FooterHints } from '../shared/index.js'
 
 const OPTIONS = [1, 2, 3, 4, 5] as const
 type ConcurrencyOption = typeof OPTIONS[number]
@@ -19,14 +18,6 @@ const CONCURRENCY_HINT: Record<ConcurrencyOption, string> = {
 interface Props {
   config: Partial<AgentConfig>
   onComplete: (updates: Partial<AgentConfig>) => void
-}
-
-function clickHandler(handler: () => void) {
-  return (e: MouseEvent) => {
-    if (e.button !== MouseButton.LEFT) return
-    e.stopPropagation()
-    handler()
-  }
 }
 
 export function RateLimitsStep({ config, onComplete }: Props): ReactElement {
@@ -80,7 +71,7 @@ export function RateLimitsStep({ config, onComplete }: Props): ReactElement {
         })}
       </box>
       <text fg="#22d3ee">Selected: {selectedOption} · {CONCURRENCY_HINT[selectedOption]}</text>
-      <text attributes={tuiAttrs({ dim: true })}>← → select · Enter confirm · Esc back</text>
+      <FooterHints hints='← → select · Enter confirm · Esc back' />
     </box>
   ) as ReactElement
 }

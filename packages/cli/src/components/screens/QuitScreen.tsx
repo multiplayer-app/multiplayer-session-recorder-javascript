@@ -157,7 +157,11 @@ export function QuitScreen({ onQuit, onCancel }: Props): ReactElement {
           <text fg={ACCENT.keys} attributes={tuiAttrs({ bold: true })}>
             Enter
           </text>
-          <text attributes={tuiAttrs({ dim: true })}> select · click row · outside: cancel</text>
+          <text attributes={tuiAttrs({ dim: true })}> select · </text>
+          <text fg={ACCENT.keys} attributes={tuiAttrs({ bold: true })}>
+            1-3
+          </text>
+          <text attributes={tuiAttrs({ dim: true })}> quick pick · Esc cancel</text>
         </box>
       </box>
     </box>

@@ -376,7 +376,7 @@ export class OAuthManager {
     }
   }
 
-  private stopCallbackServer(): Promise<void> {
+  stopCallbackServer(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.authServer) return resolve()
       this.authServer.close(err => (err ? reject(err) : resolve()))

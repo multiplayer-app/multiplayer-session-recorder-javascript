@@ -1,19 +1,11 @@
 import { useState, useEffect, type ReactElement } from 'react'
-import type { KeyEvent, MouseEvent } from '@opentui/core'
-import { MouseButton } from '@opentui/core'
+import type { KeyEvent } from '@opentui/core'
 import { InputSubmitPayload, stringFromInputSubmit } from '../../lib/inputSubmit.js'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { useKeyboard } from '@opentui/react'
 import * as AiService from '../../services/ai.service.js'
 import type { AgentConfig } from '../../types/index.js'
-
-function clickHandler(handler: () => void) {
-  return (e: MouseEvent) => {
-    if (e.button !== MouseButton.LEFT) return
-    e.stopPropagation()
-    handler()
-  }
-}
+import { FooterHints, InputField, SelectionList, type SelectionItem } from '../shared/index.js'
 
 interface ModelOption {
   label: string
@@ -53,7 +45,6 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
   const [apiKeyError, setApiKeyError] = useState<string | null>(null)
   const [customModelError, setCustomModelError] = useState<string | null>(null)
   const [validating, setValidating] = useState(false)
-  const [hoveredRow, setHoveredRow] = useState<number | null>(null)
 
   useEffect(() => {
     AiService.checkClaudeRequirements()
@@ -167,6 +158,18 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
   }
 
   if (subStep === 'select') {
+    const selectionItems: SelectionItem[] = options.map((opt) => {
+      const isClaudeOption = opt.provider === 'claude'
+      return {
+        key: opt.value,
+        icon: isClaudeOption ? '◆' : opt.value === '__custom__' ? '⚙' : '◇',
+        iconColor: isClaudeOption ? '#22d3ee' : '#f59e0b',
+        label: opt.label,
+        labelColor: isClaudeOption ? '#c9d1d9' : '#f59e0b',
+        description: opt.description
+      }
+    })
+
     return (
       <box flexDirection='column' flexGrow={1}>
         {detectError && <text fg='#f59e0b'> ⚠ {detectError}</text>}
@@ -174,65 +177,15 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
         <text attributes={tuiAttrs({ dim: true })} marginLeft={1}>
           Use Claude for fastest local setup, or OpenAI-compatible with API key.
         </text>
-        <box
-          flexDirection='column'
-          marginTop={1}
-          border={true}
-          borderStyle='rounded'
-          borderColor='#30363d'
-          flexGrow={1}
-          overflow={'hidden' as const}
-        >
-          {options.map((opt, i) => {
-            const isActive = i === selectedIndex
-            const isHovered = hoveredRow === i
-            const isClaudeOption = opt.provider === 'claude'
-            const isLast = i === options.length - 1
-            const icon = isClaudeOption ? '◆' : opt.value === '__custom__' ? '⚙' : '◇'
-            const iconColor = isClaudeOption ? '#22d3ee' : '#f59e0b'
-            const nameFg = isActive ? '#e6edf3' : isClaudeOption ? '#c9d1d9' : '#f59e0b'
-
-            return (
-              <box
-                key={opt.value}
-                flexDirection='column'
-                onMouseUp={clickHandler(() => selectModel(opt))}
-                onMouseOver={() => setHoveredRow(i)}
-                onMouseOut={() => setHoveredRow((v) => (v === i ? null : v))}
-              >
-                <box
-                  flexDirection='row'
-                  height={1}
-                  paddingLeft={1}
-                  paddingRight={1}
-                  backgroundColor={isActive ? '#161b22' : isHovered ? '#21262d' : undefined}
-                >
-                  <box width={3} flexShrink={0}>
-                    <text fg={iconColor}>{icon}</text>
-                  </box>
-                  <box flexGrow={1}>
-                    <text fg={nameFg} attributes={tuiAttrs({ bold: isActive })}>
-                      {opt.label}
-                    </text>
-                  </box>
-                  {opt.description && (
-                    <box flexShrink={0}>
-                      <text attributes={tuiAttrs({ dim: true })}>{opt.description}</text>
-                    </box>
-                  )}
-                </box>
-                {!isLast && (
-                  <box height={1} paddingLeft={1} paddingRight={1}>
-                    <text fg='#21262d'>{'─'.repeat(999)}</text>
-                  </box>
-                )}
-              </box>
-            )
-          })}
+        <box marginTop={1} flexGrow={1}>
+          <SelectionList
+            items={selectionItems}
+            selectedIndex={selectedIndex}
+            onSelect={(i) => { const opt = options[i]; if (opt) selectModel(opt) }}
+            flexGrow={1}
+          />
         </box>
-        <box flexDirection='row' flexShrink={0} paddingLeft={1} marginTop={1} gap={2}>
-          <text fg='#484f58'>↑↓ navigate · Enter select · Click to select · Esc back</text>
-        </box>
+        <FooterHints hints='↑↓ navigate · Enter select · Click to select · Esc back' paddingLeft={1} marginTop={1} />
       </box>
     ) as ReactElement
   }
@@ -247,18 +200,15 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
         {validating ? (
           <text fg='#f59e0b'>◌ Validating key...</text>
         ) : (
-          <box border={true} borderStyle='rounded' borderColor='#22d3ee' padding={1} flexDirection='row' gap={1}>
-            <text fg='#22d3ee'>❯</text>
-            <input
-              width={50}
-              value={apiKey}
-              onInput={setApiKey}
-              onSubmit={(p: InputSubmitPayload) => handleApiKeySubmit(stringFromInputSubmit(p, apiKey))}
-              placeholder='sk-...'
-            />
-          </box>
+          <InputField
+            value={apiKey}
+            onInput={setApiKey}
+            onSubmit={(p: InputSubmitPayload) => handleApiKeySubmit(stringFromInputSubmit(p, apiKey))}
+            placeholder='sk-...'
+            width={50}
+          />
         )}
-        <text attributes={tuiAttrs({ dim: true })}>Press Enter to confirm</text>
+        <FooterHints hints='Enter confirm' />
       </box>
     ) as ReactElement
   }
@@ -275,17 +225,14 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
             ? 'Enter a base URL for your OpenAI-compatible API, or leave empty to use the default endpoint.'
             : 'Leave empty to use the default OpenAI endpoint.'}
         </text>
-        <box border={true} borderStyle='rounded' borderColor='#22d3ee' padding={1} flexDirection='row' gap={1}>
-          <text fg='#22d3ee'>❯</text>
-          <input
-            width={50}
-            value={apiUrl}
-            onInput={setApiUrl}
-            onSubmit={(p: InputSubmitPayload) => handleApiUrlSubmit(stringFromInputSubmit(p, apiUrl))}
-            placeholder='leave empty for default'
-          />
-        </box>
-        <text attributes={tuiAttrs({ dim: true })}>Press Enter to continue</text>
+        <InputField
+          value={apiUrl}
+          onInput={setApiUrl}
+          onSubmit={(p: InputSubmitPayload) => handleApiUrlSubmit(stringFromInputSubmit(p, apiUrl))}
+          placeholder='leave empty for default'
+          width={50}
+        />
+        <FooterHints hints='Enter continue' />
       </box>
     ) as ReactElement
   }
@@ -295,17 +242,14 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
       <box flexDirection='column' gap={1}>
         <text attributes={tuiAttrs({ dim: true })}>Enter the model identifier exposed by your provider.</text>
         {customModelError && <text fg='#ef4444'>✗ {customModelError}</text>}
-        <box border={true} borderStyle='rounded' borderColor='#22d3ee' padding={1} flexDirection='row' gap={1}>
-          <text fg='#22d3ee'>❯</text>
-          <input
-            width={50}
-            value={customModelName}
-            onInput={setCustomModelName}
-            onSubmit={(p: InputSubmitPayload) => handleCustomModelSubmit(stringFromInputSubmit(p, customModelName))}
-            placeholder='gpt-4.1-mini or provider-specific id'
-          />
-        </box>
-        <text attributes={tuiAttrs({ dim: true })}>Press Enter to continue</text>
+        <InputField
+          value={customModelName}
+          onInput={setCustomModelName}
+          onSubmit={(p: InputSubmitPayload) => handleCustomModelSubmit(stringFromInputSubmit(p, customModelName))}
+          placeholder='gpt-4.1-mini or provider-specific id'
+          width={50}
+        />
+        <FooterHints hints='Enter continue' />
       </box>
     ) as ReactElement
   }

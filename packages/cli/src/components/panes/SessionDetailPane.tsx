@@ -623,9 +623,25 @@ const buildMessageRows = (msg: SessionMessage, contentWidth?: number): DetailRow
   return rows
 }
 
-const buildSessionRows = (session: SessionDetail | null, contentWidth?: number): DetailRow[] => {
-  if (!session) return []
-  const allRows = session.messages.flatMap((msg) => buildMessageRows(msg, contentWidth))
+interface SessionRows {
+  rows: DetailRow[]
+  /** The latest reasoning text to show at the bottom, or null when content has arrived. */
+  activeReasoning: string | null
+}
+
+const buildSessionRows = (session: SessionDetail | null, contentWidth?: number): SessionRows => {
+  if (!session) return { rows: [], activeReasoning: null }
+
+  // Find the active reasoning text: show only if the last message is a reasoning message
+  // (i.e., the AI hasn't produced real content yet).
+  const msgs = session.messages
+  const lastMsg = msgs[msgs.length - 1]
+  const activeReasoning = lastMsg && (lastMsg.role as string) === 'reasoning' ? lastMsg.content : null
+
+  // Build rows excluding reasoning messages entirely
+  const allRows = msgs
+    .filter((msg) => (msg.role as string) !== 'reasoning')
+    .flatMap((msg) => buildMessageRows(msg, contentWidth))
 
   // Collapse consecutive messageGap rows (tool-only messages create adjacent gaps)
   const collapsed: DetailRow[] = []
@@ -635,7 +651,7 @@ const buildSessionRows = (session: SessionDetail | null, contentWidth?: number):
     }
     collapsed.push(row)
   }
-  return collapsed
+  return { rows: collapsed, activeReasoning }
 }
 
 function renderDetailRow(row: DetailRow): ReactElement | null {
@@ -805,7 +821,7 @@ function SessionDetailPaneImpl({
       onRequestLoadMore()
     })
 
-  const allRows = useMemo(() => buildSessionRows(session, contentWidth), [session, contentWidth])
+  const { rows: allRows, activeReasoning } = useMemo(() => buildSessionRows(session, contentWidth), [session, contentWidth])
 
   if (!session) {
     return (
@@ -920,10 +936,13 @@ function SessionDetailPaneImpl({
           </box>
         )}
         <box flexDirection='column' flexShrink={0} width='100%' paddingRight={2}>
-          {allRows.length === 0 ? (
+          {allRows.length === 0 && !activeReasoning ? (
             <text attributes={tuiAttrs({ dim: true })}>No messages yet...</text>
           ) : (
             allRows.map((row) => renderDetailRow(row))
+          )}
+          {activeReasoning && (
+            <text attributes={tuiAttrs({ dim: true })}>{activeReasoning}</text>
           )}
         </box>
       </scrollbox>

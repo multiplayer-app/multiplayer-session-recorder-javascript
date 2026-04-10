@@ -8,18 +8,18 @@ import { writeProfile } from '../../cli/profile.js'
 import { Logo } from '../Logo.js'
 import { AuthMethodStep } from '../startup/AuthMethodStep.js'
 import { ProjectSelectStep, type SelectableWorkspace } from '../startup/ProjectSelectStep.js'
-import { ApiKeyStep } from '../startup/ApiKeyStep.js'
 import { WorkspaceStep } from '../startup/WorkspaceStep.js'
 import { DirectoryStep } from '../startup/DirectoryStep.js'
 import { ModelStep } from '../startup/ModelStep.js'
 import { RateLimitsStep } from '../startup/RateLimitsStep.js'
 import { ConnectingStep } from '../startup/ConnectingStep.js'
-import { SessionRecorderStep } from '../startup/SessionRecorderStep.js'
+import { MultiplayerSdkStep } from '../startup/MultiplayerSdkStep.js'
+
+// ─── Step definitions ─────────────────────────────────────────────────────────
 
 type StepId =
   | 'auth-method'
   | 'project-select'
-  | 'api-key'
   | 'workspace'
   | 'directory'
   | 'model'
@@ -27,61 +27,119 @@ type StepId =
   | 'session-recorder'
   | 'connecting'
 
-const STEPS: StepId[] = [
-  'auth-method',
-  'project-select',
-  'api-key',
-  'workspace',
-  'directory',
-  'model',
-  'rate-limits',
-  'session-recorder',
-  'connecting'
-]
+interface StepMeta {
+  title: string
+  description: string
+  shortLabel: string
+  sidebarGroup?: string // steps sharing a group collapse into one sidebar entry
+  canSkip: (c: Partial<AgentConfig>) => boolean
+}
 
-const STEP_LABELS: Record<StepId, { title: string; description: string }> = {
+/** Ordered step definitions — source of truth for step ordering, labels, and skip logic. */
+const STEP_DEFS: Record<StepId, StepMeta> = {
   'auth-method': {
     title: 'Authentication',
-    description: 'Choose how to authenticate with Multiplayer.'
+    description: 'Choose how to authenticate with Multiplayer.',
+    shortLabel: 'Auth',
+    sidebarGroup: 'auth',
+    canSkip: (c) => !!c.apiKey
   },
   'project-select': {
     title: 'Select Project',
-    description: 'Choose the project this agent will monitor.'
-  },
-  'api-key': {
-    title: 'Project API Key',
-    description: 'Authenticate with Multiplayer and load workspace/project context.'
+    description: 'Choose the project this agent will monitor.',
+    shortLabel: 'Project',
+    sidebarGroup: 'auth',
+    canSkip: (c) => {
+      if (c.authType === 'oauth' && !(c.workspace && c.project)) return false
+      return !!(c.workspace && c.project)
+    }
   },
   workspace: {
     title: 'Workspace Confirmation',
-    description: 'Review the workspace and project that will receive agent updates.'
+    description: 'Review the workspace and project that will receive agent updates.',
+    shortLabel: 'Workspace',
+    sidebarGroup: 'auth',
+    canSkip: (c) => !!(c.workspace && c.project && c.apiKey)
   },
   directory: {
     title: 'Repository Directory',
-    description: 'Select the git repository where patches, commits, and branches are created.'
+    description: 'Select the git repository where patches, commits, and branches are created.',
+    shortLabel: 'Directory',
+    canSkip: (c) => !!c.dir
   },
-  model: { title: 'AI Model', description: 'Choose an AI provider and model for issue resolution.' },
-  'rate-limits': { title: 'Concurrency', description: 'Set how many issues can be processed in parallel.' },
+  model: {
+    title: 'AI Model',
+    description: 'Choose an AI provider and model for issue resolution.',
+    shortLabel: 'Model',
+    canSkip: (c) => !!(c.model && (c.model.startsWith('claude') || c.modelKey))
+  },
+  'rate-limits': {
+    title: 'Concurrency',
+    description: 'Set how many issues can be processed in parallel.',
+    shortLabel: 'Concurrency',
+    canSkip: (c) => typeof c.maxConcurrentIssues === 'number'
+  },
   'session-recorder': {
     title: 'Session Recorder',
-    description: 'Detect your app stack and set up the Multiplayer Session Recorder SDK.'
+    description: 'Detect your app stack and set up the Multiplayer Session Recorder SDK.',
+    shortLabel: 'Multiplayer SDK',
+    canSkip: (c) => !!c.sessionRecorderSetupDone || !!process.env.MULTIPLAYER_SKIP_SR_SETUP
   },
-  connecting: { title: 'Final Checks', description: 'Verify git and provider requirements before starting runtime.' }
+  connecting: {
+    title: 'Final Checks',
+    description: 'Verify git and provider requirements before starting runtime.',
+    shortLabel: 'Verify',
+    canSkip: () => false
+  }
 }
 
-const STEP_SHORT: Record<StepId, string> = {
-  'auth-method': 'Auth',
-  'project-select': 'Project',
-  'api-key': 'API key',
-  workspace: 'Workspace',
-  directory: 'Directory',
-  model: 'Model',
-  'rate-limits': 'Concurrency',
-  'session-recorder': 'Multiplayer SDK',
-  connecting: 'Verify'
+/** Ordered list of step IDs — derived from STEP_DEFS insertion order. */
+const STEPS = Object.keys(STEP_DEFS) as StepId[]
+
+// ─── Route map ────────────────────────────────────────────────────────────────
+/** Back-navigation route map. Returns the previous logical step, or null for the first step. */
+function prevStep(current: StepId, config: Partial<AgentConfig>): StepId | null {
+  switch (current) {
+    case 'auth-method':
+      return null
+    case 'project-select':
+      return 'auth-method'
+    case 'workspace':
+      return config.authType === 'oauth' ? 'project-select' : 'auth-method'
+    case 'directory':
+      return config.authType === 'oauth' ? 'project-select' : 'auth-method'
+    case 'model':
+      return 'directory'
+    case 'rate-limits':
+      return 'model'
+    case 'session-recorder':
+      return 'rate-limits'
+    case 'connecting':
+      return 'session-recorder'
+  }
 }
 
-const AUTH_STEPS: StepId[] = ['auth-method', 'project-select', 'api-key', 'workspace']
+/** Forward-navigation: find the next step that still needs user input. */
+function nextStep(afterStep: StepId, config: Partial<AgentConfig>): StepId {
+  const idx = STEPS.indexOf(afterStep)
+  for (let i = idx + 1; i < STEPS.length; i++) {
+    if (!STEP_DEFS[STEPS[i]!].canSkip(config)) return STEPS[i]!
+  }
+  return 'connecting'
+}
+
+/** First step the user needs to complete on startup. */
+function firstRequiredStep(config: Partial<AgentConfig>): StepId {
+  for (const s of STEPS) {
+    if (!STEP_DEFS[s].canSkip(config)) return s
+  }
+  return 'connecting'
+}
+
+/** Steps that handle Esc internally (sub-step navigation). Global Esc handler skips these. */
+const SELF_NAVIGATING_STEPS: Set<StepId> = new Set(['project-select'])
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STEP_PANEL_WIDTH = 24
 
@@ -91,37 +149,7 @@ function compactContextLabel(name: string | undefined, id: string | undefined): 
   return raw.length > 26 ? `${raw.slice(0, 12)}…${raw.slice(-11)}` : raw
 }
 
-function canSkip(step: StepId, config: Partial<AgentConfig>): boolean {
-  switch (step) {
-    case 'auth-method':
-      return !!config.apiKey
-    case 'project-select':
-      // OAuth token without workspace/project must go through project selection
-      if (config.authType === 'oauth' && !(config.workspace && config.project)) return false
-      return !!(config.workspace && config.project)
-    case 'api-key':
-      return !!config.apiKey
-    case 'workspace':
-      return !!(config.workspace && config.project && config.apiKey)
-    case 'directory':
-      return !!config.dir
-    case 'session-recorder':
-      return !!config.sessionRecorderSetupDone || !!process.env.MULTIPLAYER_SKIP_SR_SETUP
-    case 'model':
-      return !!(config.model && (config.model.startsWith('claude') || config.modelKey))
-    case 'rate-limits':
-      return typeof config.maxConcurrentIssues === 'number'
-    case 'connecting':
-      return false
-  }
-}
-
-function firstRequiredStep(config: Partial<AgentConfig>): StepId {
-  for (const step of STEPS) {
-    if (!canSkip(step, config)) return step
-  }
-  return 'connecting'
-}
+// ─── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
   initialConfig: Partial<AgentConfig>
@@ -137,6 +165,40 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
   const [fetchingWorkspaces, setFetchingWorkspaces] = useState(false)
   const [oauthApi, setOauthApi] = useState<ReturnType<typeof createApiService> | null>(null)
 
+  // ── Navigation ────────────────────────────────────────────────────────────
+
+  const advance = useCallback(
+    (updates: Partial<AgentConfig>) => {
+      const next = { ...config, ...updates }
+      setConfig(next)
+
+      const profile = profileName ?? 'default'
+      writeProfile(profile, {
+        apiKey: next.apiKey,
+        workspace: next.workspace,
+        project: next.project,
+        modelKey: next.modelKey,
+        modelUrl: next.modelUrl,
+        maxConcurrentIssues: next.maxConcurrentIssues
+      })
+
+      setStep(nextStep(step, next))
+    },
+    [config, step]
+  )
+
+  const goBack = useCallback(() => {
+    const prev = prevStep(step, config)
+    if (prev) setStep(prev)
+  }, [step, config])
+
+  useKeyboard(({ name }) => {
+    if (name !== 'escape' || SELF_NAVIGATING_STEPS.has(step)) return
+    goBack()
+  })
+
+  // ── Side effects ──────────────────────────────────────────────────────────
+
   // If we start on 'project-select' with a saved OAuth token, fetch workspaces automatically
   useEffect(() => {
     if (step !== 'project-select' || oauthWorkspaces.length > 0 || fetchingWorkspaces) return
@@ -147,22 +209,24 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
     const url = config.url || API_URL
     const api = createApiService({ url, apiKey: '', bearerToken: apiKey })
     setOauthApi(api)
-    void api.fetchUserSession()
+    void api
+      .fetchUserSession()
       .then(async (session) => {
         const workspaces: SelectableWorkspace[] = await Promise.all(
-          session.workspaces.map(async ws => ({
+          session.workspaces.map(async (ws) => ({
             _id: ws._id,
             name: ws.name,
-            projects: (await api.fetchProjects(ws._id)).filter(p => !!p._id && !!p.name),
-          })),
+            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name)
+          }))
         )
-        // Persist auth_type so future startups go directly to project-select
         const profile = profileName ?? 'default'
         writeProfile(profile, { authType: 'oauth' })
-        setConfig(c => ({ ...c, authType: 'oauth' }))
+        setConfig((c) => ({ ...c, authType: 'oauth' }))
         setOauthWorkspaces(workspaces)
       })
-      .catch(() => { /* will show empty list with error from ProjectSelectStep */ })
+      .catch(() => {
+        /* will show empty list with error from ProjectSelectStep */
+      })
       .finally(() => setFetchingWorkspaces(false))
   }, [step])
 
@@ -220,73 +284,41 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
     }
   }, [config.apiKey, config.workspace, config.project, config.url])
 
-  const advance = useCallback(
-    (updates: Partial<AgentConfig>) => {
-      const next = { ...config, ...updates }
-      setConfig(next)
-
-      const profile = profileName ?? 'default'
-      writeProfile(profile, {
-        apiKey: next.apiKey,
-        workspace: next.workspace,
-        project: next.project,
-        modelKey: next.modelKey,
-        modelUrl: next.modelUrl,
-        maxConcurrentIssues: next.maxConcurrentIssues
-      })
-
-      const currentIdx = STEPS.indexOf(step)
-      for (let i = currentIdx + 1; i < STEPS.length; i++) {
-        const nextStep = STEPS[i]!
-        if (!canSkip(nextStep, next)) {
-          setStep(nextStep)
-          return
-        }
-      }
-      setStep('connecting')
-    },
-    [config, step]
-  )
-
-  /** Previous wizard screen (linear). Do not skip “already filled” steps — Esc from model must reach directory. */
-  const goBack = useCallback(() => {
-    const currentIdx = STEPS.indexOf(step)
-    if (currentIdx <= 0) return
-    setStep(STEPS[currentIdx - 1]!)
-  }, [step])
-
-  useKeyboard(({ name }) => {
-    if (name !== 'escape' || step === 'api-key') return
-    goBack()
-  })
+  // ── Sidebar ───────────────────────────────────────────────────────────────
 
   const currentStepIndex = STEPS.indexOf(step)
-  const visibleSteps = STEPS.filter((s, i) => i <= currentStepIndex || !canSkip(s, config) || s === 'connecting')
+  const visibleSteps = STEPS.filter(
+    (s, i) => i <= currentStepIndex || !STEP_DEFS[s].canSkip(config) || s === 'connecting'
+  )
   const currentVisibleIndex = visibleSteps.indexOf(step)
 
-  // Sidebar display: collapse all auth steps into one "Auth" entry
   type SidebarEntry = { id: string; label: string; isDone: boolean; isCurrent: boolean }
   const sidebarSteps: SidebarEntry[] = []
-  let authGroupAdded = false
+  const groupsSeen = new Set<string>()
+
   for (const s of visibleSteps) {
-    if (AUTH_STEPS.includes(s)) {
-      if (!authGroupAdded) {
-        authGroupAdded = true
-        const lastAuthVisibleIdx = visibleSteps.reduce((acc, vs, i) => (AUTH_STEPS.includes(vs) ? i : acc), -1)
-        sidebarSteps.push({
-          id: 'auth-group',
-          label: 'Auth',
-          isDone: lastAuthVisibleIdx < currentVisibleIndex,
-          isCurrent: AUTH_STEPS.includes(step),
-        })
-      }
+    const def = STEP_DEFS[s]
+    const group = def.sidebarGroup
+
+    if (group) {
+      if (groupsSeen.has(group)) continue
+      groupsSeen.add(group)
+      const lastGroupIdx = visibleSteps.reduce((acc, vs, i) => (STEP_DEFS[vs].sidebarGroup === group ? i : acc), -1)
+      const anyGroupCurrent = visibleSteps.some((vs) => STEP_DEFS[vs].sidebarGroup === group && vs === step)
+      sidebarSteps.push({
+        id: `group-${group}`,
+        label: 'Auth',
+        isDone: lastGroupIdx < currentVisibleIndex,
+        isCurrent: anyGroupCurrent
+      })
     } else {
       const i = visibleSteps.indexOf(s)
-      sidebarSteps.push({ id: s, label: STEP_SHORT[s], isDone: i < currentVisibleIndex, isCurrent: s === step })
+      sidebarSteps.push({ id: s, label: def.shortLabel, isDone: i < currentVisibleIndex, isCurrent: s === step })
     }
   }
+
   const currentSidebarIndex = sidebarSteps.findIndex((e) => e.isCurrent)
-  const label = STEP_LABELS[step]
+  const label = STEP_DEFS[step]
   const done = Math.max(0, currentSidebarIndex)
   const total = Math.max(1, sidebarSteps.length)
   const progressPrefix = `${currentSidebarIndex + 1}/${sidebarSteps.length}`
@@ -303,6 +335,8 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
   const setupProjectLabel = compactContextLabel(config.projectDisplayName, config.project)
 
   if (!ready) return null
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <box flexDirection='column' padding={1}>
@@ -371,13 +405,11 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
 
           {step === 'auth-method' && (
             <AuthMethodStep
+              config={config}
               url={config.url || API_URL}
               profileName={profileName}
               onComplete={(updates) => {
-                const method = (updates as any)._authMethod
-                if (method === 'api-token') {
-                  setStep('api-key')
-                } else if ((updates as any)._oauthWorkspaces) {
+                if ((updates as any)._oauthWorkspaces) {
                   const workspaces = (updates as any)._oauthWorkspaces as SelectableWorkspace[]
                   setOauthWorkspaces(workspaces)
                   const next = { ...config, apiKey: updates.apiKey }
@@ -397,21 +429,29 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
               profileName={profileName}
               loading={fetchingWorkspaces}
               onComplete={advance}
-              onCreateWorkspace={oauthApi ? async (name, handle) => {
-                const ws = await oauthApi.createWorkspace(name, handle)
-                return { _id: ws._id!, name: ws.name!, projects: [] }
-              } : undefined}
-              onCreateProject={oauthApi ? async (workspaceId, name) => {
-                return oauthApi.createProject(workspaceId, name)
-              } : undefined}
+              onBack={goBack}
+              onCreateWorkspace={
+                oauthApi
+                  ? async (name, handle) => {
+                      const ws = await oauthApi.createWorkspace(name, handle)
+                      return { _id: ws._id!, name: ws.name!, projects: [] }
+                    }
+                  : undefined
+              }
+              onCreateProject={
+                oauthApi
+                  ? async (workspaceId, name) => {
+                      return oauthApi.createProject(workspaceId, name)
+                    }
+                  : undefined
+              }
             />
           )}
-          {step === 'api-key' && <ApiKeyStep config={config} profileName={profileName} onComplete={advance} />}
           {step === 'workspace' && <WorkspaceStep config={config} onComplete={advance} />}
           {step === 'directory' && <DirectoryStep config={config} onComplete={advance} />}
           {step === 'model' && <ModelStep config={config} onComplete={advance} />}
           {step === 'rate-limits' && <RateLimitsStep config={config} onComplete={advance} />}
-          {step === 'session-recorder' && <SessionRecorderStep config={config} onComplete={advance} />}
+          {step === 'session-recorder' && <MultiplayerSdkStep config={config} onComplete={advance} />}
           {step === 'connecting' && (
             <ConnectingStep config={config as AgentConfig} onComplete={onComplete} onBack={goBack} />
           )}

@@ -1,10 +1,11 @@
-import React, { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { useKeyboard } from '@opentui/react'
 import type { AgentConfig } from '../../types/index.js'
 import * as AiService from '../../services/ai.service.js'
 import * as GitService from '../../services/git.service.js'
 import { validateApiKey } from '../../services/radar.service.js'
+import { StatusIcon, FooterHints } from '../shared/index.js'
 
 interface Props {
   config: AgentConfig
@@ -64,65 +65,67 @@ export function ConnectingStep({ config, onComplete, onBack }: Props): ReactElem
     }
 
     void run()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [runId])
 
-  const apiKeyPassed = status !== 'checking-api-key' && !(status === 'error' && !error?.includes('git') && !error?.includes('AI') && !error?.includes('model'))
-  const apiKeyColor =
-    status === 'checking-api-key' ? '#f59e0b'
-      : status === 'error' && !apiKeyPassed ? '#ef4444'
-        : '#10b981'
-  const apiKeySymbol =
-    status === 'checking-api-key' ? '◌'
-      : status === 'error' && !apiKeyPassed ? '✕'
-        : '✓'
+  const apiKeyPassed =
+    status !== 'checking-api-key' &&
+    !(status === 'error' && !error?.includes('git') && !error?.includes('AI') && !error?.includes('model'))
+  const apiKeyStatus =
+    status === 'checking-api-key'
+      ? ('loading' as const)
+      : status === 'error' && !apiKeyPassed
+        ? ('error' as const)
+        : ('success' as const)
 
-  const gitStarted = status !== 'checking-api-key' && status !== 'error' || (status === 'error' && (error?.includes('git') || apiKeyPassed))
-  const gitColor =
-    !gitStarted ? '#6b7280'
-      : status === 'checking-git' ? '#f59e0b'
-        : status === 'error' && error?.includes('git') ? '#ef4444'
-          : '#10b981'
-  const gitSymbol =
-    !gitStarted ? '·'
-      : status === 'checking-git' ? '◌'
-        : status === 'error' && error?.includes('git') ? '✕'
-          : '✓'
+  const gitStarted =
+    (status !== 'checking-api-key' && status !== 'error') ||
+    (status === 'error' && (error?.includes('git') || apiKeyPassed))
+  const gitStatus = !gitStarted
+    ? ('idle' as const)
+    : status === 'checking-git'
+      ? ('loading' as const)
+      : status === 'error' && error?.includes('git')
+        ? ('error' as const)
+        : ('success' as const)
+
+  const aiStatus =
+    status === 'checking-ai' ? ('loading' as const) : status === 'error' ? ('error' as const) : ('success' as const)
 
   return (
-    <box flexDirection="column" gap={1}>
+    <box flexDirection='column' gap={1}>
       <text attributes={tuiAttrs({ bold: true })}>Starting Agent</text>
-      <box flexDirection="column" marginTop={1} gap={0}>
+      <box flexDirection='column' marginTop={1} gap={0}>
         <box gap={2}>
-          <text fg={apiKeyColor}>{apiKeySymbol}</text>
+          <StatusIcon status={apiKeyStatus} />
           <text>API key</text>
           {status === 'checking-api-key' && <text attributes={tuiAttrs({ dim: true })}>validating...</text>}
         </box>
         <box gap={2}>
-          <text fg={gitColor}>{gitSymbol}</text>
+          <StatusIcon status={gitStatus} />
           <text>Git repository</text>
           {status === 'checking-git' && <text attributes={tuiAttrs({ dim: true })}>checking...</text>}
         </box>
         {status !== 'checking-api-key' && status !== 'checking-git' && (
           <box gap={2}>
-            <text fg={status === 'checking-ai' ? '#f59e0b' : status === 'error' ? '#ef4444' : '#10b981'}>
-              {status === 'checking-ai' ? '◌' : status === 'error' ? '✕' : '✓'}
-            </text>
+            <StatusIcon status={aiStatus} />
             <text>AI provider</text>
             {status === 'checking-ai' && <text attributes={tuiAttrs({ dim: true })}>checking...</text>}
           </box>
         )}
         {status === 'done' && (
           <box gap={2} marginTop={1}>
-            <text fg="#10b981">✓</text>
-            <text fg="#10b981">All checks passed — connecting to Radar</text>
+            <StatusIcon status='success' />
+            <text fg='#10b981'>All checks passed — connecting to Radar</text>
           </box>
         )}
       </box>
       {error && (
-        <box flexDirection="column" gap={1} marginTop={1}>
-          <text fg="#ef4444">✗ {error}</text>
-          <text attributes={tuiAttrs({ dim: true })}>Enter retry  ·  Esc back</text>
+        <box flexDirection='column' gap={1} marginTop={1}>
+          <text fg='#ef4444'>✗ {error}</text>
+          <FooterHints hints='Enter retry · Esc back' />
         </box>
       )}
     </box>

@@ -1,22 +1,31 @@
 import { useState, type ReactElement } from 'react'
 import { stringFromInputSubmit } from '../../lib/inputSubmit.js'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
+import { useKeyboard } from '@opentui/react'
 import { createApiService } from '../../services/api.service.js'
 import type { AgentConfig } from '../../types/index.js'
 import { API_URL } from '../../config.js'
 import { decodeApiKeyPayload } from '../../services/radar.service.js'
 import { writeProfile } from '../../cli/profile.js'
+import { InputField, FooterHints } from '../shared/index.js'
 
 interface Props {
   config: Partial<AgentConfig>
   profileName?: string
   onComplete: (updates: Partial<AgentConfig>) => void
+  onBack?: () => void
 }
 
-export function ApiKeyStep({ config, profileName, onComplete }: Props): ReactElement {
+export function ApiKeyStep({ config, profileName, onComplete, onBack }: Props): ReactElement {
   const [value, setValue] = useState(config.apiKey ?? '')
   const [validating, setValidating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useKeyboard(({ name }) => {
+    if (name === 'escape' && !validating && onBack) {
+      onBack()
+    }
+  })
 
   const handleInput = (nextValue: string) => {
     setValue(nextValue.replace(/\s+/g, ''))
@@ -86,19 +95,14 @@ export function ApiKeyStep({ config, profileName, onComplete }: Props): ReactEle
       {validating ? (
         <text fg='#f59e0b'>◌ Validating API key...</text>
       ) : (
-        <box border={true} borderStyle='rounded' borderColor='#22d3ee' padding={1} flexDirection='row' gap={2}>
-          <text fg='#22d3ee'>❯</text>
-          <input
-            flexGrow={1}
-            value={value}
-            onInput={handleInput}
-            onSubmit={(p) => handleSubmit(stringFromInputSubmit(p, value))}
-            placeholder='eyJ...'
-            focusedBackgroundColor='transparent'
-          />
-        </box>
+        <InputField
+          value={value}
+          onInput={handleInput}
+          onSubmit={(p) => handleSubmit(stringFromInputSubmit(p, value))}
+          placeholder='eyJ...'
+        />
       )}
-      <text attributes={tuiAttrs({ dim: true })}>Press Enter to continue</text>
+      <FooterHints hints={onBack ? 'Enter continue · Esc back' : 'Enter continue'} />
     </box>
   ) as ReactElement
 }

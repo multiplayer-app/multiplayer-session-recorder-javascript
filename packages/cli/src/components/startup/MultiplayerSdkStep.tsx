@@ -8,8 +8,7 @@ import {
   type SetStateAction
 } from 'react'
 import { useKeyboard } from '@opentui/react'
-import type { MouseEvent } from '@opentui/core'
-import { MouseButton, ScrollBoxRenderable } from '@opentui/core'
+import { ScrollBoxRenderable } from '@opentui/core'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import type { AgentConfig } from '../../types/index.js'
 import { detectStacks, summarizeDetection, type DetectedStack } from '../../session-recorder/detectStacks.js'
@@ -22,7 +21,7 @@ import {
   injectApiKeysIntoPlan,
   type SetupPlan
 } from '../../session-recorder/setupWithAi.js'
-import { Divider } from '../shared/Divider.js'
+import { Divider, clickHandler, FooterHints, ActionButton, AnimatedLoading } from '../shared/index.js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -88,64 +87,9 @@ function getStatusGroup(s: DetectedStack): StatusGroup {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function clickHandler(handler: () => void) {
-  return (e: MouseEvent) => {
-    if (e.button !== MouseButton.LEFT) return
-    e.stopPropagation()
-    handler()
-  }
-}
-
 function sdkDisplayName(sdk: DetectedStack['sdkPackage']): string {
   if (sdk.startsWith('@multiplayer-app/')) return sdk
   return `multiplayer ${sdk.replace('multiplayer-', '')} SDK`
-}
-
-interface AnimatedLoadingProps {
-  title: string
-  subtitle?: string
-  color?: string
-}
-
-function AnimatedLoading({ title, subtitle, color = '#22d3ee' }: AnimatedLoadingProps): ReactElement {
-  const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-  const pulseFrames = ['Preparing workspace', 'Preparing workspace.', 'Preparing workspace..', 'Preparing workspace...']
-  const [frameIndex, setFrameIndex] = useState(0)
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setFrameIndex((i) => (i + 1) % 120)
-    }, 90)
-    return () => clearInterval(timer)
-  }, [])
-
-  const spinner = spinnerFrames[frameIndex % spinnerFrames.length] ?? spinnerFrames[0]
-  const pulseText = pulseFrames[Math.floor(frameIndex / 2) % pulseFrames.length] ?? pulseFrames[0]
-
-  const BAR_WIDTH = 28
-  const SEGMENT = 6
-  const travel = BAR_WIDTH - SEGMENT
-  const raw = frameIndex % (travel * 2)
-  const pos = raw < travel ? raw : travel * 2 - raw
-  const before = pos
-  const after = BAR_WIDTH - SEGMENT - (pos || 1)
-
-  return (
-    <box flexDirection='column' gap={1}>
-      <box gap={1} flexDirection='row' alignItems='center'>
-        <text fg={color}>{spinner}</text>
-        <text fg='#e6edf3' attributes={tuiAttrs({ bold: true })}>
-          {title}
-        </text>
-      </box>
-      <text attributes={tuiAttrs({ dim: true })}>{subtitle ?? pulseText}</text>
-      <box flexDirection='row'>
-        <text fg='#30363d'>{'─'.repeat(before)}</text>
-        <text fg={color}>{'━'.repeat(SEGMENT)}</text>
-        <text fg='#30363d'>{'─'.repeat(after)}</text>
-      </box>
-    </box>
-  ) as ReactElement
 }
 
 function ApplyLogView({ applyLog }: { applyLog: string[] }): ReactElement {
@@ -184,9 +128,7 @@ function NoStacksView(): ReactElement {
         Supported: React, Next.js, Vue, Angular, Svelte, React Native, Express, Fastify, NestJS, Python, Go, Ruby, Java,
         .NET
       </text>
-      <box marginTop={1}>
-        <text attributes={tuiAttrs({ dim: true })}>Press Enter to continue</text>
-      </box>
+      <FooterHints hints='Enter continue' marginTop={1} />
     </box>
   ) as ReactElement
 }
@@ -289,35 +231,13 @@ function AlreadyDoneView({ stacks, onContinue }: { stacks: DetectedStack[]; onCo
         </box>
       </scrollbox>
 
-      <box
-        border={true}
-        flexShrink={0}
-        flexDirection='column'
-        borderStyle='rounded'
-        borderColor='#30363d'
-        overflow={'hidden' as const}
-        onMouseUp={clickHandler(onContinue)}
-      >
-        <box flexDirection='row' paddingLeft={1} paddingRight={1} backgroundColor='#161b22'>
-          <box width={3} flexShrink={0}>
-            <text fg='#10b981'>→</text>
-          </box>
-          <box flexGrow={1}>
-            <text fg='#e6edf3' attributes={tuiAttrs({ bold: true })}>
-              Continue
-            </text>
-          </box>
-        </box>
-      </box>
-
-      <box>
-        <text fg='#484f58'>Enter continue</text>
-      </box>
+      <ActionButton label='Continue' icon='→' iconColor='#10b981' onClick={onContinue} />
+      <FooterHints hints='Enter continue' />
     </box>
   ) as ReactElement
 }
 
-function ClassifyingView(): ReactElement {
+function ClassifyingView({ onSkip }: { onSkip: () => void }): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
       <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
@@ -326,14 +246,13 @@ function ClassifyingView(): ReactElement {
         subtitle='Determining which packages need the SDK...'
         color='#a78bfa'
       />
-      <box>
-        <text fg='#484f58'>Esc skip</text>
-      </box>
+      <ActionButton label='Skip' icon='⏭' iconColor='#6b7280' onClick={onSkip} />
+      <FooterHints hints='Esc skip' />
     </box>
   ) as ReactElement
 }
 
-function AiPlanningView({ stackLabel }: { stackLabel: string }): ReactElement {
+function AiPlanningView({ stackLabel, onSkip }: { stackLabel: string; onSkip: () => void }): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
       <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
@@ -342,9 +261,8 @@ function AiPlanningView({ stackLabel }: { stackLabel: string }): ReactElement {
         subtitle={`Reading integration guide + project files for ${stackLabel}`}
         color='#f59e0b'
       />
-      <box>
-        <text fg='#484f58'>Esc skip</text>
-      </box>
+      <ActionButton label='Skip' icon='⏭' iconColor='#6b7280' onClick={onSkip} />
+      <FooterHints hints='Esc skip' />
     </box>
   ) as ReactElement
 }
@@ -578,9 +496,7 @@ function PreviewView({
         })}
       </box>
 
-      <box>
-        <text fg='#484f58'>↑↓ select · Enter confirm · Esc back</text>
-      </box>
+      <FooterHints hints='↑↓ select · Enter confirm · Esc back' />
     </box>
   ) as ReactElement
 }
@@ -604,9 +520,7 @@ function DoneView({ applyLog }: { applyLog: string[] }): ReactElement {
         <text fg='#10b981'>Session Recorder SDK has been set up</text>
       </box>
       <ApplyLogView applyLog={applyLog} />
-      <box marginTop={1}>
-        <text attributes={tuiAttrs({ dim: true })}>Press Enter to continue</text>
-      </box>
+      <FooterHints hints='Enter continue' marginTop={1} />
     </box>
   ) as ReactElement
 }
@@ -620,7 +534,7 @@ function ErrorView({ error, applyLog }: { error: string | null; applyLog: string
         <text fg='#ef4444'>{error}</text>
       </box>
       {applyLog.length > 0 && <ApplyLogView applyLog={applyLog} />}
-      <text attributes={tuiAttrs({ dim: true })}>Enter retry · Esc back</text>
+      <FooterHints hints='Enter retry · Esc back' />
     </box>
   ) as ReactElement
 }
@@ -789,16 +703,14 @@ function ResultsView({
         })}
       </box>
 
-      <box>
-        <text fg='#484f58'>↑↓ navigate · Space toggle · Enter confirm</text>
-      </box>
+      <FooterHints hints='↑↓ navigate · Space toggle · Enter confirm' />
     </box>
   ) as ReactElement
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function SessionRecorderStep({ config, onComplete }: Props): ReactElement {
+export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement {
   const [phase, setPhase] = useState<Phase>('scanning')
   const [stacks, setStacks] = useState<DetectedStack[]>([])
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -1057,6 +969,8 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
     if (phase === 'error') {
       if (name === 'return') {
         void runAiPlanning() // retry
+      } else if (name === 'escape') {
+        onComplete({ sessionRecorderSetupDone: true })
       }
       return
     }
@@ -1069,13 +983,11 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
         setSelectedIndex((i) => Math.max(0, i - 1))
       } else if (name === 'down' || name === 'right') {
         setSelectedIndex((i) => Math.min(totalItems - 1, i + 1))
-      } else if (name === 'space') {
+      } else if (name === 'space' || name === 'return') {
         if (selectedIndex < checkableCount) {
           const stack = needsSetup[selectedIndex]
           if (stack) toggleStack(stack.relativePath)
-        }
-      } else if (name === 'return') {
-        if (selectedIndex >= checkableCount) {
+        } else {
           const actionIdx = selectedIndex - checkableCount
           const action = ACTIONS[actionIdx]
           if (action?.id === 'skip') {
@@ -1104,6 +1016,9 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
         } else if (action?.id === 'skip') {
           onComplete({ sessionRecorderSetupDone: true })
         }
+      } else if (name === 'escape') {
+        setSelectedIndex(0)
+        setPhase(stacks.some((s) => getStatusGroup(s) === 'needs-setup') ? 'results' : 'already-done')
       }
     }
   })
@@ -1115,19 +1030,24 @@ export function SessionRecorderStep({ config, onComplete }: Props): ReactElement
   const handleContinue = () => {
     onComplete({ sessionRecorderSetupDone: true })
   }
+  const handleSkip = () => {
+    abortRef.current?.abort()
+    abortRef.current = null
+    onComplete({ sessionRecorderSetupDone: true })
+  }
   // ─── Render: ordered by phase flow ─────────────────────────────────────────
 
   switch (phase) {
     case 'scanning':
       return (<ScanningView />) as ReactElement
     case 'classifying':
-      return (<ClassifyingView />) as ReactElement
+      return (<ClassifyingView onSkip={handleSkip} />) as ReactElement
     case 'no-stacks':
       return (<NoStacksView />) as ReactElement
     case 'already-done':
       return (<AlreadyDoneView stacks={stacks} onContinue={handleContinue} />) as ReactElement
     case 'ai-planning':
-      return (<AiPlanningView stackLabel={needsSetup[0]?.label ?? 'detected stack'} />) as ReactElement
+      return (<AiPlanningView stackLabel={needsSetup[0]?.label ?? 'detected stack'} onSkip={handleSkip} />) as ReactElement
     case 'preview':
       return plan
         ? ((
