@@ -64,14 +64,16 @@ async function isPortAvailable(port: number): Promise<boolean> {
   })
 }
 
-function openBrowser(url: string): void {
-  const cmd =
-    process.platform === 'win32'
-      ? `start "" "${url}"`
-      : process.platform === 'darwin'
-        ? `open "${url}"`
-        : `xdg-open "${url}"`
-  exec(cmd)
+function openBrowser(url: string): Promise<boolean> {
+  return new Promise(resolve => {
+    const cmd =
+      process.platform === 'win32'
+        ? `start "" "${url}"`
+        : process.platform === 'darwin'
+          ? `open "${url}"`
+          : `xdg-open "${url}"`
+    exec(cmd, error => resolve(!error))
+  })
 }
 
 function readLocalHtmlTemplate(fileName: string): string | null {
@@ -185,7 +187,26 @@ export class OAuthManager {
     return clientData
   }
 
-  async authenticate(onUrl?: (url: string) => void): Promise<void> {
+  /**
+   * Starts the OAuth flow.
+   *
+   * Two completion paths exist simultaneously:
+   *  1. Browser path  — localhost server receives the callback and exchanges the code.
+   *  2. Manual path   — caller obtains a token via the fallback URL and calls
+   *                     completeManualAuth(token), which resolves this promise directly.
+   *
+   * @param onUrls       Called once both URLs are ready.
+   *                     `browserUrl`  – opened in the browser (localhost redirect).
+   *                     `fallbackUrl` – shown to the user when the browser didn't open;
+   *                                    uses `manualCallbackUrl` as redirect_uri so the
+   *                                    server page can display the token to copy.
+   * @param manualCallbackUrl  The redirect_uri for the fallback URL
+   *                           (e.g. `https://api.multiplayer.app/auth/authorize/oauth/callback`).
+   */
+  async authenticate(
+    onUrls?: (browserUrl: string, fallbackUrl: string) => void,
+    manualCallbackUrl?: string,
+  ): Promise<void> {
     const { clientId, redirectUri } = await this.getClientCredentials()
     const authClientParams = this.tokenStore.generateAuthParams()
     const urlObj = new URL(redirectUri)
@@ -200,17 +221,45 @@ export class OAuthManager {
       code_challenge_method: 'S256',
       token_type: 'PERSONAL',
     })
+    const browserUrl = `${this.authorizationEndpoint}?${authParams.toString()}`
 
-    const authUrl = `${this.authorizationEndpoint}?${authParams.toString()}`
+    // Build fallback URL with a separate client registered against manualCallbackUrl
+    let fallbackUrl = browserUrl
+    if (manualCallbackUrl) {
+      const fallbackClient = await this.registerClient(manualCallbackUrl)
+      const fallbackParams = new URLSearchParams({
+        response_type: 'code',
+        client_id: fallbackClient.clientId,
+        redirect_uri: manualCallbackUrl,
+        state: authClientParams.state,
+        code_challenge: authClientParams.codeChallenge,
+        code_challenge_method: 'S256',
+        token_type: 'PERSONAL',
+      })
+      fallbackUrl = `${this.authorizationEndpoint}?${fallbackParams.toString()}`
+    }
 
-    // Wait for the server to start, then open the browser
+    // Start localhost server, open browser, notify caller
     await this.startCallbackServer(callbackPort)
+    void openBrowser(browserUrl)
+    onUrls?.(browserUrl, fallbackUrl)
 
-    openBrowser(authUrl)
-    onUrl?.(authUrl)
-
-    // Wait for the browser callback to complete
+    // Wait for either the localhost callback or completeManualAuth()
     await this._callbackDone
+  }
+
+  /**
+   * Stores a token obtained via the fallback URL and resolves the pending
+   * authenticate() promise (cancels waiting for the localhost callback).
+   */
+  completeManualAuth(token: string): void {
+    this.tokenStore.storeAuthData({
+      oauthAccessToken: token,
+      oauthRefreshToken: '',
+      accessTokenExpiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    })
+    void this.stopCallbackServer()
+    this._callbackResolve?.()
   }
 
   /**

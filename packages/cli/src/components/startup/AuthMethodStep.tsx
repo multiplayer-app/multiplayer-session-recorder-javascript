@@ -15,7 +15,7 @@ type AuthMethod = 'oauth' | 'api-token'
 
 const OPTIONS: { id: AuthMethod; label: string; description: string }[] = [
   { id: 'oauth', label: 'Browser login (OAuth)', description: 'Opens your browser to authenticate with Multiplayer' },
-  { id: 'api-token', label: 'API token', description: 'Paste a personal API key from the Multiplayer dashboard' }
+  { id: 'api-token', label: 'API token', description: 'Paste a personal API key from the Multiplayer dashboard' },
 ]
 
 const SELECTION_ITEMS: SelectionItem[] = OPTIONS.map((opt) => ({
@@ -23,7 +23,7 @@ const SELECTION_ITEMS: SelectionItem[] = OPTIONS.map((opt) => ({
   icon: opt.id === 'oauth' ? '◆' : '◇',
   iconColor: opt.id === 'oauth' ? '#22d3ee' : '#f59e0b',
   label: opt.label,
-  description: opt.description
+  description: opt.description,
 }))
 
 type SubStep = 'select' | 'api-key'
@@ -40,8 +40,9 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
   const [subStep, setSubStep] = useState<SubStep>('select')
   const [selected, setSelected] = useState(0)
   const [oauthState, setOAuthState] = useState<OAuthState>('idle')
-  const [oauthUrl, setOAuthUrl] = useState<string | null>(null)
+  const [oauthFallbackUrl, setOAuthFallbackUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [manualToken, setManualToken] = useState('')
   const oauthManagerRef = useRef<OAuthManager | null>(null)
 
   // API key sub-step state
@@ -56,7 +57,8 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
     }
     setSubStep('select')
     setOAuthState('idle')
-    setOAuthUrl(null)
+    setOAuthFallbackUrl(null)
+    setManualToken('')
     setError(null)
     setApiKeyError(null)
     setApiKeyValidating(false)
@@ -126,7 +128,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
 
     const apiService = createApiService({
       url: config.url || API_URL,
-      apiKey: trimmedApiKey
+      apiKey: trimmedApiKey,
     })
     setApiKeyValidating(true)
     setApiKeyError(null)
@@ -147,7 +149,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           apiKey: trimmedApiKey,
           authType: 'api_key',
           workspace: workspaceId,
-          project: projectId
+          project: projectId,
         })
       })
       .catch((err: any) => {
@@ -172,7 +174,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           authorizationServerUrl: data.issuer,
           authorizationEndpoint: data.authorization_endpoint,
           tokenEndpoint: data.token_endpoint,
-          registrationEndpoint: data.registration_endpoint
+          registrationEndpoint: data.registration_endpoint,
         }
 
         const oauthManager = new OAuthManager()
@@ -180,7 +182,11 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
         await oauthManager.init(oauthParams)
 
         setOAuthState('waiting')
-        await oauthManager.authenticate((url) => setOAuthUrl(url))
+        const manualCallbackUrl = `${baseUrl}/auth/authorize/oauth/callback`
+        await oauthManager.authenticate(
+          (_browserUrl, fallbackUrl) => setOAuthFallbackUrl(fallbackUrl),
+          manualCallbackUrl,
+        )
 
         const token = await oauthManager.getAccessToken()
         if (!token) throw new Error('Authentication failed. Please try again.')
@@ -193,8 +199,8 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           session.workspaces.map(async (ws) => ({
             _id: ws._id,
             name: ws.name,
-            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name)
-          }))
+            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name),
+          })),
         )
 
         const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
@@ -206,6 +212,14 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
         setError(err.message)
       }
     })()
+  }
+
+  // ─── Manual token (no-browser flow) ─────────────────────────────────────────
+
+  const handleManualTokenSubmit = (token: string) => {
+    const trimmed = token.trim()
+    if (!trimmed || !oauthManagerRef.current) return
+    oauthManagerRef.current.completeManualAuth(trimmed)
   }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -259,14 +273,23 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
       {oauthState === 'waiting' && (
         <box flexDirection='column' gap={1}>
           <text fg='#10b981'>✓ Browser opened — complete login in your browser.</text>
-          {oauthUrl && (
-            <box flexDirection='column' gap={0}>
-              <text attributes={tuiAttrs({ dim: true })}>If the browser did not open, visit:</text>
-              <text fg='#22d3ee'>{oauthUrl}</text>
+          <text fg='#f59e0b'>◌ Waiting for authentication...</text>
+          {oauthFallbackUrl && (
+            <box flexDirection='column' gap={1}>
+              <box flexDirection='column' gap={0}>
+                <text attributes={tuiAttrs({ dim: true })}>If the browser did not open, visit this URL and copy the token shown:</text>
+                <text fg='#22d3ee'>{oauthFallbackUrl}</text>
+              </box>
+              <text attributes={tuiAttrs({ dim: true })}>Or paste the token here:</text>
+              <InputField
+                value={manualToken}
+                onInput={(v) => setManualToken(v)}
+                onSubmit={(p) => handleManualTokenSubmit(stringFromInputSubmit(p, manualToken))}
+                placeholder='Paste token here...'
+              />
             </box>
           )}
-          <text fg='#f59e0b'>◌ Waiting for authentication...</text>
-          <FooterHints hints='Esc back' />
+          <FooterHints hints='Enter confirm · Esc back' />
         </box>
       )}
 

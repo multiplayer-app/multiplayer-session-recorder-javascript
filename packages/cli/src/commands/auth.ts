@@ -29,9 +29,27 @@ export async function login(): Promise<void> {
   await oauthManager.init(oauthParams)
 
   logger.info('Opening browser for authentication...')
-  await oauthManager.authenticate(url => {
-    process.stdout.write(`\nIf your browser did not open, visit this URL to authenticate:\n\n  ${url}\n\n`)
-  })
+  const manualCallbackUrl = `${BASE_API_URL}/auth/authorize/oauth/callback`
+
+  // Wire up stdin before calling authenticate() so we don't miss input.
+  // If the user pastes a token (copied from the fallback URL page), completeManualAuth
+  // resolves the pending authenticate() promise.
+  const stdinHandler = (data: Buffer | string) => {
+    oauthManager.completeManualAuth(data.toString().trim())
+    process.stdin.pause()
+  }
+  process.stdin.setEncoding('utf8')
+  process.stdin.on('data', stdinHandler)
+  process.stdin.resume()
+
+  await oauthManager.authenticate((_browserUrl, fallbackUrl) => {
+    process.stdout.write(
+      `\nIf your browser did not open, visit this URL to authenticate and copy the token shown:\n\n  ${fallbackUrl}\n\nPaste the token: `,
+    )
+  }, manualCallbackUrl)
+
+  process.stdin.removeListener('data', stdinHandler)
+  process.stdin.pause()
 
   const token = await oauthManager.getAccessToken()
   if (token) {
