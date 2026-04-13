@@ -128,6 +128,32 @@ export class OAuthManager {
     }
   }
 
+  private async registerEphemeralClient(redirectUri: string): Promise<OauthClient> {
+    const clientMetadata = {
+      client_name: 'Multiplayer CLI',
+      client_uri: 'https://multiplayer.app',
+      redirect_uris: [redirectUri],
+      grant_types: ['authorization_code', 'refresh_token'],
+      response_types: ['code'],
+    }
+    const response = await fetch(this.registrationEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(clientMetadata),
+    })
+    if (!response.ok) {
+      throw new Error(`Client registration failed: ${response.status} ${response.statusText}`)
+    }
+    const resp = (await response.json()) as ClientRegistrationResponse
+    return {
+      clientId: resp.client_id,
+      clientSecret: resp.client_secret,
+      redirectUri: resp.redirect_uris[0]!,
+      registrationToken: resp.registration_access_token,
+      clientSecretExpiresAt: resp.client_secret_expires_at,
+    }
+  }
+
   private async registerClient(redirectUri: string): Promise<OauthClient> {
     const serverUrl = this.authorizationServerUrl
     const clientMetadata = {
@@ -188,31 +214,26 @@ export class OAuthManager {
   }
 
   /**
-   * Starts the OAuth flow.
+   * Starts the OAuth flow. Opens the browser with a localhost redirect_uri.
+   * Also builds a separate fallback URL with the web page as redirect_uri — for
+   * cases when the browser didn't open. The fallback URL encodes codeVerifier +
+   * client info in the state so the web page can exchange the code for a token.
    *
-   * Two completion paths exist simultaneously:
-   *  1. Browser path  — localhost server receives the callback and exchanges the code.
-   *  2. Manual path   — caller obtains a token via the fallback URL and calls
-   *                     completeManualAuth(token), which resolves this promise directly.
-   *
-   * @param onUrls       Called once both URLs are ready.
-   *                     `browserUrl`  – opened in the browser (localhost redirect).
-   *                     `fallbackUrl` – shown to the user when the browser didn't open;
-   *                                    uses `manualCallbackUrl` as redirect_uri so the
-   *                                    server page can display the token to copy.
-   * @param manualCallbackUrl  The redirect_uri for the fallback URL
-   *                           (e.g. `https://api.multiplayer.app/auth/authorize/oauth/callback`).
+   * @param onUrls  Called with (browserUrl, fallbackUrl) once both are ready.
+   * @param fallbackRedirectUri  The redirect_uri for the manually-copied URL
+   *                             (e.g. `https://multiplayer.app/auth/authorize/oauth/callback`)
    */
   async authenticate(
     onUrls?: (browserUrl: string, fallbackUrl: string) => void,
-    manualCallbackUrl?: string,
+    fallbackRedirectUri?: string,
   ): Promise<void> {
     const { clientId, redirectUri } = await this.getClientCredentials()
     const authClientParams = this.tokenStore.generateAuthParams()
     const urlObj = new URL(redirectUri)
     const callbackPort = Number(urlObj.port)
 
-    const authParams = new URLSearchParams({
+    // Browser URL — redirect_uri points to local CLI server
+    const browserParams = new URLSearchParams({
       response_type: 'code',
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -221,17 +242,23 @@ export class OAuthManager {
       code_challenge_method: 'S256',
       token_type: 'PERSONAL',
     })
-    const browserUrl = `${this.authorizationEndpoint}?${authParams.toString()}`
+    const browserUrl = `${this.authorizationEndpoint}?${browserParams.toString()}`
 
-    // Build fallback URL with a separate client registered against manualCallbackUrl
+    // Fallback URL — separate client with web page as redirect_uri.
+    // codeVerifier is encoded into state so the web page can do the token exchange.
     let fallbackUrl = browserUrl
-    if (manualCallbackUrl) {
-      const fallbackClient = await this.registerClient(manualCallbackUrl)
+    if (fallbackRedirectUri) {
+      const fallbackClient = await this.registerEphemeralClient(fallbackRedirectUri)
+      const fallbackState = Buffer.from(JSON.stringify({
+        codeVerifier: authClientParams.codeVerifier,
+        clientId: fallbackClient.clientId,
+        redirectUri: fallbackRedirectUri,
+      })).toString('base64url')
       const fallbackParams = new URLSearchParams({
         response_type: 'code',
         client_id: fallbackClient.clientId,
-        redirect_uri: manualCallbackUrl,
-        state: authClientParams.state,
+        redirect_uri: fallbackRedirectUri,
+        state: fallbackState,
         code_challenge: authClientParams.codeChallenge,
         code_challenge_method: 'S256',
         token_type: 'PERSONAL',
@@ -239,12 +266,11 @@ export class OAuthManager {
       fallbackUrl = `${this.authorizationEndpoint}?${fallbackParams.toString()}`
     }
 
-    // Start localhost server, open browser, notify caller
     await this.startCallbackServer(callbackPort)
     void openBrowser(browserUrl)
     onUrls?.(browserUrl, fallbackUrl)
 
-    // Wait for either the localhost callback or completeManualAuth()
+    // Resolves via localhost callback OR completeManualAuth()
     await this._callbackDone
   }
 

@@ -1,6 +1,3 @@
-import fs from 'fs'
-import path from 'path'
-import os from 'os'
 import crypto from 'crypto'
 
 export interface OauthClient {
@@ -22,35 +19,10 @@ export interface AuthData {
   accessTokenExpiresAt: number
 }
 
-interface StoredData {
-  oauth_client?: OauthClient
-  oauth_clients?: Record<string, OauthClient>
-  oauth_data?: AuthData
-}
-
-function getStorePath(): string {
-  return path.join(os.homedir(), '.multiplayer', 'oauth.json')
-}
-
-function readStore(): StoredData {
-  const storePath = getStorePath()
-  if (!fs.existsSync(storePath)) return {}
-  try {
-    return JSON.parse(fs.readFileSync(storePath, 'utf-8')) as StoredData
-  } catch {
-    return {}
-  }
-}
-
-function writeStore(data: StoredData): void {
-  const storePath = getStorePath()
-  const dir = path.dirname(storePath)
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-  fs.writeFileSync(storePath, JSON.stringify(data, null, 2), 'utf-8')
-}
-
 export class TokenStore {
   private authParams: AuthParams | undefined
+  private oauthClients: Record<string, OauthClient> = {}
+  private authData: AuthData | undefined
 
   private generatePKCE(): { codeVerifier: string; codeChallenge: string } {
     const codeVerifier = crypto.randomBytes(32).toString('base64url')
@@ -69,43 +41,29 @@ export class TokenStore {
     return { ...this.authParams, codeChallenge }
   }
 
-  storeOauthClient(client: OauthClient, serverUrl?: string): void {
-    const store = readStore()
-    if (serverUrl) {
-      store.oauth_clients = { ...store.oauth_clients, [serverUrl]: client }
-    } else {
-      store.oauth_client = client
-    }
-    writeStore(store)
+  storeOauthClient(client: OauthClient, serverUrl: string): void {
+    this.oauthClients[serverUrl] = client
   }
 
-  getOauthClient(serverUrl?: string): OauthClient | undefined {
-    const store = readStore()
-    if (serverUrl) return store.oauth_clients?.[serverUrl]
-    return store.oauth_client
+  getOauthClient(serverUrl: string): OauthClient | undefined {
+    return this.oauthClients[serverUrl]
   }
 
   storeAuthData(data: AuthData): void {
-    const store = readStore()
-    store.oauth_data = data
-    writeStore(store)
+    this.authData = data
   }
 
   getAuthData(): AuthData | undefined {
-    return readStore().oauth_data
+    return this.authData
   }
 
   cleanup(force = false, serverUrl?: string): void {
-    const store = readStore()
-    delete store.oauth_data
-    if (force) {
-      if (serverUrl && store.oauth_clients) {
-        delete store.oauth_clients[serverUrl]
-      } else {
-        delete store.oauth_client
-      }
-    }
-    writeStore(store)
+    this.authData = undefined
     this.authParams = undefined
+    if (force && serverUrl) {
+      delete this.oauthClients[serverUrl]
+    } else if (force) {
+      this.oauthClients = {}
+    }
   }
 }
