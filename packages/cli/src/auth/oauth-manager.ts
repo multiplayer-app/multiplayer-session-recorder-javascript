@@ -64,14 +64,16 @@ async function isPortAvailable(port: number): Promise<boolean> {
   })
 }
 
-function openBrowser(url: string): void {
-  const cmd =
-    process.platform === 'win32'
-      ? `start "" "${url}"`
-      : process.platform === 'darwin'
-        ? `open "${url}"`
-        : `xdg-open "${url}"`
-  exec(cmd)
+function openBrowser(url: string): Promise<boolean> {
+  return new Promise(resolve => {
+    const cmd =
+      process.platform === 'win32'
+        ? `start "" "${url}"`
+        : process.platform === 'darwin'
+          ? `open "${url}"`
+          : `xdg-open "${url}"`
+    exec(cmd, error => resolve(!error))
+  })
 }
 
 function readLocalHtmlTemplate(fileName: string): string | null {
@@ -123,6 +125,32 @@ export class OAuthManager {
       const newPort = await getAvailablePort()
       await this.registerClient(`http://localhost:${newPort}/callback`)
       await this.init(oauthParams, ++retry)
+    }
+  }
+
+  private async registerEphemeralClient(redirectUri: string): Promise<OauthClient> {
+    const clientMetadata = {
+      client_name: 'Multiplayer CLI',
+      client_uri: 'https://multiplayer.app',
+      redirect_uris: [redirectUri],
+      grant_types: ['authorization_code', 'refresh_token'],
+      response_types: ['code'],
+    }
+    const response = await fetch(this.registrationEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(clientMetadata),
+    })
+    if (!response.ok) {
+      throw new Error(`Client registration failed: ${response.status} ${response.statusText}`)
+    }
+    const resp = (await response.json()) as ClientRegistrationResponse
+    return {
+      clientId: resp.client_id,
+      clientSecret: resp.client_secret,
+      redirectUri: resp.redirect_uris[0]!,
+      registrationToken: resp.registration_access_token,
+      clientSecretExpiresAt: resp.client_secret_expires_at,
     }
   }
 
@@ -185,13 +213,27 @@ export class OAuthManager {
     return clientData
   }
 
-  async authenticate(onUrl?: (url: string) => void): Promise<void> {
+  /**
+   * Starts the OAuth flow. Opens the browser with a localhost redirect_uri.
+   * Also builds a separate fallback URL with the web page as redirect_uri — for
+   * cases when the browser didn't open. The fallback URL encodes codeVerifier +
+   * client info in the state so the web page can exchange the code for a token.
+   *
+   * @param onUrls  Called with (browserUrl, fallbackUrl) once both are ready.
+   * @param fallbackRedirectUri  The redirect_uri for the manually-copied URL
+   *                             (e.g. `https://multiplayer.app/auth/authorize/oauth/callback`)
+   */
+  async authenticate(
+    onUrls?: (browserUrl: string, fallbackUrl: string) => void,
+    fallbackRedirectUri?: string,
+  ): Promise<void> {
     const { clientId, redirectUri } = await this.getClientCredentials()
     const authClientParams = this.tokenStore.generateAuthParams()
     const urlObj = new URL(redirectUri)
     const callbackPort = Number(urlObj.port)
 
-    const authParams = new URLSearchParams({
+    // Browser URL — redirect_uri points to local CLI server
+    const browserParams = new URLSearchParams({
       response_type: 'code',
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -200,17 +242,50 @@ export class OAuthManager {
       code_challenge_method: 'S256',
       token_type: 'PERSONAL',
     })
+    const browserUrl = `${this.authorizationEndpoint}?${browserParams.toString()}`
 
-    const authUrl = `${this.authorizationEndpoint}?${authParams.toString()}`
+    // Fallback URL — separate client with web page as redirect_uri.
+    // codeVerifier is encoded into state so the web page can do the token exchange.
+    let fallbackUrl = browserUrl
+    if (fallbackRedirectUri) {
+      const fallbackClient = await this.registerEphemeralClient(fallbackRedirectUri)
+      const fallbackState = Buffer.from(JSON.stringify({
+        codeVerifier: authClientParams.codeVerifier,
+        clientId: fallbackClient.clientId,
+        redirectUri: fallbackRedirectUri,
+      })).toString('base64url')
+      const fallbackParams = new URLSearchParams({
+        response_type: 'code',
+        client_id: fallbackClient.clientId,
+        redirect_uri: fallbackRedirectUri,
+        state: fallbackState,
+        code_challenge: authClientParams.codeChallenge,
+        code_challenge_method: 'S256',
+        token_type: 'PERSONAL',
+      })
+      fallbackUrl = `${this.authorizationEndpoint}?${fallbackParams.toString()}`
+    }
 
-    // Wait for the server to start, then open the browser
     await this.startCallbackServer(callbackPort)
+    void openBrowser(browserUrl)
+    onUrls?.(browserUrl, fallbackUrl)
 
-    openBrowser(authUrl)
-    onUrl?.(authUrl)
-
-    // Wait for the browser callback to complete
+    // Resolves via localhost callback OR completeManualAuth()
     await this._callbackDone
+  }
+
+  /**
+   * Stores a token obtained via the fallback URL and resolves the pending
+   * authenticate() promise (cancels waiting for the localhost callback).
+   */
+  completeManualAuth(token: string): void {
+    this.tokenStore.storeAuthData({
+      oauthAccessToken: token,
+      oauthRefreshToken: '',
+      accessTokenExpiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    })
+    void this.stopCallbackServer()
+    this._callbackResolve?.()
   }
 
   /**
