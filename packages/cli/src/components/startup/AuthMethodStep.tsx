@@ -1,14 +1,5 @@
 import { useState, useRef, type ReactElement } from 'react'
 import { exec } from 'child_process'
-
-function copyToClipboard(text: string): void {
-  const cmd = process.platform === 'win32'
-    ? `echo ${text.replace(/"/g, '\\"')} | clip`
-    : process.platform === 'darwin'
-      ? `echo ${JSON.stringify(text)} | pbcopy`
-      : `echo ${JSON.stringify(text)} | xclip -selection clipboard 2>/dev/null || echo ${JSON.stringify(text)} | xdg-open /dev/stdin`
-  exec(cmd)
-}
 import { useKeyboard } from '@opentui/react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { stringFromInputSubmit } from '../../lib/inputSubmit.js'
@@ -20,12 +11,23 @@ import { API_URL } from '../../config.js'
 import { decodeApiKeyPayload } from '../../services/radar.service.js'
 import type { SelectableWorkspace } from './ProjectSelectStep.js'
 import { FooterHints, SelectionList, InputField, type SelectionItem } from '../shared/index.js'
+import { clickHandler } from '../shared/clickHandler.js'
+
+function copyToClipboard(text: string): void {
+  const cmd =
+    process.platform === 'win32'
+      ? `echo ${text.replace(/"/g, '\\"')} | clip`
+      : process.platform === 'darwin'
+        ? `echo ${JSON.stringify(text)} | pbcopy`
+        : `echo ${JSON.stringify(text)} | xclip -selection clipboard 2>/dev/null || echo ${JSON.stringify(text)} | xdg-open /dev/stdin`
+  exec(cmd)
+}
 
 type AuthMethod = 'oauth' | 'api-token'
 
 const OPTIONS: { id: AuthMethod; label: string; description: string }[] = [
   { id: 'oauth', label: 'Browser login (OAuth)', description: 'Opens your browser to authenticate with Multiplayer' },
-  { id: 'api-token', label: 'API token', description: 'Paste a personal API key from the Multiplayer dashboard' },
+  { id: 'api-token', label: 'API token', description: 'Paste a personal API key from the Multiplayer dashboard' }
 ]
 
 const SELECTION_ITEMS: SelectionItem[] = OPTIONS.map((opt) => ({
@@ -33,7 +35,7 @@ const SELECTION_ITEMS: SelectionItem[] = OPTIONS.map((opt) => ({
   icon: opt.id === 'oauth' ? '◆' : '◇',
   iconColor: opt.id === 'oauth' ? '#22d3ee' : '#f59e0b',
   label: opt.label,
-  description: opt.description,
+  description: opt.description
 }))
 
 type SubStep = 'select' | 'api-key'
@@ -131,7 +133,9 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
     const apiKeyPayload = decodeApiKeyPayload(trimmedApiKey)
 
     if (apiKeyPayload.type && apiKeyPayload.type !== 'API_KEY') {
-      setApiKeyError(`Invalid key type "${apiKeyPayload.type}". Please use an Agent API key from the Multiplayer dashboard (Settings → API Keys).`)
+      setApiKeyError(
+        `Invalid key type "${apiKeyPayload.type}". Please use an Agent API key from the Multiplayer dashboard (Settings → API Keys).`
+      )
       return
     }
 
@@ -140,7 +144,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
 
     const apiService = createApiService({
       url: config.url || API_URL,
-      apiKey: trimmedApiKey,
+      apiKey: trimmedApiKey
     })
     setApiKeyValidating(true)
     setApiKeyError(null)
@@ -161,7 +165,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           apiKey: trimmedApiKey,
           authType: 'api_key',
           workspace: workspaceId,
-          project: projectId,
+          project: projectId
         })
       })
       .catch((err: any) => {
@@ -186,7 +190,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           authorizationServerUrl: data.issuer,
           authorizationEndpoint: data.authorization_endpoint,
           tokenEndpoint: data.token_endpoint,
-          registrationEndpoint: data.registration_endpoint,
+          registrationEndpoint: data.registration_endpoint
         }
 
         const oauthManager = new OAuthManager()
@@ -197,8 +201,6 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
         const fallbackRedirectUri = `${new URL(data.authorization_endpoint).origin}/auth/authorize/oauth/callback`
         await oauthManager.authenticate((_browserUrl, fallbackUrl) => {
           setOAuthFallbackUrl(fallbackUrl)
-          copyToClipboard(fallbackUrl)
-          setUrlCopied(true)
         }, fallbackRedirectUri)
 
         const token = await oauthManager.getAccessToken()
@@ -212,8 +214,8 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           session.workspaces.map(async (ws) => ({
             _id: ws._id,
             name: ws.name,
-            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name),
-          })),
+            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name)
+          }))
         )
 
         const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
@@ -228,6 +230,13 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
   }
 
   // ─── Manual token (no-browser flow) ─────────────────────────────────────────
+
+  const handleCopyUrl = () => {
+    if (oauthFallbackUrl) {
+      copyToClipboard(oauthFallbackUrl)
+      setUrlCopied(true)
+    }
+  }
 
   const handleManualTokenSubmit = (token: string) => {
     const trimmed = token.trim()
@@ -290,9 +299,21 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           {oauthFallbackUrl && (
             <box flexDirection='column' gap={1}>
               <box flexDirection='column' gap={0}>
-                <text attributes={tuiAttrs({ dim: true })}>If the browser did not open, visit this URL and copy the token shown:</text>
-                <text fg='#22d3ee'>{oauthFallbackUrl}</text>
-                {urlCopied && <text fg='#10b981'>✓ URL copied to clipboard</text>}
+                <text attributes={tuiAttrs({ dim: true })}>
+                  If the browser did not open, visit this URL and copy the token shown:
+                </text>
+                <text fg='#22d3ee' attributes={tuiAttrs({ underline: true })}>
+                  {oauthFallbackUrl}
+                </text>
+                <box flexDirection='row' gap={1} marginTop={1}>
+                  {urlCopied ? (
+                    <text fg='#10b981'>✓ URL copied to clipboard</text>
+                  ) : (
+                    <text fg='#22d3ee' onMouseUp={clickHandler(handleCopyUrl)}>
+                      Copy URL
+                    </text>
+                  )}
+                </box>
               </box>
               <text attributes={tuiAttrs({ dim: true })}>Or paste the token here:</text>
               <InputField
