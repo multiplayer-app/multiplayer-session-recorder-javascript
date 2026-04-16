@@ -36,10 +36,13 @@ for (const { target, platform, arch, os, cpu, entry, bin } of targets) {
 
   if (platform !== 'windows') fs.chmodSync(binPath, 0o755)
 
-  // macOS requires binaries to be signed; ad-hoc sign darwin targets
+  // macOS requires arm64 binaries to be ad-hoc signed.
+  // Bun's compiled output may have a malformed signature that codesign --force
+  // can't replace directly, so strip first then re-sign.
   if (platform === 'darwin') {
     console.log(`  → signing ${target}`)
-    await $`codesign --sign - --force ${binPath}`
+    await $`codesign --remove-signature ${binPath}`.nothrow()
+    await $`codesign --sign - ${binPath}`
   }
 
   fs.writeFileSync(path.join(pkgDir, 'package.json'), JSON.stringify({
