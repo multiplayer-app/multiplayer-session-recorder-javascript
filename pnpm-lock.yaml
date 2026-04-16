@@ -118,7 +118,7 @@ importers:
   packages/session-recorder-browser:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.18
+        specifier: 2.0.23
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -279,7 +279,7 @@ importers:
   packages/session-recorder-node:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.18
+        specifier: 2.0.23
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -313,10 +313,10 @@ importers:
   packages/session-recorder-react:
     dependencies:
       '@multiplayer-app/session-recorder-browser':
-        specifier: 2.0.18
+        specifier: 2.0.23
         version: link:../session-recorder-browser
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.18
+        specifier: 2.0.23
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -341,7 +341,7 @@ importers:
   packages/session-recorder-react-native:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.18
+        specifier: 2.0.23
         version: link:../session-recorder-common
       '@opentelemetry/core':
         specifier: 2.0.1
@@ -3493,6 +3493,7 @@ packages:
   basic-ftp@5.2.0:
     resolution: {integrity: sha512-VoMINM2rqJwJgfdHq6RiUudKt2BV+FY5ZFezP/ypmwayk68+NzzAQy4XXLlqsGD4MCzq3DrmNFD/uUmBJuGoXw==}
     engines: {node: '>=10.0.0'}
+    deprecated: Security vulnerability fixed in 5.2.1, please upgrade
 
   before-after-hook@4.0.0:
     resolution: {integrity: sha512-q6tR3RPqIB1pMiTRMFcZwuG5T8vwp+vUvEG0vuI6B+Rikh5BfPp2fQ82c925FOs+b0lcFQ8CFrL+KbilfZFhOQ==}
