@@ -30,7 +30,7 @@ export function useStoreSelector<TState extends object, TSlice>(
     // rather than calling the selector twice on the same state (which returns
     // different object references for non-primitive values and causes an
     // unnecessary re-render that leads to infinite update loops with virtualizers).
-    setSlice(prev => {
+    setSlice((prev) => {
       const current = latestSelectorRef.current(store.getState());
       return latestEqualityRef.current(prev, current) ? prev : current;
     });
