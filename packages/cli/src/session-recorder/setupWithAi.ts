@@ -371,10 +371,10 @@ function normalizePlan(plan: Partial<SetupPlan>): SetupPlan {
         hasMultiplayerSdk: plan.detection?.existingSetup?.hasMultiplayerSdk ?? false,
         otelPackages: plan.detection?.existingSetup?.otelPackages ?? [],
         otelConfigFile: plan.detection?.existingSetup?.otelConfigFile ?? undefined,
-        existingOtlpEndpoint: plan.detection?.existingSetup?.existingOtlpEndpoint ?? undefined
+        existingOtlpEndpoint: plan.detection?.existingSetup?.existingOtlpEndpoint ?? undefined,
       },
       approach: plan.detection?.approach ?? 'minimal-patch',
-      reasoning: plan.detection?.reasoning ?? 'No reasoning provided'
+      reasoning: plan.detection?.reasoning ?? 'No reasoning provided',
     },
     summary: plan.summary ?? 'No summary provided',
     installCommand: plan.installCommand ?? '',
@@ -382,7 +382,7 @@ function normalizePlan(plan: Partial<SetupPlan>): SetupPlan {
     envVars: Array.isArray(plan.envVars) ? plan.envVars : [],
     steps: Array.isArray(plan.steps) ? plan.steps : [],
     warnings: Array.isArray(plan.warnings) ? plan.warnings : [],
-    confidence: typeof plan.confidence === 'number' ? Math.max(0, Math.min(1, plan.confidence)) : 0.7
+    confidence: typeof plan.confidence === 'number' ? Math.max(0, Math.min(1, plan.confidence)) : 0.7,
   }
 }
 
@@ -692,17 +692,17 @@ export interface CreatedApiKey {
  */
 export async function createApiKeysForSetup(
   stacks: DetectedStack[],
-  auth: ApiServiceAuth & { workspace: string; project: string }
+  auth: ApiServiceAuth & { workspace: string; project: string },
 ): Promise<{ keys: CreatedApiKey[]; errors: string[] }> {
   const api = createApiService(auth)
   const keys: CreatedApiKey[] = []
   const errors: string[] = []
 
   const needsFrontendKey = stacks.some(
-    s => s.sdkRelevance === 'needed' && (s.type === 'frontend' || s.type === 'fullstack' || s.type === 'mobile')
+    s => s.sdkRelevance === 'needed' && (s.type === 'frontend' || s.type === 'fullstack' || s.type === 'mobile'),
   )
   const needsBackendKey = stacks.some(
-    s => s.sdkRelevance === 'needed' && s.type === 'backend'
+    s => s.sdkRelevance === 'needed' && s.type === 'backend',
   )
 
   const suffix = randomSuffix()
@@ -712,12 +712,12 @@ export async function createApiKeysForSetup(
       const integration = await api.createIntegration(
         auth.workspace,
         auth.project,
-        `session-recorder-frontend-${suffix}`
+        `session-recorder-frontend-${suffix}`,
       )
       keys.push({
         name: integration.name,
         apiKey: integration.otel.apiKey,
-        stackType: 'frontend'
+        stackType: 'frontend',
       })
     } catch (err: unknown) {
       errors.push(`Failed to create frontend API key: ${(err as Error).message}`)
@@ -729,12 +729,12 @@ export async function createApiKeysForSetup(
       const integration = await api.createIntegration(
         auth.workspace,
         auth.project,
-        `session-recorder-backend-${suffix}`
+        `session-recorder-backend-${suffix}`,
       )
       keys.push({
         name: integration.name,
         apiKey: integration.otel.apiKey,
-        stackType: 'backend'
+        stackType: 'backend',
       })
     } catch (err: unknown) {
       errors.push(`Failed to create backend API key: ${(err as Error).message}`)

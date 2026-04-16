@@ -10,7 +10,7 @@ import {
   AgentChat,
   ResolveIssuePayload,
   ChatSessionPayload,
-  Issue
+  Issue,
 } from '../types/index.js'
 import {
   SOCKET_RECONNECTION_DELAY,
@@ -23,7 +23,7 @@ import {
   EVENT_DEBUGGING_AGENT_FIX_PUSHED,
   EVENT_DEBUGGING_AGENT_FIX_FAILED,
   EVENT_CHAT_SUBSCRIBE,
-  EVENT_CHAT_UNSUBSCRIBE
+  EVENT_CHAT_UNSUBSCRIBE,
 } from '../config.js'
 import { Logger } from 'openai/client'
 
@@ -180,14 +180,14 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
       'x-max-concurrent-issues': String(config.maxConcurrentIssues ?? 2),
       ...(config.noGitBranch ? { 'x-no-git-branch': 'true' } : {}),
       ...(config.model ? { 'x-model': config.model } : {}),
-      'x-available-models': JSON.stringify(computeAvailableModels(config))
+      'x-available-models': JSON.stringify(computeAvailableModels(config)),
     },
     transports: ['websocket'],
     secure: host.startsWith('https'),
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: SOCKET_RECONNECTION_DELAY,
-    reconnectionDelayMax: SOCKET_RECONNECTION_DELAY_MAX
+    reconnectionDelayMax: SOCKET_RECONNECTION_DELAY_MAX,
   })
 
   // Debug: log all incoming socket events
@@ -252,7 +252,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
   }
 
   const onAction = (
-    handler: (params: { chatId: string; toolCallId: string; action: string; data?: Record<string, unknown> }) => void
+    handler: (params: { chatId: string; toolCallId: string; action: string; data?: Record<string, unknown> }) => void,
   ) => {
     socket.on('agent:action', handler)
   }
@@ -289,7 +289,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     workspaceId: string,
     projectId: string,
     chatId: string,
-    markdown: string
+    markdown: string,
   ): Promise<AgentAttachment> => {
     const filename = 'context-doc.md'
     const size = Buffer.byteLength(markdown, 'utf8')
@@ -302,7 +302,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     const uploadRes = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'text/markdown' },
-      body: markdown
+      body: markdown,
     })
     if (!uploadRes.ok) throw new Error(`Failed to upload context doc: ${uploadRes.status}`)
 
@@ -311,7 +311,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
       name: filename,
       mimeType: 'text/markdown',
       size,
-      metadata: { s3Key: key, bucket }
+      metadata: { s3Key: key, bucket },
     }
   }
 
@@ -319,7 +319,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     workspaceId: string,
     projectId: string,
     chatId: string,
-    before?: string
+    before?: string,
   ): Promise<{ messages: AgentMessage[]; hasMore: boolean }> => {
     const query = new URLSearchParams({ limit: '20', ...(before ? { before } : {}) })
     return fetchJson<{ messages: AgentMessage[]; hasMore: boolean }>(
@@ -330,7 +330,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
   const fetchIssueByComponentHash = async (
     workspaceId: string,
     projectId: string,
-    componentHash: string
+    componentHash: string,
   ): Promise<Issue | null> => {
     const params = new URLSearchParams({ componentHash, limit: '1' })
     const data = await fetchJson<{ data: Issue[] }>(
@@ -343,7 +343,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     workspaceId: string,
     projectId: string,
     componentHash: string,
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
   ): Promise<void> => {
     await fetchJson(
       projectUrl(workspaceId, projectId, '/issues/bulk'),
@@ -355,7 +355,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     workspaceId: string,
     projectId: string,
     payload: { chatId?: string; content: string; contextKey?: string; userId?: string },
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<void> => {
     const res = await fetchRaw(
       projectUrl(workspaceId, projectId, '/agents/chats/stream'),
@@ -366,7 +366,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     try {
       const reader = res.body?.getReader()
       if (reader) {
-        while (!(await reader.read()).done) {}
+        while (!(await reader.read()).done) { }
       }
     } catch {
       // Stream may be interrupted (e.g. abort signal)
@@ -389,7 +389,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
   const fetchAgentChats = async (
     workspaceId: string,
     projectId: string,
-    options?: { dir?: string; agentName?: string; skip?: number; limit?: number }
+    options?: { dir?: string; agentName?: string; skip?: number; limit?: number },
   ): Promise<{ data: AgentChat[]; cursor: { total: number; skip: number; limit: number } }> => {
     const params = new URLSearchParams()
     if (options?.dir) params.set('dir', options.dir)
@@ -429,7 +429,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     unsubscribeChat,
     abortChat,
     fetchChat,
-    fetchAgentChats
+    fetchAgentChats,
   }
 }
 
@@ -475,6 +475,6 @@ export const validateApiKey = async (url: string, apiKey: string): Promise<{ wor
 
   return {
     workspace: payload.workspace,
-    project: payload.project
+    project: payload.project,
   }
 }
