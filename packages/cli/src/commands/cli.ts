@@ -57,6 +57,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
     .option('--model-url <url>', 'Optional base URL for OpenAI-compatible APIs')
     .option('--max-concurrent <n>', 'Maximum number of issues to resolve in parallel', String(DEFAULT_MAX_CONCURRENT))
     .option('--no-git-branch', 'Work in current branch — no worktree, no new branch, no push')
+    .option('--skip-sdk-check', 'Skip the Multiplayer SDK installation check/setup step')
     .option('--health-port <port>', 'Port for HTTP health check endpoint (headless mode only); also set via MULTIPLAYER_HEALTH_PORT')
     .action((opts) => {
       const mode: RuntimeMode = (opts.headless || process.env.MULTIPLAYER_HEADLESS === 'true') ? 'headless' : 'tui'
@@ -78,6 +79,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
           opts.maxConcurrent || process.env.MULTIPLAYER_MAX_CONCURRENT || profile.maxConcurrentIssues || DEFAULT_MAX_CONCURRENT,
         ),
         noGitBranch: opts.noGitBranch || process.env.MULTIPLAYER_NO_GIT_BRANCH === 'true' || profile.noGitBranch || false,
+        skipSdkCheck: opts.skipSdkCheck || process.env.MULTIPLAYER_SKIP_SDK_CHECK === 'true' || profile.skipSdkCheck || false,
       }
       const rawHealthPort = opts.healthPort || process.env.MULTIPLAYER_HEALTH_PORT
       const healthPort = rawHealthPort ? Number(rawHealthPort) : undefined
@@ -85,6 +87,10 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
       // Persist --url to profile if explicitly provided and not already saved
       if (opts.url && !profile.url) {
         writeProfile(profileName, { url: opts.url })
+      }
+      // Persist --skip-sdk-check to profile if explicitly set
+      if (opts.skipSdkCheck && !profile.skipSdkCheck) {
+        writeProfile(profileName, { skipSdkCheck: true })
       }
 
       onAgent({ mode, initialConfig, healthPort, profileName })

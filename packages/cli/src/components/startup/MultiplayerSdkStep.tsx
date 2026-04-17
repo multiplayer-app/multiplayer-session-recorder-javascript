@@ -737,6 +737,11 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
   // ─── Scan on mount ─────────────────────────────────────────────────────────
 
   useEffect(() => {
+    if (config.skipSdkCheck) {
+      onComplete({ sessionRecorderSetupDone: true })
+      return
+    }
+
     if (!config.dir) {
       setPhase('no-stacks')
       return
@@ -769,7 +774,7 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
       setStacks([...detected])
       transitionToResults(detected)
     }
-  }, [config.dir])
+  }, [config.dir, config.skipSdkCheck])
 
   const transitionToResults = (classified: DetectedStack[]) => {
     const summary = summarizeDetection(classified)
