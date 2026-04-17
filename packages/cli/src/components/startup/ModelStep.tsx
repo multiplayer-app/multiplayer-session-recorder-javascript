@@ -48,10 +48,24 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
 
   useEffect(() => {
     AiService.checkClaudeRequirements()
-      .then(() => {
+      .then(async () => {
         setClaudeAvailable(true)
+        const fetchedIds = await AiService.fetchAnthropicModels(config.modelKey)
+        const claudeModels: ModelOption[] = fetchedIds.length > 0
+          ? fetchedIds.map((id) => ({
+            label: id,
+            value: id,
+            provider: 'claude' as const,
+            description: id.includes('opus') ? 'Most powerful'
+              : id.includes('sonnet') ? 'Fast, capable'
+                : id.includes('haiku') ? 'Fastest'
+                  : undefined,
+          }))
+          : CLAUDE_MODELS
+
+
         setOptions([
-          ...CLAUDE_MODELS,
+          ...claudeModels,
           ...OPENAI_MODELS,
           { label: 'Custom OpenAI-compatible...', value: '__custom__', provider: 'openai' },
         ])
@@ -166,7 +180,7 @@ export function ModelStep({ config, onComplete }: Props): ReactElement | null {
         iconColor: isClaudeOption ? '#22d3ee' : '#f59e0b',
         label: opt.label,
         labelColor: isClaudeOption ? '#c9d1d9' : '#f59e0b',
-        description: opt.description
+        description: opt.description,
       }
     })
 

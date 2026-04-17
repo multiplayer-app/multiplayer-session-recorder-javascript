@@ -14,10 +14,14 @@ Supports macOS (arm64, x64), Linux (arm64, x64), and Windows (arm64, x64). The c
 
 | Command | Description |
 |---------|-------------|
-| `multiplayer` | Start the debugging agent (TUI by default) |
+| `multiplayer [agent]` | Start the debugging agent (default) |
 | `multiplayer releases create` | Register a release |
 | `multiplayer deployments create` | Register a deployment |
 | `multiplayer sourcemaps upload` | Upload sourcemap files |
+| `multiplayer auth login` | Log in via browser OAuth |
+| `multiplayer auth logout` | Log out and clear credentials |
+| `multiplayer auth status` | Check authentication status |
+| `multiplayer mcp` | Start an MCP server for AI agent integration |
 
 ---
 
@@ -26,7 +30,7 @@ Supports macOS (arm64, x64), Linux (arm64, x64), and Windows (arm64, x64). The c
 Connects to the Multiplayer backend and automatically resolves incoming issues using AI.
 
 ```sh
-multiplayer [options]
+multiplayer [agent] [options]
 ```
 
 Options are resolved in this order: **CLI flag → environment variable → config profile**.
@@ -70,16 +74,16 @@ Create a `.multiplayer/config` file in your project directory or home directory 
 
 ```ini
 [default]
-api_key    = <your-api-key>
-dir        = /path/to/repo
-model      = claude-sonnet-4-6
+api_key        = <your-api-key>
+dir            = /path/to/repo
+model          = claude-sonnet-4-6
 max_concurrent = 2
 
 [staging]
-api_key    = <staging-api-key>
-dir        = /path/to/staging-repo
-model      = gpt-4o
-model_key  = <openai-api-key>
+api_key        = <staging-api-key>
+dir            = /path/to/staging-repo
+model          = gpt-4o
+model_key      = <openai-api-key>
 ```
 
 All supported profile keys:
@@ -95,6 +99,16 @@ All supported profile keys:
 | `url` | Multiplayer API base URL |
 | `max_concurrent` | Max parallel issues |
 | `no_git_branch` | `true` to skip branch/worktree creation |
+
+---
+
+## Auth
+
+```sh
+multiplayer auth login    # Log in via browser OAuth flow
+multiplayer auth logout   # Log out and clear stored credentials
+multiplayer auth status   # Check current authentication status
+```
 
 ---
 
@@ -137,7 +151,7 @@ multiplayer deployments create [options]
 |------|---------|-------------|
 | `--api-key <key>` | `MULTIPLAYER_API_KEY` | Multiplayer API key |
 | `--service <name>` | `SERVICE_NAME` | Service name |
-| `--release <version>` | `VERSION` | Release version |
+| `--release <version>` | `RELEASE` | Release version |
 | `--environment <name>` | `ENVIRONMENT` | Environment name |
 | `--base-url <url>` | `BASE_URL` | API base URL (optional) |
 
@@ -174,3 +188,53 @@ multiplayer sourcemaps upload ./dist ./build \
   --service my-service \
   --release 1.2.3
 ```
+
+---
+
+## MCP Server
+
+`multiplayer mcp` starts an [MCP](https://modelcontextprotocol.io) server over stdio, exposing Multiplayer operations as tools that AI agents (Claude Desktop, Claude Code, Cursor, etc.) can call directly.
+
+### Tools
+
+| Tool | Description |
+|------|-------------|
+| `create_release` | Register a release for a service |
+| `create_deployment` | Deploy a release to an environment |
+| `upload_sourcemaps` | Upload `.map` files from local directories |
+
+### Setup
+
+Add the server to your MCP client config. Example for Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "multiplayer": {
+      "command": "multiplayer",
+      "args": ["mcp"],
+      "env": {
+        "MULTIPLAYER_API_KEY": "<your-api-key>"
+      }
+    }
+  }
+}
+```
+
+Example for Claude Code (`~/.claude/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "multiplayer": {
+      "command": "multiplayer",
+      "args": ["mcp"],
+      "env": {
+        "MULTIPLAYER_API_KEY": "<your-api-key>"
+      }
+    }
+  }
+}
+```
+
+Once configured, the AI can create releases, deployments, and upload sourcemaps without any shell commands or manual steps.

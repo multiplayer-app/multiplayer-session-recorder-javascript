@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken'
-import * as API from '../api.js'
+import * as API from '../../services/version-api.service.js'
 
 interface DeploymentOptions {
   apiKey: string

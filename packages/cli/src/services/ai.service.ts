@@ -43,6 +43,26 @@ export const checkClaudeRequirements = async (): Promise<void> => {
   }
 }
 
+export const fetchAnthropicModels = async (modelKey?: string): Promise<string[]> => {
+  try {
+    const client = new Anthropic(modelKey ? { apiKey: modelKey } : {})
+    const page = await client.models.list({ limit: 100 })
+    const ids = page.data.map((m) => m.id).filter((id) => id.startsWith('claude-'))
+    const idSet = new Set(ids)
+
+    // Filter out dated snapshots: if stripping the trailing -YYYYMMDD yields another id in
+    // the set, this entry is a snapshot of that model and the canonical alias already covers it.
+    // Exception: models whose canonical name happens to end in a date (e.g. claude-haiku-4-5-20251001)
+    // are kept because their base (e.g. claude-haiku-4-5) doesn't appear in the list.
+    return ids.filter((id) => {
+      const match = id.match(/^(.+)-(\d{8})$/)
+      return match ? !idSet.has(match[1]!) : true
+    })
+  } catch {
+    return []
+  }
+}
+
 export const checkOpenAiRequirements = async (apiKey: string, baseUrl?: string): Promise<void> => {
   if (!apiKey) {
     throw new Error('AI API key is required for OpenAI-compatible models')
