@@ -36,6 +36,13 @@ export function parseFlags(argv: string[]): ParsedFlags {
     )
     .option('--no-git-branch', 'Work in current branch — no worktree, no new branch, no push')
     .option('--health-port <port>', 'Port for HTTP health check endpoint (headless mode only); also set via MULTIPLAYER_HEALTH_PORT')
+    .addHelpText('after', `
+Subcommands:
+  releases create     Create a release
+  deployments create  Create a deployment
+  sourcemaps upload   Upload sourcemaps from one or more directories
+
+Run 'multiplayer <subcommand> --help' for subcommand usage.`)
     .exitOverride()
 
   try {
