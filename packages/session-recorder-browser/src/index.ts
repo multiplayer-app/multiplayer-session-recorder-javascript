@@ -31,5 +31,6 @@ if (isBrowser) {
 }
 
 export { recorderEventBus }
+export { SessionRecorderInstance as SessionRecorder }
 
 export default SessionRecorderInstance
