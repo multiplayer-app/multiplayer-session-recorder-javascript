@@ -3,12 +3,13 @@ import { writeProfile } from '../cli/profile.js'
 import { BASE_API_URL } from '../config.js'
 import logger from '../logger.js'
 
-function getProfileName(): string {
-  return process.env.MULTIPLAYER_PROFILE || 'default'
+interface LoginOptions {
+  url?: string
+  profileName?: string
 }
 
-async function getOAuthParams(): Promise<OAuthServerParams> {
-  const response = await fetch(`${BASE_API_URL}/.well-known/oauth-authorization-server`)
+async function getOAuthParams(baseUrl: string): Promise<OAuthServerParams> {
+  const response = await fetch(`${baseUrl}/.well-known/oauth-authorization-server`)
   if (!response.ok) {
     throw new Error(`Failed to fetch OAuth configuration: ${response.status} ${response.statusText}`)
   }
@@ -21,11 +22,13 @@ async function getOAuthParams(): Promise<OAuthServerParams> {
   }
 }
 
-export async function login(): Promise<void> {
+export async function login(opts: LoginOptions = {}): Promise<void> {
+  const baseUrl = opts.url || BASE_API_URL
+  const profileName = opts.profileName || process.env.MULTIPLAYER_PROFILE || 'default'
   const oauthManager = new OAuthManager()
 
   logger.info('Fetching OAuth configuration...')
-  const oauthParams = await getOAuthParams()
+  const oauthParams = await getOAuthParams(baseUrl)
   await oauthManager.init(oauthParams)
 
   logger.info('Opening browser for authentication...')
@@ -51,8 +54,7 @@ export async function login(): Promise<void> {
 
   const token = await oauthManager.getAccessToken()
   if (token) {
-    const profileName = getProfileName()
-    writeProfile(profileName, { apiKey: token })
+    writeProfile(profileName, { apiKey: token, ...(opts.url ? { url: opts.url } : {}) })
     logger.info(`Successfully authenticated! Token saved to profile '${profileName}'.`)
   } else {
     logger.info('Successfully authenticated!')

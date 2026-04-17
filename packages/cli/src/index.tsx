@@ -3,21 +3,15 @@ import { createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import React from 'react'
 import { App } from './App.js'
-import { parseFlags, isCompleteConfig } from './cli/flags.js'
+import { isCompleteConfig } from './cli/flags.js'
 import { runCli } from './commands/cli.js'
 import { RuntimeController } from './runtime/controller.js'
 import { decodeApiKeyPayload, validateApiKey } from './services/radar.service.js'
 import { startHealthServer } from './services/health.service.js'
 import type { AgentConfig } from './types/index.js'
+import type { ParsedFlags } from './cli/flags.js'
 
-const CLI_SUBCOMMANDS = new Set(['releases', 'deployments', 'sourcemaps'])
-const firstArg = process.argv[2]
-
-if (firstArg && CLI_SUBCOMMANDS.has(firstArg)) {
-  runCli(process.argv)
-} else {
-  const { mode, initialConfig, healthPort, profileName } = parseFlags(process.argv)
-
+runCli(process.argv, ({ mode, initialConfig, healthPort, profileName }: ParsedFlags) => {
   // Decode workspace/project from API key JWT if not already set
   if (initialConfig.apiKey && (!initialConfig.workspace || !initialConfig.project)) {
     try {
@@ -33,7 +27,7 @@ if (firstArg && CLI_SUBCOMMANDS.has(firstArg)) {
     if (!isCompleteConfig(initialConfig)) {
       process.stderr.write(
         'headless mode requires a complete config via flags or environment variables.\n' +
-          'Required: --api-key, --dir, --model (and --model-key for non-Claude models)\n'
+          'Required: --api-key, --dir, --model (and --model-key for non-Claude models)\n',
       )
       process.exit(1)
     }
@@ -94,10 +88,10 @@ if (firstArg && CLI_SUBCOMMANDS.has(firstArg)) {
       process.on('SIGTERM', exitApp)
 
       createRoot(renderer).render(
-        React.createElement(App, { initialConfig, profileName, onExit: exitApp })
+        React.createElement(App, { initialConfig, profileName, onExit: exitApp }),
       )
 
       renderer.start()
     })()
   }
-}
+})

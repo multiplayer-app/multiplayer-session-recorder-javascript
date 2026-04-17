@@ -40,6 +40,7 @@ The Multiplayer Full Stack Session Recorder is a powerful tool that offers deep 
 
 ## Monorepo structure
 
+- [packages/cli](./packages/cli/): AI debugging agent and release management CLI
 - [packages/session-recorder-browser](./packages/session-recorder-browser/): Browser SDK and in‑app widget
 - [packages/session-recorder-node](./packages/session-recorder-node/): Node.js SDK for backend tracing/session control
 - [packages/session-recorder-common](./packages/session-recorder-common/): Shared OpenTelemetry utilities and types

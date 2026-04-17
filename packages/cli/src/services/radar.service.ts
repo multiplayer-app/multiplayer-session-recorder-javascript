@@ -2,7 +2,7 @@ import { io, Socket } from 'socket.io-client'
 import jwt from 'jsonwebtoken'
 import { URL } from 'url'
 import { createApiService } from './api.service.js'
-import { getAuthHeaders } from '../lib/authHeaders.js'
+import { getAuthHeaders, isOAuthToken } from '../lib/authHeaders.js'
 import {
   AgentConfig,
   AgentMessage,
@@ -25,8 +25,6 @@ import {
   EVENT_CHAT_SUBSCRIBE,
   EVENT_CHAT_UNSUBSCRIBE,
 } from '../config.js'
-import { Logger } from 'openai/client'
-
 export interface RadarService {
   socket: Socket
   disconnect: () => void
@@ -449,11 +447,7 @@ export const decodeApiKeyPayload = (apiKey: string): ApiKeyPayload => {
 }
 
 export const validateApiKey = async (url: string, apiKey: string): Promise<{ workspace: string; project: string }> => {
-  const payload = decodeApiKeyPayload(apiKey)
-
-  // Project API keys are JWTs with workspace + project + integration embedded.
-  // Everything else (OAuth JWTs without integration, opaque tokens) uses Bearer auth.
-  if (!payload.workspace || !payload.project || !payload.integration) {
+  if (isOAuthToken(apiKey)) {
     const api = createApiService({ url, apiKey: '', bearerToken: apiKey })
     const session = await api.fetchUserSession()
     const workspace = session?.workspaces?.[0]
@@ -466,6 +460,7 @@ export const validateApiKey = async (url: string, apiKey: string): Promise<{ wor
     return { workspace: workspace._id, project: project._id }
   }
 
+  const payload = decodeApiKeyPayload(apiKey)
   const api = createApiService({ url, apiKey })
   const project = await api.fetchProject(payload.workspace, payload.project)
 

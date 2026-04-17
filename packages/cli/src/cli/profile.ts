@@ -18,6 +18,7 @@ import os from 'os'
  *   name = my-agent
  *   max_concurrent = 2
  *   no_git_branch = false
+ *   skip_sdk_check = false
  *
  *   [staging]
  *   api_key = <staging-jwt>
@@ -39,6 +40,7 @@ export interface ProfileConfig {
   modelUrl?: string
   maxConcurrentIssues?: number
   noGitBranch?: boolean
+  skipSdkCheck?: boolean
 }
 
 /**
@@ -86,6 +88,7 @@ function iniToProfileConfig(raw: Record<string, string>): ProfileConfig {
   if (raw['model_url']) cfg.modelUrl = raw['model_url']
   if (raw['max_concurrent']) cfg.maxConcurrentIssues = Number(raw['max_concurrent'])
   if (raw['no_git_branch']) cfg.noGitBranch = raw['no_git_branch'] === 'true'
+  if (raw['skip_sdk_check']) cfg.skipSdkCheck = raw['skip_sdk_check'] === 'true'
   return cfg
 }
 
@@ -177,6 +180,7 @@ export function writeProfile(profileName: string, config: Partial<ProfileConfig>
   if (config.modelUrl !== undefined) section['model_url'] = config.modelUrl
   if (config.maxConcurrentIssues !== undefined) section['max_concurrent'] = String(config.maxConcurrentIssues)
   if (config.noGitBranch !== undefined) section['no_git_branch'] = String(config.noGitBranch)
+  if (config.skipSdkCheck !== undefined) section['skip_sdk_check'] = String(config.skipSdkCheck)
 
   fs.writeFileSync(configPath, serializeIni(profiles), 'utf-8')
 }

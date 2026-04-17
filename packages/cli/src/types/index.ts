@@ -16,6 +16,8 @@ export interface AgentConfig {
   modelUrl?: string
   maxConcurrentIssues: number
   noGitBranch?: boolean
+  /** Skip the Multiplayer SDK installation check/setup step entirely */
+  skipSdkCheck?: boolean
   /** Whether session recorder setup step has been completed or skipped */
   sessionRecorderSetupDone?: boolean
   /** Detected stacks that need session recorder SDK setup (populated when user confirms setup) */
