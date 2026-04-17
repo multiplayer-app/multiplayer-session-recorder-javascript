@@ -19,7 +19,7 @@ export function parseFlags(argv: string[]): ParsedFlags {
   program
     .name('multiplayer')
     .description('Multiplayer debugging agent — automatically resolves issues using AI')
-    .version(pkg.version)
+    .version(pkg.version, '-v, --version', 'Output the version number')
     .option('--headless', 'Run without TUI (structured log output, requires full config); also set via MULTIPLAYER_HEADLESS=true')
     .option('--profile <name>', 'Config profile to use from .multiplayer/config (default: "default"); also set via MULTIPLAYER_PROFILE')
     .option('--url <url>', 'Multiplayer base API URL')
