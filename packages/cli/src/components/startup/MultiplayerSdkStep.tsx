@@ -923,12 +923,12 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
         log[log.length - 1] = `✓ ${plan.installCommand}`
       }
 
-      // 4. Note env vars
+      // 4. Note env vars (the AI emits .env as a fileChange; this is just a summary)
       if (plan.envVars.length > 0) {
         log.push('')
-        log.push('Environment variables to configure:')
+        log.push('Environment variables added:')
         for (const env of plan.envVars) {
-          log.push(`  ${env.name}=${env.value}  # ${env.description}`)
+          log.push(`  ${env.name}  # ${env.description}`)
         }
       }
 

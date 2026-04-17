@@ -225,6 +225,22 @@ First ANALYZE the project to understand what's already set up, then generate a s
 - Language: ${stack.language}
 ${installedNote}
 
+## Env var conventions (you decide based on the actual framework you detect)
+Pick the right env var name and \`.env\` file for the framework you identify. Some common conventions (not exhaustive — if the project uses a different build tool, follow ITS rules):
+- Next.js: \`NEXT_PUBLIC_*\` for client-accessible, written to \`.env.local\`
+- Vite (React/Vue/Svelte + Vite): \`VITE_*\`, written to \`.env.local\`
+- Nuxt: \`NUXT_PUBLIC_*\`, written to \`.env\`
+- SvelteKit: \`PUBLIC_*\`, written to \`.env\`
+- Expo / React Native (Expo): \`EXPO_PUBLIC_*\`, written to \`.env\`
+- Create React App: \`REACT_APP_*\`, written to \`.env\`
+- Angular: wire through \`src/environments/environment.ts\` (no magic prefix), written to \`.env\` or the environment file the project already uses
+- Node/Python/Go/etc. backends: no prefix, written to \`.env\` (or whatever the project already uses — respect existing conventions)
+
+Rules when choosing:
+- Use the prefix that the project's build tool actually exposes to the runtime — otherwise the value won't be readable at runtime.
+- If the project already has a \`.env*\` file in context, WRITE TO THE SAME FILENAME the project is already using.
+- The env var NAME you pick must be a full identifier (e.g. \`VITE_MULTIPLAYER_API_KEY\`) — when the CLI replaces the placeholder, it expects the value \`YOUR_MULTIPLAYER_API_KEY\` to appear verbatim in the \`.env\` fileChange.
+
 ## Integration Guide (README)
 ${readme}
 
@@ -261,7 +277,7 @@ Return ONLY a JSON object (no markdown fences, no explanation outside JSON) with
   "envVars": [
     {
       "name": "MULTIPLAYER_API_KEY",
-      "value": "your-api-key-here",
+      "value": "YOUR_MULTIPLAYER_API_KEY",
       "description": "description"
     }
   ],
@@ -311,8 +327,8 @@ Generate code that includes ALL applicable features for the detected stack. Do N
 **Core init with full options:**
 - \`application\` — from package.json name
 - \`version\` — from package.json version
-- \`environment\` — from env var (e.g. NEXT_PUBLIC_ENVIRONMENT or VITE_ENVIRONMENT)
-- \`apiKey\` — from env var (NEXT_PUBLIC_MULTIPLAYER_API_KEY or VITE_MULTIPLAYER_API_KEY)
+- \`environment\` — from an env var using the SAME prefix as the API key (per convention). Default to \`'development'\` if unset.
+- \`apiKey\` — MUST be read from the env var you chose per the convention section above. Use the runtime read syntax appropriate to the build tool (e.g. \`import.meta.env.VITE_MULTIPLAYER_API_KEY\` for Vite, \`process.env.NEXT_PUBLIC_MULTIPLAYER_API_KEY\` for Next.js).
 - \`showWidget: true\` — enable the built-in recording widget
 - \`showContinuousRecording: true\` — enable continuous recording mode option
 
@@ -338,11 +354,11 @@ Generate code that includes ALL applicable features for the detected stack. Do N
 **Session attributes — if auth/user context is available in the project:**
 - Show how to call \`SessionRecorder.setSessionAttributes({ userId, userName })\` where user context is available (e.g. after login, in auth provider)
 - Add a TODO comment if user context location is unclear
+- NEVER hardcode real user names, emails, or other personal info in examples — use generic placeholders like \`'user-123'\` / \`'User Name'\` or leave as variable references
 
 **Next.js specific:**
 - Next.js 15.3+: use \`instrumentation-client.ts\` for early initialization, export \`onRouterTransitionStart\`
 - Next.js < 15.3: use dynamic import in a client Providers component
-- Always use \`NEXT_PUBLIC_\` prefixed env vars for client-side config
 
 ### For Node.js backends (@multiplayer-app/session-recorder-node):
 
@@ -359,7 +375,7 @@ Generate code that includes ALL applicable features for the detected stack. Do N
   - \`responseHook\` with: \`maskHeadersList: ['set-cookie']\`, \`maxPayloadSizeBytes: 500000\`
 
 **Session recorder init with full options:**
-- \`apiKey\` from env var \`MULTIPLAYER_API_KEY\`
+- \`apiKey\` from env var \`MULTIPLAYER_API_KEY\` (server-side, no prefix needed), read via \`process.env.MULTIPLAYER_API_KEY\`
 - \`traceIdGenerator\` — use \`SessionRecorderIdGenerator\`
 - \`resourceAttributes\` with \`componentName\`, \`version\`, \`environment\`
 
@@ -375,6 +391,10 @@ Generate code that includes ALL applicable features for the detected stack. Do N
 ## General Rules
 
 - Use environment variables for ALL secrets (API keys, endpoints) — never hardcode
+- CRITICAL: The \`apiKey\` field in init() MUST always reference an env var (e.g. \`apiKey: process.env.MULTIPLAYER_API_KEY\` or \`apiKey: import.meta.env.VITE_MULTIPLAYER_API_KEY\`). Never inline the literal key.
+- Every env var you introduce MUST appear as a fileChange for the right \`.env*\` file for this framework (see the conventions section above). Action "modify" if the file exists in project context, "create" otherwise. PRESERVE all existing entries and comments — only add or update the keys you need.
+- Use placeholder value \`YOUR_MULTIPLAYER_API_KEY\` for the Multiplayer API key inside the \`.env*\` fileChange; the CLI will substitute the real generated key after the plan runs. Do NOT put this placeholder anywhere else (not in source code, not in install commands).
+- Also list the same env vars in the envVars array (for display/audit), using \`YOUR_MULTIPLAYER_API_KEY\` as the value for the API key.
 - Use the project's package manager: ${stack.packageManager}
 - If modifying an existing file, include the COMPLETE file content after changes
 - Set application name and version from package.json
@@ -701,14 +721,17 @@ function randomSuffix(): string {
   return crypto.randomBytes(3).toString('hex') // e.g. "a1b2c3"
 }
 
-/** Placeholder values the AI uses for API keys in generated code */
+/**
+ * Placeholder tokens the AI is instructed to use in place of the real API key.
+ * These MUST be specific enough not to collide with legitimate identifiers —
+ * e.g. bare `MULTIPLAYER_API_KEY` is a substring of `VITE_MULTIPLAYER_API_KEY`,
+ * which mangled env-var references in generated code.
+ */
 const API_KEY_PLACEHOLDERS = [
+  'YOUR_MULTIPLAYER_API_KEY',
   'your-api-key-here',
   'your_api_key_here',
-  'YOUR_API_KEY',
-  'YOUR_MULTIPLAYER_API_KEY',
   '<MULTIPLAYER_API_KEY>',
-  'MULTIPLAYER_API_KEY',
 ]
 
 export interface CreatedApiKey {
