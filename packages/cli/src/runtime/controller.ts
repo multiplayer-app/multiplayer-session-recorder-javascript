@@ -1332,7 +1332,7 @@ export class RuntimeController extends EventEmitter {
     const radar = this.radar
 
     try {
-      const mcpConfig = { apiKey: cfg.apiKey, apiUrl: cfg.url }
+      const mcpConfig = { apiKey: cfg.apiKey, apiUrl: cfg.url, authType: cfg.authType }
       const debugResult = await AiService.fetchIssueDebugContext(issue, mcpConfig)
 
       if (debugResult?.debugSessionId) {

@@ -30,9 +30,11 @@ export function isOAuthToken(apiKey: string): boolean {
 /**
  * Returns the correct auth headers for the given token.
  * OAuth tokens use `Authorization: Bearer`, project API keys use `x-api-key`.
+ * Pass `authType` to override the heuristic (required when the token is not a JWT).
  */
-export function getAuthHeaders(apiKey: string): Record<string, string> {
-  return isOAuthToken(apiKey)
+export function getAuthHeaders(apiKey: string, authType?: 'oauth' | 'api_key'): Record<string, string> {
+  const useBearer = authType === 'oauth' || (authType !== 'api_key' && isOAuthToken(apiKey))
+  return useBearer
     ? { Authorization: `Bearer ${apiKey}` }
     : { 'x-api-key': apiKey }
 }

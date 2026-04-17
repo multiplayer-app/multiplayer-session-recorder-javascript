@@ -27,7 +27,7 @@ type AuthMethod = 'oauth' | 'api-token'
 
 const OPTIONS: { id: AuthMethod; label: string; description: string }[] = [
   { id: 'oauth', label: 'Browser login (OAuth)', description: 'Opens your browser to authenticate with Multiplayer' },
-  { id: 'api-token', label: 'API token', description: 'Paste a personal API key from the Multiplayer dashboard' }
+  { id: 'api-token', label: 'API token', description: 'Paste a personal API key from the Multiplayer dashboard' },
 ]
 
 const SELECTION_ITEMS: SelectionItem[] = OPTIONS.map((opt) => ({
@@ -35,7 +35,7 @@ const SELECTION_ITEMS: SelectionItem[] = OPTIONS.map((opt) => ({
   icon: opt.id === 'oauth' ? '◆' : '◇',
   iconColor: opt.id === 'oauth' ? '#22d3ee' : '#f59e0b',
   label: opt.label,
-  description: opt.description
+  description: opt.description,
 }))
 
 type SubStep = 'select' | 'api-key'
@@ -134,7 +134,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
 
     if (apiKeyPayload.type && apiKeyPayload.type !== 'API_KEY') {
       setApiKeyError(
-        `Invalid key type "${apiKeyPayload.type}". Please use an Agent API key from the Multiplayer dashboard (Settings → API Keys).`
+        `Invalid key type "${apiKeyPayload.type}". Please use an Agent API key from the Multiplayer dashboard (Settings → API Keys).`,
       )
       return
     }
@@ -144,7 +144,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
 
     const apiService = createApiService({
       url: config.url || API_URL,
-      apiKey: trimmedApiKey
+      apiKey: trimmedApiKey,
     })
     setApiKeyValidating(true)
     setApiKeyError(null)
@@ -165,7 +165,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           apiKey: trimmedApiKey,
           authType: 'api_key',
           workspace: workspaceId,
-          project: projectId
+          project: projectId,
         })
       })
       .catch((err: any) => {
@@ -190,7 +190,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           authorizationServerUrl: data.issuer,
           authorizationEndpoint: data.authorization_endpoint,
           tokenEndpoint: data.token_endpoint,
-          registrationEndpoint: data.registration_endpoint
+          registrationEndpoint: data.registration_endpoint,
         }
 
         const oauthManager = new OAuthManager()
@@ -214,8 +214,8 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           session.workspaces.map(async (ws) => ({
             _id: ws._id,
             name: ws.name,
-            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name)
-          }))
+            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name),
+          })),
         )
 
         const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'

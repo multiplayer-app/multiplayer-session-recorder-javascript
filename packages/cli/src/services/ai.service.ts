@@ -10,12 +10,14 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import { Issue, FilePatch, Release, ConversationMessage } from '../types/index.js'
 import { MAX_FILE_SIZE, MAX_FILES_TO_READ } from '../config.js'
+import { getAuthHeaders } from '../lib/authHeaders.js'
 
 const execAsync = promisify(exec)
 
 export interface McpConfig {
   apiKey: string
   apiUrl: string
+  authType?: 'oauth' | 'api_key'
 }
 
 // ─── Provider requirement checks ─────────────────────────────────────────────
@@ -249,7 +251,7 @@ export const fetchIssueDebugContext = async (
     listUrl.searchParams.set('sortKey', 'createdAt')
     listUrl.searchParams.set('sortDirection', '-1')
     const listRes = await fetch(listUrl.toString(), {
-      headers: { 'x-api-key': mcpConfig.apiKey },
+      headers: getAuthHeaders(mcpConfig.apiKey, mcpConfig.authType),
     })
     if (!listRes.ok) return undefined
     const listData = (await listRes.json()) as any
@@ -283,10 +285,10 @@ export const fetchIssueDebugContext = async (
       logsUrl.searchParams.set('limit', '300')
       const [tracesRes, logsRes] = await Promise.all([
         fetch(tracesUrl.toString(), {
-          headers: { 'x-api-key': mcpConfig.apiKey },
+          headers: getAuthHeaders(mcpConfig.apiKey, mcpConfig.authType),
         }),
         fetch(logsUrl.toString(), {
-          headers: { 'x-api-key': mcpConfig.apiKey },
+          headers: getAuthHeaders(mcpConfig.apiKey, mcpConfig.authType),
         }),
       ])
       traces = tracesRes.ok ? ((await tracesRes.json()) as any).data : []
