@@ -1,9 +1,10 @@
 import http from 'http'
 import net from 'net'
 import { exec } from 'child_process'
-import { readFileSync } from 'fs'
-import { URL, parse as parseUrl } from 'url'
+import { parse as parseUrl } from 'url'
 import { TokenStore, OauthClient, AuthData } from './token-store.js'
+import oauthSuccessHtml from './oauth-success.html' with { type: 'text' }
+import oauthFailedHtml from './oauth-failed.html' with { type: 'text' }
 
 export interface OAuthServerParams {
   authorizationServerUrl: string
@@ -74,15 +75,6 @@ function openBrowser(url: string): Promise<boolean> {
           : `xdg-open "${url}"`
     exec(cmd, error => resolve(!error))
   })
-}
-
-function readLocalHtmlTemplate(fileName: string): string | null {
-  try {
-    const path = new URL(fileName, import.meta.url)
-    return readFileSync(path, 'utf8')
-  } catch {
-    return null
-  }
 }
 
 function escapeHtml(value: string): string {
@@ -326,20 +318,12 @@ export class OAuthManager {
 
           await this.handleCallback(code, state)
           res.writeHead(200, { 'Content-Type': 'text/html' })
-          const successHtml = readLocalHtmlTemplate('oauth-success.html')
-          res.end(
-            successHtml ??
-              '<html><body><h1>Authentication successful!</h1><p>You can close this window and return to the terminal.</p></body></html>',
-          )
+          res.end(oauthSuccessHtml)
           this._callbackResolve?.()
         } catch (err: any) {
           res.writeHead(400, { 'Content-Type': 'text/html' })
-          const failedHtml = readLocalHtmlTemplate('oauth-failed.html')
           const errorMessage = escapeHtml(err?.message ?? String(err))
-          res.end(
-            failedHtml?.replace('{{error}}', errorMessage) ??
-              `<html><body><h1>Authentication failed</h1><p>${errorMessage}</p></body></html>`,
-          )
+          res.end(oauthFailedHtml.replace('{{error}}', errorMessage))
           this._callbackReject?.(err)
         } finally {
           await this.stopCallbackServer()
