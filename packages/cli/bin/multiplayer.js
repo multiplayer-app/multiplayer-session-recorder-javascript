@@ -17,6 +17,29 @@ if (!platform || !arch) {
 
 const pkgName = `@multiplayer-app/cli-${platform}-${arch}`
 const binName = process.platform === 'win32' ? 'multiplayer.exe' : 'multiplayer'
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+
+// In a source checkout (src/index.tsx present), prefer running via bun so that
+// locally-added commands work without a full binary rebuild.
+const sourceEntry = path.join(rootDir, 'src', 'index.tsx')
+if (existsSync(sourceEntry)) {
+  const bunCandidates = [
+    path.join(rootDir, 'node_modules', '.bin', 'bun'),
+    '/opt/homebrew/bin/bun',
+    '/usr/local/bin/bun',
+    'bun',
+  ]
+  for (const bunBin of bunCandidates) {
+    if (!existsSync(bunBin) && bunBin !== 'bun') continue
+    try {
+      execFileSync(bunBin, [sourceEntry, ...process.argv.slice(2)], { stdio: 'inherit' })
+      process.exit(0)
+    } catch (err) {
+      if (err.status !== undefined) process.exit(err.status)
+      // bun not found at this path, try next
+    }
+  }
+}
 
 // Walk up from this file looking for the binary in node_modules
 function findBinary() {
@@ -32,7 +55,7 @@ function findBinary() {
   }
 
   // Fallback: sibling dist/ for local dev
-  const devBin = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist', `${platform}-${arch}`, 'bin', binName)
+  const devBin = path.join(rootDir, 'dist', `${platform}-${arch}`, 'bin', binName)
   if (existsSync(devBin)) return devBin
 
   return null

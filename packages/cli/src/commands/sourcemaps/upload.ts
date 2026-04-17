@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import jwt from 'jsonwebtoken'
-import * as API from '../api.js'
+import * as API from '../../services/version-api.service.js'
 
 interface SourcemapOptions {
   apiKey: string

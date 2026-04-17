@@ -1,9 +1,17 @@
 import { Command } from 'commander'
+import os from 'os'
 import { create as createRelease } from './releases/create.js'
 import { create as createDeployment } from './deployments/create.js'
 import { upload as uploadSourcemap } from './sourcemaps/upload.js'
-import { login, logout, status as authStatus } from './auth.js'
+import { login, logout, status as authStatus } from '../services/auth.service.js'
+import { startMcpServer } from './mcp.js'
+import { loadProfile, writeProfile } from '../cli/profile.js'
+import { API_URL, DEFAULT_MAX_CONCURRENT } from '../config.js'
+import type { ParsedFlags } from '../cli/flags.js'
+import type { RuntimeMode } from '../runtime/types.js'
+import type { AgentConfig } from '../types/index.js'
 import logger from '../logger.js'
+import pkg from '../../package.json' with { type: 'json' }
 
 function handleResult(err: Error | null, response: unknown): void {
   if (err) {
@@ -27,11 +35,60 @@ function exitWithError(message: string): never {
   process.exit(1)
 }
 
-export function runCli(argv: string[]): void {
+export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): void {
   const program = new Command()
   program
     .name('multiplayer')
-    .description('Multiplayer CLI — manage releases, deployments, and sourcemaps')
+    .description('Multiplayer debugging agent — automatically resolves issues using AI')
+    .version(pkg.version, '-v, --version', 'Output the version number')
+
+  // agent (default)
+  program
+    .command('agent', { isDefault: true })
+    .description('Start the debugging agent')
+    .option('--headless', 'Run without TUI (structured log output, requires full config); also set via MULTIPLAYER_HEADLESS=true')
+    .option('--profile <name>', 'Config profile to use from .multiplayer/config (default: "default"); also set via MULTIPLAYER_PROFILE')
+    .option('--url <url>', 'Multiplayer base API URL')
+    .option('--api-key <key>', 'Multiplayer API key')
+    .option('--name <name>', 'Agent name (defaults to hostname)')
+    .option('--dir <path>', 'Project directory (must be a git repo)')
+    .option('--model <name>', 'AI model name (e.g. claude-sonnet-4-6, gpt-4o)')
+    .option('--model-key <key>', 'API key for the AI provider')
+    .option('--model-url <url>', 'Optional base URL for OpenAI-compatible APIs')
+    .option('--max-concurrent <n>', 'Maximum number of issues to resolve in parallel', String(DEFAULT_MAX_CONCURRENT))
+    .option('--no-git-branch', 'Work in current branch — no worktree, no new branch, no push')
+    .option('--health-port <port>', 'Port for HTTP health check endpoint (headless mode only); also set via MULTIPLAYER_HEALTH_PORT')
+    .action((opts) => {
+      const mode: RuntimeMode = (opts.headless || process.env.MULTIPLAYER_HEADLESS === 'true') ? 'headless' : 'tui'
+      const profileName: string = opts.profile || process.env.MULTIPLAYER_PROFILE || 'default'
+      const projectDirHint = opts.dir || process.env.MULTIPLAYER_DIR
+      const profile = loadProfile(profileName, projectDirHint)
+      const initialConfig: Partial<AgentConfig> = {
+        url: opts.url || process.env.MULTIPLAYER_URL || profile.url || API_URL,
+        apiKey: opts.apiKey || process.env.MULTIPLAYER_API_KEY || profile.apiKey,
+        authType: profile.authType,
+        workspace: profile.workspace,
+        project: profile.project,
+        name: opts.name || process.env.MULTIPLAYER_AGENT_NAME || profile.name || os.hostname(),
+        dir: opts.dir || process.env.MULTIPLAYER_DIR || profile.dir,
+        model: opts.model || process.env.AI_MODEL || profile.model,
+        modelKey: opts.modelKey || process.env.AI_API_KEY || profile.modelKey,
+        modelUrl: opts.modelUrl || process.env.AI_BASE_URL || profile.modelUrl,
+        maxConcurrentIssues: Number(
+          opts.maxConcurrent || process.env.MULTIPLAYER_MAX_CONCURRENT || profile.maxConcurrentIssues || DEFAULT_MAX_CONCURRENT,
+        ),
+        noGitBranch: opts.noGitBranch || process.env.MULTIPLAYER_NO_GIT_BRANCH === 'true' || profile.noGitBranch || false,
+      }
+      const rawHealthPort = opts.healthPort || process.env.MULTIPLAYER_HEALTH_PORT
+      const healthPort = rawHealthPort ? Number(rawHealthPort) : undefined
+
+      // Persist --url to profile if explicitly provided and not already saved
+      if (opts.url && !profile.url) {
+        writeProfile(profileName, { url: opts.url })
+      }
+
+      onAgent({ mode, initialConfig, healthPort, profileName })
+    })
 
   // releases
   const releases = program.command('releases').description('Manage releases')
@@ -75,7 +132,7 @@ export function runCli(argv: string[]): void {
       const options = {
         apiKey: opts.apiKey || process.env.MULTIPLAYER_API_KEY,
         service: opts.service || process.env.SERVICE_NAME,
-        release: opts.release || process.env.VERSION,
+        release: opts.release || process.env.RELEASE,
         environment: opts.environment || process.env.ENVIRONMENT,
         baseUrl: opts.baseUrl || process.env.BASE_URL,
       }
@@ -113,9 +170,14 @@ export function runCli(argv: string[]): void {
   auth
     .command('login')
     .description('Log in via browser OAuth flow')
-    .action(async () => {
+    .option('--url <url>', 'Multiplayer API base URL')
+    .option('--profile <name>', 'Config profile to save credentials into')
+    .action(async (opts) => {
       try {
-        await login()
+        await login({
+          url: opts.url || process.env.MULTIPLAYER_URL,
+          profileName: opts.profile || process.env.MULTIPLAYER_PROFILE,
+        })
       } catch (err: any) {
         exitWithError(err.message)
       }
@@ -132,6 +194,18 @@ export function runCli(argv: string[]): void {
     .action(async () => {
       try {
         await authStatus()
+      } catch (err: any) {
+        exitWithError(err.message)
+      }
+    })
+
+  // mcp
+  program
+    .command('mcp')
+    .description('Start an MCP server over stdio for AI agent integration')
+    .action(async () => {
+      try {
+        await startMcpServer()
       } catch (err: any) {
         exitWithError(err.message)
       }
