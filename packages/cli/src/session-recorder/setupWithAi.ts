@@ -79,10 +79,10 @@ async function generateWithClaudeCli(prompt: string, model: string, cwd: string)
       executable: 'node',
       pathToClaudeCodeExecutable: cliPath,
       permissionMode: 'bypassPermissions',
-      maxTurns: 3,
+      maxTurns: 250,
       includePartialMessages: true,
-      ...(model ? { model } : {}),
-    },
+      ...(model ? { model } : {})
+    }
   })) {
     const msg = message as any
     if (msg.type === 'stream_event') {
@@ -113,7 +113,9 @@ function readFilesSafe(root: string, relativePaths: string[]): string {
           parts.push(`--- ${rel} ---\n${content}`)
         }
       }
-    } catch { /* skip unreadable */ }
+    } catch {
+      /* skip unreadable */
+    }
   }
   return parts.join('\n\n')
 }
@@ -124,25 +126,46 @@ function gatherProjectContext(stack: DetectedStack): string {
 
   // Common entry points for all JS/TS projects
   files.push(
-    'src/main.tsx', 'src/main.ts', 'src/main.jsx', 'src/main.js',
-    'src/index.tsx', 'src/index.ts', 'src/index.jsx', 'src/index.js',
-    'src/App.tsx', 'src/App.vue', 'src/App.jsx',
-    'src/server.ts', 'src/app.ts', 'server.ts', 'index.ts', 'app.ts',
-    'index.js', 'server.js', 'app.js',
+    'src/main.tsx',
+    'src/main.ts',
+    'src/main.jsx',
+    'src/main.js',
+    'src/index.tsx',
+    'src/index.ts',
+    'src/index.jsx',
+    'src/index.js',
+    'src/App.tsx',
+    'src/App.vue',
+    'src/App.jsx',
+    'src/server.ts',
+    'src/app.ts',
+    'server.ts',
+    'index.ts',
+    'app.ts',
+    'index.js',
+    'server.js',
+    'app.js'
   )
 
   // Framework-specific files
   switch (stack.framework) {
     case 'next':
-      files.push('next.config.js', 'next.config.ts', 'next.config.mjs',
-        'src/app/layout.tsx', 'app/layout.tsx',
-        'src/pages/_app.tsx', 'pages/_app.tsx',
-        'src/instrumentation-client.ts', 'instrumentation-client.ts',
-        'src/instrumentation.ts', 'instrumentation.ts')
+      files.push(
+        'next.config.js',
+        'next.config.ts',
+        'next.config.mjs',
+        'src/app/layout.tsx',
+        'app/layout.tsx',
+        'src/pages/_app.tsx',
+        'pages/_app.tsx',
+        'src/instrumentation-client.ts',
+        'instrumentation-client.ts',
+        'src/instrumentation.ts',
+        'instrumentation.ts'
+      )
       break
     case 'angular':
-      files.push('angular.json', 'src/app/app.config.ts',
-        'src/app/app.module.ts', 'src/app/app.component.ts')
+      files.push('angular.json', 'src/app/app.config.ts', 'src/app/app.module.ts', 'src/app/app.component.ts')
       break
     case 'vue':
     case 'nuxt':
@@ -158,12 +181,18 @@ function gatherProjectContext(stack: DetectedStack): string {
 
   // OpenTelemetry config files (critical for backend detection)
   files.push(
-    'src/opentelemetry.ts', 'src/opentelemetry.js',
-    'src/tracing.ts', 'src/tracing.js',
-    'src/instrumentation.ts', 'src/instrumentation.js',
-    'opentelemetry.ts', 'opentelemetry.js',
-    'tracing.ts', 'tracing.js',
-    'otel-collector-config.yaml', 'otel-collector-config.yml',
+    'src/opentelemetry.ts',
+    'src/opentelemetry.js',
+    'src/tracing.ts',
+    'src/tracing.js',
+    'src/instrumentation.ts',
+    'src/instrumentation.js',
+    'opentelemetry.ts',
+    'opentelemetry.js',
+    'tracing.ts',
+    'tracing.js',
+    'otel-collector-config.yaml',
+    'otel-collector-config.yml'
   )
 
   // Env files
@@ -371,10 +400,10 @@ function normalizePlan(plan: Partial<SetupPlan>): SetupPlan {
         hasMultiplayerSdk: plan.detection?.existingSetup?.hasMultiplayerSdk ?? false,
         otelPackages: plan.detection?.existingSetup?.otelPackages ?? [],
         otelConfigFile: plan.detection?.existingSetup?.otelConfigFile ?? undefined,
-        existingOtlpEndpoint: plan.detection?.existingSetup?.existingOtlpEndpoint ?? undefined,
+        existingOtlpEndpoint: plan.detection?.existingSetup?.existingOtlpEndpoint ?? undefined
       },
       approach: plan.detection?.approach ?? 'minimal-patch',
-      reasoning: plan.detection?.reasoning ?? 'No reasoning provided',
+      reasoning: plan.detection?.reasoning ?? 'No reasoning provided'
     },
     summary: plan.summary ?? 'No summary provided',
     installCommand: plan.installCommand ?? '',
@@ -382,7 +411,7 @@ function normalizePlan(plan: Partial<SetupPlan>): SetupPlan {
     envVars: Array.isArray(plan.envVars) ? plan.envVars : [],
     steps: Array.isArray(plan.steps) ? plan.steps : [],
     warnings: Array.isArray(plan.warnings) ? plan.warnings : [],
-    confidence: typeof plan.confidence === 'number' ? Math.max(0, Math.min(1, plan.confidence)) : 0.7,
+    confidence: typeof plan.confidence === 'number' ? Math.max(0, Math.min(1, plan.confidence)) : 0.7
   }
 }
 
@@ -404,23 +433,25 @@ interface ClassifyResult {
 }
 
 function buildClassifyPrompt(stacks: DetectedStack[], sdkSummary: string): string {
-  const stackDescriptions = stacks.map(s => {
-    const parts = [
-      `- **${s.relativePath}** (${s.label})`,
-      `  Package: ${s.packageName ?? 'unknown'}`,
-      `  Description: ${s.packageDescription ?? 'none'}`,
-      `  Framework: ${s.framework}, Type: ${s.type}`,
-      `  SDK installed: ${s.alreadyInstalled ? `yes (${s.installedSdkPackage})` : 'no'}${s.installedSdkPackage === 'otel+otlp.multiplayer.app' ? ' — using standard OTel with Multiplayer OTLP endpoint' : ''}`,
-      `  Recommended SDK: ${s.sdkPackage}`,
-    ]
-    if (s.internalDeps?.length) {
-      parts.push(`  Depends on (internal): ${s.internalDeps.join(', ')}`)
-    }
-    if (s.internalDependents?.length) {
-      parts.push(`  Used by (internal): ${s.internalDependents.join(', ')}`)
-    }
-    return parts.join('\n')
-  }).join('\n\n')
+  const stackDescriptions = stacks
+    .map((s) => {
+      const parts = [
+        `- **${s.relativePath}** (${s.label})`,
+        `  Package: ${s.packageName ?? 'unknown'}`,
+        `  Description: ${s.packageDescription ?? 'none'}`,
+        `  Framework: ${s.framework}, Type: ${s.type}`,
+        `  SDK installed: ${s.alreadyInstalled ? `yes (${s.installedSdkPackage})` : 'no'}${s.installedSdkPackage === 'otel+otlp.multiplayer.app' ? ' — using standard OTel with Multiplayer OTLP endpoint' : ''}`,
+        `  Recommended SDK: ${s.sdkPackage}`
+      ]
+      if (s.internalDeps?.length) {
+        parts.push(`  Depends on (internal): ${s.internalDeps.join(', ')}`)
+      }
+      if (s.internalDependents?.length) {
+        parts.push(`  Used by (internal): ${s.internalDependents.join(', ')}`)
+      }
+      return parts.join('\n')
+    })
+    .join('\n\n')
 
   return `You are an expert at analyzing monorepo project structures and understanding which packages need the Multiplayer Session Recorder SDK.
 
@@ -498,7 +529,7 @@ export async function classifyStacksWithAi(
   stacks: DetectedStack[],
   model: string,
   modelKey: string,
-  modelUrl?: string,
+  modelUrl?: string
 ): Promise<ClassifyResult> {
   if (stacks.length === 0) return { success: true, classifications: [] }
 
@@ -514,7 +545,7 @@ export async function classifyStacksWithAi(
         const response = await client.messages.create({
           model: model === 'claude-code' ? 'claude-sonnet-4-6' : model,
           max_tokens: 4096,
-          messages: [{ role: 'user', content: prompt }],
+          messages: [{ role: 'user', content: prompt }]
         })
         const block = response.content[0]
         responseText = block?.type === 'text' ? block.text : ''
@@ -524,12 +555,12 @@ export async function classifyStacksWithAi(
     } else {
       const client = new OpenAI({
         apiKey: modelKey,
-        ...(modelUrl ? { baseURL: modelUrl } : {}),
+        ...(modelUrl ? { baseURL: modelUrl } : {})
       })
       const response = await client.chat.completions.create({
         model,
         max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: prompt }]
       })
       responseText = response.choices[0]?.message?.content ?? ''
     }
@@ -547,10 +578,10 @@ export async function classifyStacksWithAi(
 
     // Validate and normalize
     const validRelevances = new Set<SdkRelevance>(['needed', 'installed', 'not-needed', 'covered-by-dependency'])
-    const classifications: StackClassification[] = parsed.map(c => ({
+    const classifications: StackClassification[] = parsed.map((c) => ({
       relativePath: String(c.relativePath ?? ''),
       sdkRelevance: validRelevances.has(c.sdkRelevance) ? c.sdkRelevance : 'needed',
-      reason: String(c.reason ?? 'No reason provided'),
+      reason: String(c.reason ?? 'No reason provided')
     }))
 
     return { success: true, classifications }
@@ -558,7 +589,7 @@ export async function classifyStacksWithAi(
     return {
       success: false,
       classifications: [],
-      error: (err as Error).message,
+      error: (err as Error).message
     }
   }
 }
@@ -567,7 +598,7 @@ export async function classifyStacksWithAi(
  * Apply AI classifications back to the detected stacks (mutates in place).
  */
 export function applyClassifications(stacks: DetectedStack[], classifications: StackClassification[]): void {
-  const classMap = new Map(classifications.map(c => [c.relativePath, c]))
+  const classMap = new Map(classifications.map((c) => [c.relativePath, c]))
   for (const stack of stacks) {
     const classification = classMap.get(stack.relativePath)
     if (classification) {
@@ -592,7 +623,7 @@ export async function generateSetupPlan(
   stack: DetectedStack,
   model: string,
   modelKey: string,
-  modelUrl?: string,
+  modelUrl?: string
 ): Promise<SetupResult> {
   const readme = getReadmeContent(stack.sdkPackage, stack.framework)
   const projectContext = gatherProjectContext(stack)
@@ -607,7 +638,7 @@ export async function generateSetupPlan(
         const response = await client.messages.create({
           model: model === 'claude-code' ? 'claude-sonnet-4-6' : model,
           max_tokens: 8192,
-          messages: [{ role: 'user', content: prompt }],
+          messages: [{ role: 'user', content: prompt }]
         })
         const block = response.content[0]
         responseText = block?.type === 'text' ? block.text : ''
@@ -617,12 +648,12 @@ export async function generateSetupPlan(
     } else {
       const client = new OpenAI({
         apiKey: modelKey,
-        ...(modelUrl ? { baseURL: modelUrl } : {}),
+        ...(modelUrl ? { baseURL: modelUrl } : {})
       })
       const response = await client.chat.completions.create({
         model,
         max_tokens: 8192,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: prompt }]
       })
       responseText = response.choices[0]?.message?.content ?? ''
     }
@@ -640,7 +671,7 @@ export async function generateSetupPlan(
     return {
       success: false,
       plan: null,
-      error: (err as Error).message,
+      error: (err as Error).message
     }
   }
 }
@@ -677,7 +708,7 @@ const API_KEY_PLACEHOLDERS = [
   'YOUR_API_KEY',
   'YOUR_MULTIPLAYER_API_KEY',
   '<MULTIPLAYER_API_KEY>',
-  'MULTIPLAYER_API_KEY',
+  'MULTIPLAYER_API_KEY'
 ]
 
 export interface CreatedApiKey {
@@ -692,18 +723,16 @@ export interface CreatedApiKey {
  */
 export async function createApiKeysForSetup(
   stacks: DetectedStack[],
-  auth: ApiServiceAuth & { workspace: string; project: string },
+  auth: ApiServiceAuth & { workspace: string; project: string }
 ): Promise<{ keys: CreatedApiKey[]; errors: string[] }> {
   const api = createApiService(auth)
   const keys: CreatedApiKey[] = []
   const errors: string[] = []
 
   const needsFrontendKey = stacks.some(
-    s => s.sdkRelevance === 'needed' && (s.type === 'frontend' || s.type === 'fullstack' || s.type === 'mobile'),
+    (s) => s.sdkRelevance === 'needed' && (s.type === 'frontend' || s.type === 'fullstack' || s.type === 'mobile')
   )
-  const needsBackendKey = stacks.some(
-    s => s.sdkRelevance === 'needed' && s.type === 'backend',
-  )
+  const needsBackendKey = stacks.some((s) => s.sdkRelevance === 'needed' && s.type === 'backend')
 
   const suffix = randomSuffix()
 
@@ -712,12 +741,12 @@ export async function createApiKeysForSetup(
       const integration = await api.createIntegration(
         auth.workspace,
         auth.project,
-        `session-recorder-frontend-${suffix}`,
+        `session-recorder-frontend-${suffix}`
       )
       keys.push({
         name: integration.name,
         apiKey: integration.otel.apiKey,
-        stackType: 'frontend',
+        stackType: 'frontend'
       })
     } catch (err: unknown) {
       errors.push(`Failed to create frontend API key: ${(err as Error).message}`)
@@ -729,12 +758,12 @@ export async function createApiKeysForSetup(
       const integration = await api.createIntegration(
         auth.workspace,
         auth.project,
-        `session-recorder-backend-${suffix}`,
+        `session-recorder-backend-${suffix}`
       )
       keys.push({
         name: integration.name,
         apiKey: integration.otel.apiKey,
-        stackType: 'backend',
+        stackType: 'backend'
       })
     } catch (err: unknown) {
       errors.push(`Failed to create backend API key: ${(err as Error).message}`)
@@ -750,15 +779,14 @@ export async function createApiKeysForSetup(
  */
 export function injectApiKeysIntoPlan(plan: SetupPlan, keys: CreatedApiKey[], stackType: DetectedStack['type']): void {
   // Pick the right key for this stack type
-  const key = stackType === 'backend'
-    ? keys.find(k => k.stackType === 'backend')
-    : keys.find(k => k.stackType === 'frontend')
+  const key =
+    stackType === 'backend' ? keys.find((k) => k.stackType === 'backend') : keys.find((k) => k.stackType === 'frontend')
 
   if (!key) return
 
   // Replace in envVars
   for (const envVar of plan.envVars) {
-    if (API_KEY_PLACEHOLDERS.some(p => envVar.value === p || envVar.value.includes(p))) {
+    if (API_KEY_PLACEHOLDERS.some((p) => envVar.value === p || envVar.value.includes(p))) {
       envVar.value = key.apiKey
     }
   }
