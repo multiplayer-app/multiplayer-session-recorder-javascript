@@ -198,9 +198,13 @@ function readProfileFromFile(filePath: string, profileName: string): Record<stri
   try {
     const content = fs.readFileSync(filePath, 'utf-8')
     const parsed = parseIni(content)
+    if (profileName === 'default') {
+      return parsed['default'] ?? {}
+    }
+    // Named profile that doesn't exist → treat as new (don't inherit from default)
+    if (!parsed[profileName]) return {}
     const defaultRaw = parsed['default'] ?? {}
-    const profileRaw = profileName !== 'default' ? (parsed[profileName] ?? {}) : {}
-    return { ...defaultRaw, ...profileRaw }
+    return { ...defaultRaw, ...parsed[profileName] }
   } catch {
     return {}
   }

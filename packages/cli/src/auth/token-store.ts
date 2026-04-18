@@ -1,4 +1,7 @@
 import crypto from 'crypto'
+import fs from 'fs'
+import path from 'path'
+import os from 'os'
 
 export interface OauthClient {
   clientId: string
@@ -19,10 +22,74 @@ export interface AuthData {
   accessTokenExpiresAt: number
 }
 
+export interface OAuthServerParams {
+  authorizationServerUrl: string
+  authorizationEndpoint: string
+  tokenEndpoint: string
+  registrationEndpoint: string
+}
+
+export interface ProfileTokenData {
+  authData?: AuthData
+  oauthClient?: OauthClient
+  oauthServerParams?: OAuthServerParams
+}
+
+type TokensFile = Record<string, ProfileTokenData>
+
+const TOKENS_FILE = path.join(os.homedir(), '.multiplayer', 'tokens.json')
+
+function readTokensFile(): TokensFile {
+  try {
+    return JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf-8')) as TokensFile
+  } catch {
+    return {}
+  }
+}
+
+function writeTokensFile(data: TokensFile): void {
+  try {
+    const dir = path.dirname(TOKENS_FILE)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(TOKENS_FILE, JSON.stringify(data, null, 2), 'utf-8')
+  } catch {
+    // Best-effort
+  }
+}
+
+export function readProfileTokenData(profileName: string): ProfileTokenData {
+  return readTokensFile()[profileName] ?? {}
+}
+
+export function writeProfileTokenData(profileName: string, data: Partial<ProfileTokenData>): void {
+  const all = readTokensFile()
+  all[profileName] = { ...all[profileName], ...data }
+  writeTokensFile(all)
+}
+
+export function deleteProfileTokenData(profileName: string): void {
+  const all = readTokensFile()
+  delete all[profileName]
+  writeTokensFile(all)
+}
+
+/**
+ * In-process token store scoped to a single profile.
+ * Reads from and writes to ~/.multiplayer/tokens.json.
+ */
 export class TokenStore {
+  private profileName: string
   private authParams: AuthParams | undefined
-  private oauthClients: Record<string, OauthClient> = {}
-  private authData: AuthData | undefined
+  private data: ProfileTokenData
+
+  constructor(profileName: string) {
+    this.profileName = profileName
+    this.data = readProfileTokenData(profileName)
+  }
+
+  private save(): void {
+    writeProfileTokenData(this.profileName, this.data)
+  }
 
   private generatePKCE(): { codeVerifier: string; codeChallenge: string } {
     const codeVerifier = crypto.randomBytes(32).toString('base64url')
@@ -41,29 +108,39 @@ export class TokenStore {
     return { ...this.authParams, codeChallenge }
   }
 
-  storeOauthClient(client: OauthClient, serverUrl: string): void {
-    this.oauthClients[serverUrl] = client
+  storeOauthClient(client: OauthClient, _serverUrl: string): void {
+    this.data.oauthClient = client
+    this.save()
   }
 
-  getOauthClient(serverUrl: string): OauthClient | undefined {
-    return this.oauthClients[serverUrl]
+  getOauthClient(_serverUrl: string): OauthClient | undefined {
+    return this.data.oauthClient
   }
 
-  storeAuthData(data: AuthData): void {
-    this.authData = data
+  storeAuthData(authData: AuthData): void {
+    this.data.authData = authData
+    this.save()
   }
 
   getAuthData(): AuthData | undefined {
-    return this.authData
+    return this.data.authData
   }
 
-  cleanup(force = false, serverUrl?: string): void {
-    this.authData = undefined
+  storeOAuthServerParams(params: OAuthServerParams): void {
+    this.data.oauthServerParams = params
+    this.save()
+  }
+
+  getOAuthServerParams(): OAuthServerParams | undefined {
+    return this.data.oauthServerParams
+  }
+
+  cleanup(force = false, _serverUrl?: string): void {
+    this.data.authData = undefined
     this.authParams = undefined
-    if (force && serverUrl) {
-      delete this.oauthClients[serverUrl]
-    } else if (force) {
-      this.oauthClients = {}
+    if (force) {
+      this.data.oauthClient = undefined
     }
+    this.save()
   }
 }
