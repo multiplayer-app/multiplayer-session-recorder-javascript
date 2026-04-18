@@ -4,12 +4,62 @@
  */
 export function collapseForSingleLine(text: string): string {
   if (!text) return ''
-  return text
-    .replace(/\r\n/g, ' ')
-    .replace(/\n/g, ' ')
-    .replace(/\t/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+  return text.replace(/\r\n/g, ' ').replace(/\n/g, ' ').replace(/\t/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Wrap text by words and clamp to a maximum number of lines.
+ * If content overflows, the last line is suffixed with an ellipsis.
+ */
+export function clampTextLines(text: string, maxWidth: number, maxLines: number): string[] {
+  if (maxLines <= 0 || maxWidth <= 0) return []
+  const normalized = collapseForSingleLine(text)
+  if (!normalized) return ['']
+
+  const words = normalized.split(' ')
+  const lines: string[] = []
+  let current = ''
+
+  const pushCurrent = () => {
+    if (current.length > 0) {
+      lines.push(current)
+      current = ''
+    }
+  }
+
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word
+    if (candidate.length <= maxWidth) {
+      current = candidate
+      continue
+    }
+
+    if (current) pushCurrent()
+
+    let remaining = word
+    while (remaining.length > maxWidth) {
+      lines.push(remaining.slice(0, maxWidth))
+      remaining = remaining.slice(maxWidth)
+      if (lines.length >= maxLines) {
+        const truncated = lines.slice(0, maxLines)
+        const last = truncated[maxLines - 1] ?? ''
+        truncated[maxLines - 1] = last.length >= maxWidth ? `${last.slice(0, Math.max(0, maxWidth - 1))}…` : `${last}…`
+        return truncated
+      }
+    }
+    current = remaining
+
+    if (lines.length >= maxLines) break
+  }
+
+  pushCurrent()
+
+  if (lines.length <= maxLines) return lines
+
+  const truncated = lines.slice(0, maxLines)
+  const last = truncated[maxLines - 1] ?? ''
+  truncated[maxLines - 1] = last.length >= maxWidth ? `${last.slice(0, Math.max(0, maxWidth - 1))}…` : `${last}…`
+  return truncated
 }
 
 /** Compact byte size for attachment labels in the transcript. */

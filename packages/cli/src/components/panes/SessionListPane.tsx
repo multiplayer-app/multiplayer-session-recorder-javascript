@@ -1,20 +1,20 @@
-import React, { useLayoutEffect, useRef, type ReactElement } from 'react'
+import { useLayoutEffect, useRef, type ReactElement } from 'react'
 import type { KeyEvent, MouseEvent } from '@opentui/core'
 import { MouseButton, ScrollBoxRenderable } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
-import { collapseForSingleLine } from '../../lib/formatDisplay.js'
+import { clampTextLines, collapseForSingleLine } from '../../lib/formatDisplay.js'
 import type { SessionSummary, SessionStatus } from '../../runtime/types.js'
 
 const SIDEBAR_WIDTH = 32
 
 const STATUS_SYMBOL: Record<SessionStatus, { symbol: string; color: string }> = {
-  pending:   { symbol: '○', color: '#6b7280' },
+  pending: { symbol: '○', color: '#6b7280' },
   analyzing: { symbol: '◐', color: '#f59e0b' },
-  pushing:   { symbol: '◑', color: '#6366f1' },
-  done:      { symbol: '●', color: '#10b981' },
-  failed:    { symbol: '✕', color: '#ef4444' },
-  aborted:   { symbol: '◌', color: '#6b7280' },
+  pushing: { symbol: '◑', color: '#6366f1' },
+  done: { symbol: '●', color: '#10b981' },
+  failed: { symbol: '✕', color: '#ef4444' },
+  aborted: { symbol: '◌', color: '#6b7280' }
 }
 
 interface Props {
@@ -40,9 +40,9 @@ const SCROLLBAR_STYLE = {
     showArrows: true,
     trackOptions: {
       foregroundColor: '#22d3ee',
-      backgroundColor: '#374151',
-    },
-  },
+      backgroundColor: '#374151'
+    }
+  }
 } as const
 
 function SessionListPaneImpl({
@@ -53,7 +53,7 @@ function SessionListPaneImpl({
   layout = 'sidebar',
   fluidTextWidth,
   hasMore = false,
-  onLoadMore,
+  onLoadMore
 }: Props): ReactElement {
   const borderColor = isFocused ? '#22d3ee' : '#374151'
   const sidebarInner = SIDEBAR_WIDTH - 4 // border(2) + padding(2)
@@ -61,9 +61,7 @@ function SessionListPaneImpl({
   const rowTextWidth = Math.max(12, contentWidth - 5) // arrow + status + gaps
   const listScrollRef = useRef<ScrollBoxRenderable | null>(null)
 
-  const title = sessions.length > 0
-    ? `Sessions (${sessions.length})`
-    : 'Sessions'
+  const title = sessions.length > 0 ? `Sessions (${sessions.length})` : 'Sessions'
 
   useLayoutEffect(() => {
     const s = sessions[selectedIndex]
@@ -94,9 +92,9 @@ function SessionListPaneImpl({
 
   return (
     <box
-      flexDirection="column"
+      flexDirection='column'
       border={true}
-      borderStyle="rounded"
+      borderStyle='rounded'
       borderColor={borderColor}
       padding={1}
       {...(layout === 'fluid'
@@ -110,24 +108,18 @@ function SessionListPaneImpl({
       {sessions.length === 0 ? (
         <text attributes={tuiAttrs({ dim: true })}>Waiting for issues...</text>
       ) : (
-        <scrollbox
-          ref={listScrollRef}
-          flexGrow={1}
-          scrollY
-          focused={false}
-          style={SCROLLBAR_STYLE}
-        >
-          <box flexDirection="column" flexShrink={0} width="100%" gap={0}>
+        <scrollbox ref={listScrollRef} flexGrow={1} scrollY focused={false} style={SCROLLBAR_STYLE}>
+          <box flexDirection='column' flexShrink={0} width='100%' gap={0}>
             {sessions.map((s, i) => {
               const isSelected = i === selectedIndex
               const { symbol, color } = STATUS_SYMBOL[s.status]
-              const titleOneLine = collapseForSingleLine(s.issueTitle).slice(0, rowTextWidth)
+              const titleTwoLines = clampTextLines(s.issueTitle, rowTextWidth, 2)
               const serviceOneLine = collapseForSingleLine(s.issueService).slice(0, rowTextWidth)
               return (
                 <box
                   key={s.chatId}
                   id={`session-list-${s.chatId}`}
-                  flexDirection="column"
+                  flexDirection='column'
                   marginBottom={i < sessions.length - 1 ? 1 : 0}
                   onMouseUp={
                     onSelectSession
@@ -139,15 +131,19 @@ function SessionListPaneImpl({
                       : undefined
                   }
                 >
-                  <box flexDirection="row" gap={1}>
-                    <text fg={isSelected ? '#22d3ee' : undefined}>
-                      {isSelected ? '▶' : ' '}
-                    </text>
+                  <box flexDirection='row' gap={1}>
+                    <text fg={isSelected ? '#22d3ee' : undefined}>{isSelected ? '▶' : ' '}</text>
                     <text fg={color}>{symbol}</text>
-                    <box flexDirection="column" width={rowTextWidth}>
-                      <text fg={isSelected ? '#f8fafc' : undefined} attributes={tuiAttrs({ bold: isSelected })}>
-                        {titleOneLine}
-                      </text>
+                    <box flexDirection='column' width={rowTextWidth}>
+                      {titleTwoLines.map((line, lineIndex) => (
+                        <text
+                          key={`session-title-${s.chatId}-${lineIndex}`}
+                          fg={isSelected ? '#f8fafc' : undefined}
+                          attributes={tuiAttrs({ bold: isSelected })}
+                        >
+                          {line}
+                        </text>
+                      ))}
                       <text>{serviceOneLine}</text>
                     </box>
                   </box>
@@ -159,14 +155,14 @@ function SessionListPaneImpl({
             <box
               marginTop={1}
               flexShrink={0}
-              justifyContent="center"
+              justifyContent='center'
               onMouseUp={(e: MouseEvent) => {
                 if (e.button !== MouseButton.LEFT) return
                 e.stopPropagation()
                 onLoadMore()
               }}
             >
-              <text attributes={tuiAttrs({ bold: true })} fg="#22d3ee">
+              <text attributes={tuiAttrs({ bold: true })} fg='#22d3ee'>
                 ▼ Load more
               </text>
             </box>
