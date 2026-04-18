@@ -302,9 +302,19 @@ export class RuntimeController extends EventEmitter {
 
     radar.onChatUpdate((chat) => {
       this.log('info', `chat:update received: id=${chat._id} status=${chat.status}`)
-      if (chat._id && chat.status) {
-        this.emit('chat-status', chat._id, chat.status)
-      }
+      if (!chat._id || !chat.status) return
+      this.emit('chat-status', chat._id, chat.status)
+      const current = this._state.sessions.find((s) => s.chatId === chat._id)
+      if (!current) return
+      const nextStatus = toSessionStatus(chat.status)
+      // Don't let a stale `processing`/`streaming` event regress a session the
+      // local controller has already advanced to `pushing`/`done`/`failed`/`aborted`.
+      // Terminal statuses (`done`/`aborted`) from the server are always applied.
+      const localAuthoritative: Set<SessionStatus> = new Set(['pushing', 'done', 'failed', 'aborted'])
+      const terminalFromServer = nextStatus === 'done' || nextStatus === 'aborted'
+      if (!terminalFromServer && localAuthoritative.has(current.status)) return
+      if (current.status === nextStatus) return
+      this.updateSession({ chatId: chat._id, status: nextStatus })
     })
 
     radar.onAction((params) => {
@@ -529,6 +539,19 @@ export class RuntimeController extends EventEmitter {
   private setState(next: RuntimeState): void {
     this._state = next
     this.emit('state', this._state)
+  }
+
+  /**
+   * Update a session in both RuntimeState.sessions (drives the list) AND the
+   * matching SessionDetail in sessionDetails (drives the detail pane + context
+   * sidebar). Without this mirror, status changes only reach the list pane.
+   */
+  private updateSession(update: Partial<SessionSummary> & { chatId: string }): void {
+    this.setState(upsertSession(this._state, update))
+    const detail = this.sessionDetails.get(update.chatId)
+    if (!detail) return
+    Object.assign(detail, update)
+    this.emit('session-detail', update.chatId, { ...detail })
   }
 
   private getDirs(chatId: string): string[] {
@@ -1038,7 +1061,7 @@ export class RuntimeController extends EventEmitter {
         const prMsg = `Pull request created: [${prUrl}](${prUrl})`
         this.emitToRadar(chatId, prMsg, 'assistant', 'git')
         this.addSessionMessage(chatId, { role: 'assistant', content: prMsg, activity: 'git' })
-        this.setState(upsertSession(this._state, { chatId, prUrl }))
+        this.updateSession({ chatId, prUrl })
       }
 
       this.radar?.emitAgentChatUpdate({
@@ -1231,7 +1254,7 @@ export class RuntimeController extends EventEmitter {
       }
 
       if (abortController.signal.aborted) {
-        this.setState(upsertSession(this._state, { chatId, status: 'aborted', error: 'Aborted by user' }))
+        this.updateSession({ chatId, status: 'aborted', error: 'Aborted by user' })
         this.emit('chat-status', chatId, 'aborted')
         this.log('info', `Aborted: ${issue.title}`)
         this.radar?.emitAgentChatUpdate({
@@ -1245,7 +1268,7 @@ export class RuntimeController extends EventEmitter {
       }
 
       if (patches.length === 0) {
-        this.setState(upsertSession(this._state, { chatId, status: 'failed', error: 'AI produced no patches' }))
+        this.updateSession({ chatId, status: 'failed', error: 'AI produced no patches' })
         this.emit('chat-status', chatId, 'error')
         this.log('error', `No patches for: ${issue.title}`)
         this.emitToRadar(chatId, 'No patches generated for this issue.', 'error', 'analyzing')
@@ -1263,7 +1286,7 @@ export class RuntimeController extends EventEmitter {
       // 5. Dry-run mode: skip commit/push
       if (cfg.noGitBranch) {
         const effectiveBranch = await GitService.getCurrentBranch(cfg.dir)
-        this.setState(upsertSession(this._state, { chatId, status: 'done', branchName: effectiveBranch }))
+        this.updateSession({ chatId, status: 'done', branchName: effectiveBranch })
         this.setState(incrementResolved(this._state))
         const dryRunMsg = `Dry run: patches applied to current branch \`${effectiveBranch}\` (no commit or push)`
         this.log('info', dryRunMsg)
@@ -1276,7 +1299,7 @@ export class RuntimeController extends EventEmitter {
       await this.commitPushAndNotify(chatId, issue, context.worktreeDir!, branchName)
     } catch (err: unknown) {
       const message = AiService.classifyAiError(err)
-      this.setState(upsertSession(this._state, { chatId, status: 'failed', error: message }))
+      this.updateSession({ chatId, status: 'failed', error: message })
       this.emit('chat-status', chatId, 'error')
       this.log('error', `Failed ${issue.componentHash.slice(0, 8)}: ${message}`)
       this.emitToRadar(chatId, message, 'error')
@@ -1428,7 +1451,7 @@ export class RuntimeController extends EventEmitter {
    * Radar of the fix. Called after AI patches have been applied to the worktree.
    */
   private async commitPushAndNotify(chatId: string, issue: Issue, workDir: string, branchName: string): Promise<void> {
-    this.setState(upsertSession(this._state, { chatId, status: 'pushing', branchName }))
+    this.updateSession({ chatId, status: 'pushing', branchName })
 
     const pushMsg = `Committing and pushing branch \`${branchName}\`...`
     this.log('info', pushMsg.replace(/`/g, ''))
@@ -1445,7 +1468,7 @@ export class RuntimeController extends EventEmitter {
       GitService.getRemoteUrl(workDir),
     ])
 
-    this.setState(upsertSession(this._state, { chatId, status: 'done', branchName }))
+    this.updateSession({ chatId, status: 'done', branchName })
     this.setState(incrementResolved(this._state))
     this.emit('chat-status', chatId, 'finished')
     this.log(
@@ -1478,7 +1501,7 @@ export class RuntimeController extends EventEmitter {
       const prMsg = `Pull request created: [${prUrl}](${prUrl})`
       this.emitToRadar(chatId, prMsg, 'assistant', 'git')
       this.addSessionMessage(chatId, { role: 'assistant', content: prMsg, activity: 'git' })
-      this.setState(upsertSession(this._state, { chatId, prUrl }))
+      this.updateSession({ chatId, prUrl })
     } else {
       const noprMsg = 'Could not create pull request automatically.'
       this.emitToRadar(chatId, noprMsg, 'assistant', 'git')
