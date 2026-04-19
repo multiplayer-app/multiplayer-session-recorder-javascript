@@ -24,6 +24,7 @@ export class CrashBufferService implements CrashBuffer {
     private readonly db: IndexedDBService,
     private readonly tabId: string,
     private readonly windowMs: number,
+    private readonly ready: Promise<void> = Promise.resolve(),
   ) {}
 
   private async _safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -40,6 +41,7 @@ export class CrashBufferService implements CrashBuffer {
 
     const isFullSnapshot = Boolean(payload.isFullSnapshot)
 
+    await this.ready
     await this._safe(async () => {
       await this.db.appendEvent({
         tabId: this.tabId,
@@ -62,6 +64,7 @@ export class CrashBufferService implements CrashBuffer {
     }
     if (!this.isActive) return
     let errorEvent: CrashBufferEventMap['error-span-appended'] | null = null
+    await this.ready
     await this._safe(async () => {
       const records = payload.map((p) => {
         if (!errorEvent && p?.span?.status?.code === SpanStatusCode.ERROR) {
@@ -110,6 +113,7 @@ export class CrashBufferService implements CrashBuffer {
   }
 
   async snapshot(_windowMs?: number, now: number = Date.now()): Promise<CrashBufferSnapshot> {
+    await this.ready
     const stoppedAt = now
     const startedAt = Math.max(0, stoppedAt - this.windowMs)
 

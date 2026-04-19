@@ -48,6 +48,8 @@ export class SocketService extends Observable<SocketServiceEvents> {
   private options: SocketServiceOptions
   private usePostMessage: boolean = false
   private isInitialized: boolean = false
+  private lastUserPayload: { userAttributes: IUserAttributes | null; clientId?: string } | null = null
+  private lastSubscribeSession: ISession | null = null
 
   constructor() {
     super()
@@ -116,6 +118,15 @@ export class SocketService extends Observable<SocketServiceEvents> {
       this.isConnecting = false
       this.isConnected = true
       this.usePostMessage = false
+      // Re-establish identity and session on every (re)connect: socket.io's auto-reconnect
+      // fires 'ready' again after a drop, but the server has no memory of the previous
+      // setUser/subscribe calls — the client must replay them.
+      if (this.lastUserPayload && this.socket) {
+        this.socket.emit(SOCKET_SET_USER_EVENT, this.lastUserPayload)
+      }
+      if (this.lastSubscribeSession) {
+        this._emitSubscribe(this.lastSubscribeSession)
+      }
       this.flushQueue()
     })
 
@@ -192,16 +203,32 @@ export class SocketService extends Observable<SocketServiceEvents> {
   }
 
   public subscribeToSession(session: ISession): void {
+    // Remember the session so reconnects replay subscribe + started.
+    this.lastSubscribeSession = session
+    this._emitSubscribe(session)
+  }
+
+  private _emitSubscribe(session: ISession): void {
     this.sessionId = session.shortId || session._id
-    const payload = {
+    const subscribePayload = {
       projectId: session.project,
       workspaceId: session.workspace,
       debugSessionId: this.sessionId,
       sessionType: session.creationType,
     }
-    this.emitSocketEvent(SESSION_SUBSCRIBE_EVENT, payload)
-    // use long id instead of short id
-    this.emitSocketEvent(SESSION_STARTED_EVENT, { debugSessionId: session._id })
+    const startedPayload = { debugSessionId: session._id }
+    // Send directly (not via the queue). The queue would cause a duplicate emit on
+    // the next 'ready' alongside the replay, since 'ready' also replays lastSubscribeSession.
+    if (this.usePostMessage) {
+      this.sendViaPostMessage(SESSION_SUBSCRIBE_EVENT, subscribePayload)
+      this.sendViaPostMessage(SESSION_STARTED_EVENT, startedPayload)
+    } else if (this.socket && this.isConnected) {
+      this.socket.emit(SESSION_SUBSCRIBE_EVENT, subscribePayload)
+      this.socket.emit(SESSION_STARTED_EVENT, startedPayload)
+    } else {
+      // Not connected: 'ready' will replay via lastSubscribeSession once the socket is up.
+      this._initConnection()
+    }
   }
 
   public unsubscribeFromSession(stopSession?: boolean) {
@@ -211,10 +238,22 @@ export class SocketService extends Observable<SocketServiceEvents> {
         this.emitSocketEvent(SESSION_STOPPED_EVENT, {})
       }
     }
+    this.lastSubscribeSession = null
   }
 
   public setUser(data: { userAttributes: IUserAttributes | null; clientId?: string }): void {
-    this.emitSocketEvent(SOCKET_SET_USER_EVENT, data)
+    // Remember the last identity so 'ready' (initial connect + every reconnect) can replay it.
+    // Send directly here rather than queuing: the queue would cause a duplicate emit on the
+    // next 'ready' alongside the replay.
+    this.lastUserPayload = data
+    if (this.usePostMessage) {
+      this.sendViaPostMessage(SOCKET_SET_USER_EVENT, data)
+    } else if (this.socket && this.isConnected) {
+      this.socket.emit(SOCKET_SET_USER_EVENT, data)
+    } else {
+      // Not connected yet: 'ready' will replay lastUserPayload once the socket is up.
+      this._initConnection()
+    }
   }
 
   public close(): Promise<void> {

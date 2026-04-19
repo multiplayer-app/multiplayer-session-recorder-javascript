@@ -185,8 +185,7 @@ class SessionRecorder
       !sessionId ||
       !this._crashBuffer ||
       this._isFlushingBuffer ||
-      !this._configs?.buffering?.enabled ||
-      this.sessionState !== SessionState.stopped
+      !this._configs?.buffering?.enabled
     ) {
       return null;
     }
@@ -282,6 +281,14 @@ class SessionRecorder
       10_000,
       (this._configs.buffering?.windowMinutes || 0.5) * 60 * 1000
     );
+    if (bufferEnabled) {
+      // Drop any buffer persisted by a previous app launch: the stored FullSnapshot
+      // refers to a view hierarchy that no longer exists, and carrying old timestamps
+      // forward inflates the reported session duration on flush. The CrashBufferService
+      // serializes its ops via an internal chain, so appends triggered after this
+      // clear are guaranteed to run afterwards.
+      void this._crashBuffer.clear();
+    }
     this._tracer.setCrashBuffer(
       bufferEnabled ? this._crashBuffer : undefined,
       windowMs
@@ -392,6 +399,10 @@ class SessionRecorder
     });
 
     this._socketService.on(SESSION_SAVE_BUFFER_EVENT, (payload: any) => {
+      // Only honor backend save-buffer requests while in buffer-only mode. If a session
+      // is already recording (manual/continuous), the client is streaming directly and
+      // should ignore this event.
+      if (this.sessionState !== SessionState.stopped) return;
       this._flushBuffer(payload?.debugSession?._id);
     });
   }
