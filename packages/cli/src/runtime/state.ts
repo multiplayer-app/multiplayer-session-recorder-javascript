@@ -38,6 +38,11 @@ export const incrementResolved = (state: RuntimeState): RuntimeState => ({
   resolvedCount: state.resolvedCount + 1,
 })
 
+export const removeSessions = (state: RuntimeState, chatIds: string[]): RuntimeState => {
+  const idSet = new Set(chatIds)
+  return { ...state, sessions: state.sessions.filter((s) => !idSet.has(s.chatId)) }
+}
+
 export const setRateLimitActive = (state: RuntimeState, active: number): RuntimeState => ({
   ...state,
   rateLimitState: { ...state.rateLimitState, active },

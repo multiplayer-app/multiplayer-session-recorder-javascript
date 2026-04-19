@@ -1,4 +1,5 @@
-import { OAuthManager, OAuthServerParams } from '../auth/oauth-manager.js'
+import { OAuthManager } from '../auth/oauth-manager.js'
+import { deleteProfileTokenData } from '../auth/token-store.js'
 import { writeProfile } from '../cli/profile.js'
 import { BASE_API_URL } from '../config.js'
 import logger from '../logger.js'
@@ -8,7 +9,7 @@ interface LoginOptions {
   profileName?: string
 }
 
-async function getOAuthParams(baseUrl: string): Promise<OAuthServerParams> {
+async function getOAuthParams(baseUrl: string) {
   const response = await fetch(`${baseUrl}/.well-known/oauth-authorization-server`)
   if (!response.ok) {
     throw new Error(`Failed to fetch OAuth configuration: ${response.status} ${response.statusText}`)
@@ -25,7 +26,7 @@ async function getOAuthParams(baseUrl: string): Promise<OAuthServerParams> {
 export async function login(opts: LoginOptions = {}): Promise<void> {
   const baseUrl = opts.url || BASE_API_URL
   const profileName = opts.profileName || process.env.MULTIPLAYER_PROFILE || 'default'
-  const oauthManager = new OAuthManager()
+  const oauthManager = new OAuthManager(profileName)
 
   logger.info('Fetching OAuth configuration...')
   const oauthParams = await getOAuthParams(baseUrl)
@@ -33,7 +34,6 @@ export async function login(opts: LoginOptions = {}): Promise<void> {
 
   logger.info('Opening browser for authentication...')
 
-  // Wire up stdin so the user can paste a token obtained via the manual URL
   const stdinHandler = (data: Buffer | string) => {
     oauthManager.completeManualAuth(data.toString().trim())
     process.stdin.pause()
@@ -52,24 +52,46 @@ export async function login(opts: LoginOptions = {}): Promise<void> {
   process.stdin.removeListener('data', stdinHandler)
   process.stdin.pause()
 
-  const token = await oauthManager.getAccessToken()
-  if (token) {
-    writeProfile(profileName, { apiKey: token, ...(opts.url ? { url: opts.url } : {}) })
-    logger.info(`Successfully authenticated! Token saved to profile '${profileName}'.`)
-  } else {
-    logger.info('Successfully authenticated!')
-  }
+  // Tokens (access + refresh + expiry + client credentials) are persisted to
+  // ~/.multiplayer/tokens.json by TokenStore on every storeAuthData() call.
+  // We only write non-secret config fields to the profile INI.
+  writeProfile(profileName, {
+    authType: 'oauth',
+    ...(opts.url ? { url: opts.url } : {}),
+  })
+
+  logger.info(`Successfully authenticated! Credentials saved for profile '${profileName}'.`)
 }
 
+/**
+ * Silently return a valid OAuth access token for the given profile, refreshing
+ * if the stored token is expired. Returns null when no token data exists
+ * (caller should prompt for re-login).
+ */
+export async function refreshOAuthTokenIfNeeded(apiUrl: string, profileName: string): Promise<string | null> {
+  const oauthManager = new OAuthManager(profileName)
 
-export function logout(): void {
-  const oauthManager = new OAuthManager()
+  // The constructor already loads persisted server params. Try to fetch fresh
+  // ones in case the server config changed; fall back to cached on network error.
+  try {
+    const oauthParams = await getOAuthParams(apiUrl)
+    oauthManager.loadParams(oauthParams)
+  } catch {
+    // Network unreachable — proceed with whatever is cached in the token store
+  }
+
+  return oauthManager.getAccessToken()
+}
+
+export function logout(profileName = 'default'): void {
+  const oauthManager = new OAuthManager(profileName)
   oauthManager.logout()
+  deleteProfileTokenData(profileName)
   logger.info('Logged out successfully.')
 }
 
-export async function status(): Promise<void> {
-  const oauthManager = new OAuthManager()
+export async function status(profileName = 'default'): Promise<void> {
+  const oauthManager = new OAuthManager(profileName)
   const token = await oauthManager.getAccessToken()
   if (token) {
     logger.info('Authenticated.')

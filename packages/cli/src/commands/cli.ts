@@ -191,15 +191,17 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
   auth
     .command('logout')
     .description('Log out and clear stored credentials')
-    .action(() => {
-      logout()
+    .option('--profile <name>', 'Config profile to log out from')
+    .action((opts) => {
+      logout(opts.profile || process.env.MULTIPLAYER_PROFILE || 'default')
     })
   auth
     .command('status')
     .description('Check authentication status')
-    .action(async () => {
+    .option('--profile <name>', 'Config profile to check')
+    .action(async (opts) => {
       try {
-        await authStatus()
+        await authStatus(opts.profile || process.env.MULTIPLAYER_PROFILE || 'default')
       } catch (err: any) {
         exitWithError(err.message)
       }

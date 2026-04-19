@@ -24,6 +24,8 @@ import {
   EVENT_DEBUGGING_AGENT_FIX_FAILED,
   EVENT_CHAT_SUBSCRIBE,
   EVENT_CHAT_UNSUBSCRIBE,
+  EVENT_AGENT_CHAT_BULK_DELETE,
+  EVENT_AGENT_CHAT_DELETE,
 } from '../config.js'
 export interface RadarService {
   socket: Socket
@@ -73,6 +75,8 @@ export interface RadarService {
   onResolveIssue: (handler: (payload: ResolveIssuePayload) => void) => void
   onSessionStart: (handler: (payload: ChatSessionPayload) => void) => void
   onChatUpdate: (handler: (chat: AgentChat) => void) => void
+  onChatBulkDelete: (handler: (payload: { _id: string[]; workspace: string; project: string }) => void) => void
+  onChatDelete: (handler: (payload: { _id: string; workspace: string; project: string }) => void) => void
   onConnect: (handler: () => void) => void
   onDisconnect: (handler: (reason: string) => void) => void
   onError: (handler: (err: Error) => void) => void
@@ -271,6 +275,14 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     socket.on(EVENT_CHAT_UPDATE, (chat: AgentChat) => handler(chat))
   }
 
+  const onChatBulkDelete = (handler: (payload: { _id: string[]; workspace: string; project: string }) => void) => {
+    socket.on(EVENT_AGENT_CHAT_BULK_DELETE, handler)
+  }
+
+  const onChatDelete = (handler: (payload: { _id: string; workspace: string; project: string }) => void) => {
+    socket.on(EVENT_AGENT_CHAT_DELETE, handler)
+  }
+
   const onResolveIssue = (handler: (payload: ResolveIssuePayload) => void) => {
     socket.on(EVENT_DEBUGGING_AGENT_RESOLVE_ISSUE, (payload: ResolveIssuePayload) => handler(payload))
   }
@@ -417,6 +429,8 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     onAbort,
     onAction,
     onChatUpdate,
+    onChatBulkDelete,
+    onChatDelete,
     onResolveIssue,
     onSessionStart,
     onConnect,

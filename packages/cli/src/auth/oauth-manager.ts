@@ -2,7 +2,7 @@ import http from 'http'
 import net from 'net'
 import { exec } from 'child_process'
 import { parse as parseUrl } from 'url'
-import { TokenStore, OauthClient, AuthData } from './token-store.js'
+import { TokenStore, OauthClient, AuthData, OAuthServerParams as StoredOAuthServerParams } from './token-store.js'
 import oauthSuccessHtml from './oauth-success.html' with { type: 'text' }
 import oauthFailedHtml from './oauth-failed.html' with { type: 'text' }
 
@@ -87,7 +87,7 @@ function escapeHtml(value: string): string {
 }
 
 export class OAuthManager {
-  private tokenStore = new TokenStore()
+  private tokenStore: TokenStore
   private authServer: http.Server | null = null
   private authorizationServerUrl = ''
   private registrationEndpoint = ''
@@ -97,6 +97,13 @@ export class OAuthManager {
   private _callbackReject: ((err: Error) => void) | undefined
   private _callbackDone: Promise<void> | undefined
 
+  constructor(profileName = 'default') {
+    this.tokenStore = new TokenStore(profileName)
+    // Load persisted server params so refresh works without re-fetching well-known config
+    const stored = this.tokenStore.getOAuthServerParams()
+    if (stored) this.setParams(stored)
+  }
+
   private setParams(params: OAuthServerParams): void {
     this.authorizationServerUrl = params.authorizationServerUrl
     this.registrationEndpoint = params.registrationEndpoint
@@ -104,9 +111,16 @@ export class OAuthManager {
     this.tokenEndpoint = params.tokenEndpoint
   }
 
+  /** Prime OAuth server params without starting the callback server (used for silent refresh). */
+  loadParams(params: OAuthServerParams): void {
+    this.setParams(params)
+    this.tokenStore.storeOAuthServerParams(params as StoredOAuthServerParams)
+  }
+
   async init(oauthParams: OAuthServerParams, retry = 0): Promise<void> {
     if (retry > 10) throw new Error('Too many registration retries')
     this.setParams(oauthParams)
+    this.tokenStore.storeOAuthServerParams(oauthParams as StoredOAuthServerParams)
 
     const { redirectUri } = await this.getClientCredentials()
     const urlObj = new URL(redirectUri)
