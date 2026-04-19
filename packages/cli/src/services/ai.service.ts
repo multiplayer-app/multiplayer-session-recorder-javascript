@@ -257,6 +257,22 @@ When analyzing an issue:
 Always call write_patch at the end with the complete list of patches needed.${dirNote}`
 }
 
+const findSpanById = (traces: unknown[], targetSpanId: string): any => {
+  for (const item of traces as any[]) {
+    // Flat ITraceData format (from API)
+    if (item.SpanId === targetSpanId) return item
+    // OTLP nested format (from S3)
+    const scopeSpans = item.scopeSpans ?? item.scope_spans ?? []
+    for (const scope of scopeSpans) {
+      for (const span of scope.spans ?? []) {
+        const sid = span.spanId ?? span.span_id
+        if (sid === targetSpanId) return span
+      }
+    }
+  }
+  return undefined
+}
+
 export const fetchIssueDebugContext = async (
   issue: Issue,
   mcpConfig: McpConfig,
@@ -277,6 +293,12 @@ export const fetchIssueDebugContext = async (
     const listData = (await listRes.json()) as any
     const debugSession = listData.data?.[0]
     if (!debugSession) return undefined
+
+    // Find the span ID for this specific issue in the session
+    const sessionIssue = (debugSession.issues as any[] | undefined)?.find(
+      (i: any) => i.issueComponentHash === issue.componentHash,
+    )
+    const targetSpanId = sessionIssue?.spanId as string | undefined
 
     let traces: unknown[] = []
     let logs: unknown[] = []
@@ -315,8 +337,10 @@ export const fetchIssueDebugContext = async (
       logs = logsRes.ok ? ((await logsRes.json()) as any).data : []
     }
 
+    const issueSpan = targetSpanId ? findSpanById(traces, targetSpanId) : undefined
+
     return {
-      context: JSON.stringify({ sessionId: debugSession._id, traces, logs }),
+      context: JSON.stringify({ sessionId: debugSession._id, issueSpan, traces, logs }),
       debugSessionId: debugSession._id,
     }
   } catch {
@@ -385,11 +409,86 @@ severity rules:
   }
 }
 
+interface SpanData {
+  operation?: string
+  service?: string
+  attributes: Record<string, any>
+  exception?: { type?: string; message?: string; stacktrace?: string }
+}
+
+const extractSpanData = (span: any): SpanData => {
+  // Flat ITraceData format (from API — uppercase field names)
+  if (span.SpanId) {
+    const attributes: Record<string, any> = (span.SpanAttributes as Record<string, any> | undefined) ?? {}
+    let exception: SpanData['exception']
+    const eventNames = (span['Events.Name'] as string[] | undefined) ?? []
+    const eventAttrs = (span['Events.Attributes'] as Record<string, any>[] | undefined) ?? []
+    for (let i = 0; i < eventNames.length; i++) {
+      if (eventNames[i] === 'exception') {
+        const ea = eventAttrs[i] ?? {}
+        exception = {
+          type: ea['exception.type'],
+          message: ea['exception.message'],
+          stacktrace: ea['exception.stacktrace'],
+        }
+        break
+      }
+    }
+    return { operation: span.SpanName, service: span.ServiceName, attributes, exception }
+  }
+
+  // OTLP format (from S3 — camelCase nested)
+  const attributes: Record<string, any> = {}
+  for (const kv of span.attributes ?? []) {
+    if (kv.key) attributes[kv.key] = kv.value?.stringValue ?? kv.value?.intValue ?? kv.value
+  }
+  let exception: SpanData['exception']
+  for (const event of span.events ?? []) {
+    if (event.name === 'exception') {
+      const evAttrs: Record<string, any> = {}
+      for (const kv of event.attributes ?? []) {
+        if (kv.key) evAttrs[kv.key] = kv.value?.stringValue ?? kv.value?.intValue ?? kv.value
+      }
+      exception = {
+        type: evAttrs['exception.type'],
+        message: evAttrs['exception.message'],
+        stacktrace: evAttrs['exception.stacktrace'],
+      }
+      break
+    }
+  }
+  return { operation: span.name, attributes, exception }
+}
+
+const SPAN_ATTR_SKIP = new Set([
+  'multiplayer.project._id',
+  'multiplayer.workspace._id',
+  'multiplayer.debug_session._id',
+  'multiplayer.integration._id',
+])
+
 export const buildIssueContextDoc = (
   issue: Issue,
   release: Release | undefined,
   debugContext: string | undefined,
 ): string => {
+  // Extract span data upfront so we can use it throughout the document
+  let parsedCtx: { sessionId?: string; issueSpan?: any; traces?: any[]; logs?: any[] } | undefined
+  let spanData: SpanData | undefined
+  if (debugContext) {
+    try {
+      parsedCtx = JSON.parse(debugContext)
+      if (parsedCtx?.issueSpan) spanData = extractSpanData(parsedCtx.issueSpan)
+    } catch {
+      // non-parseable — proceed without span data
+    }
+  }
+
+  // Prefer span exception data over normalized issue metadata
+  const effectiveType = spanData?.exception?.type ?? issue.metadata.type
+  const effectiveMessage = spanData?.exception?.message ?? issue.metadata.message
+  const effectiveStacktrace = spanData?.exception?.stacktrace ?? issue.metadata.stacktrace
+
   const lines: string[] = [
     `# Issue: ${issue.title}`,
     '',
@@ -413,16 +512,10 @@ export const buildIssueContextDoc = (
     if (release.releaseNotes) lines.push('', '**Release Notes:**', release.releaseNotes)
   }
 
-  if (
-    issue.metadata.message ||
-    issue.metadata.type ||
-    issue.metadata.filename ||
-    issue.metadata.function ||
-    issue.metadata.httpMethod
-  ) {
+  if (effectiveMessage || effectiveType || issue.metadata.filename || issue.metadata.function || issue.metadata.httpMethod) {
     lines.push('', '## Error Details')
-    if (issue.metadata.message) lines.push(`**Message:** ${issue.metadata.message}`)
-    if (issue.metadata.type) lines.push(`**Type:** ${issue.metadata.type}`)
+    if (effectiveMessage) lines.push(`**Message:** ${effectiveMessage}`)
+    if (effectiveType) lines.push(`**Type:** ${effectiveType}`)
     if (issue.metadata.filename) lines.push(`**File:** ${issue.metadata.filename}`)
     if (issue.metadata.function) lines.push(`**Function:** ${issue.metadata.function}`)
     if (issue.metadata.httpMethod && issue.metadata.httpRoute) {
@@ -431,66 +524,80 @@ export const buildIssueContextDoc = (
     if (issue.metadata.value) lines.push(`**Value:** ${issue.metadata.value}`)
   }
 
-  if (issue.metadata.stacktrace) {
-    lines.push('', '## Stacktrace', '```', issue.metadata.stacktrace, '```')
+  if (effectiveStacktrace) {
+    const label = spanData?.exception?.stacktrace ? '## Stacktrace (from span)' : '## Stacktrace'
+    lines.push('', label, '```', effectiveStacktrace, '```')
   }
 
-  if (debugContext) {
-    try {
-      const ctx = JSON.parse(debugContext) as {
-        sessionId?: string
-        traces?: any[]
-        logs?: any[]
-      }
-      lines.push('', '## Debug Session')
-      if (ctx.sessionId) lines.push(`**Session ID:** \`${ctx.sessionId}\``)
+  if (parsedCtx) {
+    lines.push('', '## Debug Session')
+    if (parsedCtx.sessionId) lines.push(`**Session ID:** \`${parsedCtx.sessionId}\``)
 
-      if (Array.isArray(ctx.traces) && ctx.traces.length > 0) {
-        lines.push('', `### Traces (${ctx.traces.length} spans)`)
-        const spans: string[] = []
-        const collectSpans = (items: any[]) => {
-          for (const item of items) {
-            const scopeSpans = item.scopeSpans ?? item.scope_spans ?? []
-            for (const scope of scopeSpans) {
-              for (const span of scope.spans ?? []) {
-                const name = span.name ?? '(unnamed)'
-                const statusCode = span.status?.code ?? span.status?.Code ?? 0
-                const hasError = statusCode === 2 || statusCode === 'STATUS_CODE_ERROR'
-                const events = (span.events ?? []).map((e: any) => e.name).filter(Boolean)
-                let entry = `- **${name}**`
-                if (hasError) entry += ' ⚠ ERROR'
-                if (events.length) entry += ` [${events.slice(0, 3).join(', ')}]`
-                spans.push(entry)
-              }
+    if (spanData) {
+      lines.push('', '### Issue Span')
+      if (spanData.operation) lines.push(`**Operation:** ${spanData.operation}`)
+      if (spanData.service) lines.push(`**Service:** ${spanData.service}`)
+
+      // Span attributes — skip internal multiplayer fields and already-shown exception fields
+      const attrEntries = Object.entries(spanData.attributes).filter(
+        ([k, v]) => v != null && v !== '' && !SPAN_ATTR_SKIP.has(k) && !k.startsWith('exception.'),
+      )
+      if (attrEntries.length > 0) {
+        lines.push('', '**Span Attributes:**')
+        for (const [k, v] of attrEntries) {
+          lines.push(`- \`${k}\`: ${String(v).slice(0, 500)}`)
+        }
+      }
+
+      if (spanData.exception) {
+        if (spanData.exception.type) lines.push(`**Exception Type:** ${spanData.exception.type}`)
+        if (spanData.exception.message) lines.push(`**Exception Message:** ${spanData.exception.message}`)
+      }
+    }
+
+    if (Array.isArray(parsedCtx.traces) && parsedCtx.traces.length > 0) {
+      lines.push('', `### Traces (${parsedCtx.traces.length} spans)`)
+      const spans: string[] = []
+      const collectSpans = (items: any[]) => {
+        for (const item of items) {
+          const scopeSpans = item.scopeSpans ?? item.scope_spans ?? []
+          for (const scope of scopeSpans) {
+            for (const span of scope.spans ?? []) {
+              const name = span.name ?? '(unnamed)'
+              const statusCode = span.status?.code ?? span.status?.Code ?? 0
+              const hasError = statusCode === 2 || statusCode === 'STATUS_CODE_ERROR'
+              const events = (span.events ?? []).map((e: any) => e.name).filter(Boolean)
+              let entry = `- **${name}**`
+              if (hasError) entry += ' ⚠ ERROR'
+              if (events.length) entry += ` [${events.slice(0, 3).join(', ')}]`
+              spans.push(entry)
             }
           }
         }
-        collectSpans(ctx.traces)
-        lines.push(...spans.slice(0, 30))
-        if (spans.length > 30) lines.push(`  … and ${spans.length - 30} more spans`)
       }
+      collectSpans(parsedCtx.traces)
+      lines.push(...spans.slice(0, 30))
+      if (spans.length > 30) lines.push(`  … and ${spans.length - 30} more spans`)
+    }
 
-      if (Array.isArray(ctx.logs) && ctx.logs.length > 0) {
-        lines.push('', `### Logs (${ctx.logs.length} entries)`)
-        const logLines: string[] = []
-        const collectLogs = (items: any[]) => {
-          for (const item of items) {
-            const scopeLogs = item.scopeLogs ?? item.scope_logs ?? []
-            for (const scope of scopeLogs) {
-              for (const record of scope.logRecords ?? scope.log_records ?? []) {
-                const severity = record.severityText ?? record.severity_text ?? ''
-                const body = record.body?.stringValue ?? record.body?.string_value ?? record.body ?? ''
-                if (body) logLines.push(`- **[${severity}]** ${String(body).slice(0, 200)}`)
-              }
+    if (Array.isArray(parsedCtx.logs) && parsedCtx.logs.length > 0) {
+      lines.push('', `### Logs (${parsedCtx.logs.length} entries)`)
+      const logLines: string[] = []
+      const collectLogs = (items: any[]) => {
+        for (const item of items) {
+          const scopeLogs = item.scopeLogs ?? item.scope_logs ?? []
+          for (const scope of scopeLogs) {
+            for (const record of scope.logRecords ?? scope.log_records ?? []) {
+              const severity = record.severityText ?? record.severity_text ?? ''
+              const body = record.body?.stringValue ?? record.body?.string_value ?? record.body ?? ''
+              if (body) logLines.push(`- **[${severity}]** ${String(body).slice(0, 200)}`)
             }
           }
         }
-        collectLogs(ctx.logs)
-        lines.push(...logLines.slice(0, 30))
-        if (logLines.length > 30) lines.push(`  … and ${logLines.length - 30} more log entries`)
       }
-    } catch {
-      // debug context not parseable, skip structured section
+      collectLogs(parsedCtx.logs)
+      lines.push(...logLines.slice(0, 30))
+      if (logLines.length > 30) lines.push(`  … and ${logLines.length - 30} more log entries`)
     }
   }
 
