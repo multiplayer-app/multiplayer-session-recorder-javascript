@@ -193,7 +193,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           registrationEndpoint: data.registration_endpoint,
         }
 
-        const oauthManager = new OAuthManager()
+        const oauthManager = new OAuthManager(profileName || process.env.MULTIPLAYER_PROFILE || 'default')
         oauthManagerRef.current = oauthManager
         await oauthManager.init(oauthParams)
 
@@ -219,7 +219,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
         )
 
         const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
-        writeProfile(profile, { apiKey: token, authType: 'oauth' })
+        writeProfile(profile, { authType: 'oauth' })
 
         onComplete({ apiKey: token, authType: 'oauth', _oauthWorkspaces: workspaces })
       } catch (err: any) {

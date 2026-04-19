@@ -7,21 +7,36 @@ import { isCompleteConfig } from './cli/flags.js'
 import { runCli } from './commands/cli.js'
 import { RuntimeController } from './runtime/controller.js'
 import { decodeApiKeyPayload, validateApiKey } from './services/radar.service.js'
+import { refreshOAuthTokenIfNeeded } from './services/auth.service.js'
+
 import { startHealthServer } from './services/health.service.js'
 import type { AgentConfig } from './types/index.js'
 import type { ParsedFlags } from './cli/flags.js'
 
 runCli(process.argv, ({ mode, initialConfig, healthPort, profileName }: ParsedFlags) => {
-  // Decode workspace/project from API key JWT if not already set
-  if (initialConfig.apiKey && (!initialConfig.workspace || !initialConfig.project)) {
-    try {
-      const payload = decodeApiKeyPayload(initialConfig.apiKey)
-      if (!initialConfig.workspace) initialConfig.workspace = payload.workspace
-      if (!initialConfig.project) initialConfig.project = payload.project
-    } catch {
-      // invalid key format — startup wizard will validate
+  void (async () => {
+    // For OAuth profiles, silently refresh the access token if it has expired
+    if (initialConfig.authType === 'oauth' && initialConfig.url) {
+      try {
+        const freshToken = await refreshOAuthTokenIfNeeded(initialConfig.url, profileName)
+        if (freshToken) {
+          initialConfig.apiKey = freshToken
+        }
+      } catch {
+        // Non-fatal — proceed with stored token; validation will surface the error
+      }
     }
-  }
+
+    // Decode workspace/project from API key JWT if not already set
+    if (initialConfig.apiKey && (!initialConfig.workspace || !initialConfig.project)) {
+      try {
+        const payload = decodeApiKeyPayload(initialConfig.apiKey)
+        if (!initialConfig.workspace) initialConfig.workspace = payload.workspace
+        if (!initialConfig.project) initialConfig.project = payload.project
+      } catch {
+        // invalid key format — startup wizard will validate
+      }
+    }
 
   if (mode === 'headless') {
     if (!isCompleteConfig(initialConfig)) {
@@ -94,4 +109,5 @@ runCli(process.argv, ({ mode, initialConfig, healthPort, profileName }: ParsedFl
       renderer.start()
     })()
   }
+  })()
 })

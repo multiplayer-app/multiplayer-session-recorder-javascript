@@ -174,12 +174,15 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
 
       const profile = profileName ?? 'default'
       writeProfile(profile, {
-        apiKey: next.apiKey,
+        // OAuth tokens are stored in ~/.multiplayer/tokens.json, not in the profile
+        ...(next.authType !== 'oauth' ? { apiKey: next.apiKey } : {}),
         workspace: next.workspace,
         project: next.project,
+        dir: next.dir,
+        model: next.model,
         modelKey: next.modelKey,
         modelUrl: next.modelUrl,
-        maxConcurrentIssues: next.maxConcurrentIssues
+        maxConcurrentIssues: next.maxConcurrentIssues,
       })
 
       setStep(nextStep(step, next))

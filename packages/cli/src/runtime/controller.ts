@@ -20,6 +20,7 @@ import {
   initialRuntimeState,
   addSession,
   upsertSession,
+  removeSessions,
   setConnection,
   incrementResolved,
   setRateLimitActive,
@@ -329,6 +330,24 @@ export class RuntimeController extends EventEmitter {
       this.restoreChat(payload)
     })
 
+    radar.onChatBulkDelete(({ _id: chatIds }) => {
+      this.log('info', `agent_chat:bulk_delete received: ${chatIds.join(', ')}`)
+      for (const chatId of chatIds) {
+        this.chatContexts.delete(chatId)
+        this.pendingMessages.delete(chatId)
+        this.sessionDetails.delete(chatId)
+      }
+      this.setState(removeSessions(this._state, chatIds))
+    })
+
+    radar.onChatDelete(({ _id: chatId }) => {
+      this.log('info', `agent_chat:delete received: ${chatId}`)
+      this.chatContexts.delete(chatId)
+      this.pendingMessages.delete(chatId)
+      this.sessionDetails.delete(chatId)
+      this.setState(removeSessions(this._state, [chatId]))
+    })
+
     void this.loadWorkspaceProjectDisplayNames()
   }
 
@@ -391,6 +410,7 @@ export class RuntimeController extends EventEmitter {
 
     this.log('info', `Sending user message to ${chatId}: ${content.slice(0, 80)}`)
     this.emit('chat-status', chatId, 'processing')
+    this.updateSession({ chatId, status: 'analyzing' })
 
     // Subscribe to chat events so we receive chat:update and message:new
     this.radar.subscribeChat(chatId)
@@ -404,14 +424,15 @@ export class RuntimeController extends EventEmitter {
       await this.radar.sendStreamMessage(cfg.workspace, cfg.project, body)
 
       // Stream finished — fetch final status since socket may miss the update
-      const status = await this.fetchChatStatus(chatId)
-      if (status) {
-        this.emit('chat-status', chatId, status)
+      const backendStatus = await this.fetchChatStatus(chatId)
+      if (backendStatus) {
+        this.emit('chat-status', chatId, backendStatus)
+        this.updateSession({ chatId, status: toSessionStatus(backendStatus) })
       }
     } catch (err: unknown) {
       this.log('error', `Failed to send message to ${chatId}: ${getErrorMessage(err)}`)
       this.emit('chat-status', chatId, 'error')
-      // throw err
+      this.updateSession({ chatId, status: 'failed' })
     }
   }
 
@@ -825,9 +846,36 @@ export class RuntimeController extends EventEmitter {
     cfg: AgentConfig,
     componentHash: string,
   ): Promise<void> {
+    // Manual chats (no issue) skip issue fetch, context doc, and worktree restore
+    if (!componentHash) {
+      this.chatContexts.set(chatId, {
+        chatId,
+        history: [],
+        abortController: new AbortController(),
+        isProcessing: false,
+      })
+
+      const summary: SessionSummary = {
+        chatId,
+        issueId: '',
+        issueTitle: chat.title ?? 'Chat',
+        issueService: '',
+        status: 'pending',
+        startedAt: new Date(chat.createdAt ?? Date.now()),
+      }
+      const exists = this._state.sessions.some((s) => s.chatId === chatId)
+      this.setState(exists ? upsertSession(this._state, summary) : addSession(this._state, summary))
+
+      const detail: SessionDetail = { ...summary, hasMore: false, messages: [] }
+      this.sessionDetails.set(chatId, detail)
+      this.emit('session-detail', chatId, { ...detail })
+      this.log('info', `Manual chat session registered: ${chatId}`)
+      return
+    }
+
     // Fetch the real issue from the API; fall back to a minimal stub if unavailable
     let issue: Issue
-    if (componentHash && cfg.workspace && cfg.project) {
+    if (cfg.workspace && cfg.project) {
       try {
         const fetched = await this.radar!.fetchIssueByComponentHash(cfg.workspace, cfg.project, componentHash)
         issue = fetched ?? this.makeStubIssue(chatId, componentHash, chat.title ?? 'Unknown issue', cfg)
@@ -903,40 +951,38 @@ export class RuntimeController extends EventEmitter {
       worktreeDir: restoredWorktreeDir,
     })
 
-    if (componentHash) {
-      const tuiStatus = toSessionStatus(chat.status)
+    const tuiStatus = toSessionStatus(chat.status)
 
-      const summary: SessionSummary = {
-        chatId,
-        issueId: componentHash,
-        issueTitle: issue.title,
-        issueService: issue.service.serviceName,
-        status: tuiStatus,
-        startedAt: new Date(chat.createdAt ?? Date.now()),
-      }
-      const exists = this._state.sessions.some((s) => s.chatId === chatId)
-      this.setState(exists ? upsertSession(this._state, summary) : addSession(this._state, summary))
-
-      const dirs = [cfg.dir, restoredWorktreeDir].filter(Boolean) as string[]
-      const sessionMessages: SessionMessage[] = apiMessages.map((m) => ({
-        id: m.id ?? m._id ?? generateMessageId(),
-        role: m.role,
-        content: m.content ? sanitizePaths(m.content, dirs) : '',
-        activity: m.activity,
-        agentName: m.agentName,
-        attachments: m.attachments,
-        toolCalls: m.toolCalls?.map((tc: AgentToolCall) => ({
-          ...tc,
-          input: sanitizeValue(tc.input, dirs) as Record<string, unknown>,
-          output: tc.output ? (sanitizeValue(tc.output, dirs) as Record<string, unknown>) : undefined,
-        })),
-        createdAt: new Date(m.createdAt ?? Date.now()),
-      }))
-
-      const detail: SessionDetail = { ...summary, hasMore, messages: sessionMessages }
-      this.sessionDetails.set(chatId, detail)
-      this.emit('session-detail', chatId, { ...detail })
+    const summary: SessionSummary = {
+      chatId,
+      issueId: componentHash,
+      issueTitle: chat.title ?? issue.title ?? 'Chat',
+      issueService: issue.service.serviceName,
+      status: tuiStatus,
+      startedAt: new Date(chat.createdAt ?? Date.now()),
     }
+    const exists = this._state.sessions.some((s) => s.chatId === chatId)
+    this.setState(exists ? upsertSession(this._state, summary) : addSession(this._state, summary))
+
+    const dirs = [cfg.dir, restoredWorktreeDir].filter(Boolean) as string[]
+    const sessionMessages: SessionMessage[] = apiMessages.map((m) => ({
+      id: m.id ?? m._id ?? generateMessageId(),
+      role: m.role,
+      content: m.content ? sanitizePaths(m.content, dirs) : '',
+      activity: m.activity,
+      agentName: m.agentName,
+      attachments: m.attachments,
+      toolCalls: m.toolCalls?.map((tc: AgentToolCall) => ({
+        ...tc,
+        input: sanitizeValue(tc.input, dirs) as Record<string, unknown>,
+        output: tc.output ? (sanitizeValue(tc.output, dirs) as Record<string, unknown>) : undefined,
+      })),
+      createdAt: new Date(m.createdAt ?? Date.now()),
+    }))
+
+    const detail: SessionDetail = { ...summary, hasMore, messages: sessionMessages }
+    this.sessionDetails.set(chatId, detail)
+    this.emit('session-detail', chatId, { ...detail })
 
     this.log('info', `Session restored: ${chatId} (${history.length} messages)`)
 
