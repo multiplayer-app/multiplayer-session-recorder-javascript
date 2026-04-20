@@ -22,6 +22,7 @@ const isWeb = Platform.OS === 'web';
 export class ScreenRecorder implements EventRecorder {
   private config?: RecorderConfig;
   private isRecording = false;
+  private generation = 0;
   private isBufferOnlyMode = false;
   private needsFullSnapshot = true;
   private events: ScreenEvent[] = [];
@@ -60,6 +61,7 @@ export class ScreenRecorder implements EventRecorder {
 
   start(): void {
     this.isRecording = true;
+    this.generation++;
     this.needsFullSnapshot = true;
     this.events = [];
     this.captureCount = 0;
@@ -76,6 +78,7 @@ export class ScreenRecorder implements EventRecorder {
 
   stop(): void {
     this.isRecording = false;
+    this.generation++;
     this._stopPeriodicCapture();
     this._stopBufferSnapshotInterval();
     // Screen recording stopped
@@ -164,8 +167,14 @@ export class ScreenRecorder implements EventRecorder {
   private async _captureScreen(timestamp?: number): Promise<void> {
     if (!this.isRecording || this.captureCount >= this.maxCaptures) return;
 
+    // Capture before any await so we can detect a stop/restart landing
+    // on top of this in-flight capture. A post-await generation mismatch
+    // means the recorder was restarted — publishing would mix node IDs.
+    const gen = this.generation;
+
     try {
       const base64Image = await this._captureScreenBase64();
+      if (gen !== this.generation) return;
 
       if (base64Image) {
         // Check if screen has changed by comparing with previous capture

@@ -694,6 +694,11 @@ class SessionRecorder
     this._socketService.unsubscribeFromSession(true);
     this._tracer.stop();
     this._recorder.stop();
+    // Each recorder start assigns fresh node IDs, so the next buffer
+    // segment must not carry events from the previous generation. The
+    // crash buffer's opChain queues this clear before any subsequent
+    // appendEvent, so the fresh FullSnapshot can't be wiped.
+    void this._crashBuffer?.clear();
     this._startBufferOnlyRecording();
   }
 

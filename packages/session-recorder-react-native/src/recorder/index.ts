@@ -12,6 +12,7 @@ import { NavigationRecorder } from './navigationRecorder';
 
 export class RecorderReactNativeSDK implements EventRecorder {
   private isRecording = false;
+  private generation = 0;
   private config?: RecorderConfig;
   private screenRecorder: ScreenRecorder;
   private gestureRecorder: GestureRecorder;
@@ -59,6 +60,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
     this.sessionId = sessionId;
     this.sessionType = sessionType;
     this.isRecording = true;
+    this.generation++;
 
     // Emit recording started meta event
 
@@ -80,10 +82,21 @@ export class RecorderReactNativeSDK implements EventRecorder {
 
   stop(): void {
     this.isRecording = false;
+    this.generation++;
     this.gestureRecorder.stop();
     this.navigationRecorder.stop();
     this.screenRecorder.stop();
     this.socketService?.close();
+  }
+
+  /**
+   * Current recorder generation. Capture at the start of an async
+   * capture/emit and re-check before publishing the event; a mismatch
+   * means the recorder was stopped/restarted mid-flight and the event
+   * would bleed across sessions (different node-id mirrors).
+   */
+  getGeneration(): number {
+    return this.generation;
   }
 
   setNavigationRef(ref: any): void {

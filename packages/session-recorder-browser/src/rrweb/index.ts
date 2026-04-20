@@ -17,6 +17,7 @@ interface IntervalManager {
 
 export class RecorderBrowserSDK {
   private stopFn?: () => void
+  private generation = 0
   private config?: SessionRecorderConfigs
   private socketService?: SocketService
   private crashBuffer?: CrashBuffer
@@ -61,14 +62,16 @@ export class RecorderBrowserSDK {
     }
 
     this.startedAt = new Date().toISOString()
+    const gen = ++this.generation
 
     this.stopFn = record({
       ...this._buildRecordOptions(),
       emit: async (event: eventWithTime) => {
+        if (gen !== this.generation) return
         const ts = event.timestamp
 
         if (!sessionId) {
-          await this._handleBufferOnlyEvent(event, ts)
+          await this._handleBufferOnlyEvent(event, ts, gen)
           return
         }
 
@@ -86,6 +89,7 @@ export class RecorderBrowserSDK {
   async restart(sessionId: string | null, sessionType: SessionType): Promise<void> {
     try {
       this.stopFn?.()
+      this.stopFn = undefined
       this.start(sessionId, sessionType)
     } catch (_e) {
       // Silent failure
@@ -98,6 +102,7 @@ export class RecorderBrowserSDK {
   stop(): void {
     this.stopFn?.()
     this.stopFn = undefined
+    this.generation++
     if (!this.config?.useWebsocket) {
       this.socketService?.close()
     }
@@ -141,13 +146,14 @@ export class RecorderBrowserSDK {
    * @param event - Event.
    * @param ts - Timestamp.
    */
-  private async _handleBufferOnlyEvent(event: eventWithTime, ts: number): Promise<void> {
+  private async _handleBufferOnlyEvent(event: eventWithTime, ts: number, gen: number): Promise<void> {
     if (!this.crashBuffer) return
 
     try {
       this._applyConsoleMasking(event)
       const packedEvent = pack(event)
       this.stoppedAt = new Date(ts).toISOString()
+      if (gen !== this.generation) return
       await this.crashBuffer.appendEvent({
         ts,
         isFullSnapshot: event.type === EventType.FullSnapshot,

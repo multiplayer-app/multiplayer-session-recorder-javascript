@@ -773,7 +773,11 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     this._tracer.stop()
     this._recorder.stop()
     this._navigationRecorder.stop()
-    this._startBufferOnlyRecording()
+    // rrweb assigns new node IDs on each record() call, so the next buffer
+    // segment must not carry events from the previous generation. Await the
+    // clear so its IDB tx can't race past the fresh FullSnapshot.
+    const cleared = this._crashBuffer ? this._crashBuffer.clear() : Promise.resolve()
+    void cleared.catch(() => undefined).then(() => this._startBufferOnlyRecording())
   }
 
   /**
