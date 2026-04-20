@@ -169,7 +169,14 @@ function ContextSidebarImpl({
         <SectionTitle title='Session' />
         {workspace && <InfoRow label='Workspace' value={workspace} />}
         {project && <InfoRow label='Project' value={project} />}
-        <InfoRow label='Service:' value={session.issueService} />
+        {session.issueService && <InfoRow label='Service:' value={session.issueService} />}
+        {session.agentName && <InfoRow label='Agent:' value={session.agentName} />}
+        {session.model && <InfoRow label='Model:' value={session.model} />}
+        {session.environmentName && <InfoRow label='Environment:' value={session.environmentName} />}
+        {session.releaseVersion && <InfoRow label='Release:' value={session.releaseVersion} />}
+        {session.debugSessionId && (
+          <InfoRow label='Debug Session:' value={session.debugSessionId.slice(-8)} />
+        )}
         {session.branchName && (
           <box flexDirection='column'>
             <text fg='#6b7280'>Branch:</text>
@@ -184,6 +191,15 @@ function ContextSidebarImpl({
                 ? session.prUrl.slice(0, SIDEBAR_WIDTH - 9) + '...'
                 : session.prUrl}
             </text>
+          </box>
+        )}
+        {session.codeChanges && (
+          <box flexDirection='column'>
+            <text fg='#6b7280'>Changes:</text>
+            <box flexDirection='row' gap={1}>
+              <text fg='#10b981'>+{session.codeChanges.additions}</text>
+              <text fg='#ef4444'>-{session.codeChanges.deletions}</text>
+            </box>
           </box>
         )}
         {session.error && (

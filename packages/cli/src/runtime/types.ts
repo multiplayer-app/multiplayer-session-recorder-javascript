@@ -36,6 +36,13 @@ export interface SessionMessage {
 export interface SessionDetail extends SessionSummary {
   messages: SessionMessage[]
   hasMore?: boolean
+  model?: string
+  agentName?: string
+  environmentName?: string
+  releaseVersion?: string
+  debugSessionId?: string
+  codeChanges?: { additions: number; deletions: number }
+  detailLoaded?: boolean
 }
 
 export interface RateLimitState {

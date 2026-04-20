@@ -196,6 +196,15 @@ export interface AgentChat {
       _id: string
     }
   }
+  git?: {
+    branchName?: string
+    branchUrl?: string
+    prUrl?: string
+    codeChanges?: {
+      additions: number
+      deletions: number
+    }
+  }
   createdAt?: string
   updatedAt?: string
 }

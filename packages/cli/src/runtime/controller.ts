@@ -303,10 +303,13 @@ export class RuntimeController extends EventEmitter {
 
     radar.onChatUpdate((chat) => {
       this.log('info', `chat:update received: id=${chat._id} status=${chat.status}`)
-      if (!chat._id || !chat.status) return
-      this.emit('chat-status', chat._id, chat.status)
+      if (!chat._id) return
+      if (chat.status) this.emit('chat-status', chat._id, chat.status)
       const current = this._state.sessions.find((s) => s.chatId === chat._id)
       if (!current) return
+      // Merge rich fields (model, agent, env, release, git, etc.) into cached detail
+      this.mergeChatIntoDetail(chat._id, chat)
+      if (!chat.status) return
       const nextStatus = toSessionStatus(chat.status)
       // Don't let a stale `processing`/`streaming` event regress a session the
       // local controller has already advanced to `pushing`/`done`/`failed`/`aborted`.
@@ -534,6 +537,68 @@ export class RuntimeController extends EventEmitter {
       this.log('error', `Failed to load agent chats: ${getErrorMessage(err)}`)
       return false
     }
+  }
+
+  /**
+   * Fetch full chat details from the single-chat endpoint to fill in fields
+   * that the list endpoint omits (model, agentName, environment, release,
+   * debugSession). Skips if already loaded for this chatId.
+   */
+  async loadChatDetail(chatId: string): Promise<void> {
+    const cfg = this._config
+    if (!this.radar || !cfg.workspace || !cfg.project) return
+    const detail = this.sessionDetails.get(chatId)
+    if (!detail || detail.detailLoaded) return
+
+    try {
+      const chat = await this.radar.fetchChat(cfg.workspace, cfg.project, chatId)
+      this.mergeChatIntoDetail(chatId, chat, { markLoaded: true })
+    } catch (err: unknown) {
+      this.log('error', `Failed to load chat detail for ${chatId}: ${getErrorMessage(err)}`)
+    }
+  }
+
+  /**
+   * Merge an AgentChat payload (from fetchChat or chat:update socket event)
+   * into the cached SessionDetail. Overwrites rich fields (model, agent,
+   * environment, release, debugSession, codeChanges) and fills in gaps for
+   * fields that may already have locally-authoritative values (title, branch,
+   * prUrl, componentHash, service).
+   */
+  private mergeChatIntoDetail(
+    chatId: string,
+    chat: import('../types/index.js').AgentChat,
+    opts: { markLoaded?: boolean } = {},
+  ): void {
+    const detail = this.sessionDetails.get(chatId)
+    if (!detail) return
+
+    const update: Partial<SessionDetail> = {
+      model: chat.model ?? detail.model,
+      agentName: chat.agentName ?? detail.agentName,
+      environmentName: chat.metadata?.environment?.name ?? detail.environmentName,
+      releaseVersion: chat.metadata?.release?.version ?? detail.releaseVersion,
+      debugSessionId: chat.metadata?.debugSession?._id ?? detail.debugSessionId,
+      codeChanges: chat.git?.codeChanges ?? detail.codeChanges,
+    }
+    if (opts.markLoaded) update.detailLoaded = true
+    if (!detail.issueService && chat.metadata?.component?.name) {
+      update.issueService = chat.metadata.component.name
+    }
+    if (!detail.issueId && chat.metadata?.issue?.componentHash) {
+      update.issueId = chat.metadata.issue.componentHash
+    }
+    if ((!detail.issueTitle || detail.issueTitle === 'Untitled') && chat.title) {
+      update.issueTitle = chat.title
+    }
+    if (!detail.branchName && chat.git?.branchName) {
+      update.branchName = chat.git.branchName
+    }
+    if (!detail.prUrl && chat.git?.prUrl) {
+      update.prUrl = chat.git.prUrl
+    }
+    Object.assign(detail, update)
+    this.emit('session-detail', chatId, { ...detail })
   }
 
   // ─── Internal state helpers ──────────────────────────────────────────────────

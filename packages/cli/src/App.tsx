@@ -104,8 +104,11 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
 
   const handleLoadMessages = useCallback((chatId: string, before?: string) => {
     void controllerRef.current?.loadSessionMessages(chatId, before)
-    // Sync chat status on initial load (not pagination)
-    if (!before) void syncChatStatus(chatId)
+    // Sync chat status and fetch full chat detail on initial load (not pagination)
+    if (!before) {
+      void syncChatStatus(chatId)
+      void controllerRef.current?.loadChatDetail(chatId)
+    }
   }, [syncChatStatus])
 
   const handleSendMessage = useCallback((chatId: string, content: string) => {
