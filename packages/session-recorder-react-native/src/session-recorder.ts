@@ -338,8 +338,12 @@ class SessionRecorder
   }
 
   private _startBufferOnlyRecording(): void {
+    // `this.sessionId` is intentionally NOT checked: `_stop()` runs before
+    // `_clearSession()` (the stopSession API call sits between them), so the
+    // buffer-restart chain fires while sessionId is still set. Bailing here
+    // meant the recorder never restarted after manual stop, leaving no
+    // FullSnapshot and silently breaking exception-triggered flushBuffer.
     if (
-      this.sessionId ||
       !this._crashBuffer ||
       !this._configs?.buffering?.enabled ||
       this.sessionState !== SessionState.stopped
@@ -475,18 +479,18 @@ class SessionRecorder
   public async stop(comment?: string): Promise<void> {
     try {
       this._checkOperation('stop');
+      const sid = this.sessionId;
       this._stop();
       if (this.continuousRecording) {
-        await this._apiService.stopContinuousDebugSession(this.sessionId!);
+        await this._apiService.stopContinuousDebugSession(sid!);
         this.sessionType = SessionType.MANUAL;
       } else {
         const request: StopSessionRequest = {
           sessionAttributes: { comment },
           stoppedAt: Date.now(),
         };
-        await this._apiService.stopSession(this.sessionId!, request);
+        await this._apiService.stopSession(sid!, request);
       }
-      this._clearSession();
     } catch (error: any) {
       this.error = error.message;
     }
@@ -522,14 +526,14 @@ class SessionRecorder
   public async cancel(): Promise<void> {
     try {
       this._checkOperation('cancel');
+      const sid = this.sessionId;
       this._stop();
       if (this.continuousRecording) {
-        await this._apiService.stopContinuousDebugSession(this.sessionId!);
+        await this._apiService.stopContinuousDebugSession(sid!);
         this.sessionType = SessionType.MANUAL;
       } else {
-        await this._apiService.cancelSession(this.sessionId!);
+        await this._apiService.cancelSession(sid!);
       }
-      this._clearSession();
     } catch (error: any) {
       this.error = error.message;
     }
@@ -694,6 +698,13 @@ class SessionRecorder
     this._socketService.unsubscribeFromSession(true);
     this._tracer.stop();
     this._recorder.stop();
+    // Clear session identity synchronously. The buffer-restart path and the
+    // error-span-appended listener both gate on `this.sessionId === null`;
+    // deferring this to `_clearSession()` (after the network stopSession
+    // call) left them seeing a stale id and silently no-oping. Callers that
+    // need the id for the stop/cancel API must capture it before _stop().
+    this.session = null;
+    this.sessionId = null;
     // Each recorder start assigns fresh node IDs, so the next buffer
     // segment must not carry events from the previous generation. The
     // crash buffer's opChain queues this clear before any subsequent

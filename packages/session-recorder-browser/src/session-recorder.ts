@@ -300,12 +300,14 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   }
 
   private _startBufferOnlyRecording(): void {
-    if (
-      this.sessionId ||
-      !this._crashBuffer ||
-      !this._configs?.buffering?.enabled ||
-      this.sessionState !== SessionState.stopped
-    ) {
+    // NOTE: `this.sessionId` is intentionally NOT checked. `_stop()` runs
+    // before `_clearSession()` (the stopSession API call sits between them),
+    // so the clear().then() chain fires while sessionId is still set.
+    // Bailing on sessionId here meant rrweb never restarted after manual
+    // stop, leaving the buffer with no FullSnapshot and silently breaking
+    // exception-triggered flushBuffer. `_recorder.restart(null, ...)` passes
+    // null explicitly, so it's safe regardless of `this.sessionId`.
+    if (!this._crashBuffer || !this._configs?.buffering?.enabled || this.sessionState !== SessionState.stopped) {
       return
     }
     void this._recorder.restart(null, SessionType.MANUAL)
@@ -381,19 +383,19 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   public async stop(comment?: string): Promise<void> {
     try {
       this._checkOperation('stop')
+      const sid = this.sessionId
       this._stop()
       if (this.continuousRecording) {
-        await this._apiService.stopContinuousDebugSession(this.sessionId!)
+        await this._apiService.stopContinuousDebugSession(sid!)
         this.sessionType = SessionType.MANUAL
       } else {
         const request: StopSessionRequest = {
           sessionAttributes: { comment },
           stoppedAt: this._recorder.stoppedAt,
         }
-        const response = await this._apiService.stopSession(this.sessionId!, request)
+        const response = await this._apiService.stopSession(sid!, request)
         recorderEventBus.emit(SESSION_RESPONSE, response)
       }
-      this._clearSession()
     } catch (error: any) {
       this.error = error.message
     }
@@ -429,14 +431,14 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   public async cancel(): Promise<void> {
     try {
       this._checkOperation('cancel')
+      const sid = this.sessionId
       this._stop()
       if (this.continuousRecording) {
-        await this._apiService.stopContinuousDebugSession(this.sessionId!)
+        await this._apiService.stopContinuousDebugSession(sid!)
         this.sessionType = SessionType.MANUAL
       } else {
-        await this._apiService.cancelSession(this.sessionId!)
+        await this._apiService.cancelSession(sid!)
       }
-      this._clearSession()
     } catch (error: any) {
       this.error = error.message
     }
@@ -773,6 +775,13 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     this._tracer.stop()
     this._recorder.stop()
     this._navigationRecorder.stop()
+    // Clear session identity synchronously. The buffer-restart chain and the
+    // error-span-appended listener both gate on `this.sessionId === null`;
+    // deferring this to `_clearSession()` (after the network stopSession
+    // call) left them seeing a stale id and silently no-oping. Callers that
+    // need the id for the stop/cancel API must capture it before _stop().
+    this.session = null
+    this.sessionId = null
     // rrweb assigns new node IDs on each record() call, so the next buffer
     // segment must not carry events from the previous generation. Await the
     // clear so its IDB tx can't race past the fresh FullSnapshot.
