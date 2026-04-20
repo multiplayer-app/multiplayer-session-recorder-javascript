@@ -107,7 +107,7 @@ const computeAvailableModels = (config: AgentConfig): string[] => {
   // or when model is already an Anthropic model
   if (!config.modelUrl || config.model?.startsWith('claude')) {
     if (config.modelKey || config.model?.startsWith('claude')) {
-      models.push('claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5')
+      models.push('claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5')
     }
   }
 
