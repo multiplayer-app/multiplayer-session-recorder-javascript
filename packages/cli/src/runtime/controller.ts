@@ -1604,7 +1604,6 @@ export class RuntimeController extends EventEmitter {
       this._config.modelUrl,
     )
 
-    this.emitToRadar(chatId, 'Creating pull request...', 'assistant', 'git')
     const prUrl = await PrService.createPullRequest(workDir, this._config, branchName, prContent.title, prContent.body)
 
     if (prUrl) {
@@ -1613,10 +1612,6 @@ export class RuntimeController extends EventEmitter {
       this.emitToRadar(chatId, prMsg, 'assistant', 'git')
       this.addSessionMessage(chatId, { role: 'assistant', content: prMsg, activity: 'git' })
       this.updateSession({ chatId, prUrl })
-    } else {
-      const noprMsg = 'Could not create pull request automatically.'
-      this.emitToRadar(chatId, noprMsg, 'assistant', 'git')
-      this.addSessionMessage(chatId, { role: 'assistant', content: noprMsg, activity: 'git' })
     }
 
     this.radar?.emitAgentChatUpdate({
