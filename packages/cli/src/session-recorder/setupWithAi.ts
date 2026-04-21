@@ -69,7 +69,43 @@ export interface SetupResult {
 
 const isAnthropicModel = (model: string): boolean => model.startsWith('claude')
 
-async function generateWithClaudeCli(prompt: string, model: string, cwd: string): Promise<string> {
+export type ProgressFn = (status: string) => void
+
+function describeAssistantBlock(block: any): string | null {
+  if (!block) return null
+  if (block.type === 'text' && typeof block.text === 'string') {
+    const line = block.text.split('\n').map((l: string) => l.trim()).find(Boolean)
+    return line ? line.slice(0, 140) : null
+  }
+  if (block.type === 'tool_use') {
+    const name = block.name as string | undefined
+    const input = (block.input ?? {}) as Record<string, any>
+    switch (name) {
+      case 'Read':
+        return input.file_path ? `Reading ${path.basename(String(input.file_path))}` : 'Reading file'
+      case 'Glob':
+        return input.pattern ? `Searching files: ${input.pattern}` : 'Searching files'
+      case 'Grep':
+        return input.pattern ? `Searching code: ${input.pattern}` : 'Searching code'
+      case 'Bash':
+        return input.description ?? (input.command ? `Running: ${String(input.command).slice(0, 80)}` : 'Running command')
+      case 'Write':
+        return input.file_path ? `Writing ${path.basename(String(input.file_path))}` : 'Writing file'
+      case 'Edit':
+        return input.file_path ? `Editing ${path.basename(String(input.file_path))}` : 'Editing file'
+      default:
+        return name ? `Running ${name}` : null
+    }
+  }
+  return null
+}
+
+async function generateWithClaudeCli(
+  prompt: string,
+  model: string,
+  cwd: string,
+  onProgress?: ProgressFn,
+): Promise<string> {
   let responseText = ''
 
   for await (const message of query({
@@ -89,6 +125,11 @@ async function generateWithClaudeCli(prompt: string, model: string, cwd: string)
       const event = msg.event
       if (event?.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
         responseText += event.delta.text ?? ''
+      }
+    } else if (msg.type === 'assistant' && onProgress && Array.isArray(msg.message?.content)) {
+      for (const block of msg.message.content) {
+        const status = describeAssistantBlock(block)
+        if (status) onProgress(status)
       }
     } else if (msg.type === 'result' && msg.subtype !== 'success') {
       throw new Error(`Claude Code process exited: ${msg.subtype}`)
@@ -216,6 +257,29 @@ function buildSetupPrompt(stack: DetectedStack, readme: string, projectContext: 
 ## Your Task
 
 First ANALYZE the project to understand what's already set up, then generate a setup plan.
+
+## ⚠ CRITICAL: PRESERVE ALL EXISTING CODE — DO NOT REWRITE FILES
+
+This is the single most important rule. Past failures have all been caused by ignoring it.
+
+You are doing a **SURGICAL INTEGRATION**, not a rewrite. The user's app must keep working exactly as it did before, with Multiplayer added on top.
+
+When modifying an existing file:
+- Start from the EXACT current contents shown in "Current Project Files" below.
+- Keep every existing import, hook, component, prop, route, handler, side effect, comment, and blank line.
+- Add ONLY the lines required for Multiplayer integration (imports, an init/provider call, a wrapper, an exception hook). Nothing else.
+- Preserve the file's existing formatting, indentation style, quote style, and import order. Match the surrounding code.
+- Do NOT "clean up", refactor, rename, reorder, modernize, simplify, or "improve" anything you weren't asked to. Resist the urge.
+- Do NOT remove or replace existing providers, error boundaries, routers, layouts, or framework primitives — wrap or compose with them.
+- Do NOT change unrelated logic, types, or business code, even if it looks suboptimal.
+- Do NOT delete code you don't recognize. If you're unsure what something does, KEEP IT and integrate around it.
+- If the existing file is large, you must still output the COMPLETE file (per the "modify" contract) — but the diff between input and your output must be small and limited to the integration.
+
+If you cannot find the existing file content in "Current Project Files", do NOT invent a "modify" change for it — emit a "create" change for a separate new file (e.g. \`src/multiplayer.ts\`) and instruct the user via "steps" to import it from their entry point. Inventing replacement content for a file you can't see is the most damaging failure mode.
+
+If the integration legitimately requires touching a file that has no obvious safe insertion point, prefer:
+1. Creating a new sibling file (provider/wrapper/init module), then
+2. Adding ONE import line + ONE call site to the existing file.
 
 ## Heuristic Detection (may be incomplete — verify by reading the actual files)
 - Framework guess: ${stack.framework}
@@ -396,7 +460,8 @@ Generate code that includes ALL applicable features for the detected stack. Do N
 - Use placeholder value \`YOUR_MULTIPLAYER_API_KEY\` for the Multiplayer API key inside the \`.env*\` fileChange; the CLI will substitute the real generated key after the plan runs. Do NOT put this placeholder anywhere else (not in source code, not in install commands).
 - Also list the same env vars in the envVars array (for display/audit), using \`YOUR_MULTIPLAYER_API_KEY\` as the value for the API key.
 - Use the project's package manager: ${stack.packageManager}
-- If modifying an existing file, include the COMPLETE file content after changes
+- If modifying an existing file, include the COMPLETE file content after changes — but the only difference vs. the original MUST be the Multiplayer-specific additions (see the "PRESERVE ALL EXISTING CODE" section above). Never rewrite, refactor, or reformat unrelated code.
+- Prefer creating a new dedicated file (e.g. \`src/multiplayer.ts\`, \`src/instrumentation.ts\`) and importing it from the entry point with ONE added line, instead of restructuring an existing file.
 - Set application name and version from package.json
 - For backend: if the project already has OTel, ADD a Multiplayer exporter alongside — NEVER remove or replace existing exporters
 - Install ALL required peer dependencies (e.g. @opentelemetry/api for frontend, auto-instrumentations for backend)
@@ -550,6 +615,7 @@ export async function classifyStacksWithAi(
   model: string,
   modelKey: string,
   modelUrl?: string,
+  onProgress?: ProgressFn,
 ): Promise<ClassifyResult> {
   if (stacks.length === 0) return { success: true, classifications: [] }
 
@@ -570,7 +636,7 @@ export async function classifyStacksWithAi(
         const block = response.content[0]
         responseText = block?.type === 'text' ? block.text : ''
       } else {
-        responseText = await generateWithClaudeCli(prompt, model, process.cwd())
+        responseText = await generateWithClaudeCli(prompt, model, process.cwd(), onProgress)
       }
     } else {
       const client = new OpenAI({
@@ -644,6 +710,7 @@ export async function generateSetupPlan(
   model: string,
   modelKey: string,
   modelUrl?: string,
+  onProgress?: ProgressFn,
 ): Promise<SetupResult> {
   const readme = getReadmeContent(stack.sdkPackage, stack.framework)
   const projectContext = gatherProjectContext(stack)
@@ -663,7 +730,7 @@ export async function generateSetupPlan(
         const block = response.content[0]
         responseText = block?.type === 'text' ? block.text : ''
       } else {
-        responseText = await generateWithClaudeCli(prompt, model, stack.root)
+        responseText = await generateWithClaudeCli(prompt, model, stack.root, onProgress)
       }
     } else {
       const client = new OpenAI({

@@ -21,7 +21,7 @@ import {
   injectApiKeysIntoPlan,
   type SetupPlan
 } from '../../session-recorder/setupWithAi.js'
-import { Divider, clickHandler, FooterHints, ActionButton, AnimatedLoading } from '../shared/index.js'
+import { Divider, clickHandler, FooterHints, ActionButton, AnimatedLoading, AiStatusLine } from '../shared/index.js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -237,30 +237,30 @@ function AlreadyDoneView({ stacks, onContinue }: { stacks: DetectedStack[]; onCo
   ) as ReactElement
 }
 
-function ClassifyingView({ onSkip }: { onSkip: () => void }): ReactElement {
+function ClassifyingView({ aiStatus, onSkip }: { aiStatus: string; onSkip: () => void }): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
       <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
-      <AnimatedLoading
-        title='Analyzing your project structure'
-        subtitle='Determining which packages need the SDK...'
-        color='#a78bfa'
-      />
+      <AiStatusLine title='Analyzing your project structure' status={aiStatus} color='#a78bfa' />
       <ActionButton label='Skip' icon='⏭' iconColor='#6b7280' onClick={onSkip} />
       <FooterHints hints='Esc skip' />
     </box>
   ) as ReactElement
 }
 
-function AiPlanningView({ stackLabel, onSkip }: { stackLabel: string; onSkip: () => void }): ReactElement {
+function AiPlanningView({
+  stackLabel,
+  aiStatus,
+  onSkip
+}: {
+  stackLabel: string
+  aiStatus: string
+  onSkip: () => void
+}): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
       <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
-      <AnimatedLoading
-        title='Preparing your setup plan'
-        subtitle={`Reading integration guide + project files for ${stackLabel}`}
-        color='#f59e0b'
-      />
+      <AiStatusLine title={`Preparing setup plan for ${stackLabel}`} status={aiStatus} color='#f59e0b' />
       <ActionButton label='Skip' icon='⏭' iconColor='#6b7280' onClick={onSkip} />
       <FooterHints hints='Esc skip' />
     </box>
@@ -433,12 +433,7 @@ function PreviewView({
               </text>
               {plan.warnings.map((warning, i) => (
                 <box key={i} flexDirection='row' gap={1}>
-                  <text flexShrink={0} fg='#f59e0b'>
-                    ⚠
-                  </text>
-                  <box flexGrow={1} flexShrink={1}>
-                    <text fg='#f59e0b'>{warning}</text>
-                  </box>
+                  <text fg='#f59e0b'>{warning}</text>
                 </box>
               ))}
             </box>
@@ -718,6 +713,7 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
   const [plan, setPlan] = useState<SetupPlan | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [applyLog, setApplyLog] = useState<string[]>([])
+  const [aiStatus, setAiStatus] = useState('')
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const [selectedStacks, setSelectedStacks] = useState<Set<string>>(new Set())
@@ -801,8 +797,17 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
   const runAiClassification = async (detected: DetectedStack[]) => {
     const controller = new AbortController()
     abortRef.current = controller
+    setAiStatus('')
     try {
-      const result = await classifyStacksWithAi(detected, config.model!, config.modelKey ?? '', config.modelUrl)
+      const result = await classifyStacksWithAi(
+        detected,
+        config.model!,
+        config.modelKey ?? '',
+        config.modelUrl,
+        (s) => {
+          if (!controller.signal.aborted) setAiStatus(s)
+        }
+      )
 
       if (controller.signal.aborted) return
 
@@ -844,6 +849,7 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
 
     setPhase('ai-planning')
     setError(null)
+    setAiStatus('')
 
     try {
       // For now, plan for the first selected stack
@@ -852,7 +858,9 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
 
       // Find README relative to project dir (the CLI ships with SDKs in the monorepo)
       // For deployed CLI, READMEs would be bundled or fetched
-      const result = await generateSetupPlan(stack, config.model, config.modelKey ?? '', config.modelUrl)
+      const result = await generateSetupPlan(stack, config.model, config.modelKey ?? '', config.modelUrl, (s) => {
+        if (!controller.signal.aborted) setAiStatus(s)
+      })
 
       if (controller.signal.aborted) return
 
@@ -1046,13 +1054,15 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
     case 'scanning':
       return (<ScanningView />) as ReactElement
     case 'classifying':
-      return (<ClassifyingView onSkip={handleSkip} />) as ReactElement
+      return (<ClassifyingView aiStatus={aiStatus} onSkip={handleSkip} />) as ReactElement
     case 'no-stacks':
       return (<NoStacksView />) as ReactElement
     case 'already-done':
       return (<AlreadyDoneView stacks={stacks} onContinue={handleContinue} />) as ReactElement
     case 'ai-planning':
-      return (<AiPlanningView stackLabel={needsSetup[0]?.label ?? 'detected stack'} onSkip={handleSkip} />) as ReactElement
+      return (
+        <AiPlanningView stackLabel={needsSetup[0]?.label ?? 'detected stack'} aiStatus={aiStatus} onSkip={handleSkip} />
+      ) as ReactElement
     case 'preview':
       return plan
         ? ((
