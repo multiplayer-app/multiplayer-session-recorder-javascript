@@ -874,23 +874,11 @@ function SessionDetailPaneImpl({
           </box>
           <text fg={color}> {label}</text>
         </box>
-        <box flexDirection='row' gap={1}>
-          {session.issueService ? (
+        {session.issueService && (
+          <box flexDirection='row'>
             <text attributes={tuiAttrs({ dim: true })}>{collapseForSingleLine(session.issueService)}</text>
-          ) : null}
-          {session.branchName && (
-            <>
-              {session.issueService ? <text attributes={tuiAttrs({ dim: true })}>·</text> : null}
-              <text fg='#6366f1'>{session.branchName}</text>
-            </>
-          )}
-          {session.prUrl && (
-            <>
-              <text attributes={tuiAttrs({ dim: true })}>·</text>
-              <text fg='#22d3ee'>{session.prUrl}</text>
-            </>
-          )}
-        </box>
+          </box>
+        )}
         {session.error && <text fg='#ef4444'>✗ {session.error}</text>}
       </box>
 

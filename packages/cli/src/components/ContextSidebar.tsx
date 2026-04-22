@@ -1,5 +1,7 @@
 import type { ReactElement } from 'react'
 import { tuiAttrs } from '../lib/tuiAttrs.js'
+import { openUrl } from '../lib/openUrl.js'
+import { clickHandler } from './shared/clickHandler.js'
 import type { SessionDetail, SessionStatus, RateLimitState } from '../runtime/types.js'
 import type { AgentChatStatus } from '../types/index.js'
 
@@ -184,7 +186,7 @@ function ContextSidebarImpl({
           </box>
         )}
         {session.prUrl && (
-          <box flexDirection='column'>
+          <box flexDirection='column' onMouseUp={clickHandler(() => openUrl(session.prUrl!))}>
             <text fg='#6b7280'>PR:</text>
             <text fg='#818cf8' attributes={tuiAttrs({ underline: true })}>
               {session.prUrl.length > SIDEBAR_WIDTH - 6
