@@ -70,4 +70,9 @@ if (!bin) {
   process.exit(1)
 }
 
-execFileSync(bin, process.argv.slice(2), { stdio: 'inherit' })
+try {
+  execFileSync(bin, process.argv.slice(2), { stdio: 'inherit' })
+} catch (err) {
+  if (err.status !== undefined) process.exit(err.status)
+  throw err
+}

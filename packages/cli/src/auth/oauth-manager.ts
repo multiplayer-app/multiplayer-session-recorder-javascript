@@ -424,7 +424,6 @@ export class OAuthManager {
 
         const isExpiredSecret =
           errorData.error === 'invalid_client' ||
-          errorData.error_description?.toLowerCase().includes('expired') ||
           errorData.error_description?.toLowerCase().includes('client secret')
 
         if (isExpiredSecret && onExpiredSecret) {
@@ -500,7 +499,6 @@ export class OAuthManager {
       this.tokenStore.storeAuthData(authData)
       return tokenData.access_token
     } catch (error) {
-      this.logout()
       throw error
     }
   }
