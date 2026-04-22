@@ -394,7 +394,11 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
       </box>
 
       {/* Footer */}
-      <FooterHints hints='↑↓ navigate ← back →/Enter open Tab sort ⇧Tab reverse' paddingLeft={1} marginTop={1} />
+      <FooterHints
+        hints='↑↓ navigate · ← back · →/Enter open · Tab sort · ⇧Tab reverse'
+        paddingLeft={1}
+        marginTop={1}
+      />
     </box>
   ) as ReactElement
 }
