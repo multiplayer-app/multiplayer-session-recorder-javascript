@@ -14,7 +14,7 @@ const WORDMARK_COMPACT = [
   '█   █ █   █ █       █     █   ████  █     █████   █   ████  ████ ',
   '█   █ █   █ █       █     █   █     █     █   █   █   █     █ █  ',
   '█   █ █   █ █       █     █   █     █     █   █   █   █     █  █ ',
-  '█   █  ███  █████   █   █████ █     █████ █   █   █   █████ █   █',
+  '█   █  ███  █████   █   █████ █     █████ █   █   █   █████ █   █'
 ]
 
 function center(input: string, width: number): string {
@@ -35,7 +35,7 @@ export function Logo(): ReactElement {
         <ascii-font font='block' color={BRAND_PRIMARY} text='MULTIPLAYER' />
         <box width='100%' alignItems='center'>
           <text fg={BRAND_ACCENT} attributes={tuiAttrs({ dim: true })}>
-            Automated issue triage, patching, and PR workflow
+            The debugging agent for developers
           </text>
         </box>
       </box>
@@ -51,7 +51,7 @@ export function Logo(): ReactElement {
         </text>
       ))}
       <text fg={BRAND_ACCENT} attributes={tuiAttrs({ dim: true })}>
-        {center('Automated issue triage, patching, and PR workflow', maxWidth)}
+        {center('The debugging agent for developers', maxWidth)}
       </text>
     </box>
   ) as ReactElement
