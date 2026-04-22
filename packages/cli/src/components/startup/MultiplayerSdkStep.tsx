@@ -19,8 +19,49 @@ import {
   applyClassifications,
   createApiKeysForSetup,
   injectApiKeysIntoPlan,
+  type CreatedApiKey,
   type SetupPlan
 } from '../../session-recorder/setupWithAi.js'
+
+// ─── Cross-stack context helpers ─────────────────────────────────────────────
+
+function formatStackPath(stack: DetectedStack): string {
+  return stack.relativePath !== '.' ? stack.relativePath : '(root)'
+}
+
+function buildUpcomingStacksSummary(queue: DetectedStack[], currentIdx: number): string {
+  const upcoming = queue.slice(currentIdx + 1)
+  if (upcoming.length === 0) return ''
+  return upcoming
+    .map((s) => `- ${formatStackPath(s)} — ${s.label} (type: ${s.type}, SDK: ${s.sdkPackage})`)
+    .join('\n')
+}
+
+function buildPriorSummary(plan: SetupPlan, stack: DetectedStack, keys: CreatedApiKey[] | null): string {
+  const path = formatStackPath(stack)
+  const files = plan.fileChanges.length
+    ? plan.fileChanges.map((c) => `  - ${c.filePath} (${c.action}) — ${c.description}`).join('\n')
+    : '  (none)'
+  const envNames = plan.envVars.map((e) => e.name).join(', ') || '(none)'
+  const matching =
+    keys && keys.length > 0
+      ? stack.type === 'backend'
+        ? keys.find((k) => k.stackType === 'backend')
+        : keys.find((k) => k.stackType === 'frontend')
+      : undefined
+  const keyLine = matching
+    ? `- Shared ${matching.stackType} API key: ${matching.name} (reuse this — do not create another)`
+    : '- API key: (none created)'
+  const warnings = plan.warnings.length ? `\n- Warnings surfaced: ${plan.warnings.join(' | ')}` : ''
+  return `### Stack: ${path} — ${stack.label}
+- Framework detected: ${plan.detection.framework}
+- Approach: ${plan.detection.approach}
+- Install ran: ${plan.installCommand || '(none)'}
+- Files applied (paths relative to ${path}):
+${files}
+- Env vars introduced: ${envNames}
+${keyLine}${warnings}`
+}
 import { Divider, clickHandler, FooterHints, ActionButton, AnimatedLoading, AiStatusLine } from '../shared/index.js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -41,6 +82,7 @@ type Phase =
 interface Props {
   config: Partial<AgentConfig>
   onComplete: (updates: Partial<AgentConfig>) => void
+  onBack?: () => void
 }
 
 type Action = 'setup' | 'skip'
@@ -92,13 +134,90 @@ function sdkDisplayName(sdk: DetectedStack['sdkPackage']): string {
   return `multiplayer ${sdk.replace('multiplayer-', '')} SDK`
 }
 
-function ApplyLogView({ applyLog }: { applyLog: string[] }): ReactElement {
+interface LogLineStyle {
+  fg: string
+  bold?: boolean
+  dim?: boolean
+  icon?: string
+  text: string
+}
+
+function classifyLogLine(line: string): LogLineStyle {
+  const headerMatch = line.match(/^── (.+) ──$/)
+  if (headerMatch) {
+    return { fg: '#22d3ee', bold: true, text: headerMatch[1]!, icon: '▸' }
+  }
+  if (line.startsWith('✓')) return { fg: '#10b981', text: line.slice(1).trimStart(), icon: '✓' }
+  if (line.startsWith('✗')) return { fg: '#ef4444', text: line.slice(1).trimStart(), icon: '✗' }
+  if (line.startsWith('⚠')) return { fg: '#f59e0b', text: line.slice(1).trimStart(), icon: '⚠' }
+  if (line.startsWith('◌')) return { fg: '#60a5fa', text: line.slice(1).trimStart(), icon: '◌' }
+  if (line.startsWith('·')) return { fg: '#8b949e', dim: true, text: line.slice(1).trimStart(), icon: '·' }
+  if (line.startsWith('  ')) return { fg: '#8b949e', dim: true, text: line.trimStart() }
+  if (line.endsWith(':') && line.length > 1) return { fg: '#c9d1d9', bold: true, text: line }
+  return { fg: '#e6edf3', text: line }
+}
+
+function LogLineView({ line }: { line: string }): ReactElement {
+  if (line.length === 0) {
+    return (<text> </text>) as ReactElement
+  }
+  const { fg, bold, dim, icon, text } = classifyLogLine(line)
   return (
-    <box flexDirection='column' marginTop={1}>
-      {applyLog.map((line, i) => (
-        <text key={i} fg={line.startsWith('✗') ? '#ef4444' : line.startsWith('✓') ? '#10b981' : '#e6edf3'}>
-          {line}
+    <box flexDirection='row' gap={1}>
+      {icon && (
+        <box width={2} flexShrink={0}>
+          <text fg={fg} attributes={tuiAttrs({ bold })}>
+            {icon}
+          </text>
+        </box>
+      )}
+      <box flexGrow={1} flexShrink={1}>
+        <text fg={fg} attributes={tuiAttrs({ bold, dim })}>
+          {text}
         </text>
+      </box>
+    </box>
+  ) as ReactElement
+}
+
+function parseApplyLog(log: string[]): { header: string | null; lines: string[] }[] {
+  const sections: { header: string | null; lines: string[] }[] = []
+  let current: { header: string | null; lines: string[] } = { header: null, lines: [] }
+  sections.push(current)
+  for (const line of log) {
+    const m = line.match(/^── (.+) ──$/)
+    if (m) {
+      current = { header: m[1]!, lines: [] }
+      sections.push(current)
+    } else {
+      current.lines.push(line)
+    }
+  }
+  // Drop a leading empty preface section if nothing was logged before the first header
+  if (sections[0] && sections[0].header === null && sections[0].lines.length === 0) {
+    sections.shift()
+  }
+  return sections
+}
+
+function ApplyLogView({ applyLog }: { applyLog: string[] }): ReactElement {
+  const sections = parseApplyLog(applyLog)
+  if (sections.length === 0) return (<box />) as ReactElement
+  return (
+    <box flexDirection='column' gap={1}>
+      {sections.map((section, i) => (
+        <box key={i} flexDirection='column'>
+          {section.header && (
+            <box flexDirection='row' gap={1} marginBottom={0}>
+              <text fg='#22d3ee' attributes={tuiAttrs({ bold: true })}>
+                ▸ {section.header}
+              </text>
+            </box>
+          )}
+          {section.lines.map((line, j) => (
+            <LogLineView key={j} line={line} />
+          ))}
+        </box>
       ))}
     </box>
   ) as ReactElement
@@ -116,7 +235,7 @@ function ScanningView(): ReactElement {
   ) as ReactElement
 }
 
-function NoStacksView(): ReactElement {
+function NoStacksView({ onBack }: { onBack?: () => void }): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
       <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
@@ -128,7 +247,7 @@ function NoStacksView(): ReactElement {
         Supported: React, Next.js, Vue, Angular, Svelte, React Native, Express, Fastify, NestJS, Python, Go, Ruby, Java,
         .NET
       </text>
-      <FooterHints hints='Enter continue' marginTop={1} />
+      <FooterHints hints={onBack ? 'Enter continue · Esc back' : 'Enter continue'} marginTop={1} />
     </box>
   ) as ReactElement
 }
@@ -213,7 +332,15 @@ function StackRow({
   ) as ReactElement
 }
 
-function AlreadyDoneView({ stacks, onContinue }: { stacks: DetectedStack[]; onContinue: () => void }): ReactElement {
+function AlreadyDoneView({
+  stacks,
+  onContinue,
+  onBack
+}: {
+  stacks: DetectedStack[]
+  onContinue: () => void
+  onBack?: () => void
+}): ReactElement {
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
   return (
     <box flexDirection='column' gap={1} flexGrow={1}>
@@ -232,18 +359,134 @@ function AlreadyDoneView({ stacks, onContinue }: { stacks: DetectedStack[]; onCo
       </scrollbox>
 
       <ActionButton label='Continue' icon='→' iconColor='#10b981' onClick={onContinue} />
-      <FooterHints hints='Enter continue' />
+      <FooterHints hints={onBack ? 'Enter continue · Esc back' : 'Enter continue'} />
     </box>
   ) as ReactElement
 }
 
-function ClassifyingView({ aiStatus, onSkip }: { aiStatus: string; onSkip: () => void }): ReactElement {
+interface AiPhaseAction {
+  id: 'back' | 'skip'
+  label: string
+  description: string
+  icon: string
+  iconColor: string
+  onSelect: () => void
+}
+
+function buildAiPhaseActions(onSkip: () => void, onBack?: () => void): AiPhaseAction[] {
+  const actions: AiPhaseAction[] = []
+  actions.push({
+    id: 'skip',
+    label: 'Skip for now',
+    description: 'Continue without setting up the SDK',
+    icon: '→',
+    iconColor: '#8b949e',
+    onSelect: onSkip
+  })
+  if (onBack) {
+    actions.push({
+      id: 'back',
+      label: 'Back',
+      description: 'Return to the previous step',
+      icon: '←',
+      iconColor: '#8b949e',
+      onSelect: onBack
+    })
+  }
+  return actions
+}
+
+function AiPhaseActionList({
+  actions,
+  selectedIndex,
+  setSelectedIndex,
+  hoveredRow,
+  setHoveredRow
+}: {
+  actions: AiPhaseAction[]
+  selectedIndex: number
+  setSelectedIndex: (i: number) => void
+  hoveredRow: number | null
+  setHoveredRow: Dispatch<SetStateAction<number | null>>
+}): ReactElement {
+  return (
+    <box
+      border={true}
+      flexShrink={0}
+      flexDirection='column'
+      borderStyle='rounded'
+      borderColor='#30363d'
+      overflow={'hidden' as const}
+    >
+      {actions.map((action, i) => {
+        const isActive = i === selectedIndex
+        const isHovered = hoveredRow === i
+        const isLast = i === actions.length - 1
+        return (
+          <box
+            key={action.id}
+            flexDirection='column'
+            onMouseUp={clickHandler(() => {
+              setSelectedIndex(i)
+              action.onSelect()
+            })}
+            onMouseOver={() => setHoveredRow(i)}
+            onMouseOut={() => setHoveredRow((v) => (v === i ? null : v))}
+          >
+            <box
+              flexDirection='row'
+              paddingLeft={1}
+              paddingRight={1}
+              backgroundColor={isActive ? '#161b22' : isHovered ? '#21262d' : undefined}
+            >
+              <box width={3} flexShrink={0}>
+                <text fg={action.iconColor}>{action.icon}</text>
+              </box>
+              <box flexDirection='column' flexGrow={1} flexShrink={1}>
+                <text fg={isActive ? '#e6edf3' : '#c9d1d9'} attributes={tuiAttrs({ bold: isActive })}>
+                  {action.label}
+                </text>
+                <box flexGrow={1} flexShrink={1}>
+                  <text attributes={tuiAttrs({ dim: true })}>{action.description}</text>
+                </box>
+              </box>
+            </box>
+            {!isLast && <Divider />}
+          </box>
+        )
+      })}
+    </box>
+  ) as ReactElement
+}
+
+interface AiPhaseProps {
+  actions: AiPhaseAction[]
+  selectedIndex: number
+  setSelectedIndex: (i: number) => void
+  hoveredRow: number | null
+  setHoveredRow: Dispatch<SetStateAction<number | null>>
+}
+
+function ClassifyingView({
+  aiStatus,
+  actions,
+  selectedIndex,
+  setSelectedIndex,
+  hoveredRow,
+  setHoveredRow
+}: { aiStatus: string } & AiPhaseProps): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
       <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
       <AiStatusLine title='Analyzing your project structure' status={aiStatus} color='#a78bfa' />
-      <ActionButton label='Skip' icon='⏭' iconColor='#6b7280' onClick={onSkip} />
-      <FooterHints hints='Esc skip' />
+      <AiPhaseActionList
+        actions={actions}
+        selectedIndex={selectedIndex}
+        setSelectedIndex={setSelectedIndex}
+        hoveredRow={hoveredRow}
+        setHoveredRow={setHoveredRow}
+      />
+      <FooterHints hints='↑↓ navigate · Enter confirm · Esc back' />
     </box>
   ) as ReactElement
 }
@@ -251,18 +494,24 @@ function ClassifyingView({ aiStatus, onSkip }: { aiStatus: string; onSkip: () =>
 function AiPlanningView({
   stackLabel,
   aiStatus,
-  onSkip
-}: {
-  stackLabel: string
-  aiStatus: string
-  onSkip: () => void
-}): ReactElement {
+  actions,
+  selectedIndex,
+  setSelectedIndex,
+  hoveredRow,
+  setHoveredRow
+}: { stackLabel: string; aiStatus: string } & AiPhaseProps): ReactElement {
   return (
     <box flexDirection='column' gap={1}>
       <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
       <AiStatusLine title={`Preparing setup plan for ${stackLabel}`} status={aiStatus} color='#f59e0b' />
-      <ActionButton label='Skip' icon='⏭' iconColor='#6b7280' onClick={onSkip} />
-      <FooterHints hints='Esc skip' />
+      <AiPhaseActionList
+        actions={actions}
+        selectedIndex={selectedIndex}
+        setSelectedIndex={setSelectedIndex}
+        hoveredRow={hoveredRow}
+        setHoveredRow={setHoveredRow}
+      />
+      <FooterHints hints='↑↓ navigate · Enter confirm · Esc back' />
     </box>
   ) as ReactElement
 }
@@ -496,39 +745,91 @@ function PreviewView({
   ) as ReactElement
 }
 
+const LOG_SCROLLBAR_STYLE = {
+  wrapperOptions: { flexGrow: 1 },
+  viewportOptions: { flexGrow: 1 },
+  scrollbarOptions: {
+    showArrows: false,
+    trackOptions: {
+      foregroundColor: '#484f58',
+      backgroundColor: '#21262d'
+    }
+  }
+} as const
+
+function LogScrollBox({ applyLog }: { applyLog: string[] }): ReactElement {
+  const ref = useRef<ScrollBoxRenderable | null>(null)
+  return (
+    <box
+      border={true}
+      borderStyle='rounded'
+      borderColor='#30363d'
+      paddingLeft={1}
+      paddingRight={1}
+      flexDirection='column'
+      flexGrow={1}
+      flexShrink={1}
+      overflow={'hidden' as const}
+    >
+      <scrollbox ref={ref} flexGrow={1} scrollY focused={false} style={LOG_SCROLLBAR_STYLE}>
+        <ApplyLogView applyLog={applyLog} />
+      </scrollbox>
+    </box>
+  ) as ReactElement
+}
+
+function countStackSections(applyLog: string[]): number {
+  return applyLog.filter((l) => /^── .+ ──$/.test(l)).length
+}
+
 function ApplyingView({ applyLog }: { applyLog: string[] }): ReactElement {
   return (
-    <box flexDirection='column' gap={1}>
+    <box flexDirection='column' gap={1} flexGrow={1}>
       <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE} — Applying</text>
       <AnimatedLoading title='Applying setup plan' />
-      <ApplyLogView applyLog={applyLog} />
+      {applyLog.length > 0 && <LogScrollBox applyLog={applyLog} />}
     </box>
   ) as ReactElement
 }
 
 function DoneView({ applyLog }: { applyLog: string[] }): ReactElement {
+  const stackCount = countStackSections(applyLog)
+  const summary =
+    stackCount === 0
+      ? 'Session Recorder SDK has been set up'
+      : stackCount === 1
+        ? 'Session Recorder SDK configured for 1 stack'
+        : `Session Recorder SDK configured for ${stackCount} stacks`
   return (
-    <box flexDirection='column' gap={1}>
-      <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE} — Complete</text>
-      <box gap={2}>
+    <box flexDirection='column' gap={1} flexGrow={1}>
+      <text attributes={tuiAttrs({ bold: true })} fg='#10b981'>
+        {STEP_TITLE} — Complete
+      </text>
+      <box flexDirection='row' gap={1} flexShrink={0}>
         <text fg='#10b981'>✓</text>
-        <text fg='#10b981'>Session Recorder SDK has been set up</text>
+        <text fg='#10b981' attributes={tuiAttrs({ bold: true })}>
+          {summary}
+        </text>
       </box>
-      <ApplyLogView applyLog={applyLog} />
-      <FooterHints hints='Enter continue' marginTop={1} />
+      {applyLog.length > 0 && <LogScrollBox applyLog={applyLog} />}
+      <FooterHints hints='Enter continue' />
     </box>
   ) as ReactElement
 }
 
 function ErrorView({ error, applyLog }: { error: string | null; applyLog: string[] }): ReactElement {
   return (
-    <box flexDirection='column' gap={1}>
-      <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
-      <box gap={2}>
+    <box flexDirection='column' gap={1} flexGrow={1}>
+      <text attributes={tuiAttrs({ bold: true })} fg='#ef4444'>
+        {STEP_TITLE} — Error
+      </text>
+      <box flexDirection='row' gap={1} flexShrink={0}>
         <text fg='#ef4444'>✗</text>
-        <text fg='#ef4444'>{error}</text>
+        <box flexGrow={1} flexShrink={1}>
+          <text fg='#ef4444'>{error}</text>
+        </box>
       </box>
-      {applyLog.length > 0 && <ApplyLogView applyLog={applyLog} />}
+      {applyLog.length > 0 && <LogScrollBox applyLog={applyLog} />}
       <FooterHints hints='Enter retry · Esc back' />
     </box>
   ) as ReactElement
@@ -705,7 +1006,7 @@ function ResultsView({
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement {
+export function MultiplayerSdkStep({ config, onComplete, onBack }: Props): ReactElement {
   const [phase, setPhase] = useState<Phase>('scanning')
   const [stacks, setStacks] = useState<DetectedStack[]>([])
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -717,6 +1018,10 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const [selectedStacks, setSelectedStacks] = useState<Set<string>>(new Set())
+  const [currentStackIdx, setCurrentStackIdx] = useState(0)
+  const createdKeysRef = useRef<CreatedApiKey[] | null>(null)
+  const setupQueueRef = useRef<DetectedStack[]>([])
+  const priorSummariesRef = useRef<string[]>([])
 
   const needsSetup = stacks.filter((s) => getStatusGroup(s) === 'needs-setup')
   const selectedForSetup = needsSetup.filter((s) => selectedStacks.has(s.relativePath))
@@ -760,6 +1065,7 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
 
     // If we have a model configured and multiple stacks, use AI to classify
     if (config.model && detected.length > 1) {
+      setSelectedIndex(0)
       setPhase('classifying')
       void runAiClassification(detected)
     } else {
@@ -801,6 +1107,7 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
     try {
       const result = await classifyStacksWithAi(
         detected,
+        config.dir!,
         config.model!,
         config.modelKey ?? '',
         config.modelUrl,
@@ -837,9 +1144,26 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
 
   // ─── AI planning ───────────────────────────────────────────────────────────
 
-  const runAiPlanning = async () => {
-    if (!config.model || selectedForSetup.length === 0) {
+  const startSetupSequence = () => {
+    const queue = [...selectedForSetup]
+    if (!config.model || queue.length === 0) {
       setError('Model is not configured or no stacks selected')
+      setPhase('error')
+      return
+    }
+    setupQueueRef.current = queue
+    createdKeysRef.current = null
+    priorSummariesRef.current = []
+    setApplyLog([])
+    setCurrentStackIdx(0)
+    void runAiPlanning(0)
+  }
+
+  const runAiPlanning = async (stackIdx: number) => {
+    const queue = setupQueueRef.current
+    const stack = queue[stackIdx]
+    if (!stack || !config.model) {
+      setError('No stack to plan for')
       setPhase('error')
       return
     }
@@ -847,20 +1171,28 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
     const controller = new AbortController()
     abortRef.current = controller
 
+    setCurrentStackIdx(stackIdx)
+    setPlan(null)
+    setSelectedIndex(0)
     setPhase('ai-planning')
     setError(null)
     setAiStatus('')
 
     try {
-      // For now, plan for the first selected stack
-      // TODO: iterate over all stacks
-      const stack = selectedForSetup[0]!
-
-      // Find README relative to project dir (the CLI ships with SDKs in the monorepo)
-      // For deployed CLI, READMEs would be bundled or fetched
-      const result = await generateSetupPlan(stack, config.model, config.modelKey ?? '', config.modelUrl, (s) => {
-        if (!controller.signal.aborted) setAiStatus(s)
-      })
+      const upcomingStacks = buildUpcomingStacksSummary(queue, stackIdx)
+      const result = await generateSetupPlan(
+        stack,
+        config.model,
+        config.modelKey ?? '',
+        config.modelUrl,
+        (s) => {
+          if (!controller.signal.aborted) setAiStatus(s)
+        },
+        {
+          priorSummaries: priorSummariesRef.current,
+          upcomingStacks
+        }
+      )
 
       if (controller.signal.aborted) return
 
@@ -881,50 +1213,65 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
     }
   }
 
+  const advanceOrFinish = (nextIdx: number) => {
+    const queue = setupQueueRef.current
+    if (nextIdx < queue.length) {
+      void runAiPlanning(nextIdx)
+    } else {
+      setPhase('done')
+    }
+  }
+
+  const skipCurrentStack = () => {
+    advanceOrFinish(currentStackIdx + 1)
+  }
+
   // ─── Apply plan ────────────────────────────────────────────────────────────
 
   const applyPlan = async () => {
-    if (!plan || !config.dir) return
+    const queue = setupQueueRef.current
+    const stack = queue[currentStackIdx]
+    if (!plan || !stack) return
     setPhase('applying')
-    const log: string[] = []
+    const log = [...applyLog]
+    const stackTag = `[${stack.relativePath !== '.' ? stack.relativePath : stack.label}]`
+    log.push(`── ${stackTag} ──`)
+    setApplyLog([...log])
 
     try {
-      // 1. Create Multiplayer API keys automatically
-      const currentStack = selectedForSetup[0]
-      if (config.workspace && config.project && config.apiKey) {
-        log.push('◌ Creating Multiplayer API key...')
+      // 1. Create Multiplayer API keys on the first stack (shared across frontend/backend)
+      if (createdKeysRef.current === null && config.workspace && config.project && config.apiKey) {
+        log.push('◌ Creating Multiplayer API keys...')
         setApplyLog([...log])
 
-        const { keys, errors: keyErrors } = await createApiKeysForSetup(needsSetup, {
+        const { keys, errors: keyErrors } = await createApiKeysForSetup(queue, {
           url: config.url!,
           apiKey: config.apiKey,
           workspace: config.workspace,
           project: config.project
         })
 
-        for (const err of keyErrors) {
-          log.push(`⚠ ${err}`)
-        }
-
+        createdKeysRef.current = keys
+        log.pop()
+        for (const err of keyErrors) log.push(`⚠ ${err}`)
         if (keys.length > 0) {
-          injectApiKeysIntoPlan(plan, keys, currentStack?.type ?? 'backend')
-          for (const k of keys) {
-            log[log.length - 1 - keyErrors.length] = `✓ Created ${k.stackType} API key: ${k.name}`
-          }
+          for (const k of keys) log.push(`✓ Created ${k.stackType} API key: ${k.name}`)
         } else if (keyErrors.length === 0) {
-          log[log.length - 1] = '· No API keys needed'
+          log.push('· No API keys needed')
         }
-
         setApplyLog([...log])
       }
 
-      // 2. Write file changes
-      const written = applySetupPlan(plan, config.dir)
-      for (const f of written) {
-        log.push(`✓ ${f}`)
+      // Inject the right API key for THIS stack's type
+      if (createdKeysRef.current && createdKeysRef.current.length > 0) {
+        injectApiKeysIntoPlan(plan, createdKeysRef.current, stack.type)
       }
 
-      // 3. Run install command if needed
+      // 2. Write file changes to the stack's own root (not config.dir — monorepos)
+      const written = applySetupPlan(plan, stack.root)
+      for (const f of written) log.push(`✓ ${f}`)
+
+      // 3. Run install command from the stack's root
       if (plan.installCommand) {
         log.push(`◌ Running: ${plan.installCommand}`)
         setApplyLog([...log])
@@ -932,13 +1279,12 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
         const { exec } = await import('child_process')
         const { promisify } = await import('util')
         const execAsync = promisify(exec)
-        await execAsync(plan.installCommand, { cwd: config.dir, timeout: 120_000 })
+        await execAsync(plan.installCommand, { cwd: stack.root, timeout: 120_000 })
         log[log.length - 1] = `✓ ${plan.installCommand}`
       }
 
       // 4. Note env vars (the AI emits .env as a fileChange; this is just a summary)
       if (plan.envVars.length > 0) {
-        log.push('')
         log.push('Environment variables added:')
         for (const env of plan.envVars) {
           log.push(`  ${env.name}  # ${env.description}`)
@@ -946,7 +1292,14 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
       }
 
       setApplyLog(log)
-      setPhase('done')
+
+      // Record what this stack accomplished so the next agent has context
+      priorSummariesRef.current = [
+        ...priorSummariesRef.current,
+        buildPriorSummary(plan, stack, createdKeysRef.current)
+      ]
+
+      advanceOrFinish(currentStackIdx + 1)
     } catch (err: unknown) {
       log.push(`✗ ${(err as Error).message}`)
       setApplyLog(log)
@@ -960,28 +1313,39 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
   useKeyboard(({ name }) => {
     if (phase === 'scanning' || phase === 'applying') return
 
-    // Allow skipping during AI analysis
+    // During AI phases: navigate Back/Skip actions with arrows, Enter confirms, Esc = back
     if (phase === 'classifying' || phase === 'ai-planning') {
-      if (name === 'escape') {
+      const actions = buildAiPhaseActions(handleSkip, handleBack)
+      if (name === 'up' || name === 'left') {
+        setSelectedIndex((i) => Math.max(0, i - 1))
+      } else if (name === 'down' || name === 'right') {
+        setSelectedIndex((i) => Math.min(actions.length - 1, i + 1))
+      } else if (name === 'return') {
+        const action = actions[selectedIndex]
+        if (action) action.onSelect()
+      } else if (name === 'escape') {
         abortRef.current?.abort()
         abortRef.current = null
-        onComplete({ sessionRecorderSetupDone: true })
+        if (onBack) onBack()
+        else onComplete({ sessionRecorderSetupDone: true })
       }
       return
     }
 
-    // Simple continue phases
+    // Simple continue phases — Enter advances, Esc goes back (except after 'done', where files are already written)
     if (phase === 'no-stacks' || phase === 'already-done' || phase === 'done') {
       if (name === 'return') {
         onComplete({ sessionRecorderSetupDone: true })
+      } else if (name === 'escape' && phase !== 'done' && onBack) {
+        onBack()
       }
       return
     }
 
-    // Error: retry or skip
+    // Error: retry current stack or skip
     if (phase === 'error') {
       if (name === 'return') {
-        void runAiPlanning() // retry
+        void runAiPlanning(currentStackIdx) // retry current stack
       } else if (name === 'escape') {
         onComplete({ sessionRecorderSetupDone: true })
       }
@@ -1006,7 +1370,7 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
           if (action?.id === 'skip') {
             onComplete({ sessionRecorderSetupDone: true })
           } else if (action?.id === 'setup' && selectedForSetup.length > 0) {
-            void runAiPlanning()
+            startSetupSequence()
           }
         }
       }
@@ -1025,9 +1389,10 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
           void applyPlan()
         } else if (action?.id === 'regenerate') {
           setSelectedIndex(0)
-          void runAiPlanning()
+          void runAiPlanning(currentStackIdx)
         } else if (action?.id === 'skip') {
-          onComplete({ sessionRecorderSetupDone: true })
+          // Skip THIS stack and move to next (or finish if last)
+          skipCurrentStack()
         }
       } else if (name === 'escape') {
         setSelectedIndex(0)
@@ -1048,21 +1413,52 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
     abortRef.current = null
     onComplete({ sessionRecorderSetupDone: true })
   }
+  const handleBack = onBack
+    ? () => {
+        abortRef.current?.abort()
+        abortRef.current = null
+        onBack()
+      }
+    : undefined
   // ─── Render: ordered by phase flow ─────────────────────────────────────────
 
   switch (phase) {
     case 'scanning':
       return (<ScanningView />) as ReactElement
-    case 'classifying':
-      return (<ClassifyingView aiStatus={aiStatus} onSkip={handleSkip} />) as ReactElement
-    case 'no-stacks':
-      return (<NoStacksView />) as ReactElement
-    case 'already-done':
-      return (<AlreadyDoneView stacks={stacks} onContinue={handleContinue} />) as ReactElement
-    case 'ai-planning':
+    case 'classifying': {
+      const actions = buildAiPhaseActions(handleSkip, handleBack)
       return (
-        <AiPlanningView stackLabel={needsSetup[0]?.label ?? 'detected stack'} aiStatus={aiStatus} onSkip={handleSkip} />
+        <ClassifyingView
+          aiStatus={aiStatus}
+          actions={actions}
+          selectedIndex={Math.min(selectedIndex, actions.length - 1)}
+          setSelectedIndex={setSelectedIndex}
+          hoveredRow={hoveredRow}
+          setHoveredRow={setHoveredRow}
+        />
       ) as ReactElement
+    }
+    case 'no-stacks':
+      return (<NoStacksView onBack={onBack} />) as ReactElement
+    case 'already-done':
+      return (<AlreadyDoneView stacks={stacks} onContinue={handleContinue} onBack={onBack} />) as ReactElement
+    case 'ai-planning': {
+      const queue = setupQueueRef.current
+      const stack = queue[currentStackIdx]
+      const progress = queue.length > 1 ? `Stack ${currentStackIdx + 1} of ${queue.length}: ` : ''
+      const actions = buildAiPhaseActions(handleSkip, handleBack)
+      return (
+        <AiPlanningView
+          stackLabel={`${progress}${stack?.label ?? 'detected stack'}`}
+          aiStatus={aiStatus}
+          actions={actions}
+          selectedIndex={Math.min(selectedIndex, actions.length - 1)}
+          setSelectedIndex={setSelectedIndex}
+          hoveredRow={hoveredRow}
+          setHoveredRow={setHoveredRow}
+        />
+      ) as ReactElement
+    }
     case 'preview':
       return plan
         ? ((
@@ -1073,8 +1469,8 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
               setSelectedIndex={setSelectedIndex}
               setHoveredRow={setHoveredRow}
               onApply={() => void applyPlan()}
-              onRegenerate={() => void runAiPlanning()}
-              onSkip={handleContinue}
+              onRegenerate={() => void runAiPlanning(currentStackIdx)}
+              onSkip={skipCurrentStack}
             />
           ) as ReactElement)
         : ((<ScanningView />) as ReactElement)
@@ -1096,7 +1492,7 @@ export function MultiplayerSdkStep({ config, onComplete }: Props): ReactElement 
           setHoveredRow={setHoveredRow}
           selectedStacks={selectedStacks}
           onToggleStack={toggleStack}
-          onSetup={() => void runAiPlanning()}
+          onSetup={startSetupSequence}
           onSkip={handleContinue}
         />
       ) as ReactElement

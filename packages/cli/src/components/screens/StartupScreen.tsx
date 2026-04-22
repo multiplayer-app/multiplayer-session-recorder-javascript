@@ -182,7 +182,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
         model: next.model,
         modelKey: next.modelKey,
         modelUrl: next.modelUrl,
-        maxConcurrentIssues: next.maxConcurrentIssues,
+        maxConcurrentIssues: next.maxConcurrentIssues
       })
 
       setStep(nextStep(step, next))
@@ -454,7 +454,7 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
           {step === 'directory' && <DirectoryStep config={config} onComplete={advance} />}
           {step === 'model' && <ModelStep config={config} onComplete={advance} />}
           {step === 'rate-limits' && <RateLimitsStep config={config} onComplete={advance} />}
-          {step === 'session-recorder' && <MultiplayerSdkStep config={config} onComplete={advance} />}
+          {step === 'session-recorder' && <MultiplayerSdkStep config={config} onComplete={advance} onBack={goBack} />}
           {step === 'connecting' && (
             <ConnectingStep config={config as AgentConfig} onComplete={onComplete} onBack={goBack} />
           )}

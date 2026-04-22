@@ -1,19 +1,24 @@
-import React, { useState, type ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { useKeyboard } from '@opentui/react'
 import type { AgentConfig } from '../../types/index.js'
-import { clickHandler, FooterHints } from '../shared/index.js'
+import { FooterHints, SelectionList, type SelectionItem } from '../shared/index.js'
 
-const OPTIONS = [1, 2, 3, 4, 5] as const
-type ConcurrencyOption = typeof OPTIONS[number]
-
-const CONCURRENCY_HINT: Record<ConcurrencyOption, string> = {
-  1: 'Safest, lowest API usage',
-  2: 'Balanced default',
-  3: 'Faster throughput',
-  4: 'High throughput',
-  5: 'Aggressive (high API usage)',
+interface ConcurrencyOption {
+  value: number
+  label: string
+  description: string
 }
+
+const OPTIONS: ConcurrencyOption[] = [
+  { value: 1, label: '1 — Sequential', description: 'Safest, lowest API usage' },
+  { value: 2, label: '2 — Balanced', description: 'Recommended default' },
+  { value: 3, label: '3 — Faster', description: 'Faster throughput' },
+  { value: 4, label: '4 — High throughput', description: 'High API usage' },
+  { value: 5, label: '5 — Aggressive', description: 'Maximum parallelism, high API usage' }
+]
+
+const DEFAULT_VALUE = 2
 
 interface Props {
   config: Partial<AgentConfig>
@@ -21,57 +26,43 @@ interface Props {
 }
 
 export function RateLimitsStep({ config, onComplete }: Props): ReactElement {
-  const configured = config.maxConcurrentIssues
-  const defaultVal: ConcurrencyOption =
-    configured && OPTIONS.includes(configured as ConcurrencyOption)
-      ? (configured as ConcurrencyOption)
-      : 2
-  const [selectedIndex, setSelectedIndex] = useState(Math.max(0, OPTIONS.indexOf(defaultVal)))
-  const selectedOption: ConcurrencyOption = OPTIONS[selectedIndex] ?? 2
+  const configured = config.maxConcurrentIssues ?? DEFAULT_VALUE
+  const initialIdx = OPTIONS.findIndex((o) => o.value === configured)
+  const [selectedIndex, setSelectedIndex] = useState(initialIdx >= 0 ? initialIdx : 1)
+
+  const confirm = (index: number) => {
+    const opt = OPTIONS[index]
+    if (opt) onComplete({ maxConcurrentIssues: opt.value })
+  }
 
   useKeyboard(({ name }) => {
-    if (name === 'up' || name === 'left') {
+    if (name === 'up') {
       setSelectedIndex((i) => Math.max(0, i - 1))
-    } else if (name === 'down' || name === 'right') {
+    } else if (name === 'down') {
       setSelectedIndex((i) => Math.min(OPTIONS.length - 1, i + 1))
     } else if (name === 'return') {
-      onComplete({ maxConcurrentIssues: selectedOption })
+      confirm(selectedIndex)
     }
   })
 
+  const items: SelectionItem[] = OPTIONS.map((opt) => ({
+    key: String(opt.value),
+    icon: '◆',
+    iconColor: '#22d3ee',
+    label: opt.label,
+    labelColor: '#c9d1d9',
+    description: opt.description
+  }))
+
   return (
-    <box flexDirection="column" gap={1}>
-      <text attributes={tuiAttrs({ dim: true })}>
-        Maximum number of issues to resolve in parallel. Higher values use more AI credits but resolve issues faster.
+    <box flexDirection='column' flexGrow={1}>
+      <text attributes={tuiAttrs({ dim: true })} marginLeft={1}>
+        Maximum number of issues to resolve in parallel. Higher values use more AI credits but resolve faster.
       </text>
-      <box
-        flexDirection="row"
-        gap={2}
-        marginTop={1}
-        border={true}
-        borderStyle="rounded"
-        borderColor="#374151"
-        padding={1}
-      >
-        {OPTIONS.map((n, i) => {
-          const isActive = i === selectedIndex
-          return (
-            <box
-              key={n}
-              onMouseUp={clickHandler(() => {
-                setSelectedIndex(i)
-                if (isActive) onComplete({ maxConcurrentIssues: n })
-              })}
-            >
-              <text fg={isActive ? '#22d3ee' : undefined} attributes={tuiAttrs({ bold: isActive })}>
-                {isActive ? `[${n}]` : ` ${n} `}
-              </text>
-            </box>
-          )
-        })}
+      <box marginTop={1} flexGrow={1}>
+        <SelectionList items={items} selectedIndex={selectedIndex} onSelect={confirm} flexGrow={1} />
       </box>
-      <text fg="#22d3ee">Selected: {selectedOption} · {CONCURRENCY_HINT[selectedOption]}</text>
-      <FooterHints hints='← → select · Enter confirm · Esc back' />
+      <FooterHints hints='↑↓ navigate · Enter select · Click to select · Esc back' paddingLeft={1} marginTop={1} />
     </box>
   ) as ReactElement
 }

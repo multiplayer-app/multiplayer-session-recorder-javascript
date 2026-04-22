@@ -247,9 +247,51 @@ function gatherProjectContext(stack: DetectedStack): string {
 
 // ─── Build prompt ────────────────────────────────────────────────────────────
 
-function buildSetupPrompt(stack: DetectedStack, readme: string, projectContext: string): string {
+export interface SetupGenerationContext {
+  /** Short summaries of stacks that have ALREADY been set up in this same session */
+  priorSummaries?: string[]
+  /** Short descriptions of stacks queued to be set up AFTER this one */
+  upcomingStacks?: string
+}
+
+function buildSetupPrompt(
+  stack: DetectedStack,
+  readme: string,
+  projectContext: string,
+  ctx?: SetupGenerationContext,
+): string {
   const installedNote = stack.alreadyInstalled
     ? `- NOTE: A Multiplayer SDK is already installed: ${stack.installedSdkPackage}`
+    : ''
+
+  const priorSection = ctx?.priorSummaries?.length
+    ? `## Prior Setup Progress (already completed in this session)
+
+The stacks below were set up BEFORE the one you are planning now. Their file changes have been applied. You MUST NOT re-do that work. Use them as context so your plan stays consistent with the rest of the repo.
+
+${ctx.priorSummaries.join('\n\n')}
+
+**Rules based on prior progress:**
+- The Multiplayer API keys listed above already exist. Do NOT ask the CLI to create new keys. Always use the \`YOUR_MULTIPLAYER_API_KEY\` placeholder in env files — the CLI injects the right shared key (one for frontend stacks, one for backend stacks — multiple backends share a single backend key).
+- If a prior stack is a SIBLING in the same monorepo and wrote a \`.env*\` file there, you still write your own \`.env*\` inside YOUR stack's root (paths you emit are relative to THIS stack's root). Do not try to modify a sibling stack's files.
+- Reuse the SAME env var naming convention as prior stacks of the SAME type where it makes sense. For different build tools across stacks (e.g. Vite frontend + Node backend), each stack follows ITS tool's convention — that's expected.
+- Do NOT recreate files that a prior stack already owns.
+
+`
+    : ''
+
+  const upcomingSection = ctx?.upcomingStacks
+    ? `## Upcoming Stacks (will be set up AFTER this one)
+
+Coordinate with these so the final integration is consistent end-to-end:
+
+${ctx.upcomingStacks}
+
+**Rules based on upcoming work:**
+- If you are a FRONTEND stack and a BACKEND is upcoming at a known local path, add that backend's typical dev URL pattern to \`propagateTraceHeaderCorsUrls\` (e.g. \`/^http:\\/\\/localhost(:\\d+)?$/\` if you cannot infer the port). Leave a TODO comment for the user to tighten.
+- Do NOT perform setup that belongs to an upcoming stack (e.g. don't add backend OTel exporters to a frontend plan).
+
+`
     : ''
 
   return `You are an expert at integrating the Multiplayer Session Recorder SDK.
@@ -257,6 +299,8 @@ function buildSetupPrompt(stack: DetectedStack, readme: string, projectContext: 
 ## Your Task
 
 First ANALYZE the project to understand what's already set up, then generate a setup plan.
+
+${priorSection}${upcomingSection}
 
 ## ⚠ CRITICAL: PRESERVE ALL EXISTING CODE — DO NOT REWRITE FILES
 
@@ -612,6 +656,7 @@ If a backend has OTel + the Multiplayer OTLP endpoint, it is fully set up — no
  */
 export async function classifyStacksWithAi(
   stacks: DetectedStack[],
+  projectDir: string,
   model: string,
   modelKey: string,
   modelUrl?: string,
@@ -636,7 +681,7 @@ export async function classifyStacksWithAi(
         const block = response.content[0]
         responseText = block?.type === 'text' ? block.text : ''
       } else {
-        responseText = await generateWithClaudeCli(prompt, model, process.cwd(), onProgress)
+        responseText = await generateWithClaudeCli(prompt, model, projectDir, onProgress)
       }
     } else {
       const client = new OpenAI({
@@ -711,10 +756,11 @@ export async function generateSetupPlan(
   modelKey: string,
   modelUrl?: string,
   onProgress?: ProgressFn,
+  ctx?: SetupGenerationContext,
 ): Promise<SetupResult> {
   const readme = getReadmeContent(stack.sdkPackage, stack.framework)
   const projectContext = gatherProjectContext(stack)
-  const prompt = buildSetupPrompt(stack, readme, projectContext)
+  const prompt = buildSetupPrompt(stack, readme, projectContext, ctx)
 
   try {
     let responseText: string
