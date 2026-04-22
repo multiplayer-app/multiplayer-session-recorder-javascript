@@ -105,6 +105,32 @@ function describeAssistantBlock(block: any): string | null {
   return null
 }
 
+/**
+ * System prompt for the Claude Agent SDK planner. Keeps the agent in a
+ * read-only analysis role so its only deliverable is a JSON plan — the CLI
+ * owns the write phase.
+ */
+const PLANNER_SYSTEM_PROMPT = `You are running in PLANNING MODE for the Multiplayer Session Recorder CLI.
+
+Your only job is to analyze the project and return a JSON plan that the CLI will apply.
+
+STRICT RULES:
+- NEVER modify, create, or delete files on disk. The Write, Edit, MultiEdit, and NotebookEdit tools are disabled; do not attempt to use them.
+- Do not run shell commands that change repository state (installs, git writes, file moves, etc.). Use Bash only for read-only inspection if needed.
+- Use Read, Glob, and Grep freely to understand the project.
+- Your final assistant message MUST be a single JSON value that matches the schema in the user prompt — no prose before or after, no markdown code fences.
+- If you cannot produce a plan, still return JSON with "confidence": 0 and a "warnings" entry explaining why.`
+
+/** Write-family tools that must not run during planning. */
+const PLANNER_DISALLOWED_TOOLS = ['Write', 'Edit', 'MultiEdit', 'NotebookEdit']
+
+/**
+ * Ceiling for the setup-plan response. Backend plans (OTel init file + modified
+ * entry + .env) are much larger than frontend plans and were occasionally
+ * truncated at 8192, producing unparseable JSON.
+ */
+const SETUP_PLAN_MAX_TOKENS = 16384
+
 async function generateWithClaudeCli(
   prompt: string,
   model: string,
@@ -120,6 +146,8 @@ async function generateWithClaudeCli(
       executable: 'node',
       pathToClaudeCodeExecutable: cliPath,
       permissionMode: 'bypassPermissions',
+      systemPrompt: PLANNER_SYSTEM_PROMPT,
+      disallowedTools: PLANNER_DISALLOWED_TOOLS,
       maxTurns: 250,
       includePartialMessages: true,
       ...(model ? { model } : {}),
@@ -146,6 +174,103 @@ async function generateWithClaudeCli(
   }
 
   return responseText
+}
+
+/**
+ * Build a compact preview of an AI response for error messages. Keeps head
+ * and tail so both the intro narration and the (usually broken) ending are
+ * visible without dumping thousands of chars into the terminal.
+ */
+function buildResponsePreview(text: string, max = 300): string {
+  const trimmed = text.trim()
+  if (!trimmed) return '(empty)'
+  if (trimmed.length <= max * 2 + 16) return trimmed
+  const omitted = trimmed.length - max * 2
+  return `${trimmed.slice(0, max)}\n…[${omitted} chars omitted]…\n${trimmed.slice(-max)}`
+}
+
+/**
+ * Scan `text` for balanced JSON spans delimited by `open`/`close`. Respects
+ * string literals so braces inside `"…"` don't break matching.
+ * Returns candidates in the order they appear.
+ */
+function findBalancedJsonSpans(text: string, open: '{' | '[', close: '}' | ']'): string[] {
+  const results: string[] = []
+  let depth = 0
+  let startIdx = -1
+  let inString = false
+  let escape = false
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (inString) {
+      if (escape) {
+        escape = false
+      } else if (c === '\\') {
+        escape = true
+      } else if (c === '"') {
+        inString = false
+      }
+      continue
+    }
+    if (c === '"') {
+      inString = true
+      continue
+    }
+    if (c === open) {
+      if (depth === 0) startIdx = i
+      depth++
+    } else if (c === close && depth > 0) {
+      depth--
+      if (depth === 0 && startIdx >= 0) {
+        results.push(text.slice(startIdx, i + 1))
+        startIdx = -1
+      }
+    }
+  }
+  return results
+}
+
+/**
+ * Extract a JSON value from an AI response. Tolerates markdown fences, leading
+ * narration, and multiple `{…}` spans by picking the LAST candidate that
+ * actually parses. Returns a typed value on success or a preview on failure.
+ */
+function extractJson<T>(
+  text: string,
+  shape: 'object' | 'array',
+): { ok: true; value: T } | { ok: false; preview: string } {
+  const [open, close]: ['{' | '[', '}' | ']'] = shape === 'object' ? ['{', '}'] : ['[', ']']
+
+  // 1. Last fenced code block — most reliable when present.
+  const fenceRe = /```(?:json)?\s*\n?([\s\S]*?)```/g
+  let lastFence: string | null = null
+  let fenceMatch: RegExpExecArray | null
+  while ((fenceMatch = fenceRe.exec(text)) !== null) {
+    const inner = fenceMatch[1]
+    if (inner !== undefined) lastFence = inner.trim()
+  }
+  if (lastFence && lastFence.startsWith(open)) {
+    try {
+      return { ok: true, value: JSON.parse(lastFence) as T }
+    } catch {
+      /* fall through to balanced scan */
+    }
+  }
+
+  // 2. Balanced JSON candidates — try the last one first since the plan is
+  //    normally the tail of the response.
+  const candidates = findBalancedJsonSpans(text, open, close)
+  for (let i = candidates.length - 1; i >= 0; i--) {
+    const candidate = candidates[i]
+    if (candidate === undefined) continue
+    try {
+      return { ok: true, value: JSON.parse(candidate) as T }
+    } catch {
+      /* try next */
+    }
+  }
+
+  return { ok: false, preview: buildResponsePreview(text) }
 }
 
 function readFilesSafe(root: string, relativePaths: string[]): string {
@@ -699,13 +824,15 @@ export async function classifyStacksWithAi(
       responseText = response.choices[0]?.message?.content ?? ''
     }
 
-    // Parse JSON array from response
-    const jsonMatch = responseText.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) {
-      return { success: false, classifications: [], error: 'AI did not return valid JSON array' }
+    const extracted = extractJson<StackClassification[]>(responseText, 'array')
+    if (!extracted.ok) {
+      return {
+        success: false,
+        classifications: [],
+        error: `AI did not return a parseable JSON array.\nResponse preview:\n${extracted.preview}`,
+      }
     }
-
-    const parsed = JSON.parse(jsonMatch[0]) as StackClassification[]
+    const parsed = extracted.value
     if (!Array.isArray(parsed)) {
       return { success: false, classifications: [], error: 'AI response is not an array' }
     }
@@ -767,17 +894,19 @@ export async function generateSetupPlan(
 
   try {
     let responseText: string
+    let truncated = false
 
     if (isAnthropicModel(model)) {
       if (modelKey) {
         const client = new Anthropic({ apiKey: modelKey })
         const response = await client.messages.create({
           model: model === 'claude-code' ? 'claude-sonnet-4-6' : model,
-          max_tokens: 8192,
+          max_tokens: SETUP_PLAN_MAX_TOKENS,
           messages: [{ role: 'user', content: prompt }],
         })
         const block = response.content[0]
         responseText = block?.type === 'text' ? block.text : ''
+        truncated = response.stop_reason === 'max_tokens'
       } else {
         responseText = await generateWithClaudeCli(prompt, model, stack.root, onProgress)
       }
@@ -788,20 +917,26 @@ export async function generateSetupPlan(
       })
       const response = await client.chat.completions.create({
         model,
-        max_tokens: 8192,
+        max_tokens: SETUP_PLAN_MAX_TOKENS,
         messages: [{ role: 'user', content: prompt }],
       })
       responseText = response.choices[0]?.message?.content ?? ''
+      truncated = response.choices[0]?.finish_reason === 'length'
     }
 
-    // Parse JSON from response (handle markdown code fences)
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      return { success: false, plan: null, error: 'AI did not return valid JSON' }
+    const extracted = extractJson<Partial<SetupPlan>>(responseText, 'object')
+    if (!extracted.ok) {
+      const reason = truncated
+        ? `AI response was truncated at ${SETUP_PLAN_MAX_TOKENS} tokens before a complete JSON plan was emitted.`
+        : 'AI did not return a parseable JSON plan.'
+      return {
+        success: false,
+        plan: null,
+        error: `${reason}\nResponse preview:\n${extracted.preview}`,
+      }
     }
 
-    const parsed = JSON.parse(jsonMatch[0]) as Partial<SetupPlan>
-    const plan = normalizePlan(parsed)
+    const plan = normalizePlan(extracted.value)
     return { success: true, plan }
   } catch (err: unknown) {
     return {
