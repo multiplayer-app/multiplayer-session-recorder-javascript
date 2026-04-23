@@ -192,16 +192,9 @@ The example relies on [opentelemetry.ts](./examples/cli/src/opentelemetry.ts). C
 // for an example see ./examples/cli/src/opentelemetry.ts
 // NOTE: for the code below to work copy ./examples/cli/src/opentelemetry.ts to ./opentelemetry.ts
 import { idGenerator } from "./opentelemetry"
-import SessionRecorder from "@multiplayer-app/session-recorder-node"
-import {
-  SessionRecorderHttpInstrumentationHooksNode,
-  SessionRecorderTraceIdRatioBasedSampler,
-  SessionRecorderIdGenerator,
-  SessionRecorderHttpTraceExporter,
-  SessionRecorderHttpLogsExporter,
-} from "@multiplayer-app/session-recorder-node"
+import { sessionRecorder } from "@multiplayer-app/session-recorder-node"
 
-SessionRecorder.init({
+sessionRecorder.init({
   apiKey: "MULTIPLAYER_API_KEY", // note: replace with your Multiplayer API key
   traceIdGenerator: idGenerator,
   resourceAttributes: {
@@ -217,6 +210,8 @@ SessionRecorder.init({
 Below is an example showing how to create a session recording in `MANUAL` mode. Manual session recordings stream and save all the data between calling `start` and `stop`.
 
 ```javascript
+import { sessionRecorder, SessionType } from "@multiplayer-app/session-recorder-node"
+
 await sessionRecorder.start(
   SessionType.MANUAL,
   {
@@ -235,7 +230,7 @@ await sessionRecorder.stop()
 
 ### Continuous session recording
 
-Below is an example showing how to create a session in `CONTINUOUS` mode. Continuous session recordings **stream** all the data received between calling `start` and `stop` - 
+Below is an example showing how to create a session in `CONTINUOUS` mode. Continuous session recordings **stream** all the data received between calling `start` and `cancel` - 
 but only **save** a rolling window data (90 seconds by default) when:
 
 - an exception or error occurs;
@@ -244,6 +239,8 @@ but only **save** a rolling window data (90 seconds by default) when:
 
 
 ```javascript
+import { sessionRecorder, SessionType } from "@multiplayer-app/session-recorder-node"
+
 await sessionRecorder.start(
   SessionType.CONTINUOUS,
   {
@@ -265,29 +262,79 @@ await sessionRecorder.save()
 
 // do something here
 
-await sessionRecorder.stop()
+
+// or cancel
+await sessionRecorder.cancel()
 ```
 
 Continuous session recordings may also be saved from within any service or component involved in a trace by adding the attributes below to a span:
 
 ```javascript
 import { trace, context } from "@opentelemetry/api"
-import SessionRecorder from "@multiplayer-app/session-recorder-node"
+import {
+  ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE,
+  ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE_REASON,
+} from "@multiplayer-app/session-recorder-node"
 
 const activeContext = context.active()
 
 const activeSpan = trace.getSpan(activeContext)
 
-activeSpan.setAttribute(
-  SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE,
-  true
-)
-activeSpan.setAttribute(
-  SessionRecorder.ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE_REASON,
-  "Some reason"
-)
-
+activeSpan.setAttribute(ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE, true)
+activeSpan.setAttribute(ATTR_MULTIPLAYER_CONTINUOUS_SESSION_AUTO_SAVE_REASON, "Some reason")
 ```
 
+### Cancel a session
+
+Use `cancel()` to end a CONTINUOUS session without saving the final window, or to discard a MANUAL session:
+
+```javascript
+await sessionRecorder.cancel()
+```
+
+### Remote continuous session control
+
+`checkRemoteContinuousSession()` polls the Multiplayer API to check whether a continuous session should be started or stopped remotely. Call it on a schedule (e.g. every 30 seconds) to enable remotely-triggered session recordings:
+
+```javascript
+import { sessionRecorder } from "@multiplayer-app/session-recorder-node"
+
+setInterval(async () => {
+  await sessionRecorder.checkRemoteContinuousSession({
+    name: "Remote-controlled session",
+    sessionAttributes: {
+      accountId: "1234",
+    },
+  })
+}, 30000)
+```
 
 Replace the placeholders with your application’s version, name, environment, and API key.
+
+## Express integration
+
+The package includes an Express error handler middleware that automatically captures uncaught errors (HTTP 5xx) as Multiplayer exceptions:
+
+```javascript
+import express from "express"
+import { Integrations } from "@multiplayer-app/session-recorder-node"
+
+const app = express()
+
+// ... your routes ...
+
+// Add as the last middleware
+app.use(Integrations.express.expressErrorHandler())
+```
+
+You can provide a custom `shouldHandleError` predicate to control which errors are captured:
+
+```javascript
+app.use(
+  Integrations.express.expressErrorHandler({
+    shouldHandleError(error) {
+      return error.statusCode >= 400
+    },
+  })
+)
+```
