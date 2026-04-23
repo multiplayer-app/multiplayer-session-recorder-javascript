@@ -38,76 +38,78 @@ runCli(process.argv, ({ mode, initialConfig, healthPort, profileName }: ParsedFl
       }
     }
 
-  if (mode === 'headless') {
-    if (!isCompleteConfig(initialConfig)) {
-      process.stderr.write(
-        'headless mode requires a complete config via flags or environment variables.\n' +
+    if (mode === 'headless') {
+      if (!isCompleteConfig(initialConfig)) {
+        process.stderr.write(
+          'headless mode requires a complete config via flags or environment variables.\n' +
           'Required: --api-key, --dir, --model (and --model-key for non-Claude models)\n',
-      )
-      process.exit(1)
-    }
-    const config = initialConfig as AgentConfig
-    const logger = (level: 'info' | 'error' | 'debug', msg: string) => {
-      const ts = new Date().toISOString()
-      const line = JSON.stringify({ ts, level, msg })
-      if (level === 'error') process.stderr.write(line + '\n')
-      else process.stdout.write(line + '\n')
-    }
-
-    logger('info', `Using profile: ${profileName}`)
-
-    void (async () => {
-      try {
-        await validateApiKey(config.url, config.apiKey)
-      } catch (err: unknown) {
-        process.stderr.write(`API key validation failed: ${(err as Error).message}\n`)
+        )
         process.exit(1)
       }
-
-      const controller = new RuntimeController(config, logger)
-
-      if (healthPort) {
-        const healthServer = startHealthServer(healthPort, controller)
-        logger('info', `Health server listening on port ${healthPort}`)
-        controller.on('quit', () => healthServer.close())
+      const config = initialConfig as AgentConfig
+      const logger = (level: 'info' | 'error' | 'debug', msg: string) => {
+        const ts = new Date().toISOString()
+        const line = JSON.stringify({ ts, level, msg })
+        if (level === 'error') process.stderr.write(line + '\n')
+        else process.stdout.write(line + '\n')
       }
 
-      controller.on('quit', () => {
-        process.exit(0)
-      })
+      logger('info', `Using profile: ${profileName}`)
 
-      process.on('SIGTERM', () => {
-        logger('info', 'SIGTERM received — waiting for active sessions to complete')
-        controller.quit('after-current')
-      })
-      process.on('SIGINT', () => controller.quit('now'))
+      void (async () => {
+        try {
+          const { workspace, project } = await validateApiKey(config.url, config.apiKey)
+          if (!config.workspace) config.workspace = workspace
+          if (!config.project) config.project = project
+        } catch (err: unknown) {
+          process.stderr.write(`API key validation failed: ${(err as Error).message}\n`)
+          process.exit(1)
+        }
 
-      controller.connect()
-    })()
-  } else {
-    void (async () => {
-      const renderer = await createCliRenderer({
-        exitOnCtrlC: false,
-        targetFps: 60,
-        screenMode: 'alternate-screen',
-        consoleMode: 'console-overlay',
-      })
+        const controller = new RuntimeController(config, logger)
 
-      const exitApp = () => {
+        if (healthPort) {
+          const healthServer = startHealthServer(healthPort, controller)
+          logger('info', `Health server listening on port ${healthPort}`)
+          controller.on('quit', () => healthServer.close())
+        }
+
+        controller.on('quit', () => {
+          process.exit(0)
+        })
+
+        process.on('SIGTERM', () => {
+          logger('info', 'SIGTERM received — waiting for active sessions to complete')
+          controller.quit('after-current')
+        })
+        process.on('SIGINT', () => controller.quit('now'))
+
+        controller.connect()
+      })()
+    } else {
+      void (async () => {
+        const renderer = await createCliRenderer({
+          exitOnCtrlC: false,
+          targetFps: 60,
+          screenMode: 'alternate-screen',
+          consoleMode: 'console-overlay',
+        })
+
+        const exitApp = () => {
         // stop() only halts the loop; destroy() restores tty (raw mode, mouse, alt screen).
-        renderer.destroy()
-        process.exit(0)
-      }
+          renderer.destroy()
+          process.exit(0)
+        }
 
-      process.on('SIGINT', exitApp)
-      process.on('SIGTERM', exitApp)
+        process.on('SIGINT', exitApp)
+        process.on('SIGTERM', exitApp)
 
-      createRoot(renderer).render(
-        React.createElement(App, { initialConfig, profileName, onExit: exitApp }),
-      )
+        createRoot(renderer).render(
+          React.createElement(App, { initialConfig, profileName, onExit: exitApp }),
+        )
 
-      renderer.start()
-    })()
-  }
+        renderer.start()
+      })()
+    }
   })()
 })

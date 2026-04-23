@@ -266,7 +266,7 @@ export class RuntimeController extends EventEmitter {
 
     radar.onConnect(() => {
       this.setState(setConnection(this._state, 'connected'))
-      radar.emitIssueCheck()
+      setTimeout(() => radar.emitIssueCheck(), 1500)
     })
 
     radar.onDisconnect((reason) => {
@@ -1291,6 +1291,7 @@ export class RuntimeController extends EventEmitter {
         agentName: cfg.name,
         dir: cfg.dir,
       })
+      this.radar?.emitIssueCheck()
       return
     }
 
@@ -1323,12 +1324,15 @@ export class RuntimeController extends EventEmitter {
 
     try {
       // 1. Build context doc, upload it, analyse fixability — bail early if unfixable
-      const { proceed, debugContext } = await this.prepareContextAndScore(chatId, issue, enriched, agentSettings)
+      const { proceed, debugContext, contextMarkdown } = await this.prepareContextAndScore(chatId, issue, enriched, agentSettings)
       if (!proceed) return
 
       // 2. Set up the initial prompt (first message in history, or build from issue data)
       const issuePrompt =
-        context.history[0]?.content ?? AiService.buildIssuePromptFallback(issue, enriched?.release, debugContext)
+        context.history[0]?.content ??
+        (contextMarkdown
+          ? `${contextMarkdown}\n\nPlease analyze this issue and produce file patches to fix it. Read relevant source files based on the stacktrace and error details above.`
+          : AiService.buildIssuePromptFallback(issue, enriched?.release, debugContext))
       if (context.history.length === 0) {
         context.history.push({ role: 'user', content: issuePrompt })
         this.radar?.emitAgentMessage({
@@ -1461,7 +1465,7 @@ export class RuntimeController extends EventEmitter {
     issue: Issue,
     enriched: { issue: Issue; release?: Release },
     agentSettings?: { fixabilityScoreThreshold?: number },
-  ): Promise<{ proceed: boolean; debugContext?: string }> {
+  ): Promise<{ proceed: boolean; debugContext?: string; contextMarkdown?: string }> {
     const cfg = this._config
     const radar = this.radar
 
@@ -1524,6 +1528,7 @@ export class RuntimeController extends EventEmitter {
       return {
         proceed: true,
         debugContext: debugResult?.context,
+        contextMarkdown: markdown,
       }
     } catch {
       // Context doc upload/analysis failure is non-fatal — proceed without it

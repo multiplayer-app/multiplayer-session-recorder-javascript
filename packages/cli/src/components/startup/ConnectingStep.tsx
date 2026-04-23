@@ -36,7 +36,9 @@ export function ConnectingStep({ config, onComplete, onBack }: Props): ReactElem
       try {
         if (cancelled) return
         setStatus('checking-api-key')
-        await validateApiKey(config.url, config.apiKey)
+        const { workspace, project } = await validateApiKey(config.url, config.apiKey)
+        if (!config.workspace) config.workspace = workspace
+        if (!config.project) config.project = project
 
         if (cancelled) return
         setStatus('checking-git')
