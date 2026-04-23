@@ -1,5 +1,7 @@
 export interface AgentConfig {
   url: string
+  /** Multiplayer frontend URL (e.g. https://go.multiplayer.app). Derived from url if not set. */
+  frontendUrl?: string
   apiKey: string
   /** 'oauth' = token from browser login; 'api_key' = personal project token pasted by user */
   authType?: 'oauth' | 'api_key'
@@ -54,6 +56,8 @@ export interface IssueSolution {
   gitBranch?: string
   gitRepositoryUrl?: string
   prUrl?: string
+  prTitle?: string
+  prBody?: string
 }
 
 export interface Issue {

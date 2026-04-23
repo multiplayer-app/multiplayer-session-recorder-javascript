@@ -447,12 +447,14 @@ The body must include:
 2. **Why it happened** – the underlying reason (bad assumption, missing check, race condition, etc.)
 3. **What was changed** – the specific fix applied and why it prevents the issue
 4. A brief diff summary (files/lines changed)
+5. A "**Issue**" line with the provided issue URL (if given) as a markdown link
 Use clear markdown with section headers. Do not include any other text outside the JSON.`
 
 export function buildPrUserMessage(
   issue: Issue,
   conversationContext: string,
   diffStats: { additions: number; deletions: number },
+  baseUrl?: string,
 ): string {
   const issueContext = [
     issue.metadata?.type && `Error type: ${issue.metadata.type}`,
@@ -466,12 +468,16 @@ export function buildPrUserMessage(
     .filter(Boolean)
     .join('\n')
 
+  const issueUrl = baseUrl
+    ? `${baseUrl}/project/${issue.workspace}/${issue.project}/default/issues/issue/${issue.hash}?componentHash=${issue.componentHash}`
+    : undefined
+
   return `Generate a pull request title and description for this bug fix:
 
 Issue: ${issue.title}
 Component hash: ${issue.componentHash}
 Changes: +${diffStats.additions}/-${diffStats.deletions} lines
-
+${issueUrl ? `Issue URL: ${issueUrl}\n` : ''}
 ${issueContext ? `Issue details:\n${issueContext}\n` : ''}
 Agent investigation and fix conversation:
 ${conversationContext || 'No details available.'}`

@@ -22,6 +22,9 @@ const targets = single
 
 fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true })
 
+console.log('Type-checking...')
+await $`${process.execPath} x tsc --noEmit`.cwd(ROOT)
+
 console.log(`Building ${targets.length} target(s)...`)
 
 for (const { target, platform, arch, os, cpu, entry, bin } of targets) {

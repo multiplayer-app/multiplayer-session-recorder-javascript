@@ -6,7 +6,7 @@ import { upload as uploadSourcemap } from './sourcemaps/upload.js'
 import { login, logout, status as authStatus } from '../services/auth.service.js'
 import { startMcpServer } from './mcp.js'
 import { loadProfile, writeProfile } from '../cli/profile.js'
-import { API_URL, DEFAULT_MAX_CONCURRENT } from '../config.js'
+import { API_URL, DEFAULT_MAX_CONCURRENT, FRONTEND_URL } from '../config.js'
 import type { ParsedFlags } from '../cli/flags.js'
 import type { RuntimeMode } from '../runtime/types.js'
 import type { AgentConfig } from '../types/index.js'
@@ -49,6 +49,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
     .option('--headless', 'Run without TUI (structured log output, requires full config); also set via MULTIPLAYER_HEADLESS=true')
     .option('--profile <name>', 'Config profile to use from .multiplayer/config (default: "default"); also set via MULTIPLAYER_PROFILE')
     .option('--url <url>', 'Multiplayer base API URL')
+    .option('--frontend-url <url>', 'Multiplayer frontend URL for issue links (default: derived from --url)')
     .option('--api-key <key>', 'Multiplayer API key')
     .option('--name <name>', 'Agent name (defaults to hostname)')
     .option('--dir <path>', 'Project directory (must be a git repo)')
@@ -66,6 +67,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
       const profile = loadProfile(profileName, projectDirHint)
       const initialConfig: Partial<AgentConfig> = {
         url: opts.url || process.env.MULTIPLAYER_URL || profile.url || API_URL,
+        frontendUrl: opts.frontendUrl || process.env.MULTIPLAYER_FRONTEND_URL || profile.frontendUrl || undefined,
         apiKey: opts.apiKey || process.env.MULTIPLAYER_API_KEY || profile.apiKey,
         authType: profile.authType,
         workspace: profile.workspace,
@@ -84,9 +86,12 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
       const rawHealthPort = opts.healthPort || process.env.MULTIPLAYER_HEALTH_PORT
       const healthPort = rawHealthPort ? Number(rawHealthPort) : undefined
 
-      // Persist --url to profile if explicitly provided and not already saved
+      // Persist --url / --frontend-url to profile if explicitly provided and not already saved
       if (opts.url && !profile.url) {
         writeProfile(profileName, { url: opts.url })
+      }
+      if (opts.frontendUrl && !profile.frontendUrl) {
+        writeProfile(profileName, { frontendUrl: opts.frontendUrl })
       }
       // Persist --skip-sdk-check to profile if explicitly set
       if (opts.skipSdkCheck && !profile.skipSdkCheck) {

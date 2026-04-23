@@ -1200,6 +1200,7 @@ export const generatePrContent = async (
   model: string,
   modelKey: string,
   modelUrl: string | undefined,
+  baseUrl?: string,
 ): Promise<{ title: string; body: string }> => {
   const systemPrompt = PR_GENERATION_SYSTEM_PROMPT
 
@@ -1208,7 +1209,7 @@ export const generatePrContent = async (
     .join('\n\n')
     .slice(0, 4000)
 
-  const userMessage = buildPrUserMessage(issue, conversationContext, diffStats)
+  const userMessage = buildPrUserMessage(issue, conversationContext, diffStats, baseUrl)
 
   try {
     let text: string
