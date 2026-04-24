@@ -11,6 +11,15 @@ import { promisify } from 'util'
 import { Issue, FilePatch, Release, ConversationMessage } from '../types/index.js'
 import { MAX_FILE_SIZE, MAX_FILES_TO_READ } from '../config.js'
 import { getAuthHeaders } from '../lib/authHeaders.js'
+import {
+  buildChatTitlePrompt,
+  buildDebuggingSystemPrompt,
+  ANALYSE_ISSUE_SYSTEM_PROMPT,
+  buildAnalyseIssueUserMessage,
+  PR_GENERATION_SYSTEM_PROMPT,
+  buildPrUserMessage,
+  buildIssuePromptFallback,
+} from '../prompts.js'
 
 const execAsync = promisify(exec)
 
@@ -200,12 +209,7 @@ export const generateChatTitle = async (
   modelKey: string,
   modelUrl?: string,
 ): Promise<string> => {
-  const prompt = `Generate a concise title (max 60 characters) for a debugging session about this issue.
-Service: ${issue.service.serviceName}
-Category: ${issue.category}
-Title: ${issue.title}
-${issue.metadata.message ? `Error: ${issue.metadata.message}` : ''}
-Return only the title text, no quotes or explanation.`
+  const prompt = buildChatTitlePrompt(issue)
 
   try {
     if (isAnthropicModel(model)) {
@@ -236,26 +240,6 @@ Return only the title text, no quotes or explanation.`
 
 const isAnthropicModel = (model: string): boolean => model.startsWith('claude')
 
-const buildSystemPrompt = (workDir?: string): string => {
-  const dirNote = workDir
-    ? `\n\nIMPORTANT: You are operating in the directory: ${workDir}\nAll file reads and edits MUST use paths relative to this directory. Never use absolute paths or navigate outside this directory.`
-    : ''
-  return `You are an expert software debugging agent. Your task is to analyze a software issue and produce concrete file patches to fix it.
-
-You have access to two tools:
-1. read_file: Read the content of a file in the project directory
-2. write_patch: Write the final list of file patches that will be applied to fix the issue
-
-When analyzing an issue:
-- Read relevant source files based on the stacktrace, service name, filenames mentioned
-- Understand the root cause
-- Produce minimal, targeted patches
-- Only patch files that need to change
-- Do not patch test files unless the bug is in a test
-- Do not add unnecessary comments or formatting changes
-
-Always call write_patch at the end with the complete list of patches needed.${dirNote}`
-}
 
 const findSpanById = (traces: unknown[], targetSpanId: string): any => {
   for (const item of traces as any[]) {
@@ -359,22 +343,8 @@ export const analyseIssueContext = async (
   modelKey: string,
   modelUrl?: string,
 ): Promise<IssueAnalysis> => {
-  const systemPrompt = `You are a software engineering assistant that evaluates bug reports.
-Respond ONLY with a JSON object in this exact format (no markdown, no explanation):
-{"fixabilityScore": <0-100>, "severity": "<high|medium|low>"}
-
-fixabilityScore rules:
-- 80-100: clear root cause, straightforward fix (stack trace points to specific line, simple logic error)
-- 60-79: identifiable issue, fix requires moderate investigation
-- 30-59: unclear root cause, complex or risky to fix automatically
-- 0-29: insufficient context, infrastructure/environment issue, or too broad to fix safely
-
-severity rules:
-- high: crashes, data loss, security issues, complete feature failure
-- medium: significant degradation, partial failure, affects many users
-- low: minor issues, edge cases, cosmetic problems`
-
-  const userMessage = `Analyse this issue and return fixabilityScore + severity:\n\n${markdown}`
+  const systemPrompt = ANALYSE_ISSUE_SYSTEM_PROMPT
+  const userMessage = buildAnalyseIssueUserMessage(markdown)
 
   try {
     if (isAnthropicModel(model)) {
@@ -467,6 +437,44 @@ const SPAN_ATTR_SKIP = new Set([
   'multiplayer.integration._id',
 ])
 
+const getSpanId = (span: any): string | undefined =>
+  span.SpanId ?? span.spanId ?? span.span_id
+
+const getSpanHasError = (span: any): boolean => {
+  if (span.SpanId) {
+    const eventNames = (span['Events.Name'] as string[] | undefined) ?? []
+    return eventNames.includes('exception')
+  }
+  const code = span.status?.code ?? span.status?.Code ?? 0
+  return code === 2 || code === 'STATUS_CODE_ERROR'
+}
+
+const getSpanDurationMs = (span: any): number | undefined => {
+  const start = span.startTimeUnixNano ?? span.start_time_unix_nano
+  const end = span.endTimeUnixNano ?? span.end_time_unix_nano
+  if (start != null && end != null) {
+    return Math.round((Number(end) - Number(start)) / 1_000_000)
+  }
+  return undefined
+}
+
+const collectAllSpans = (traces: any[]): any[] => {
+  const spans: any[] = []
+  for (const item of traces) {
+    if (item.SpanId) {
+      spans.push(item)
+    } else {
+      const scopeSpans = item.scopeSpans ?? item.scope_spans ?? []
+      for (const scope of scopeSpans) {
+        for (const span of scope.spans ?? []) {
+          spans.push(span)
+        }
+      }
+    }
+  }
+  return spans
+}
+
 export const buildIssueContextDoc = (
   issue: Issue,
   release: Release | undefined,
@@ -556,28 +564,44 @@ export const buildIssueContextDoc = (
     }
 
     if (Array.isArray(parsedCtx.traces) && parsedCtx.traces.length > 0) {
-      lines.push('', `### Traces (${parsedCtx.traces.length} spans)`)
-      const spans: string[] = []
-      const collectSpans = (items: any[]) => {
-        for (const item of items) {
-          const scopeSpans = item.scopeSpans ?? item.scope_spans ?? []
-          for (const scope of scopeSpans) {
-            for (const span of scope.spans ?? []) {
-              const name = span.name ?? '(unnamed)'
-              const statusCode = span.status?.code ?? span.status?.Code ?? 0
-              const hasError = statusCode === 2 || statusCode === 'STATUS_CODE_ERROR'
-              const events = (span.events ?? []).map((e: any) => e.name).filter(Boolean)
-              let entry = `- **${name}**`
-              if (hasError) entry += ' ⚠ ERROR'
-              if (events.length) entry += ` [${events.slice(0, 3).join(', ')}]`
-              spans.push(entry)
-            }
-          }
+      const issueSpanId = parsedCtx.issueSpan ? getSpanId(parsedCtx.issueSpan) : undefined
+      const allSpans = collectAllSpans(parsedCtx.traces)
+      lines.push('', `### Trace Spans (${allSpans.length} total)`)
+
+      const MAX_SPANS = 50
+      for (const span of allSpans.slice(0, MAX_SPANS)) {
+        const isIssue = issueSpanId !== undefined && getSpanId(span) === issueSpanId
+        const data = extractSpanData(span)
+        const hasError = getSpanHasError(span)
+        const durationMs = getSpanDurationMs(span)
+
+        const httpMethod = data.attributes['http.method'] ?? data.attributes['http.request.method']
+        const httpRoute = data.attributes['http.route'] ?? data.attributes['http.target'] ?? data.attributes['url.path']
+        const httpStatus = data.attributes['http.status_code'] ?? data.attributes['http.response.status_code']
+        const dbSystem = data.attributes['db.system']
+        const dbOperation = data.attributes['db.operation']
+        const dbStatement = data.attributes['db.statement']
+
+        const prefix = isIssue ? '**→ [issue]**' : '-'
+        let headline = `${prefix} \`${data.operation ?? '(unnamed)'}\``
+        if (httpMethod) {
+          headline += ` — ${httpMethod}${httpRoute ? ` ${httpRoute}` : ''}${httpStatus ? ` → ${httpStatus}` : ''}`
+        } else if (dbSystem) {
+          headline += ` — ${dbSystem}${dbOperation ? `:${dbOperation}` : ''}`
+        }
+        if (hasError) headline += ' ⚠ ERROR'
+        if (durationMs !== undefined) headline += ` (${durationMs}ms)`
+        lines.push(headline)
+
+        if (data.service) lines.push(`  Service: ${data.service}`)
+        if (dbStatement) lines.push(`  Query: \`${String(dbStatement).slice(0, 200)}\``)
+        if (data.exception?.type || data.exception?.message) {
+          const exc = [data.exception.type, data.exception.message].filter(Boolean).join(': ')
+          lines.push(`  Exception: ${exc.slice(0, 200)}`)
         }
       }
-      collectSpans(parsedCtx.traces)
-      lines.push(...spans.slice(0, 30))
-      if (spans.length > 30) lines.push(`  … and ${spans.length - 30} more spans`)
+
+      if (allSpans.length > MAX_SPANS) lines.push(`  … and ${allSpans.length - MAX_SPANS} more spans`)
     }
 
     if (Array.isArray(parsedCtx.logs) && parsedCtx.logs.length > 0) {
@@ -608,61 +632,7 @@ export const buildIssueContextDoc = (
   return markdown
 }
 
-export const buildIssuePromptFallback = (issue: Issue, release?: Release, debugContext?: string): string => {
-  const lines: string[] = [
-    `# Issue: ${issue.title}`,
-    '',
-    `**Category:** ${issue.category}`,
-    `**Service:** ${issue.service.serviceName}`,
-  ]
-
-  if (issue.service.environment) {
-    lines.push(`**Environment:** ${issue.service.environment}`)
-  }
-  if (issue.service.release) {
-    lines.push(`**Release:** ${issue.service.release}`)
-  }
-  if (issue.metadata.message) {
-    lines.push('', '## Error Message', '```', issue.metadata.message, '```')
-  }
-  if (issue.metadata.stacktrace) {
-    lines.push('', '## Stacktrace', '```', issue.metadata.stacktrace, '```')
-  }
-  if (issue.metadata.filename) {
-    lines.push('', `**File:** ${issue.metadata.filename}`)
-  }
-  if (issue.metadata.function) {
-    lines.push(`**Function:** ${issue.metadata.function}`)
-  }
-  if (issue.metadata.httpMethod && issue.metadata.httpRoute) {
-    lines.push('', `**HTTP:** ${issue.metadata.httpMethod} ${issue.metadata.httpRoute}`)
-  }
-  if (issue.metadata.value) {
-    lines.push('', `**Value:** ${issue.metadata.value}`)
-  }
-  if (issue.metadata.type) {
-    lines.push(`**Type:** ${issue.metadata.type}`)
-  }
-
-  if (release) {
-    lines.push('', '## Release')
-    lines.push(`**Version:** ${release.version}`)
-    if (release.commitHash) lines.push(`**Commit:** ${release.commitHash}`)
-    if (release.repositoryUrl) lines.push(`**Repository:** ${release.repositoryUrl}`)
-    if (release.releaseNotes) lines.push('', '**Release Notes:**', release.releaseNotes)
-  }
-
-  if (debugContext) {
-    lines.push('', '## Runtime Debug Context', '```json', debugContext, '```')
-  }
-
-  lines.push(
-    '',
-    'Please analyze this issue and produce file patches to fix it. Read relevant source files to understand the code before making changes.',
-  )
-
-  return lines.join('\n')
-}
+export { buildIssuePromptFallback }
 
 const readFileSafe = (projectDir: string, filePath: string): string => {
   try {
@@ -1003,7 +973,7 @@ const resolveIssueWithOpenAI = async (
   })
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: 'system', content: buildSystemPrompt() },
+    { role: 'system', content: buildDebuggingSystemPrompt() },
     { role: 'user', content: prompt },
   ]
 
@@ -1037,7 +1007,7 @@ const resolveIssueWithClaudeCode = async (
       executable: 'node',
       pathToClaudeCodeExecutable: cliPath,
       permissionMode: 'bypassPermissions',
-      systemPrompt: buildSystemPrompt(projectDir),
+      systemPrompt: buildDebuggingSystemPrompt(projectDir),
       maxTurns: 1000,
       includePartialMessages: !!(callbacks.onProgress || callbacks.onToolCall),
       ...(model ? { model } : {}),
@@ -1111,7 +1081,7 @@ const continueChatWithOpenAI = async (
   })
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: 'system', content: buildSystemPrompt() },
+    { role: 'system', content: buildDebuggingSystemPrompt() },
     ...history.map(
       (m) =>
         ({
@@ -1156,7 +1126,7 @@ const continueChatWithClaudeCode = async (
       executable: 'node',
       pathToClaudeCodeExecutable: cliPath,
       permissionMode: 'bypassPermissions',
-      systemPrompt: buildSystemPrompt(projectDir),
+      systemPrompt: buildDebuggingSystemPrompt(projectDir),
       maxTurns: 250,
       includePartialMessages: !!(callbacks.onProgress || callbacks.onToolCall || callbacks.onToolCallResult),
       ...(model ? { model } : {}),
@@ -1230,42 +1200,16 @@ export const generatePrContent = async (
   model: string,
   modelKey: string,
   modelUrl: string | undefined,
+  baseUrl?: string,
 ): Promise<{ title: string; body: string }> => {
-  const systemPrompt = `You are a developer writing a pull request for a bug fix.
-Return a JSON object with exactly two keys: "title" (concise PR title, max 72 chars) and "body" (markdown PR description).
-The body must include:
-1. **What happened** – the root cause of the issue (error type, message, where it occurred)
-2. **Why it happened** – the underlying reason (bad assumption, missing check, race condition, etc.)
-3. **What was changed** – the specific fix applied and why it prevents the issue
-4. A brief diff summary (files/lines changed)
-Use clear markdown with section headers. Do not include any other text outside the JSON.`
+  const systemPrompt = PR_GENERATION_SYSTEM_PROMPT
 
   const conversationContext = history
     .map((m) => `[${m.role}]: ${m.content}`)
     .join('\n\n')
     .slice(0, 4000)
 
-  const issueContext = [
-    issue.metadata?.type && `Error type: ${issue.metadata.type}`,
-    issue.metadata?.message && `Error message: ${issue.metadata.message}`,
-    issue.metadata?.culprit && `Culprit: ${issue.metadata.culprit}`,
-    issue.metadata?.stacktrace && `Stack trace:\n${issue.metadata.stacktrace.slice(0, 800)}`,
-    issue.service?.serviceName && `Service: ${issue.service.serviceName}`,
-    issue.service?.environment && `Environment: ${issue.service.environment}`,
-    issue.category && `Category: ${issue.category}`,
-  ]
-    .filter(Boolean)
-    .join('\n')
-
-  const userMessage = `Generate a pull request title and description for this bug fix:
-
-Issue: ${issue.title}
-Component hash: ${issue.componentHash}
-Changes: +${diffStats.additions}/-${diffStats.deletions} lines
-
-${issueContext ? `Issue details:\n${issueContext}\n` : ''}
-Agent investigation and fix conversation:
-${conversationContext || 'No details available.'}`
+  const userMessage = buildPrUserMessage(issue, conversationContext, diffStats, baseUrl)
 
   try {
     let text: string

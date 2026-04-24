@@ -2,7 +2,27 @@
 
 export const API_URL = process.env.MULTIPLAYER_URL || 'https://api.multiplayer.app/v0'
 export const BASE_API_URL = process.env.MULTIPLAYER_BASE_URL || 'https://api.multiplayer.app'
-export const FRONTEND_URL = process.env.MULTIPLAYER_FRONTEND_URL || 'https://multiplayer.app'
+export const FRONTEND_URL = process.env.MULTIPLAYER_FRONTEND_URL || 'https://go.multiplayer.app'
+
+/**
+ * Derive the frontend URL from the API URL.
+ * Replaces an `api.` hostname prefix with `go.`; returns the URL unchanged for
+ * anything else (localhost, custom domains, etc.).
+ */
+export function deriveFrontendUrl(apiUrl: string): string {
+  try {
+    const parsed = new URL(apiUrl)
+    if (parsed.hostname.startsWith('api.')) {
+      parsed.hostname = 'go.' + parsed.hostname.slice('api.'.length)
+      // Frontend doesn't use a path prefix — strip it
+      parsed.pathname = '/'
+      return parsed.origin
+    }
+    return parsed.origin
+  } catch {
+    return apiUrl
+  }
+}
 
 // ─── Agent defaults ───────────────────────────────────────────────────────────
 

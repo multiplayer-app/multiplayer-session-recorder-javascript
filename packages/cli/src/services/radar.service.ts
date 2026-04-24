@@ -12,6 +12,7 @@ import {
   ChatSessionPayload,
   Issue,
 } from '../types/index.js'
+import type { Logger } from '../logger.js'
 import {
   SOCKET_RECONNECTION_DELAY,
   SOCKET_RECONNECTION_DELAY_MAX,
@@ -56,8 +57,8 @@ export interface RadarService {
       branchUrl?: string
       prUrl?: string
       repositoryUrl: string
-      prTitle?: string
-      prBody?: string
+      prTitle: string
+      prBody: string
       codeChanges?: { additions: number; deletions: number }
     }
     issue: { componentHash: string }
@@ -194,7 +195,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
 
   // Debug: log all incoming socket events
   socket.onAny((event: string, ...args: unknown[]) => {
-    logger.info(`[SOCKET] event=${event}`, JSON.stringify(args).slice(0, 200))
+    logger.info(`[SOCKET] event=${event} ${JSON.stringify(args).slice(0, 200)}`)
   })
 
   const onConnect = (handler: () => void) => {
@@ -216,9 +217,11 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
       branchUrl?: string
       prUrl?: string
       repositoryUrl: string
+      prTitle: string
+      prBody: string
+      codeChanges?: { additions: number; deletions: number }
     }
     issue: { componentHash: string }
-    codeChanges?: { additions: number; deletions: number }
   }) => {
     socket.emit(EVENT_DEBUGGING_AGENT_FIX_PUSHED, payload)
   }
@@ -475,6 +478,10 @@ export const validateApiKey = async (url: string, apiKey: string): Promise<{ wor
   }
 
   const payload = decodeApiKeyPayload(apiKey)
+  if (!payload.workspace || !payload.project) {
+    throw new Error('API key validation failed: invalid or missing workspace/project in token')
+  }
+
   const api = createApiService({ url, apiKey })
   const project = await api.fetchProject(payload.workspace, payload.project)
 

@@ -25,6 +25,7 @@ import {
   incrementResolved,
   setRateLimitActive,
 } from './state.js'
+import { deriveFrontendUrl } from '../config.js'
 import logger from '../logger.js'
 
 type ConfirmResolver = (result: { approved: boolean; userResponse?: string }) => void
@@ -266,7 +267,7 @@ export class RuntimeController extends EventEmitter {
 
     radar.onConnect(() => {
       this.setState(setConnection(this._state, 'connected'))
-      radar.emitIssueCheck()
+      setTimeout(() => radar.emitIssueCheck(), 1500)
     })
 
     radar.onDisconnect((reason) => {
@@ -1068,8 +1069,32 @@ export class RuntimeController extends EventEmitter {
    * Re-emits fix-pushed for an already-fixed issue so the backend reflects
    * the current state after a session restore.
    */
-  private reemitFixPushed(chatId: string, issue: Issue): void {
+  private async reemitFixPushed(chatId: string, issue: Issue): Promise<void> {
     const solution = issue.solution!
+    const cfg = this._config
+
+    let prTitle = solution.prTitle
+    let prBody = solution.prBody
+    if (!prTitle || !prBody) {
+      try {
+        const context = this.chatContexts.get(chatId)
+        const prContent = await AiService.generatePrContent(
+          issue,
+          context?.history ?? [],
+          { additions: 0, deletions: 0 },
+          cfg.model,
+          cfg.modelKey,
+          cfg.modelUrl,
+          cfg.frontendUrl ?? deriveFrontendUrl(cfg.url),
+        )
+        prTitle = prContent.title
+        prBody = prContent.body
+      } catch (err) {
+        this.log('error', `Re-emit: PR content generation failed: ${getErrorMessage(err)}`)
+        return
+      }
+    }
+
     this.radar?.notifyFixPushed({
       chatId,
       git: {
@@ -1077,6 +1102,8 @@ export class RuntimeController extends EventEmitter {
         branchUrl: GitService.getBranchUrl(solution.gitRepositoryUrl ?? '', solution.gitBranch!),
         prUrl: solution.prUrl ?? undefined,
         repositoryUrl: solution.gitRepositoryUrl ?? '',
+        prTitle,
+        prBody,
       },
       issue: { componentHash: issue.componentHash },
     })
@@ -1131,11 +1158,11 @@ export class RuntimeController extends EventEmitter {
       }
 
       if (issue.solution?.gitBranch) {
-        this.reemitFixPushed(chatId, issue)
+        await this.reemitFixPushed(chatId, issue)
       }
       await this.cleanupWorktree(chatId, cfg.dir, worktreeDir)
     } else if (issue.solution?.gitBranch) {
-      this.reemitFixPushed(chatId, issue)
+      await this.reemitFixPushed(chatId, issue)
     }
   }
 
@@ -1165,6 +1192,7 @@ export class RuntimeController extends EventEmitter {
         cfg.model,
         cfg.modelKey,
         cfg.modelUrl,
+        cfg.frontendUrl ?? deriveFrontendUrl(cfg.url),
       )
 
       const prUrl = await PrService.createPullRequest(worktreeDir, cfg, gitBranch, prContent.title, prContent.body)
@@ -1189,13 +1217,15 @@ export class RuntimeController extends EventEmitter {
           branchUrl: GitService.getBranchUrl(repositoryUrl ?? '', gitBranch),
           prUrl: prUrl ?? undefined,
           repositoryUrl: repositoryUrl ?? '',
+          prTitle: prContent.title,
+          prBody: prContent.body,
           codeChanges,
         },
         issue: { componentHash },
       })
     } catch (err) {
       this.log('error', `Restore: PR creation failed: ${getErrorMessage(err)}`)
-      this.reemitFixPushed(chatId, issue)
+      await this.reemitFixPushed(chatId, issue)
     } finally {
       await this.cleanupWorktree(chatId, cfg.dir, worktreeDir)
     }
@@ -1291,6 +1321,7 @@ export class RuntimeController extends EventEmitter {
         agentName: cfg.name,
         dir: cfg.dir,
       })
+      this.radar?.emitIssueCheck()
       return
     }
 
@@ -1323,12 +1354,15 @@ export class RuntimeController extends EventEmitter {
 
     try {
       // 1. Build context doc, upload it, analyse fixability — bail early if unfixable
-      const { proceed, debugContext } = await this.prepareContextAndScore(chatId, issue, enriched, agentSettings)
+      const { proceed, debugContext, contextMarkdown } = await this.prepareContextAndScore(chatId, issue, enriched, agentSettings)
       if (!proceed) return
 
       // 2. Set up the initial prompt (first message in history, or build from issue data)
       const issuePrompt =
-        context.history[0]?.content ?? AiService.buildIssuePromptFallback(issue, enriched?.release, debugContext)
+        context.history[0]?.content ??
+        (contextMarkdown
+          ? `${contextMarkdown}\n\nPlease analyze this issue and produce file patches to fix it. Read relevant source files based on the stacktrace and error details above.`
+          : AiService.buildIssuePromptFallback(issue, enriched?.release, debugContext))
       if (context.history.length === 0) {
         context.history.push({ role: 'user', content: issuePrompt })
         this.radar?.emitAgentMessage({
@@ -1461,7 +1495,7 @@ export class RuntimeController extends EventEmitter {
     issue: Issue,
     enriched: { issue: Issue; release?: Release },
     agentSettings?: { fixabilityScoreThreshold?: number },
-  ): Promise<{ proceed: boolean; debugContext?: string }> {
+  ): Promise<{ proceed: boolean; debugContext?: string; contextMarkdown?: string }> {
     const cfg = this._config
     const radar = this.radar
 
@@ -1524,6 +1558,7 @@ export class RuntimeController extends EventEmitter {
       return {
         proceed: true,
         debugContext: debugResult?.context,
+        contextMarkdown: markdown,
       }
     } catch {
       // Context doc upload/analysis failure is non-fatal — proceed without it
@@ -1602,6 +1637,7 @@ export class RuntimeController extends EventEmitter {
       this._config.model,
       this._config.modelKey,
       this._config.modelUrl,
+      this._config.frontendUrl ?? deriveFrontendUrl(this._config.url),
     )
 
     const prUrl = await PrService.createPullRequest(workDir, this._config, branchName, prContent.title, prContent.body)
@@ -1628,7 +1664,8 @@ export class RuntimeController extends EventEmitter {
         branchUrl: GitService.getBranchUrl(repositoryUrl ?? '', branchName),
         prUrl: prUrl ?? undefined,
         repositoryUrl: repositoryUrl ?? '',
-        ...(!prUrl ? { prTitle: prContent.title, prBody: prContent.body } : {}),
+        prTitle: prContent.title,
+        prBody: prContent.body,
         codeChanges,
       },
       issue: { componentHash: issue.componentHash },
