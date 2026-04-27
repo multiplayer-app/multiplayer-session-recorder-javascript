@@ -66,6 +66,7 @@ export interface ISession {
   }[];
   finishedS3Transfer?: boolean;
   tempApiKey?: string;
+  url?: string;
 }
 
 

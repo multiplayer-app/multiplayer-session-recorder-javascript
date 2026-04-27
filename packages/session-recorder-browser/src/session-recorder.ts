@@ -26,7 +26,6 @@ import {
   getSessionRecorderConfig,
   SESSION_AUTO_CREATED,
   SESSION_STOPPED_EVENT,
-  SESSION_STARTED_EVENT,
   REMOTE_SESSION_RECORDING_START,
   REMOTE_SESSION_RECORDING_STOP,
   SESSION_SAVE_BUFFER_EVENT,
@@ -768,9 +767,11 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     this._navigationRecorder.start({ sessionId: this.sessionId, sessionType: this.sessionType })
 
     if (this.session) {
-      recorderEventBus.emit(SESSION_STARTED_EVENT, this.session)
       this._socketService.subscribeToSession(this.session)
       this._sessionWidget.seconds = getTimeDifferenceInSeconds(this.session?.startedAt)
+      if (this.session?.url) {
+        recorderEventBus.emit(SESSION_AUTO_CREATED, this.session.url)
+      }
     }
   }
 
