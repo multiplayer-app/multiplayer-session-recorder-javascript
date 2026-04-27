@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/cli",
-  "version": "2.0.50",
+  "version": "2.0.53",
   "description": "Multiplayer CLI",
   "type": "module",
   "bin": {
@@ -14,12 +14,12 @@
     "lint": "eslint 'src/**/*.ts' --config eslint.config.js"
   },
   "optionalDependencies": {
-    "@multiplayer-app/cli-darwin-arm64": "2.0.50",
-    "@multiplayer-app/cli-darwin-x64": "2.0.50",
-    "@multiplayer-app/cli-linux-arm64": "2.0.50",
-    "@multiplayer-app/cli-linux-x64": "2.0.50",
-    "@multiplayer-app/cli-windows-arm64": "2.0.50",
-    "@multiplayer-app/cli-windows-x64": "2.0.50"
+    "@multiplayer-app/cli-darwin-arm64": "2.0.53",
+    "@multiplayer-app/cli-darwin-x64": "2.0.53",
+    "@multiplayer-app/cli-linux-arm64": "2.0.53",
+    "@multiplayer-app/cli-linux-x64": "2.0.53",
+    "@multiplayer-app/cli-windows-arm64": "2.0.53",
+    "@multiplayer-app/cli-windows-x64": "2.0.53"
   },
   "license": "MIT",
   "repository": {
