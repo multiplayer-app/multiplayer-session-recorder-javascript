@@ -154,10 +154,11 @@ function compactContextLabel(name: string | undefined, id: string | undefined): 
 interface Props {
   initialConfig: Partial<AgentConfig>
   profileName?: string
+  authErrorMessage?: string | null
   onComplete: (config: AgentConfig) => void
 }
 
-export function StartupScreen({ initialConfig, profileName, onComplete }: Props): ReactElement | null {
+export function StartupScreen({ initialConfig, profileName, authErrorMessage, onComplete }: Props): ReactElement | null {
   const [config, setConfig] = useState<Partial<AgentConfig>>(initialConfig)
   const [step, setStep] = useState<StepId>(() => firstRequiredStep(initialConfig))
   const [ready, setReady] = useState(false)
@@ -369,6 +370,9 @@ export function StartupScreen({ initialConfig, profileName, onComplete }: Props)
           <box flexDirection='column' flexShrink={0} marginBottom={1}>
             <text attributes={tuiAttrs({ bold: true })}>{label.title}</text>
             <text attributes={tuiAttrs({ dim: true })}>{label.description}</text>
+            {authErrorMessage && step === 'auth-method' && (
+              <text fg='#f87171'>Session expired or unauthorized — please sign in again.</text>
+            )}
           </box>
 
           <box

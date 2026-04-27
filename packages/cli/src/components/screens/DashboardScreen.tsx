@@ -10,6 +10,7 @@ import { ChatComposer } from '../ChatComposer.js'
 import { ContextSidebar } from '../ContextSidebar.js'
 import { LogsDock } from '../LogsDock.js'
 import { StatusBar, type StatusBarHint } from '../StatusBar.js'
+import pkg from '../../../package.json' with { type: 'json' }
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -19,8 +20,7 @@ const NARROW_BREAKPOINT = 120
 /** Below this width, hide the context sidebar even in wide mode. */
 const SIDEBAR_BREAKPOINT = 150
 
-/** CLI version (injected at build or read from package). */
-const CLI_VERSION = '2.0.7'
+const CLI_VERSION = pkg.version
 
 type FocusedPane = 'list' | 'detail' | 'composer' | 'logs'
 

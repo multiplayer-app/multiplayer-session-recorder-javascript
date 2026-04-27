@@ -5,6 +5,8 @@ import { DashboardScreen } from './components/screens/DashboardScreen.js'
 import { QuitScreen } from './components/screens/QuitScreen.js'
 import { StartupScreen } from './components/screens/StartupScreen.js'
 import { RuntimeController } from './runtime/controller.js'
+import { clearProfileAuth } from './cli/profile.js'
+import { deleteProfileTokenData } from './auth/token-store.js'
 import type { AgentChatStatus, AgentConfig, LogEntry } from './types/index.js'
 import type { QuitMode, RuntimeState, SessionDetail } from './runtime/types.js'
 
@@ -34,12 +36,40 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
 
   const { width: termWidth, height: termHeight } = useTerminalDimensions()
   const [screen, setScreen] = useState<Screen>('startup')
+  const [startupConfig, setStartupConfig] = useState<Partial<AgentConfig>>(initialConfig)
   const [runtimeState, setRuntimeState] = useState<RuntimeState | null>(null)
   const [sessionDetails, setSessionDetails] = useState<Map<string, SessionDetail>>(new Map())
   const [agentLogs, setAgentLogs] = useState<LogEntry[]>([])
   const [chatStatuses, setChatStatuses] = useState<Map<string, AgentChatStatus | string>>(new Map())
   const [hasMoreSessions, setHasMoreSessions] = useState(false)
+  const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null)
   const controllerRef = useRef<RuntimeController | null>(null)
+
+  const handleAuthError = useCallback((reason: string) => {
+    const profile = profileName ?? 'default'
+    try { deleteProfileTokenData(profile) } catch { /* best-effort */ }
+    try { clearProfileAuth(profile) } catch { /* best-effort */ }
+
+    controllerRef.current?.disconnect()
+    controllerRef.current = null
+
+    setRuntimeState(null)
+    setSessionDetails(new Map())
+    setChatStatuses(new Map())
+    setHasMoreSessions(false)
+    setAgentLogs([])
+    setStartupConfig((c) => ({
+      ...c,
+      apiKey: undefined,
+      authType: undefined,
+      workspace: undefined,
+      project: undefined,
+      workspaceDisplayName: undefined,
+      projectDisplayName: undefined,
+    }))
+    setAuthErrorMessage(reason)
+    setScreen('startup')
+  }, [profileName])
 
   const handleStartupComplete = useCallback(
     (config: AgentConfig) => {
@@ -69,6 +99,10 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
         onExit()
       })
 
+      controller.on('auth-error', (reason: string) => {
+        handleAuthError(reason)
+      })
+
       controller.connect()
       controllerRef.current = controller
       setRuntimeState(controller.getState())
@@ -77,7 +111,7 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
       // Load initial agent chats from API
       void controller.loadAgentChats(0).then((more) => setHasMoreSessions(more))
     },
-    [onExit]
+    [onExit, handleAuthError]
   )
 
   const handleQuitRequest = useCallback(() => {
@@ -141,7 +175,17 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
   }, [])
 
   if (screen === 'startup') {
-    return <StartupScreen initialConfig={initialConfig} profileName={profileName} onComplete={handleStartupComplete} />
+    return (
+      <StartupScreen
+        initialConfig={startupConfig}
+        profileName={profileName}
+        authErrorMessage={authErrorMessage}
+        onComplete={(cfg) => {
+          setAuthErrorMessage(null)
+          handleStartupComplete(cfg)
+        }}
+      />
+    )
   }
 
   if ((screen === 'dashboard' || screen === 'quit-confirm') && runtimeState && controllerRef.current) {

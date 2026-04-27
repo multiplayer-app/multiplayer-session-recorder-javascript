@@ -189,6 +189,33 @@ export function writeProfile(profileName: string, config: Partial<ProfileConfig>
 }
 
 /**
+ * Remove auth-related fields (api_key, auth_type, workspace, project) from
+ * the named profile, leaving non-auth settings intact. No-op if the profile
+ * or config file does not exist.
+ */
+export function clearProfileAuth(profileName: string): void {
+  const configPath = path.join(os.homedir(), '.multiplayer', 'config')
+  if (!fs.existsSync(configPath)) return
+
+  let profiles: Record<string, Record<string, string>> = {}
+  try {
+    profiles = parseIni(fs.readFileSync(configPath, 'utf-8'))
+  } catch {
+    return
+  }
+
+  const section = profiles[profileName]
+  if (!section) return
+
+  delete section['api_key']
+  delete section['auth_type']
+  delete section['workspace']
+  delete section['project']
+
+  fs.writeFileSync(configPath, serializeIni(profiles), 'utf-8')
+}
+
+/**
  * Load config for a named profile.
  *
  * Resolution order (highest priority first):

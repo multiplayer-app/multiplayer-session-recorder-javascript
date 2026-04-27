@@ -1,6 +1,7 @@
 import { URL } from 'url'
 import type { AgentConfig } from '../types/index.js'
 import { getAuthHeaders } from '../lib/authHeaders.js'
+import { AuthError, AUTH_STATUS_CODES } from '../lib/authError.js'
 
 /** Subset of GET /v0/api/workspaces/:workspaceId */
 export interface ApiWorkspace {
@@ -62,20 +63,29 @@ export const createApiService = (
     ? { Authorization: `Bearer ${config.bearerToken}` }
     : getAuthHeaders(config.apiKey)
 
+  const throwIfAuthFailure = (res: Response, label: string): void => {
+    if (AUTH_STATUS_CODES.has(res.status)) {
+      throw new AuthError(res.status, `${label}: ${res.status} ${res.statusText}`)
+    }
+  }
+
   const fetchWorkspace = async (workspaceId: string): Promise<ApiWorkspace | null> => {
     const res = await fetch(`${apiBase}/api/workspaces/${workspaceId}`, { headers })
+    throwIfAuthFailure(res, 'Failed to fetch workspace')
     if (!res.ok) return null
     return (await res.json()) as ApiWorkspace
   }
 
   const fetchProject = async (workspaceId: string, projectId: string): Promise<ApiProject | null> => {
     const res = await fetch(`${apiBase}/api/workspaces/${workspaceId}/projects/${projectId}`, { headers })
+    throwIfAuthFailure(res, 'Failed to fetch project')
     if (!res.ok) return null
     return (await res.json()) as ApiProject
   }
 
   const fetchProjects = async (workspaceId: string): Promise<ApiProject[]> => {
     const res = await fetch(`${apiBase}/api/workspaces/${workspaceId}/projects`, { headers })
+    throwIfAuthFailure(res, 'Failed to fetch projects')
     if (!res.ok) return []
     const data = (await res.json()) as any
     return (data?.data ?? data ?? []) as ApiProject[]
@@ -83,6 +93,7 @@ export const createApiService = (
 
   const fetchUserSession = async (): Promise<UserSession> => {
     const res = await fetch(`${apiBase}/auth/user-session`, { headers })
+    throwIfAuthFailure(res, 'Failed to fetch user session')
     if (!res.ok) throw new Error(`Failed to fetch user session: ${res.status} ${res.statusText}`)
     const data = (await res.json()) as any
     // API returns { sessions: [{ workspaces: [...] }] }
@@ -97,6 +108,7 @@ export const createApiService = (
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, project: projectId, type: 'OTEL' }),
     })
+    throwIfAuthFailure(res, 'Failed to create integration')
     if (!res.ok) {
       const body = await res.text().catch(() => '')
       throw new Error(`Failed to create integration: ${res.status} ${res.statusText} ${body}`)
@@ -110,6 +122,7 @@ export const createApiService = (
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, handle }),
     })
+    throwIfAuthFailure(res, 'Failed to create workspace')
     if (!res.ok) throw new Error(`Failed to create workspace: ${res.status} ${res.statusText} ${await res.text()}`)
     return (await res.json()) as ApiWorkspace
   }
@@ -120,6 +133,7 @@ export const createApiService = (
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
     })
+    throwIfAuthFailure(res, 'Failed to create project')
     if (!res.ok) throw new Error(`Failed to create project: ${res.status} ${res.statusText}`)
     return (await res.json()) as ApiProject
   }

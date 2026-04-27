@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken'
 import { URL } from 'url'
 import { createApiService } from './api.service.js'
 import { getAuthHeaders, isOAuthToken } from '../lib/authHeaders.js'
+import { AuthError, AUTH_STATUS_CODES } from '../lib/authError.js'
 import {
   AgentConfig,
   AgentMessage,
@@ -149,7 +150,11 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     const res = await fetch(url, { ...init, headers })
     if (!res.ok) {
       const text = await res.text().catch(() => '')
-      throw new Error(`Request failed: ${init.method ?? 'GET'} ${url} ${res.status} ${text}`.trim())
+      const detail = `${init.method ?? 'GET'} ${url} ${res.status} ${text}`.trim()
+      if (AUTH_STATUS_CODES.has(res.status)) {
+        throw new AuthError(res.status, `Request failed: ${detail}`)
+      }
+      throw new Error(`Request failed: ${detail}`)
     }
     const contentType = res.headers.get('content-type') ?? ''
     if (contentType.includes('application/json')) {
@@ -168,7 +173,11 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     const res = await fetch(url, { ...init, headers })
     if (!res.ok) {
       const text = await res.text().catch(() => '')
-      throw new Error(`Request failed: ${init.method ?? 'GET'} ${url} ${res.status} ${text}`.trim())
+      const detail = `${init.method ?? 'GET'} ${url} ${res.status} ${text}`.trim()
+      if (AUTH_STATUS_CODES.has(res.status)) {
+        throw new AuthError(res.status, `Request failed: ${detail}`)
+      }
+      throw new Error(`Request failed: ${detail}`)
     }
     return res
   }

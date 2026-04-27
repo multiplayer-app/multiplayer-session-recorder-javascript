@@ -12,6 +12,7 @@ import {
 } from '../types/index.js'
 import { createRadarService, RadarService } from '../services/radar.service.js'
 import { createApiService } from '../services/api.service.js'
+import { AuthError, isAuthErrorMessage } from '../lib/authError.js'
 import * as GitService from '../services/git.service.js'
 import * as AiService from '../services/ai.service.js'
 import * as PrService from '../services/pr.service.js'
@@ -178,6 +179,7 @@ export class RuntimeController extends EventEmitter {
   private quitMode: QuitMode | null = null
   private log: Logger
   private _pendingDetailEmit = new Map<string, { detail: SessionDetail; timer: ReturnType<typeof setTimeout> }>()
+  private _authErrorEmitted = false
 
   constructor(config: AgentConfig, logger?: Logger) {
     super()
@@ -201,6 +203,24 @@ export class RuntimeController extends EventEmitter {
 
   getState(): RuntimeState {
     return this._state
+  }
+
+  /** Fire 'auth-error' at most once per controller instance and stop the socket. */
+  private handleAuthFailure(reason: string): void {
+    if (this._authErrorEmitted) return
+    this._authErrorEmitted = true
+    this.log('error', `Authorization failed: ${reason}. Returning to auth step.`)
+    this.disconnect()
+    this.emit('auth-error', reason)
+  }
+
+  /** Returns true and emits 'auth-error' if the error is auth-related. */
+  private maybeReportAuthFailure(err: unknown): boolean {
+    if (err instanceof AuthError) {
+      this.handleAuthFailure(err.message)
+      return true
+    }
+    return false
   }
 
   getSessionDetail(chatId: string): SessionDetail | undefined {
@@ -241,6 +261,7 @@ export class RuntimeController extends EventEmitter {
       )
       this.emit('session-detail', chatId, { ...detail })
     } catch (err: unknown) {
+      if (this.maybeReportAuthFailure(err)) return
       this.log(
         'error',
         `Failed to fetch messages for chatId: ${chatId}, before: ${before}, error: ${getErrorMessage(err)}`,
@@ -278,6 +299,9 @@ export class RuntimeController extends EventEmitter {
     radar.onError((err) => {
       this.setState(setConnection(this._state, 'error', err.message))
       this.log('error', `Connection error: ${err.message}`)
+      if (isAuthErrorMessage(err.message)) {
+        this.handleAuthFailure(err.message)
+      }
     })
 
     radar.onUserMessage((msg) => {
@@ -377,6 +401,7 @@ export class RuntimeController extends EventEmitter {
         ...(projectDisplayName ? { projectDisplayName } : {}),
       })
     } catch (err: unknown) {
+      if (this.maybeReportAuthFailure(err)) return
       this.log('debug', `Could not load workspace/project labels: ${getErrorMessage(err)}`)
     }
   }
@@ -434,6 +459,7 @@ export class RuntimeController extends EventEmitter {
         this.updateSession({ chatId, status: toSessionStatus(backendStatus) })
       }
     } catch (err: unknown) {
+      if (this.maybeReportAuthFailure(err)) return
       this.log('error', `Failed to send message to ${chatId}: ${getErrorMessage(err)}`)
       this.emit('chat-status', chatId, 'error')
       this.updateSession({ chatId, status: 'failed' })
@@ -452,6 +478,7 @@ export class RuntimeController extends EventEmitter {
     try {
       await this.radar.abortChat(cfg.workspace, cfg.project, chatId)
     } catch (err: unknown) {
+      if (this.maybeReportAuthFailure(err)) return
       this.log('error', `Failed to abort ${chatId}: ${getErrorMessage(err)}`)
       throw err
     }
@@ -468,7 +495,8 @@ export class RuntimeController extends EventEmitter {
     try {
       const chat = await this.radar.fetchChat(cfg.workspace, cfg.project, chatId)
       return chat?.status ?? null
-    } catch {
+    } catch (err: unknown) {
+      this.maybeReportAuthFailure(err)
       return null
     }
   }
@@ -535,6 +563,7 @@ export class RuntimeController extends EventEmitter {
       this.log('info', `Loaded ${chats.length} agent chats (skip=${skip}, hasMore=${hasMore})`)
       return hasMore
     } catch (err: unknown) {
+      if (this.maybeReportAuthFailure(err)) return false
       this.log('error', `Failed to load agent chats: ${getErrorMessage(err)}`)
       return false
     }
@@ -555,6 +584,7 @@ export class RuntimeController extends EventEmitter {
       const chat = await this.radar.fetchChat(cfg.workspace, cfg.project, chatId)
       this.mergeChatIntoDetail(chatId, chat, { markLoaded: true })
     } catch (err: unknown) {
+      if (this.maybeReportAuthFailure(err)) return
       this.log('error', `Failed to load chat detail for ${chatId}: ${getErrorMessage(err)}`)
     }
   }
