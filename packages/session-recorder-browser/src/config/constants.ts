@@ -58,7 +58,7 @@ export const OTEL_IGNORE_URLS = [
   /.*\/v0\/radar\/continuous-debug-sessions\/[^/]+\/cancel$/,
 
   // Remote debug session endpoint
-  /.*\/v0\/radar\/remote-debug-session\/check$/
+  /.*\/v0\/radar\/remote-debug-session\/check$/,
 
   // Or use a more general pattern to catch all radar API endpoints
   // /.*\/v0\/radar\/.*/
