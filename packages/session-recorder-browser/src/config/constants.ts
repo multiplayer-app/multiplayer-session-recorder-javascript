@@ -1,4 +1,3 @@
-
 export const OTEL_MP_SAMPLE_TRACE_RATIO = 0.15
 
 export const SESSION_ID_PROP_NAME = 'multiplayer-session-id'
@@ -30,7 +29,7 @@ export const SOCKET_SET_USER_EVENT = 'socket:set-user'
 
 export const DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE = 100000
 
-export const SESSION_RESPONSE = 'multiplayer-debug-session-response'
+export const SESSION_READY_EVENT = 'debug-session-ready'
 
 export const CONTINUOUS_DEBUGGING_TIMEOUT = 60000 // 1 minutes
 
@@ -43,7 +42,6 @@ export const REMOTE_SESSION_RECORDING_STOP = 'remote-session-recording:stop'
 // Package version - injected by webpack during build
 declare const PACKAGE_VERSION: string
 export const PACKAGE_VERSION_EXPORT = PACKAGE_VERSION || '1.0.0'
-
 
 // Regex patterns for OpenTelemetry ignore URLs
 export const OTEL_IGNORE_URLS = [
@@ -60,7 +58,7 @@ export const OTEL_IGNORE_URLS = [
   /.*\/v0\/radar\/continuous-debug-sessions\/[^/]+\/cancel$/,
 
   // Remote debug session endpoint
-  /.*\/v0\/radar\/remote-debug-session\/check$/,
+  /.*\/v0\/radar\/remote-debug-session\/check$/
 
   // Or use a more general pattern to catch all radar API endpoints
   // /.*\/v0\/radar\/.*/
