@@ -526,7 +526,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   }
 
   private _toCrashBufferSessionIso(ts: number): string {
-    return new Date(ts - new Date().getTimezoneOffset() * 60 * 1000).toISOString()
+    return new Date(ts).toISOString()
   }
 
   /**
