@@ -11,7 +11,7 @@ import {
   getFormattedDate,
   getTimeDifferenceInSeconds,
   isSessionActive,
-  getOrCreateTabId
+  getOrCreateTabId,
 } from './utils'
 
 import { SessionState, SessionRecorderOptions, SessionRecorderConfigs, SessionRecorderEvents } from './types'
@@ -29,7 +29,7 @@ import {
   REMOTE_SESSION_RECORDING_START,
   REMOTE_SESSION_RECORDING_STOP,
   SESSION_SAVE_BUFFER_EVENT,
-  SESSION_READY_EVENT
+  SESSION_READY_EVENT,
 } from './config'
 
 import { setShouldRecordHttpData, setMaxCapturingHttpPayloadSize } from './patch'
@@ -182,7 +182,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
 
     this._configs = {
       ...BASE_CONFIG,
-      apiKey: this.session?.tempApiKey || ''
+      apiKey: this.session?.tempApiKey || '',
     }
   }
 
@@ -216,14 +216,14 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       clientId: this._tracer.clientId,
       socketUrl: this._configs.apiBaseUrl || '',
       keepAlive: Boolean(this._configs.useWebsocket),
-      usePostMessageFallback: Boolean(this._configs.usePostMessageFallback)
+      usePostMessageFallback: Boolean(this._configs.usePostMessageFallback),
     })
 
     this._navigationRecorder.init({
       version: this._configs.version,
       application: this._configs.application,
       environment: this._configs.environment,
-      enabled: this._configs.recordNavigation
+      enabled: this._configs.recordNavigation,
     })
 
     if (this._configs.apiKey) {
@@ -326,7 +326,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
         sessionAttributes: this.sessionAttributes,
         resourceAttributes: getNavigatorInfo(),
         stoppedAt: this._recorder.stoppedAt,
-        name: this._getSessionName()
+        name: this._getSessionName(),
       })
 
       this._sessionWidget.updateSaveContinuousDebugSessionState(ContinuousRecordingSaveButtonState.SAVED)
@@ -338,10 +338,10 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
           message: 'Your session was saved',
           button: {
             text: 'Open session',
-            url: sessionUrl
-          }
+            url: sessionUrl,
+          },
         },
-        5000
+        5000,
       )
 
       return res
@@ -390,7 +390,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       } else {
         const request: StopSessionRequest = {
           sessionAttributes: { comment },
-          stoppedAt: this._recorder.stoppedAt
+          stoppedAt: this._recorder.stoppedAt,
         }
         const response = await this._apiService.stopSession(sid!, request)
         recorderEventBus.emit(SESSION_READY_EVENT, response._id)
@@ -463,7 +463,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
 
     const data = {
       userAttributes: this._userAttributes,
-      clientId: this._tracer.clientId
+      clientId: this._tracer.clientId,
     }
 
     this._socketService.setUser(data)
@@ -513,8 +513,8 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
           stoppedAt: this._toCrashBufferSessionIso(stoppedAt),
           sessionAttributes: this.sessionAttributes,
           resourceAttributes: getNavigatorInfo(),
-          userAttributes: this._userAttributes || undefined
-        })
+          userAttributes: this._userAttributes || undefined,
+        }),
       ])
     } catch (_e) {
       // swallow: flush is best-effort; never throw into app code
@@ -542,13 +542,13 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     const payload = {
       sessionAttributes: {
         ...this.sessionAttributes,
-        ...(sessionPayload?.sessionAttributes || {})
+        ...(sessionPayload?.sessionAttributes || {}),
       },
       resourceAttributes: {
         ...getNavigatorInfo(),
-        ...(sessionPayload?.resourceAttributes || {})
+        ...(sessionPayload?.resourceAttributes || {}),
       },
-      userAttributes: this._userAttributes
+      userAttributes: this._userAttributes,
     }
 
     const { state } = await this._apiService.checkRemoteSession(payload)
@@ -686,10 +686,10 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
           message: 'Your session was auto-saved due to an error',
           button: {
             text: 'Open session',
-            url: payload?.data?.url
-          }
+            url: payload?.data?.url,
+          },
         },
-        5000
+        5000,
       )
     })
 
@@ -737,7 +737,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
         sessionAttributes: this.sessionAttributes,
         resourceAttributes: getNavigatorInfo(),
         name: this._getSessionName(),
-        ...(this._userAttributes ? { userAttributes: this._userAttributes } : {})
+        ...(this._userAttributes ? { userAttributes: this._userAttributes } : {}),
       }
       const request: StartSessionRequest = !this.continuousRecording ? payload : { debugSessionData: payload }
 
@@ -857,7 +857,7 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    */
   private _checkOperation(
     action: 'init' | 'start' | 'stop' | 'cancel' | 'pause' | 'resume' | 'save' | 'autoStartRemoteContinuousSession',
-    payload?: any
+    payload?: any,
   ): void {
     if (!this._isInitialized) {
       throw new Error('Configuration not initialized. Call init() before performing any actions.')
