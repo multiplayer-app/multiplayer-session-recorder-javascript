@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import os from 'os'
+import path from 'path'
 import { create as createRelease } from './releases/create.js'
 import { create as createDeployment } from './deployments/create.js'
 import { upload as uploadSourcemap } from './sourcemaps/upload.js'
@@ -63,8 +64,14 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
     .action((opts) => {
       const mode: RuntimeMode = (opts.headless || process.env.MULTIPLAYER_HEADLESS === 'true') ? 'headless' : 'tui'
       const profileName: string = opts.profile || process.env.MULTIPLAYER_PROFILE || 'default'
-      const projectDirHint = opts.dir || process.env.MULTIPLAYER_DIR
-      const profile = loadProfile(profileName, projectDirHint)
+      const explicitDir = opts.dir || process.env.MULTIPLAYER_DIR
+      const profile = loadProfile(profileName, explicitDir)
+      // Ignore a saved profile.dir when it doesn't match the current cwd —
+      // running the CLI from a different repo should re-prompt for the directory
+      // rather than silently reusing the previously saved one.
+      const profileDirMatchesCwd =
+        !!profile.dir && path.resolve(profile.dir) === path.resolve(process.cwd())
+      const resolvedDir = explicitDir || (profileDirMatchesCwd ? profile.dir : undefined)
       const initialConfig: Partial<AgentConfig> = {
         url: opts.url || process.env.MULTIPLAYER_URL || profile.url || API_URL,
         frontendUrl: opts.frontendUrl || process.env.MULTIPLAYER_FRONTEND_URL || profile.frontendUrl || undefined,
@@ -73,7 +80,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
         workspace: profile.workspace,
         project: profile.project,
         name: opts.name || process.env.MULTIPLAYER_AGENT_NAME || profile.name || os.hostname(),
-        dir: opts.dir || process.env.MULTIPLAYER_DIR || profile.dir,
+        dir: resolvedDir,
         model: opts.model || process.env.AI_MODEL || profile.model,
         modelKey: opts.modelKey || process.env.AI_API_KEY || profile.modelKey,
         modelUrl: opts.modelUrl || process.env.AI_BASE_URL || profile.modelUrl,

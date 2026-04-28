@@ -205,8 +205,8 @@ class SessionRecorder
           events: events.map((e) => e.event),
         }),
         this._apiService.updateSessionAttributes(sessionId, {
-          startedAt: new Date(startedAt).toISOString(),
-          stoppedAt: new Date(stoppedAt).toISOString(),
+          startedAt: this._toCrashBufferSessionIso(startedAt),
+          stoppedAt: this._toCrashBufferSessionIso(stoppedAt),
           sessionAttributes: this.sessionAttributes,
           resourceAttributes: getNavigatorInfo(),
           userAttributes: this._userAttributes || undefined,
@@ -218,6 +218,12 @@ class SessionRecorder
       await this._crashBuffer.clear();
       this._isFlushingBuffer = false;
     }
+  }
+
+  private _toCrashBufferSessionIso(ts: number): string {
+    return new Date(
+      ts - new Date().getTimezoneOffset() * 60 * 1000
+    ).toISOString();
   }
 
   private async _createExceptionSession(span: any): Promise<void> {
