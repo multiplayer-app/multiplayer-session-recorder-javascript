@@ -396,6 +396,7 @@ If a backend has OTel + the Multiplayer OTLP endpoint, it is fully set up — no
 
 // ─── 2. Debugging agent ───────────────────────────────────────────────────────
 
+/** System prompt for the OpenAI tool-call path (uses read_file / write_patch). */
 export function buildDebuggingSystemPrompt(workDir?: string): string {
   const dirNote = workDir
     ? `\n\nIMPORTANT: You are operating in the directory: ${workDir}\nAll file reads and edits MUST use paths relative to this directory. Never use absolute paths or navigate outside this directory.`
@@ -417,11 +418,24 @@ When analyzing an issue:
 Always call write_patch at the end with the complete list of patches needed.${dirNote}`
 }
 
+/** System prompt for the Claude Code path (uses native Read / Edit / Write tools). */
+export function buildClaudeCodeDebuggingSystemPrompt(workDir: string): string {
+  return `You are running as an autonomous debugging agent inside an isolated git worktree. Your task is to fix a reported bug.
+
+You MUST apply the fix by using the Edit or Write tools to modify source files directly. Do not describe what to change — make the change.
+
+Working directory: ${workDir}
+Only edit or write files within this directory.`
+}
+
 // ─── 3. Issue analysis ────────────────────────────────────────────────────────
 
 export const ANALYSE_ISSUE_SYSTEM_PROMPT = `You are a software engineering assistant that evaluates bug reports.
 Respond ONLY with a JSON object in this exact format (no markdown, no explanation):
 {"fixabilityScore": <0-100>, "severity": "<high|medium|low>"}
+
+Try to find the root cause of the issue based on the title, metadata, stack trace, and any other available information.
+Try to read files mentioned in the stack trace if available (e.g. filename, function name) to understand the context of the error.
 
 fixabilityScore rules:
 - 80-100: clear root cause, straightforward fix (stack trace points to specific line, simple logic error)
@@ -454,7 +468,6 @@ export function buildPrUserMessage(
   issue: Issue,
   conversationContext: string,
   diffStats: { additions: number; deletions: number },
-  baseUrl?: string,
 ): string {
   const issueContext = [
     issue.metadata?.type && `Error type: ${issue.metadata.type}`,
@@ -468,16 +481,12 @@ export function buildPrUserMessage(
     .filter(Boolean)
     .join('\n')
 
-  const issueUrl = baseUrl
-    ? `${baseUrl}/project/${issue.workspace}/${issue.project}/default/issues/issue/${issue.hash}?componentHash=${issue.componentHash}`
-    : undefined
-
   return `Generate a pull request title and description for this bug fix:
 
 Issue: ${issue.title}
 Component hash: ${issue.componentHash}
 Changes: +${diffStats.additions}/-${diffStats.deletions} lines
-${issueUrl ? `Issue URL: ${issueUrl}\n` : ''}
+${issue.url ? `Issue URL: ${issue.url}\n` : ''}
 ${issueContext ? `Issue details:\n${issueContext}\n` : ''}
 Agent investigation and fix conversation:
 ${conversationContext || 'No details available.'}`

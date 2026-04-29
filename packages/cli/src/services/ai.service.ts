@@ -19,6 +19,7 @@ import {
   PR_GENERATION_SYSTEM_PROMPT,
   buildPrUserMessage,
   buildIssuePromptFallback,
+  buildClaudeCodeDebuggingSystemPrompt,
 } from '../prompts.js'
 
 const execAsync = promisify(exec)
@@ -212,15 +213,9 @@ export const generateChatTitle = async (
   const prompt = buildChatTitlePrompt(issue)
 
   try {
-    if (isAnthropicModel(model)) {
-      const client = new Anthropic({ apiKey: modelKey })
-      const response = await client.messages.create({
-        model: model === 'claude-code' ? 'claude-haiku-4-5' : model,
-        max_tokens: 64,
-        messages: [{ role: 'user', content: prompt }],
-      })
-      const block = response.content[0]
-      return block?.type === 'text' ? block.text.trim() : issue.title
+    if (model === 'claude-code' || isAnthropicModel(model)) {
+      const claudeModel = model === 'claude-code' ? undefined : model
+      return (await runClaudeCodePrompt(prompt, claudeModel)).trim() || issue.title
     } else {
       const client = new OpenAI({
         apiKey: modelKey,
@@ -238,7 +233,7 @@ export const generateChatTitle = async (
   }
 }
 
-const isAnthropicModel = (model: string): boolean => model.startsWith('claude')
+const isAnthropicModel = (model: string): boolean => model.startsWith('claude') && model !== 'claude-code'
 
 
 const findSpanById = (traces: unknown[], targetSpanId: string): any => {
@@ -347,15 +342,9 @@ export const analyseIssueContext = async (
   const userMessage = buildAnalyseIssueUserMessage(markdown)
 
   try {
-    if (isAnthropicModel(model)) {
-      const anthropic = new Anthropic({ apiKey: modelKey })
-      const response = await anthropic.messages.create({
-        model,
-        max_tokens: 100,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userMessage }],
-      })
-      const text = response.content.find((b) => b.type === 'text')?.text ?? ''
+    if (model === 'claude-code' || isAnthropicModel(model)) {
+      const claudeModel = model === 'claude-code' ? undefined : model
+      const text = await runClaudeCodePrompt(`${systemPrompt}\n\n${userMessage}`, claudeModel)
       return JSON.parse(text) as IssueAnalysis
     }
 
@@ -375,7 +364,10 @@ export const analyseIssueContext = async (
     return JSON.parse(text) as IssueAnalysis
   } catch {
     // Fall back to a conservative default so the agent still runs
-    return { fixabilityScore: 70, severity: 'medium' }
+    return {
+      fixabilityScore: 70,
+      severity: 'medium',
+    }
   }
 }
 
@@ -983,6 +975,28 @@ const resolveIssueWithOpenAI = async (
 
 // ─── Claude Code implementation ───────────────────────────────────────────────
 
+const runClaudeCodePrompt = async (prompt: string, model?: string): Promise<string> => {
+  let text = ''
+  for await (const message of query({
+    prompt,
+    options: {
+      cwd: process.cwd(),
+      executable: 'node',
+      pathToClaudeCodeExecutable: cliPath,
+      permissionMode: 'acceptEdits',
+      settingSources: [],
+      maxTurns: 1,
+      ...(model ? { model } : {}),
+    },
+  })) {
+    const msg = message as any
+    if (msg.type === 'result' && msg.subtype === 'success') {
+      text = msg.result ?? ''
+    }
+  }
+  return text
+}
+
 const resolveIssueWithClaudeCode = async (
   _issue: Issue,
   projectDir: string,
@@ -991,23 +1005,42 @@ const resolveIssueWithClaudeCode = async (
   abortSignal: AbortSignal | undefined,
   callbacks: StreamCallbacks,
 ): Promise<FilePatch[]> => {
-  const git = simpleGit(projectDir)
+  const absProjectDir = path.resolve(projectDir)
+  const git = simpleGit(absProjectDir)
 
   const pendingToolCall: { current: PendingToolCall | null } = {
     current: null,
   }
   const runningToolCalls = new Map<string, RunningToolCall>()
 
-  callbacks.onProgress?.(`[claude] starting (cwd=${projectDir}, cli=${cliPath})`)
+  callbacks.onProgress?.(`[claude] starting (cwd=${absProjectDir}, cli=${cliPath})`)
+
+  // Replace OpenAI-path patch language with direct-edit instructions for Claude Code
+  const claudePrompt = prompt
+    .replace(
+      /please analyze this issue and produce file patches to fix it\. read relevant source files based on the stacktrace and error details above\./gi,
+      'Fix the issue by directly editing the relevant source files using the Edit or Write tools. Read the relevant source files based on the stacktrace and error details above, then apply the fix.',
+    )
 
   for await (const message of query({
-    prompt,
+    prompt: claudePrompt,
     options: {
-      cwd: projectDir,
+      cwd: absProjectDir,
       executable: 'node',
       pathToClaudeCodeExecutable: cliPath,
-      permissionMode: 'bypassPermissions',
-      systemPrompt: buildDebuggingSystemPrompt(projectDir),
+      permissionMode: 'acceptEdits',
+      settingSources: [],
+      settings: {
+        claudeMdExcludes: ['**'],
+        permissions: {
+          allow: ['Bash(*)'],
+        },
+      },
+      systemPrompt: {
+        type: 'preset',
+        preset: 'claude_code',
+        append: buildClaudeCodeDebuggingSystemPrompt(absProjectDir),
+      },
       maxTurns: 1000,
       includePartialMessages: !!(callbacks.onProgress || callbacks.onToolCall),
       ...(model ? { model } : {}),
@@ -1060,7 +1093,7 @@ const resolveIssueWithClaudeCode = async (
 
   return changedFiles.map((filePath) => ({
     filePath,
-    newContent: fs.readFileSync(path.resolve(projectDir, filePath), 'utf-8'),
+    newContent: fs.readFileSync(path.resolve(absProjectDir, filePath), 'utf-8'),
   }))
 }
 
@@ -1198,9 +1231,8 @@ export const generatePrContent = async (
   history: ConversationMessage[],
   diffStats: { additions: number; deletions: number },
   model: string,
-  modelKey: string,
-  modelUrl: string | undefined,
-  baseUrl?: string,
+  modelKey?: string,
+  modelUrl?: string,
 ): Promise<{ title: string; body: string }> => {
   const systemPrompt = PR_GENERATION_SYSTEM_PROMPT
 
@@ -1209,19 +1241,13 @@ export const generatePrContent = async (
     .join('\n\n')
     .slice(0, 4000)
 
-  const userMessage = buildPrUserMessage(issue, conversationContext, diffStats, baseUrl)
+  const userMessage = buildPrUserMessage(issue, conversationContext, diffStats)
 
   try {
     let text: string
-    if (isAnthropicModel(model) || model === 'claude-code') {
-      const anthropic = new Anthropic({ apiKey: modelKey })
-      const response = await anthropic.messages.create({
-        model: isAnthropicModel(model) ? model : 'claude-haiku-4-5',
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userMessage }],
-      })
-      text = response.content.find((b) => b.type === 'text')?.text ?? ''
+    if (model === 'claude-code' || isAnthropicModel(model)) {
+      const claudeModel = model === 'claude-code' ? undefined : model
+      text = await runClaudeCodePrompt(`${systemPrompt}\n\n${userMessage}`, claudeModel)
     } else {
       const openai = new OpenAI({
         apiKey: modelKey,
@@ -1238,6 +1264,7 @@ export const generatePrContent = async (
       text = response.choices[0]?.message?.content ?? ''
     }
     const match = text.match(/\{[\s\S]*\}/)
+
     if (match) {
       const parsed = JSON.parse(match[0]) as { title?: string; body?: string }
       if (parsed.title && parsed.body) {
@@ -1247,9 +1274,13 @@ export const generatePrContent = async (
   } catch {
     // Fall through to default
   }
+
   return {
     title: `fix: ${issue.title}`,
-    body: `Fixes issue \`${issue.componentHash}\`.\n\nChanges: +${diffStats.additions}/-${diffStats.deletions} lines.`,
+    body: `Fixes issue \`${issue.componentHash}\`.
+    \n\nChanges: +${diffStats.additions}/-${diffStats.deletions} lines.
+    [issue](${issue.url})
+    `,
   }
 }
 

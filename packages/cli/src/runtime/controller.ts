@@ -26,7 +26,6 @@ import {
   incrementResolved,
   setRateLimitActive,
 } from './state.js'
-import { deriveFrontendUrl } from '../config.js'
 import logger from '../logger.js'
 
 type ConfirmResolver = (result: { approved: boolean; userResponse?: string }) => void
@@ -1115,7 +1114,6 @@ export class RuntimeController extends EventEmitter {
           cfg.model,
           cfg.modelKey,
           cfg.modelUrl,
-          cfg.frontendUrl ?? deriveFrontendUrl(cfg.url),
         )
         prTitle = prContent.title
         prBody = prContent.body
@@ -1222,7 +1220,6 @@ export class RuntimeController extends EventEmitter {
         cfg.model,
         cfg.modelKey,
         cfg.modelUrl,
-        cfg.frontendUrl ?? deriveFrontendUrl(cfg.url),
       )
 
       const prUrl = await PrService.createPullRequest(worktreeDir, cfg, gitBranch, prContent.title, prContent.body)
@@ -1667,7 +1664,6 @@ export class RuntimeController extends EventEmitter {
       this._config.model,
       this._config.modelKey,
       this._config.modelUrl,
-      this._config.frontendUrl ?? deriveFrontendUrl(this._config.url),
     )
 
     const prUrl = await PrService.createPullRequest(workDir, this._config, branchName, prContent.title, prContent.body)

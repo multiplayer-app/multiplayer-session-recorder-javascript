@@ -77,20 +77,27 @@ export const makeBranchName = (issueComponentHash: string, issueTitle: string): 
 }
 
 export const getDefaultBranch = async (dir: string): Promise<string> => {
+  const git: SimpleGit = simpleGit(dir)
   try {
-    const git: SimpleGit = simpleGit(dir)
-    // Try to get the default branch from the remote HEAD ref
+    // Query the remote directly — always reflects the current default branch,
+    // even if it was renamed after the repo was cloned.
+    const result = await git.raw(['ls-remote', '--symref', 'origin', 'HEAD'])
+    const match = result.match(/^ref: refs\/heads\/(\S+)\s+HEAD/m)
+    if (match?.[1]) return match[1]
+  } catch {
+    // network unreachable — fall through to local refs
+  }
+  try {
     const result = await git.raw(['symbolic-ref', 'refs/remotes/origin/HEAD'])
     return result.trim().replace('refs/remotes/origin/', '')
   } catch {
-    // Fallback: check if 'main' or 'master' exists
-    try {
-      const git: SimpleGit = simpleGit(dir)
-      await git.raw(['rev-parse', '--verify', 'origin/main'])
-      return 'main'
-    } catch {
-      return 'master'
-    }
+    // refs/remotes/origin/HEAD not set (common with shallow clones)
+  }
+  try {
+    await git.raw(['rev-parse', '--verify', 'origin/main'])
+    return 'main'
+  } catch {
+    return 'master'
   }
 }
 
@@ -159,7 +166,11 @@ export const createWorktree = async (
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     if (msg.includes('already exists')) {
-      return createWorktreeFromExisting(repoDir, worktreeDir, branchName)
+      // Branch exists locally from a previous attempt — reset it to the latest
+      // default branch so the new fix starts from the correct base commit.
+      await git.raw(['branch', '-f', branchName, `origin/${defaultBranch}`])
+      await git.raw(['worktree', 'add', worktreeDir, branchName])
+      return worktreeDir
     } else {
       throw err
     }
