@@ -7,7 +7,8 @@ import { isCompleteConfig } from './cli/flags.js'
 import { runCli } from './commands/cli.js'
 import { RuntimeController } from './runtime/controller.js'
 import { decodeApiKeyPayload, validateApiKey } from './services/radar.service.js'
-import { refreshOAuthTokenIfNeeded } from './services/auth.service.js'
+import { getOAuthParams } from './services/auth.service.js'
+import { OAuthManager } from './auth/oauth-manager.js'
 
 import { startHealthServer } from './services/health.service.js'
 import type { AgentConfig } from './types/index.js'
@@ -15,13 +16,25 @@ import type { ParsedFlags } from './cli/flags.js'
 
 runCli(process.argv, ({ mode, initialConfig, healthPort, profileName }: ParsedFlags) => {
   void (async () => {
-    // For OAuth profiles, silently refresh the access token if it has expired
+    // For OAuth profiles, refresh the access token if expired and start a background
+    // refresh timer so long-running agents never hit the 1-hour expiry mid-session.
+    let stopTokenRefresh: (() => void) | undefined
     if (initialConfig.authType === 'oauth' && initialConfig.url) {
       try {
-        const freshToken = await refreshOAuthTokenIfNeeded(initialConfig.url, profileName)
-        if (freshToken) {
-          initialConfig.apiKey = freshToken
+        const oauthManager = new OAuthManager(profileName)
+        try {
+          const oauthParams = await getOAuthParams(initialConfig.url)
+          oauthManager.loadParams(oauthParams)
+        } catch {
+          // Network unavailable — proceed with cached params
         }
+        const freshToken = await oauthManager.getAccessToken()
+        if (freshToken) initialConfig.apiKey = freshToken
+        // Mutate initialConfig.apiKey in place so every part of the running agent
+        // (HTTP calls, socket reconnects) automatically picks up the new token.
+        stopTokenRefresh = oauthManager.scheduleRefresh((newToken) => {
+          initialConfig.apiKey = newToken
+        })
       } catch {
         // Non-fatal — proceed with stored token; validation will surface the error
       }
@@ -79,10 +92,14 @@ runCli(process.argv, ({ mode, initialConfig, healthPort, profileName }: ParsedFl
         })
 
         process.on('SIGTERM', () => {
+          stopTokenRefresh?.()
           logger('info', 'SIGTERM received — waiting for active sessions to complete')
           controller.quit('after-current')
         })
-        process.on('SIGINT', () => controller.quit('now'))
+        process.on('SIGINT', () => {
+          stopTokenRefresh?.()
+          controller.quit('now')
+        })
 
         controller.connect()
       })()

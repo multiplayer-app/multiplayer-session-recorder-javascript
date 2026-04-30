@@ -9,7 +9,7 @@ interface LoginOptions {
   profileName?: string
 }
 
-async function getOAuthParams(baseUrl: string) {
+export async function getOAuthParams(baseUrl: string) {
   const response = await fetch(`${baseUrl}/.well-known/oauth-authorization-server`)
   if (!response.ok) {
     throw new Error(`Failed to fetch OAuth configuration: ${response.status} ${response.statusText}`)

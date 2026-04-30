@@ -96,6 +96,7 @@ export class OAuthManager {
   private _callbackResolve: (() => void) | undefined
   private _callbackReject: ((err: Error) => void) | undefined
   private _callbackDone: Promise<void> | undefined
+  private _refreshPromise: Promise<string | null> | null = null
 
   constructor(profileName = 'default') {
     this.tokenStore = new TokenStore(profileName)
@@ -461,10 +462,59 @@ export class OAuthManager {
     if (!authData?.oauthAccessToken) return null
 
     if (Date.now() >= authData.accessTokenExpiresAt) {
-      return this.refreshToken(authData.oauthRefreshToken)
+      if (!this._refreshPromise) {
+        this._refreshPromise = this.refreshToken(authData.oauthRefreshToken)
+          .finally(() => { this._refreshPromise = null })
+      }
+      return this._refreshPromise
     }
 
     return authData.oauthAccessToken
+  }
+
+  /**
+   * Starts a background timer that proactively refreshes the access token 5 minutes
+   * before it expires, then reschedules itself. Call the returned function to stop.
+   * Uses the same mutex as getAccessToken() so concurrent refresh calls are deduplicated.
+   */
+  scheduleRefresh(onRefreshed: (token: string) => void): () => void {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let stopped = false
+
+    const run = async () => {
+      if (stopped) return
+      try {
+        const authData = this.tokenStore.getAuthData()
+        if (!authData?.oauthRefreshToken) return
+        if (!this._refreshPromise) {
+          this._refreshPromise = this.refreshToken(authData.oauthRefreshToken)
+            .finally(() => { this._refreshPromise = null })
+        }
+        const token = await this._refreshPromise
+        if (token && !stopped) onRefreshed(token)
+      } catch {
+        // Ignore; next scheduled tick will retry
+      }
+      schedule()
+    }
+
+    const schedule = () => {
+      if (stopped) return
+      const authData = this.tokenStore.getAuthData()
+      if (!authData) return
+      const msUntilExpiry = authData.accessTokenExpiresAt - Date.now()
+      // Fire 5 min before expiry, minimum 10 s from now
+      const delay = Math.max(10_000, msUntilExpiry - 5 * 60 * 1000)
+      timer = setTimeout(run, delay)
+    }
+
+    schedule()
+
+    return () => {
+      stopped = true
+      if (timer) clearTimeout(timer)
+      timer = null
+    }
   }
 
   private async refreshToken(refreshToken: string): Promise<string | null> {

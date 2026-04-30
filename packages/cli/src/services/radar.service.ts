@@ -184,7 +184,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
 
   const socket: Socket = io(`${host}/workspaces/${config.workspace}/projects/${config.project}/agents`, {
     path: '/v0/radar/ws',
-    auth: {
+    auth: (cb: (data: object) => void) => cb({
       ...getAuthHeaders(config.apiKey),
       'x-is-debugging-agent': 'true',
       ...(config.name ? { 'x-agent-name': config.name } : {}),
@@ -193,7 +193,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
       ...(config.noGitBranch ? { 'x-no-git-branch': 'true' } : {}),
       ...(config.model ? { 'x-model': config.model } : {}),
       'x-available-models': JSON.stringify(computeAvailableModels(config)),
-    },
+    }),
     transports: ['websocket'],
     secure: host.startsWith('https'),
     reconnection: true,
