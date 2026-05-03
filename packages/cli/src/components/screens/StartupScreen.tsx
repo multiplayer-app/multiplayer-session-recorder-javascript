@@ -43,7 +43,7 @@ const STEP_DEFS: Record<StepId, StepMeta> = {
     description: 'Link this project to an existing Multiplayer account or add a new one.',
     shortLabel: 'Account',
     sidebarGroup: 'auth',
-    canSkip: (c) => !!c.apiKey || listAccounts().length === 0
+    canSkip: (c) => listAccounts().length === 0 || (!!c.apiKey && !!c.workspace && !!c.project)
   },
   'auth-method': {
     title: 'Authentication',
@@ -204,6 +204,23 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
       setStep(nextStep(step, next))
     },
     [config, step, account]
+  )
+
+  const handleAuthComplete = useCallback(
+    (updates: Partial<AgentConfig> & { _oauthWorkspaces?: SelectableWorkspace[] }) => {
+      if (updates._oauthWorkspaces) {
+        const workspaces = updates._oauthWorkspaces
+        setOauthWorkspaces(workspaces)
+        const next = { ...config, apiKey: updates.apiKey, authType: updates.authType, ...(updates.url ? { url: updates.url } : {}) }
+        setConfig(next)
+        const resolvedUrl = next.url || API_URL
+        setOauthApi(createApiService({ url: resolvedUrl, apiKey: '', bearerToken: updates.apiKey! }))
+        setStep('project-select')
+      } else {
+        advance(updates)
+      }
+    },
+    [config, advance]
   )
 
   const goBack = useCallback(() => {
@@ -412,7 +429,8 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
 
           {step === 'account-select' && (
             <AccountSelectStep
-              onComplete={(updates) => advance(updates)}
+              url={config.url || API_URL}
+              onComplete={(updates) => handleAuthComplete(updates)}
               onAddNew={() => setStep('auth-method')}
             />
           )}
@@ -421,19 +439,7 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
               config={config}
               url={config.url || API_URL}
               profileName={profileName}
-              onComplete={(updates) => {
-                if ((updates as any)._oauthWorkspaces) {
-                  const workspaces = (updates as any)._oauthWorkspaces as SelectableWorkspace[]
-                  setOauthWorkspaces(workspaces)
-                  const next = { ...config, apiKey: updates.apiKey }
-                  setConfig(next)
-                  const url = next.url || API_URL
-                  setOauthApi(createApiService({ url, apiKey: '', bearerToken: updates.apiKey! }))
-                  setStep('project-select')
-                } else {
-                  advance(updates)
-                }
-              }}
+              onComplete={(updates) => handleAuthComplete(updates)}
             />
           )}
           {step === 'project-select' && (

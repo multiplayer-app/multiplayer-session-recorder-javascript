@@ -12,6 +12,7 @@ export interface CredentialsConfig {
   apiKey?: string
   authType?: 'oauth' | 'api_key'
   url?: string
+  email?: string
 }
 
 /**

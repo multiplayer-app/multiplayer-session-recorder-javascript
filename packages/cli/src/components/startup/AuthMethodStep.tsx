@@ -160,6 +160,10 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
 
         setApiKeyValidating(false)
         const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
+        // Best-effort: fetch email for display in account selection later
+        void apiService.fetchUserSession().then((s) => {
+          if (s.email) writeCredentials(profile, { email: s.email })
+        }).catch(() => {})
         writeCredentials(profile, { apiKey: trimmedApiKey, authType: 'api_key' })
         onComplete({
           apiKey: trimmedApiKey,
@@ -219,7 +223,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
         )
 
         const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
-        writeCredentials(profile, { authType: 'oauth' })
+        writeCredentials(profile, { authType: 'oauth', ...(session.email ? { email: session.email } : {}) })
 
         onComplete({ apiKey: token, authType: 'oauth', _oauthWorkspaces: workspaces })
       } catch (err: any) {
