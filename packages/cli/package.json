@@ -14,12 +14,12 @@
     "lint": "eslint 'src/**/*.ts' --config eslint.config.js"
   },
   "optionalDependencies": {
-    "@multiplayer-app/cli-darwin-arm64": "2.0.59",
-    "@multiplayer-app/cli-darwin-x64": "2.0.59",
-    "@multiplayer-app/cli-linux-arm64": "2.0.59",
-    "@multiplayer-app/cli-linux-x64": "2.0.59",
-    "@multiplayer-app/cli-windows-arm64": "2.0.59",
-    "@multiplayer-app/cli-windows-x64": "2.0.59"
+    "@multiplayer-app/cli-darwin-arm64": "3.0.0-config-update.0",
+    "@multiplayer-app/cli-darwin-x64": "3.0.0-config-update.0",
+    "@multiplayer-app/cli-linux-arm64": "3.0.0-config-update.0",
+    "@multiplayer-app/cli-linux-x64": "3.0.0-config-update.0",
+    "@multiplayer-app/cli-windows-arm64": "3.0.0-config-update.0",
+    "@multiplayer-app/cli-windows-x64": "3.0.0-config-update.0"
   },
   "license": "MIT",
   "repository": {
