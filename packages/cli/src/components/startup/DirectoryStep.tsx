@@ -149,17 +149,10 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
       setValidating(true)
       setError(null)
       GitService.isGitRepo(currentPath)
+        .catch(() => false)
         .then((isGit) => {
           setValidating(false)
-          if (!isGit) {
-            setError('Not a git repository')
-            return
-          }
-          onComplete({ dir: currentPath })
-        })
-        .catch((err: Error) => {
-          setValidating(false)
-          setError(err.message)
+          onComplete({ dir: currentPath, ...(isGit ? {} : { noGitBranch: true }) })
         })
     } else if (item === UP_ITEM) {
       setCurrentPath(path.dirname(currentPath))

@@ -5,7 +5,7 @@ import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { stringFromInputSubmit } from '../../lib/inputSubmit.js'
 import type { AgentConfig } from '../../types/index.js'
 import { OAuthManager } from '../../auth/oauth-manager.js'
-import { writeProfile } from '../../cli/profile.js'
+import { writeCredentials } from '../../cli/profile.js'
 import { createApiService } from '../../services/api.service.js'
 import { API_URL } from '../../config.js'
 import { decodeApiKeyPayload } from '../../services/radar.service.js'
@@ -160,7 +160,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
 
         setApiKeyValidating(false)
         const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
-        writeProfile(profile, { apiKey: trimmedApiKey, authType: 'api_key' })
+        writeCredentials(profile, { apiKey: trimmedApiKey, authType: 'api_key' })
         onComplete({
           apiKey: trimmedApiKey,
           authType: 'api_key',
@@ -219,7 +219,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
         )
 
         const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
-        writeProfile(profile, { authType: 'oauth' })
+        writeCredentials(profile, { authType: 'oauth' })
 
         onComplete({ apiKey: token, authType: 'oauth', _oauthWorkspaces: workspaces })
       } catch (err: any) {

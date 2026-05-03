@@ -5,7 +5,7 @@ import { DashboardScreen } from './components/screens/DashboardScreen.js'
 import { QuitScreen } from './components/screens/QuitScreen.js'
 import { StartupScreen } from './components/screens/StartupScreen.js'
 import { RuntimeController } from './runtime/controller.js'
-import { clearProfileAuth } from './cli/profile.js'
+import { clearCredentials } from './cli/profile.js'
 import { deleteProfileTokenData } from './auth/token-store.js'
 import type { AgentChatStatus, AgentConfig, LogEntry } from './types/index.js'
 import type { QuitMode, RuntimeState, SessionDetail } from './runtime/types.js'
@@ -48,7 +48,7 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
   const handleAuthError = useCallback((reason: string) => {
     const profile = profileName ?? 'default'
     try { deleteProfileTokenData(profile) } catch { /* best-effort */ }
-    try { clearProfileAuth(profile) } catch { /* best-effort */ }
+    try { clearCredentials(profile) } catch { /* best-effort */ }
 
     controllerRef.current?.disconnect()
     controllerRef.current = null

@@ -6,7 +6,7 @@ import { create as createDeployment } from './deployments/create.js'
 import { upload as uploadSourcemap } from './sourcemaps/upload.js'
 import { login, logout, status as authStatus } from '../services/auth.service.js'
 import { startMcpServer } from './mcp.js'
-import { loadProfile, writeProfile } from '../cli/profile.js'
+import { loadProfile, writeCredentials, writeProjectSettings } from '../cli/profile.js'
 import { API_URL, DEFAULT_MAX_CONCURRENT } from '../config.js'
 import type { ParsedFlags } from '../cli/flags.js'
 import type { RuntimeMode } from '../runtime/types.js'
@@ -86,13 +86,13 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
       const rawHealthPort = opts.healthPort || process.env.MULTIPLAYER_HEALTH_PORT
       const healthPort = rawHealthPort ? Number(rawHealthPort) : undefined
 
-      // Persist --url to profile if explicitly provided and not already saved
+      // Persist --url to credentials if explicitly provided and not already saved
       if (opts.url && !profile.url) {
-        writeProfile(profileName, { url: opts.url })
+        writeCredentials(profileName, { url: opts.url })
       }
-      // Persist --skip-sdk-check to profile if explicitly set
-      if (opts.skipSdkCheck && !profile.skipSdkCheck) {
-        writeProfile(profileName, { skipSdkCheck: true })
+      // Persist --skip-sdk-check to project settings if explicitly set and dir is known
+      if (opts.skipSdkCheck && !profile.skipSdkCheck && resolvedDir) {
+        writeProjectSettings(resolvedDir, { skipSdkCheck: true })
       }
 
       onAgent({ mode, initialConfig, healthPort, profileName })

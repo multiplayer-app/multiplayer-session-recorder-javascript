@@ -1,6 +1,6 @@
 import { OAuthManager } from '../auth/oauth-manager.js'
 import { deleteProfileTokenData } from '../auth/token-store.js'
-import { writeProfile } from '../cli/profile.js'
+import { writeCredentials } from '../cli/profile.js'
 import { BASE_API_URL } from '../config.js'
 import logger from '../logger.js'
 
@@ -55,7 +55,7 @@ export async function login(opts: LoginOptions = {}): Promise<void> {
   // Tokens (access + refresh + expiry + client credentials) are persisted to
   // ~/.multiplayer/tokens.json by TokenStore on every storeAuthData() call.
   // We only write non-secret config fields to the profile INI.
-  writeProfile(profileName, {
+  writeCredentials(profileName, {
     authType: 'oauth',
     ...(opts.url ? { url: opts.url } : {}),
   })
