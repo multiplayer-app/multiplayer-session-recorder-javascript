@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder",
-  "version": "2.0.59",
+  "version": "3.0.0-config-update.0",
   "description": "Multiplayer Fullstack Session Recorder",
   "scripts": {
     "lint": "turbo run lint",
