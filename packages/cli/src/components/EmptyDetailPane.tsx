@@ -3,7 +3,8 @@ import { tuiAttrs } from '../lib/tuiAttrs.js'
 
 const BRAND_PRIMARY = '#6366f1'
 const BRAND_ACCENT = '#22d3ee'
-const DIM = '#4b5563'
+/** Mid-gray that stays legible on true-black terminals (darker hex + ANSI dim was nearly invisible). */
+const DIM = '#a1a1aa'
 const MUTED = '#6b7280'
 
 interface Props {
@@ -47,9 +48,7 @@ function EmptyDetailPaneImpl({ hasSessions }: Props): ReactElement {
         ) : (
           <>
             <text fg={MUTED}>Waiting for issues to arrive...</text>
-            <text fg={DIM} attributes={tuiAttrs({ dim: true })}>
-              Issues will appear here as they are detected
-            </text>
+            <text fg={DIM}>Issues will appear here as they are detected</text>
             <text fg={DIM}>Listening...</text>
           </>
         )}

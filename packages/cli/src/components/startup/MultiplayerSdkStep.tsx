@@ -22,6 +22,7 @@ import {
   type CreatedApiKey,
   type SetupPlan
 } from '../../session-recorder/setupWithAi.js'
+import { Divider, clickHandler, FooterHints, ActionButton, AnimatedLoading, AiStatusLine } from '../shared/index.js'
 
 // ─── Cross-stack context helpers ─────────────────────────────────────────────
 
@@ -32,9 +33,7 @@ function formatStackPath(stack: DetectedStack): string {
 function buildUpcomingStacksSummary(queue: DetectedStack[], currentIdx: number): string {
   const upcoming = queue.slice(currentIdx + 1)
   if (upcoming.length === 0) return ''
-  return upcoming
-    .map((s) => `- ${formatStackPath(s)} — ${s.label} (type: ${s.type}, SDK: ${s.sdkPackage})`)
-    .join('\n')
+  return upcoming.map((s) => `- ${formatStackPath(s)} — ${s.label} (type: ${s.type}, SDK: ${s.sdkPackage})`).join('\n')
 }
 
 function buildPriorSummary(plan: SetupPlan, stack: DetectedStack, keys: CreatedApiKey[] | null): string {
@@ -62,11 +61,11 @@ ${files}
 - Env vars introduced: ${envNames}
 ${keyLine}${warnings}`
 }
-import { Divider, clickHandler, FooterHints, ActionButton, AnimatedLoading, AiStatusLine } from '../shared/index.js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Phase =
+  | 'confirm' // 0. Ask the user before scanning
   | 'scanning' // 1. Detecting stacks (heuristic scan)
   | 'classifying' // 2. AI analyzes which stacks need the SDK
   | 'no-stacks' // 2a. Nothing detected — skip
@@ -87,6 +86,7 @@ interface Props {
 
 type Action = 'setup' | 'skip'
 type PreviewAction = 'apply' | 'regenerate' | 'skip'
+type ConfirmAction = 'detect' | 'skip'
 
 const ACTIONS: { id: Action; label: string; description: string }[] = [
   {
@@ -95,6 +95,15 @@ const ACTIONS: { id: Action; label: string; description: string }[] = [
     description: 'Analyze your project and generate integration changes'
   },
   { id: 'skip', label: 'Skip for now', description: 'You can set this up later' }
+]
+
+const CONFIRM_ACTIONS: { id: ConfirmAction; label: string; description: string }[] = [
+  {
+    id: 'detect',
+    label: 'Start scanning',
+    description: 'Scan this directory to find frameworks that need the Session Recorder SDK'
+  },
+  { id: 'skip', label: 'Skip for now', description: 'You can run setup later' }
 ]
 
 const PREVIEW_ACTIONS: { id: PreviewAction; label: string }[] = [
@@ -219,6 +228,95 @@ function ApplyLogView({ applyLog }: { applyLog: string[] }): ReactElement {
           ))}
         </box>
       ))}
+    </box>
+  ) as ReactElement
+}
+
+interface ConfirmViewProps {
+  dir: string | undefined
+  selectedIndex: number
+  hoveredRow: number | null
+  setSelectedIndex: (index: number) => void
+  setHoveredRow: Dispatch<SetStateAction<number | null>>
+  onDetect: () => void
+  onSkip: () => void
+  onBack?: () => void
+}
+
+function ConfirmView({
+  dir,
+  selectedIndex,
+  hoveredRow,
+  setSelectedIndex,
+  setHoveredRow,
+  onDetect,
+  onSkip,
+  onBack
+}: ConfirmViewProps): ReactElement {
+  return (
+    <box flexDirection='column' gap={1} flexGrow={1}>
+      <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
+      <box flexDirection='column' gap={1}>
+        <text>Scan this project for application stacks and set up the Multiplayer Session Recorder SDK?</text>
+        {dir && (
+          <box flexDirection='row' gap={1}>
+            <text attributes={tuiAttrs({ dim: true })}>Directory:</text>
+            <text fg='#e6edf3'>{dir}</text>
+          </box>
+        )}
+      </box>
+
+      <box
+        border={true}
+        flexShrink={0}
+        flexDirection='column'
+        borderStyle='rounded'
+        borderColor='#30363d'
+        overflow={'hidden' as const}
+      >
+        {CONFIRM_ACTIONS.map((action, i) => {
+          const isActive = i === selectedIndex
+          const isHovered = hoveredRow === i
+          const isLast = i === CONFIRM_ACTIONS.length - 1
+          const icon = action.id === 'detect' ? '◆' : '→'
+          const iconColor = action.id === 'detect' ? '#22d3ee' : '#8b949e'
+          return (
+            <box
+              key={action.id}
+              flexDirection='column'
+              onMouseUp={clickHandler(() => {
+                setSelectedIndex(i)
+                if (action.id === 'detect') onDetect()
+                else onSkip()
+              })}
+              onMouseOver={() => setHoveredRow(i)}
+              onMouseOut={() => setHoveredRow((v) => (v === i ? null : v))}
+            >
+              <box
+                flexDirection='row'
+                paddingLeft={1}
+                paddingRight={1}
+                backgroundColor={isActive ? '#161b22' : isHovered ? '#21262d' : undefined}
+              >
+                <box width={3} flexShrink={0}>
+                  <text fg={iconColor}>{icon}</text>
+                </box>
+                <box flexDirection='column' flexGrow={1} flexShrink={1}>
+                  <text fg={isActive ? '#e6edf3' : '#c9d1d9'} attributes={tuiAttrs({ bold: isActive })}>
+                    {action.label}
+                  </text>
+                  <box flexGrow={1} flexShrink={1}>
+                    <text attributes={tuiAttrs({ dim: true })}>{action.description}</text>
+                  </box>
+                </box>
+              </box>
+              {!isLast && <Divider />}
+            </box>
+          )
+        })}
+      </box>
+
+      <FooterHints hints={onBack ? '↑↓ navigate · Enter confirm · Esc back' : '↑↓ navigate · Enter confirm'} />
     </box>
   ) as ReactElement
 }
@@ -1007,7 +1105,7 @@ function ResultsView({
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function MultiplayerSdkStep({ config, onComplete, onBack }: Props): ReactElement {
-  const [phase, setPhase] = useState<Phase>('scanning')
+  const [phase, setPhase] = useState<Phase>(config.skipSdkCheck ? 'scanning' : 'confirm')
   const [stacks, setStacks] = useState<DetectedStack[]>([])
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [hoveredRow, setHoveredRow] = useState<number | null>(null)
@@ -1035,19 +1133,23 @@ export function MultiplayerSdkStep({ config, onComplete, onBack }: Props): React
     })
   }
 
-  // ─── Scan on mount ─────────────────────────────────────────────────────────
+  // ─── Honor skipSdkCheck flag (no confirmation needed) ──────────────────────
 
   useEffect(() => {
     if (config.skipSdkCheck) {
       onComplete({ sessionRecorderSetupDone: true })
-      return
     }
+  }, [config.skipSdkCheck])
 
+  // ─── Run detection (triggered from the confirm screen) ─────────────────────
+
+  const runDetection = () => {
     if (!config.dir) {
       setPhase('no-stacks')
       return
     }
 
+    setPhase('scanning')
     const detected = detectStacks(config.dir)
     setStacks(detected)
 
@@ -1076,7 +1178,7 @@ export function MultiplayerSdkStep({ config, onComplete, onBack }: Props): React
       setStacks([...detected])
       transitionToResults(detected)
     }
-  }, [config.dir, config.skipSdkCheck])
+  }
 
   const transitionToResults = (classified: DetectedStack[]) => {
     const summary = summarizeDetection(classified)
@@ -1294,10 +1396,7 @@ export function MultiplayerSdkStep({ config, onComplete, onBack }: Props): React
       setApplyLog(log)
 
       // Record what this stack accomplished so the next agent has context
-      priorSummariesRef.current = [
-        ...priorSummariesRef.current,
-        buildPriorSummary(plan, stack, createdKeysRef.current)
-      ]
+      priorSummariesRef.current = [...priorSummariesRef.current, buildPriorSummary(plan, stack, createdKeysRef.current)]
 
       advanceOrFinish(currentStackIdx + 1)
     } catch (err: unknown) {
@@ -1312,6 +1411,26 @@ export function MultiplayerSdkStep({ config, onComplete, onBack }: Props): React
 
   useKeyboard(({ name }) => {
     if (phase === 'scanning' || phase === 'applying') return
+
+    // Confirm phase: navigate the two actions, Enter confirms, Esc = back
+    if (phase === 'confirm') {
+      if (name === 'up' || name === 'left') {
+        setSelectedIndex((i) => Math.max(0, i - 1))
+      } else if (name === 'down' || name === 'right') {
+        setSelectedIndex((i) => Math.min(CONFIRM_ACTIONS.length - 1, i + 1))
+      } else if (name === 'return') {
+        const action = CONFIRM_ACTIONS[selectedIndex]
+        if (action?.id === 'detect') {
+          setSelectedIndex(0)
+          runDetection()
+        } else if (action?.id === 'skip') {
+          onComplete({ sessionRecorderSetupDone: true })
+        }
+      } else if (name === 'escape' && onBack) {
+        onBack()
+      }
+      return
+    }
 
     // During AI phases: navigate Back/Skip actions with arrows, Enter confirms, Esc = back
     if (phase === 'classifying' || phase === 'ai-planning') {
@@ -1423,6 +1542,22 @@ export function MultiplayerSdkStep({ config, onComplete, onBack }: Props): React
   // ─── Render: ordered by phase flow ─────────────────────────────────────────
 
   switch (phase) {
+    case 'confirm':
+      return (
+        <ConfirmView
+          dir={config.dir}
+          selectedIndex={Math.min(selectedIndex, CONFIRM_ACTIONS.length - 1)}
+          hoveredRow={hoveredRow}
+          setSelectedIndex={setSelectedIndex}
+          setHoveredRow={setHoveredRow}
+          onDetect={() => {
+            setSelectedIndex(0)
+            runDetection()
+          }}
+          onSkip={() => onComplete({ sessionRecorderSetupDone: true })}
+          onBack={onBack}
+        />
+      ) as ReactElement
     case 'scanning':
       return (<ScanningView />) as ReactElement
     case 'classifying': {
