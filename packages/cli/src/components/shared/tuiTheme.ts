@@ -66,13 +66,13 @@ export const USER_TRANSCRIPT_COLORS = {
   bodyMuted: SEM_GREEN_MUTED,
   codeBorder: SEM_CODE_BORDER,
   codeFg: SEM_CODE_FG,
-  attachment: SEM_GREEN_MUTED
+  attachment: SEM_GREEN_MUTED,
 } as const
 
 /** Activity segment colors on assistant lines. */
 export const ACTIVITY_LABEL_ACCENTS: Record<string, string> = {
   git: SEM_INDIGO,
-  analyzing: SEM_AMBER
+  analyzing: SEM_AMBER,
 }
 
 export function activityLabelAccent(activity: string): string {
@@ -84,5 +84,5 @@ export const SDK_STACK_STATUS_COLORS = {
   'needs-setup': SEM_AMBER,
   installed: SEM_GREEN,
   covered: SEM_PURPLE,
-  'not-needed': FG_DIM
+  'not-needed': FG_DIM,
 } as const
