@@ -35,9 +35,9 @@ Use this wrapper to wire the browser SDK into your React or Next.js application 
 ## Installation
 
 ```bash
-npm install @multiplayer-app/session-recorder-react @opentelemetry/api
+npm install @multiplayer-app/session-recorder-react
 # or
-yarn add @multiplayer-app/session-recorder-react @opentelemetry/api
+yarn add @multiplayer-app/session-recorder-react
 ```
 
 To get full‑stack session recording working, set up one of our backend SDKs/CLI apps:
@@ -140,7 +140,12 @@ Create your own UI and wire it to the hook methods. Render only the relevant act
 
 ```tsx
 import React from 'react'
-import { useSessionRecorder, useSessionRecordingState, SessionState, SessionType } from '@multiplayer-app/session-recorder-react'
+import {
+  useSessionRecorder,
+  useSessionRecordingState,
+  SessionState,
+  SessionType
+} from '@multiplayer-app/session-recorder-react'
 
 export function SmartSessionControls() {
   const { startSession, stopSession, pauseSession, resumeSession } = useSessionRecorder()
@@ -260,15 +265,6 @@ export function NavigationTrackerLegacy() {
 ## Configuration reference
 
 The options passed to `SessionRecorder.init(...)` are forwarded to the underlying browser SDK. Refer to the [browser README](../session-recorder-browser/README.md#initialize) for the full option list, including:
-
-- `application`, `version`, `environment`, `apiKey`
-- `showWidget`, `showContinuousRecording`
-- `recordNavigation`, `recordCanvas`, `recordGestures`
-- `inlineImages` (default `false`; set `true` only if cross-origin image hosts send CORS headers such as `Access-Control-Allow-Origin` for your app—otherwise the browser cannot read pixels for base64 inlining)
-- `inlineStylesheet` (default `false`; opt in when stylesheet URLs allow reading rules—cross-origin hosts may need CORS)
-- `propagateTraceHeaderCorsUrls`, `ignoreUrls`
-- `masking`, `captureBody`, `captureHeaders`
-- `maxCapturingHttpPayloadSize` and other advanced HTTP controls
 
 Any time `recordNavigation` is enabled, the browser SDK will emit OpenTelemetry navigation spans and keep an in-memory stack of visited routes. You can access the navigation helpers through `SessionRecorder.navigation` if you need to introspect from React components.
 
