@@ -12,6 +12,9 @@ import {
   ResolveIssuePayload,
   ChatSessionPayload,
   Issue,
+  RadarDetectedComponent,
+  RadarDetectedEnvironment,
+  IAgent
 } from '../types/index.js'
 import type { Logger } from '../logger.js'
 import {
@@ -28,7 +31,9 @@ import {
   EVENT_CHAT_UNSUBSCRIBE,
   EVENT_AGENT_CHAT_BULK_DELETE,
   EVENT_AGENT_CHAT_DELETE,
+  EVENT_DEBUGGING_AGENT_UPDATE
 } from '../config.js'
+
 export interface RadarService {
   socket: Socket
   disconnect: () => void
@@ -97,6 +102,9 @@ export interface RadarService {
     projectId: string,
     options?: { dir?: string; agentName?: string; skip?: number; limit?: number }
   ) => Promise<{ data: AgentChat[]; cursor: { total: number; skip: number; limit: number } }>
+  emitAgentUpdate: (agent: Partial<IAgent>) => void
+  listComponents: (workspaceId: string, projectId: string) => Promise<RadarDetectedComponent[]>
+  listEnvironments: (workspaceId: string, projectId: string) => Promise<RadarDetectedEnvironment[]>
 }
 
 const computeAvailableModels = (config: AgentConfig): string[] => {
@@ -138,14 +146,11 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     `${apiBase}/workspaces/${workspaceId}/projects/${projectId}${path}`
 
   /** Authenticated fetch with JSON support. Throws on non-ok responses. */
-  async function fetchJson<T>(
-    url: string,
-    init: RequestInit = {},
-  ): Promise<T> {
+  async function fetchJson<T>(url: string, init: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
       ...getAuthHeaders(config.apiKey),
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(init.headers as Record<string, string> ?? {}),
+      ...((init.headers as Record<string, string>) ?? {})
     }
     const res = await fetch(url, { ...init, headers })
     if (!res.ok) {
@@ -168,7 +173,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     const headers: Record<string, string> = {
       ...getAuthHeaders(config.apiKey),
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(init.headers as Record<string, string> ?? {}),
+      ...((init.headers as Record<string, string>) ?? {})
     }
     const res = await fetch(url, { ...init, headers })
     if (!res.ok) {
@@ -192,14 +197,14 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
       'x-max-concurrent-issues': String(config.maxConcurrentIssues ?? 2),
       ...(config.noGitBranch ? { 'x-no-git-branch': 'true' } : {}),
       ...(config.model ? { 'x-model': config.model } : {}),
-      'x-available-models': JSON.stringify(computeAvailableModels(config)),
+      'x-available-models': JSON.stringify(computeAvailableModels(config))
     },
     transports: ['websocket'],
     secure: host.startsWith('https'),
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: SOCKET_RECONNECTION_DELAY,
-    reconnectionDelayMax: SOCKET_RECONNECTION_DELAY_MAX,
+    reconnectionDelayMax: SOCKET_RECONNECTION_DELAY_MAX
   })
 
   // Debug: log all incoming socket events
@@ -266,7 +271,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
   }
 
   const onAction = (
-    handler: (params: { chatId: string; toolCallId: string; action: string; data?: Record<string, unknown> }) => void,
+    handler: (params: { chatId: string; toolCallId: string; action: string; data?: Record<string, unknown> }) => void
   ) => {
     socket.on('agent:action', handler)
   }
@@ -285,6 +290,10 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
 
   const onChatUpdate = (handler: (chat: AgentChat) => void) => {
     socket.on(EVENT_CHAT_UPDATE, (chat: AgentChat) => handler(chat))
+  }
+
+  const emitAgentUpdate = (agent: Partial<IAgent>) => {
+    socket.emit(EVENT_DEBUGGING_AGENT_UPDATE, agent)
   }
 
   const onChatBulkDelete = (handler: (payload: { _id: string[]; workspace: string; project: string }) => void) => {
@@ -311,20 +320,20 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     workspaceId: string,
     projectId: string,
     chatId: string,
-    markdown: string,
+    markdown: string
   ): Promise<AgentAttachment> => {
     const filename = 'context-doc.md'
     const size = Buffer.byteLength(markdown, 'utf8')
 
     const { url, key, bucket } = await fetchJson<{ url: string; key: string; bucket: string }>(
       projectUrl(workspaceId, projectId, '/files/presigned-url'),
-      { method: 'POST', body: JSON.stringify({ filename, mimeType: 'text/markdown', size, chatId }) },
+      { method: 'POST', body: JSON.stringify({ filename, mimeType: 'text/markdown', size, chatId }) }
     )
 
     const uploadRes = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'text/markdown' },
-      body: markdown,
+      body: markdown
     })
     if (!uploadRes.ok) throw new Error(`Failed to upload context doc: ${uploadRes.status}`)
 
@@ -333,7 +342,7 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
       name: filename,
       mimeType: 'text/markdown',
       size,
-      metadata: { s3Key: key, bucket },
+      metadata: { s3Key: key, bucket }
     }
   }
 
@@ -341,23 +350,21 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     workspaceId: string,
     projectId: string,
     chatId: string,
-    before?: string,
+    before?: string
   ): Promise<{ messages: AgentMessage[]; hasMore: boolean }> => {
     const query = new URLSearchParams({ limit: '20', ...(before ? { before } : {}) })
     return fetchJson<{ messages: AgentMessage[]; hasMore: boolean }>(
-      projectUrl(workspaceId, projectId, `/agents/chats/${chatId}/messages?${query}`),
+      projectUrl(workspaceId, projectId, `/agents/chats/${chatId}/messages?${query}`)
     )
   }
 
   const fetchIssueByComponentHash = async (
     workspaceId: string,
     projectId: string,
-    componentHash: string,
+    componentHash: string
   ): Promise<Issue | null> => {
     const params = new URLSearchParams({ componentHash, limit: '1' })
-    const data = await fetchJson<{ data: Issue[] }>(
-      projectUrl(workspaceId, projectId, `/issues?${params}`),
-    )
+    const data = await fetchJson<{ data: Issue[] }>(projectUrl(workspaceId, projectId, `/issues?${params}`))
     return data.data?.[0] ?? null
   }
 
@@ -365,30 +372,31 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     workspaceId: string,
     projectId: string,
     componentHash: string,
-    payload: Record<string, unknown>,
+    payload: Record<string, unknown>
   ): Promise<void> => {
-    await fetchJson(
-      projectUrl(workspaceId, projectId, '/issues/bulk'),
-      { method: 'PATCH', body: JSON.stringify({ filter: { componentHash: [componentHash] }, payload }) },
-    )
+    await fetchJson(projectUrl(workspaceId, projectId, '/issues/bulk'), {
+      method: 'PATCH',
+      body: JSON.stringify({ filter: { componentHash: [componentHash] }, payload })
+    })
   }
 
   const sendStreamMessage = async (
     workspaceId: string,
     projectId: string,
     payload: { chatId?: string; content: string; contextKey?: string; userId?: string },
-    signal?: AbortSignal,
+    signal?: AbortSignal
   ): Promise<void> => {
-    const res = await fetchRaw(
-      projectUrl(workspaceId, projectId, '/agents/chats/stream'),
-      { method: 'POST', body: JSON.stringify(payload), signal },
-    )
+    const res = await fetchRaw(projectUrl(workspaceId, projectId, '/agents/chats/stream'), {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      signal
+    })
     // Consume the SSE stream so we know when the server finishes processing.
     // Messages are delivered via socket — we just drain the body here.
     try {
       const reader = res.body?.getReader()
       if (reader) {
-        while (!(await reader.read()).done) { }
+        while (!(await reader.read()).done) {}
       }
     } catch {
       // Stream may be interrupted (e.g. abort signal)
@@ -396,22 +404,17 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
   }
 
   const abortChat = async (workspaceId: string, projectId: string, chatId: string): Promise<void> => {
-    await fetchRaw(
-      projectUrl(workspaceId, projectId, `/agents/chats/${chatId}/abort`),
-      { method: 'POST' },
-    )
+    await fetchRaw(projectUrl(workspaceId, projectId, `/agents/chats/${chatId}/abort`), { method: 'POST' })
   }
 
   const fetchChat = async (workspaceId: string, projectId: string, chatId: string): Promise<AgentChat> => {
-    return fetchJson<AgentChat>(
-      projectUrl(workspaceId, projectId, `/agents/chats/${chatId}`),
-    )
+    return fetchJson<AgentChat>(projectUrl(workspaceId, projectId, `/agents/chats/${chatId}`))
   }
 
   const fetchAgentChats = async (
     workspaceId: string,
     projectId: string,
-    options?: { dir?: string; agentName?: string; skip?: number; limit?: number },
+    options?: { dir?: string; agentName?: string; skip?: number; limit?: number }
   ): Promise<{ data: AgentChat[]; cursor: { total: number; skip: number; limit: number } }> => {
     const params = new URLSearchParams()
     if (options?.dir) params.set('dir', options.dir)
@@ -420,8 +423,16 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     params.set('limit', String(options?.limit ?? 30))
 
     return fetchJson<{ data: AgentChat[]; cursor: { total: number; skip: number; limit: number } }>(
-      projectUrl(workspaceId, projectId, `/agents/chats?${params}`),
+      projectUrl(workspaceId, projectId, `/agents/chats?${params}`)
     )
+  }
+
+  const listComponents = async (workspaceId: string, projectId: string): Promise<RadarDetectedComponent[]> => {
+    return fetchJson<RadarDetectedComponent[]>(projectUrl(workspaceId, projectId, '/radar-detections/components'))
+  }
+
+  const listEnvironments = async (workspaceId: string, projectId: string): Promise<RadarDetectedEnvironment[]> => {
+    return fetchJson<RadarDetectedEnvironment[]>(projectUrl(workspaceId, projectId, '/radar-detections/environments'))
   }
 
   return {
@@ -454,6 +465,9 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     abortChat,
     fetchChat,
     fetchAgentChats,
+    listComponents,
+    listEnvironments,
+    emitAgentUpdate
   }
 }
 
@@ -500,6 +514,6 @@ export const validateApiKey = async (url: string, apiKey: string): Promise<{ wor
 
   return {
     workspace: payload.workspace,
-    project: payload.project,
+    project: payload.project
   }
 }

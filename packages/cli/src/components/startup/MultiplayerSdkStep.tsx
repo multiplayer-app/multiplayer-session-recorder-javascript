@@ -23,6 +23,7 @@ import {
   type SetupPlan
 } from '../../session-recorder/setupWithAi.js'
 import { Divider, clickHandler, FooterHints, ActionButton, AnimatedLoading, AiStatusLine } from '../shared/index.js'
+import { SDK_STACK_STATUS_COLORS } from '../shared/tuiTheme.js'
 
 // ─── Cross-stack context helpers ─────────────────────────────────────────────
 
@@ -122,12 +123,7 @@ const STATUS_LABELS: Record<StatusGroup, string> = {
   covered: 'Covered by Dependency',
   'not-needed': 'Not Needed'
 }
-const STATUS_COLORS: Record<StatusGroup, string> = {
-  'needs-setup': '#f59e0b',
-  installed: '#10b981',
-  covered: '#8b5cf6',
-  'not-needed': '#6b7280'
-}
+const STATUS_COLORS: Record<StatusGroup, string> = SDK_STACK_STATUS_COLORS
 
 function getStatusGroup(s: DetectedStack): StatusGroup {
   if (s.sdkRelevance === 'installed' || (!s.sdkRelevance && s.alreadyInstalled)) return 'installed'
@@ -234,6 +230,7 @@ function ApplyLogView({ applyLog }: { applyLog: string[] }): ReactElement {
 
 interface ConfirmViewProps {
   dir: string | undefined
+  previouslyDone: boolean
   selectedIndex: number
   hoveredRow: number | null
   setSelectedIndex: (index: number) => void
@@ -245,6 +242,7 @@ interface ConfirmViewProps {
 
 function ConfirmView({
   dir,
+  previouslyDone,
   selectedIndex,
   hoveredRow,
   setSelectedIndex,
@@ -256,6 +254,16 @@ function ConfirmView({
   return (
     <box flexDirection='column' gap={1} flexGrow={1}>
       <text attributes={tuiAttrs({ bold: true })}>{STEP_TITLE}</text>
+      {previouslyDone && (
+        <box flexDirection='row' gap={1}>
+          <text fg='#10b981'>✓</text>
+          <box flexGrow={1} flexShrink={1}>
+            <text fg='#10b981'>
+              You completed or skipped this step previously — re-run detection only if you want to set it up again.
+            </text>
+          </box>
+        </box>
+      )}
       <box flexDirection='column' gap={1}>
         <text>Scan this project for application stacks and set up the Multiplayer Session Recorder SDK?</text>
         {dir && (
@@ -401,7 +409,7 @@ function StackRow({
       >
         {checkbox && (
           <text flexShrink={0} fg={checkbox.checked ? '#22d3ee' : '#484f58'}>
-            {checkbox.checked ? '[✓]' : '[ ]'}
+            {checkbox.checked ? '\u2611' : '\u2610'}
           </text>
         )}
         <box flexGrow={1} flexShrink={1} flexDirection='column'>
@@ -1107,7 +1115,9 @@ function ResultsView({
 export function MultiplayerSdkStep({ config, onComplete, onBack }: Props): ReactElement {
   const [phase, setPhase] = useState<Phase>(config.skipSdkCheck ? 'scanning' : 'confirm')
   const [stacks, setStacks] = useState<DetectedStack[]>([])
-  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [selectedIndex, setSelectedIndex] = useState(() =>
+    !config.skipSdkCheck && config.sessionRecorderSetupDone ? CONFIRM_ACTIONS.findIndex((a) => a.id === 'skip') : 0
+  )
   const [hoveredRow, setHoveredRow] = useState<number | null>(null)
   const [plan, setPlan] = useState<SetupPlan | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -1546,6 +1556,7 @@ export function MultiplayerSdkStep({ config, onComplete, onBack }: Props): React
       return (
         <ConfirmView
           dir={config.dir}
+          previouslyDone={!!config.sessionRecorderSetupDone}
           selectedIndex={Math.min(selectedIndex, CONFIRM_ACTIONS.length - 1)}
           hoveredRow={hoveredRow}
           setSelectedIndex={setSelectedIndex}

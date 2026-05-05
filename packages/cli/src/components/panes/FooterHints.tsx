@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { MouseEvent } from '@opentui/core'
 import { MouseButton } from '@opentui/core'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
+import { ACCENT, BORDER_MUTED, SEM_AMBER } from '../shared/tuiTheme.js'
 
 export interface FooterHintItem {
   id: string
@@ -11,6 +12,11 @@ export interface FooterHintItem {
   alt?: string
   /** Only on a couple of rows (e.g. l / q). */
   onPress?: () => void
+}
+
+/** Dashboard status bar: open issue subscription / agent advanced settings (keyboard `s`). */
+export function dashboardAdvancedSettingsHint(onPress: () => void): FooterHintItem {
+  return { id: 'advanced-settings', keys: 's', label: 'advanced settings', onPress }
 }
 
 interface Props {
@@ -32,7 +38,7 @@ export function FooterHints({ hints, quitPending }: Props): ReactElement {
     <box
       border={true}
       borderStyle='rounded'
-      borderColor='#374151'
+      borderColor={BORDER_MUTED}
       padding={1}
       flexDirection='row'
       flexShrink={0}
@@ -47,7 +53,7 @@ export function FooterHints({ hints, quitPending }: Props): ReactElement {
           gap={0}
           onMouseUp={h.onPress ? pressMouseUp(h.onPress) : undefined}
         >
-          <text fg='#22d3ee' attributes={tuiAttrs({ bold: true })}>
+          <text fg={ACCENT} attributes={tuiAttrs({ bold: true })}>
             {h.keys}
           </text>
           {h.label ? (
@@ -61,7 +67,7 @@ export function FooterHints({ hints, quitPending }: Props): ReactElement {
       ))}
       {quitPending && (
         <box flexShrink={0}>
-          <text fg='#f59e0b'>Waiting for active sessions to finish...</text>
+          <text fg={SEM_AMBER}>Waiting for active sessions to finish...</text>
         </box>
       )}
     </box>

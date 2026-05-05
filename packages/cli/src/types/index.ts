@@ -171,6 +171,36 @@ export interface ConversationMessage {
   content: string
 }
 
+export type AgentType = 'CODING' | 'DEBUGGING'
+
+export interface IAgent {
+  _id: string
+  workspace: string
+  project: string
+  socketId: string
+  name?: string
+  type: AgentType
+  maxConcurrentIssues?: number
+  issuesInProgress?: number
+  contextPath?: string
+  noGitBranch?: boolean
+  model?: string
+  availableModels?: string[]
+  workspaceUser: string
+
+  settings?: {
+    issueSubscription?: {
+      componentName?: string[]
+      environmentName?: string[]
+    }
+    autoResolveIssues?: boolean
+    fixabilityScoreThreshold?: number
+  }
+
+  createdAt: string
+  updatedAt: string
+}
+
 export interface AgentChat {
   _id: string
   title?: string
@@ -215,4 +245,12 @@ export interface AgentChat {
 export interface ChatSessionPayload {
   chatId: string
   chat: AgentChat
+}
+
+export interface RadarDetectedComponent {
+  componentName?: string
+}
+
+export interface RadarDetectedEnvironment {
+  environmentName?: string
 }

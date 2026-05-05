@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { MouseEvent } from '@opentui/core'
 import { MouseButton } from '@opentui/core'
 import { tuiAttrs } from '../lib/tuiAttrs.js'
+import { ACCENT, FG_DIM, FG_VERSION, SEM_AMBER } from './shared/tuiTheme.js'
 
 export interface StatusBarHint {
   id: string
@@ -38,7 +39,7 @@ function StatusBarImpl({ hints, version, quitPending }: Props): ReactElement {
       {/* Left: key hints */}
       <box flexDirection='row' gap={2} flexShrink={1}>
         {quitPending ? (
-          <text fg='#f59e0b'>Waiting for active sessions...</text>
+          <text fg={SEM_AMBER}>Waiting for active sessions...</text>
         ) : (
           hints.map((h) => (
             <box
@@ -48,10 +49,10 @@ function StatusBarImpl({ hints, version, quitPending }: Props): ReactElement {
               flexShrink={0}
               onMouseUp={h.onPress ? pressMouseUp(h.onPress) : undefined}
             >
-              <text fg='#22d3ee' attributes={tuiAttrs({ bold: true })}>
+              <text fg={ACCENT} attributes={tuiAttrs({ bold: true })}>
                 {h.keys}
               </text>
-              {h.label && <text fg='#6b7280'> {h.label}</text>}
+              {h.label && <text fg={FG_DIM}> {h.label}</text>}
             </box>
           ))
         )}
@@ -60,7 +61,7 @@ function StatusBarImpl({ hints, version, quitPending }: Props): ReactElement {
       {/* Right: version */}
       {version && (
         <box flexDirection='row' gap={0} flexShrink={0}>
-          <text fg='#4b5563'>v{version}</text>
+          <text fg={FG_VERSION}>v{version}</text>
         </box>
       )}
     </box>

@@ -1,10 +1,7 @@
 import { type ReactElement } from 'react'
 import { tuiAttrs } from '../lib/tuiAttrs.js'
 import { useTerminalDimensions } from '@opentui/react'
-
-/** multiplayer.app brand (logo / CTAs) */
-const BRAND_PRIMARY = '#473cfb'
-const BRAND_ACCENT = '#00eaf6'
+import { BRAND_LOGO_ACCENT, BRAND_LOGO_PRIMARY } from './shared/tuiTheme.js'
 
 // Fallback compact wordmark for narrow terminals
 const WORDMARK_COMPACT = [
@@ -32,9 +29,9 @@ export function Logo(): ReactElement {
   if (useAsciiFont) {
     return (
       <box flexDirection='column' alignItems='center' marginTop={1} marginBottom={1} flexShrink={0}>
-        <ascii-font font='block' color={BRAND_PRIMARY} text='MULTIPLAYER' />
+        <ascii-font font='block' color={BRAND_LOGO_PRIMARY} text='MULTIPLAYER' />
         <box width='100%' alignItems='center'>
-          <text fg={BRAND_ACCENT} attributes={tuiAttrs({ dim: true })}>
+          <text fg={BRAND_LOGO_ACCENT} attributes={tuiAttrs({ dim: true })}>
             The debugging agent for developers
           </text>
         </box>
@@ -46,11 +43,11 @@ export function Logo(): ReactElement {
   return (
     <box flexDirection='column' alignItems='center' marginTop={1} marginBottom={1} flexShrink={0}>
       {WORDMARK_COMPACT.map((line, i) => (
-        <text key={i} fg={BRAND_PRIMARY}>
+        <text key={i} fg={BRAND_LOGO_PRIMARY}>
           {center(line, maxWidth)}
         </text>
       ))}
-      <text fg={BRAND_ACCENT} attributes={tuiAttrs({ dim: true })}>
+      <text fg={BRAND_LOGO_ACCENT} attributes={tuiAttrs({ dim: true })}>
         {center('The debugging agent for developers', maxWidth)}
       </text>
     </box>

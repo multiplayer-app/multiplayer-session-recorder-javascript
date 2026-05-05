@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { clickHandler } from './clickHandler.js'
+import { ACCENT, BORDER_SUBTLE, BG_SURFACE_DEEP, FG_BODY_EMPHASIS } from './tuiTheme.js'
 
 interface ActionButtonProps {
   label: string
@@ -19,10 +20,10 @@ interface ActionButtonProps {
 export function ActionButton({
   label,
   icon,
-  iconColor = '#22d3ee',
-  labelColor = '#e6edf3',
-  borderColor = '#30363d',
-  backgroundColor = '#161b22',
+  iconColor = ACCENT,
+  labelColor = FG_BODY_EMPHASIS,
+  borderColor = BORDER_SUBTLE,
+  backgroundColor = BG_SURFACE_DEEP,
   onClick
 }: ActionButtonProps): ReactElement {
   return (

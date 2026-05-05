@@ -2,18 +2,33 @@ import type { ReactElement } from 'react'
 import { tuiAttrs } from '../lib/tuiAttrs.js'
 import { openUrl } from '../lib/openUrl.js'
 import { clickHandler } from './shared/clickHandler.js'
+import { FocusedOutlineButton } from './shared/FocusedOutlineButton.js'
 import type { SessionDetail, SessionStatus, RateLimitState } from '../runtime/types.js'
 import type { AgentChatStatus } from '../types/index.js'
+import {
+  ACCENT,
+  BORDER_MUTED,
+  FG_DIM,
+  FG_ERROR_SOFT,
+  FG_META,
+  FG_MUTED,
+  FG_VALUE,
+  LINK_SUBTLE,
+  SEM_AMBER,
+  SEM_GREEN,
+  SEM_INDIGO,
+  SEM_RED
+} from './shared/tuiTheme.js'
 
 const SIDEBAR_WIDTH = 30
 
 const STATUS_LABEL: Record<SessionStatus, { label: string; color: string }> = {
-  pending: { label: 'Pending', color: '#6b7280' },
-  analyzing: { label: 'Analyzing', color: '#f59e0b' },
-  pushing: { label: 'Pushing', color: '#6366f1' },
-  done: { label: 'Done', color: '#10b981' },
-  failed: { label: 'Failed', color: '#ef4444' },
-  aborted: { label: 'Aborted', color: '#6b7280' },
+  pending: { label: 'Pending', color: FG_DIM },
+  analyzing: { label: 'Analyzing', color: SEM_AMBER },
+  pushing: { label: 'Pushing', color: SEM_INDIGO },
+  done: { label: 'Done', color: SEM_GREEN },
+  failed: { label: 'Failed', color: SEM_RED },
+  aborted: { label: 'Aborted', color: FG_DIM }
 }
 
 const STATUS_SYMBOL: Record<SessionStatus, string> = {
@@ -22,7 +37,7 @@ const STATUS_SYMBOL: Record<SessionStatus, string> = {
   pushing: '◑',
   done: '●',
   failed: '✕',
-  aborted: '◌',
+  aborted: '◌'
 }
 
 interface Props {
@@ -34,11 +49,12 @@ interface Props {
   activeCount: number
   resolvedCount: number
   isFocused: boolean
+  onOpenAdvancedSettings?: () => void
 }
 
 function SectionTitle({ title }: { title: string }): ReactElement {
   return (
-    <text fg='#9ca3af' attributes={tuiAttrs({ bold: true })}>
+    <text fg={FG_MUTED} attributes={tuiAttrs({ bold: true })}>
       {title}
     </text>
   ) as ReactElement
@@ -47,8 +63,8 @@ function SectionTitle({ title }: { title: string }): ReactElement {
 function InfoRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }): ReactElement {
   return (
     <box flexDirection='column'>
-      <text fg='#6b7280'>{label}</text>
-      <text fg={valueColor ?? '#e5e7eb'}>{value}</text>
+      <text fg={FG_DIM}>{label}</text>
+      <text fg={valueColor ?? FG_VALUE}>{value}</text>
     </box>
   ) as ReactElement
 }
@@ -71,8 +87,9 @@ function ContextSidebarImpl({
   activeCount,
   resolvedCount,
   isFocused,
+  onOpenAdvancedSettings
 }: Props): ReactElement {
-  const borderColor = isFocused ? '#6366f1' : '#374151'
+  const borderColor = isFocused ? SEM_INDIGO : BORDER_MUTED
 
   if (!session) {
     return (
@@ -91,20 +108,31 @@ function ContextSidebarImpl({
           <SectionTitle title='Stats' />
           {workspace && <InfoRow label='Workspace' value={workspace} />}
           {project && <InfoRow label='Project' value={project} />}
-          <InfoRow label='Active:' value={String(activeCount)} valueColor='#f59e0b' />
-          <InfoRow label='Resolved:' value={String(resolvedCount)} valueColor='#10b981' />
+          <InfoRow label='Active:' value={String(activeCount)} valueColor={SEM_AMBER} />
+          <InfoRow label='Resolved:' value={String(resolvedCount)} valueColor={SEM_GREEN} />
         </box>
 
         {/* Rate Limit */}
         <box flexDirection='column' gap={1}>
           <SectionTitle title='Rate Limit' />
           <box flexDirection='row' gap={1}>
-            <text fg='#6b7280'>Slots:</text>
-            <text fg={rateLimitState.active >= rateLimitState.limit ? '#ef4444' : '#e5e7eb'}>
+            <text fg={FG_DIM}>Slots:</text>
+            <text fg={rateLimitState.active >= rateLimitState.limit ? SEM_RED : FG_VALUE}>
               {rateLimitState.active} / {rateLimitState.limit}
             </text>
           </box>
         </box>
+
+        {onOpenAdvancedSettings && (
+          <box flexDirection='column' gap={1} marginTop={1}>
+            <box onMouseUp={clickHandler(onOpenAdvancedSettings)}>
+              <text fg={LINK_SUBTLE} attributes={tuiAttrs({ underline: true, bold: true })}>
+                Advanced settings (s)
+              </text>
+            </box>
+            <text fg={FG_MUTED}>Filter issues by env & component</text>
+          </box>
+        )}
       </box>
     ) as ReactElement
   }
@@ -118,24 +146,26 @@ function ContextSidebarImpl({
     if (chatStatus === 'processing' || chatStatus === 'streaming') {
       return (
         <box flexDirection='row' gap={1}>
-          <text fg='#f59e0b' attributes={tuiAttrs({ bold: true })}>●</text>
-          <text fg='#f59e0b'>generating...</text>
+          <text fg={SEM_AMBER} attributes={tuiAttrs({ bold: true })}>
+            ●
+          </text>
+          <text fg={SEM_AMBER}>generating...</text>
         </box>
       )
     }
     if (chatStatus === 'error') {
       return (
         <box flexDirection='row' gap={1}>
-          <text fg='#ef4444'>✕</text>
-          <text fg='#ef4444'>error</text>
+          <text fg={SEM_RED}>✕</text>
+          <text fg={SEM_RED}>error</text>
         </box>
       )
     }
     if (chatStatus === 'waitingForUserAction') {
       return (
         <box flexDirection='row' gap={1}>
-          <text fg='#22d3ee'>◆</text>
-          <text fg='#22d3ee'>awaiting input</text>
+          <text fg={ACCENT}>◆</text>
+          <text fg={ACCENT}>awaiting input</text>
         </box>
       )
     }
@@ -158,10 +188,12 @@ function ContextSidebarImpl({
         <SectionTitle title='Status' />
         <box flexDirection='row' gap={1}>
           <text fg={status.color}>{symbol}</text>
-          <text fg={status.color} attributes={tuiAttrs({ bold: true })}>{status.label}</text>
+          <text fg={status.color} attributes={tuiAttrs({ bold: true })}>
+            {status.label}
+          </text>
         </box>
         {chatActivity}
-        <text fg='#4b5563' attributes={tuiAttrs({ dim: true })}>
+        <text fg={FG_META} attributes={tuiAttrs({ dim: true })}>
           {timeAgo(session.startedAt)}
         </text>
       </box>
@@ -176,19 +208,17 @@ function ContextSidebarImpl({
         {session.model && <InfoRow label='Model:' value={session.model} />}
         {session.environmentName && <InfoRow label='Environment:' value={session.environmentName} />}
         {session.releaseVersion && <InfoRow label='Release:' value={session.releaseVersion} />}
-        {session.debugSessionId && (
-          <InfoRow label='Debug Session:' value={session.debugSessionId.slice(-8)} />
-        )}
+        {session.debugSessionId && <InfoRow label='Debug Session:' value={session.debugSessionId.slice(-8)} />}
         {session.branchName && (
           <box flexDirection='column'>
-            <text fg='#6b7280'>Branch:</text>
-            <text fg='#818cf8'>{session.branchName}</text>
+            <text fg={FG_DIM}>Branch:</text>
+            <text fg={LINK_SUBTLE}>{session.branchName}</text>
           </box>
         )}
         {session.prUrl && (
           <box flexDirection='column' onMouseUp={clickHandler(() => openUrl(session.prUrl!))}>
-            <text fg='#6b7280'>PR:</text>
-            <text fg='#818cf8' attributes={tuiAttrs({ underline: true })}>
+            <text fg={FG_DIM}>PR:</text>
+            <text fg={LINK_SUBTLE} attributes={tuiAttrs({ underline: true })}>
               {session.prUrl.length > SIDEBAR_WIDTH - 6
                 ? session.prUrl.slice(0, SIDEBAR_WIDTH - 9) + '...'
                 : session.prUrl}
@@ -197,17 +227,17 @@ function ContextSidebarImpl({
         )}
         {session.codeChanges && (
           <box flexDirection='column'>
-            <text fg='#6b7280'>Changes:</text>
+            <text fg={FG_DIM}>Changes:</text>
             <box flexDirection='row' gap={1}>
-              <text fg='#10b981'>+{session.codeChanges.additions}</text>
-              <text fg='#ef4444'>-{session.codeChanges.deletions}</text>
+              <text fg={SEM_GREEN}>+{session.codeChanges.additions}</text>
+              <text fg={SEM_RED}>-{session.codeChanges.deletions}</text>
             </box>
           </box>
         )}
         {session.error && (
           <box flexDirection='column'>
-            <text fg='#ef4444'>Error:</text>
-            <text fg='#fca5a5' attributes={tuiAttrs({ dim: true })}>
+            <text fg={SEM_RED}>Error:</text>
+            <text fg={FG_ERROR_SOFT} attributes={tuiAttrs({ dim: true })}>
               {session.error.slice(0, 60)}
             </text>
           </box>
@@ -218,15 +248,21 @@ function ContextSidebarImpl({
       <box flexDirection='column' gap={1}>
         <SectionTitle title='Context' />
         <InfoRow label='Messages:' value={String(session.messages.length)} />
-        <InfoRow label='Active:' value={String(activeCount)} valueColor='#f59e0b' />
-        <InfoRow label='Resolved:' value={String(resolvedCount)} valueColor='#10b981' />
+        <InfoRow label='Active:' value={String(activeCount)} valueColor={SEM_AMBER} />
+        <InfoRow label='Resolved:' value={String(resolvedCount)} valueColor={SEM_GREEN} />
         <box flexDirection='row' gap={1}>
-          <text fg='#6b7280'>Slots:</text>
-          <text fg={rateLimitState.active >= rateLimitState.limit ? '#ef4444' : '#e5e7eb'}>
+          <text fg={FG_DIM}>Slots:</text>
+          <text fg={rateLimitState.active >= rateLimitState.limit ? SEM_RED : FG_VALUE}>
             {rateLimitState.active} / {rateLimitState.limit}
           </text>
         </box>
       </box>
+
+      {onOpenAdvancedSettings && (
+        <box flexDirection='column' gap={1} marginTop={1}>
+          <FocusedOutlineButton label='Advanced settings' onPress={onOpenAdvancedSettings} />
+        </box>
+      )}
     </box>
   ) as ReactElement
 }

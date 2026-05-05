@@ -224,12 +224,31 @@ export function ChatComposer({
             <text fg='#6366f1' attributes={tuiAttrs({ bold: true })}>
               Chat
             </text>
-            <text fg='#374151'>│</text>
-            {statusIndicator ?? (
-              <text fg='#4b5563' attributes={tuiAttrs({ dim: true })}>
-                {isFocused ? '↵ send · ⇧↵ newline · Esc back' : 'i to compose'}
-              </text>
-            )}
+            <text fg='#6b7280'>│</text>
+            {statusIndicator ??
+              (isFocused ? (
+                <box flexDirection='row' gap={0}>
+                  <text fg='#22d3ee' attributes={tuiAttrs({ bold: true })}>
+                    ↵
+                  </text>
+                  <text fg='#6b7280'> send · </text>
+                  <text fg='#22d3ee' attributes={tuiAttrs({ bold: true })}>
+                    ⇧↵
+                  </text>
+                  <text fg='#6b7280'> newline · </text>
+                  <text fg='#22d3ee' attributes={tuiAttrs({ bold: true })}>
+                    Esc
+                  </text>
+                  <text fg='#6b7280'> back</text>
+                </box>
+              ) : (
+                <box flexDirection='row' gap={0}>
+                  <text fg='#22d3ee' attributes={tuiAttrs({ bold: true })}>
+                    i
+                  </text>
+                  <text fg='#6b7280'> to compose</text>
+                </box>
+              ))}
           </box>
           {actionButton}
         </box>

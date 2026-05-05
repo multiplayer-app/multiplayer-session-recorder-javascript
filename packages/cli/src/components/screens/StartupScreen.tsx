@@ -198,6 +198,7 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
           modelKey: next.modelKey,
           modelUrl: next.modelUrl,
           maxConcurrentIssues: next.maxConcurrentIssues,
+          sessionRecorderSetupDone: next.sessionRecorderSetupDone,
         })
       }
 

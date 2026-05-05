@@ -29,6 +29,8 @@ export interface ProjectSettings {
   maxConcurrentIssues?: number
   noGitBranch?: boolean
   skipSdkCheck?: boolean
+  /** True once the user has either completed or explicitly skipped the Session Recorder SDK step. */
+  sessionRecorderSetupDone?: boolean
 }
 
 /**

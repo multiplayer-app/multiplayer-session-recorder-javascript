@@ -82,6 +82,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
         ),
         noGitBranch: opts.noGitBranch || process.env.MULTIPLAYER_NO_GIT_BRANCH === 'true' || profile.noGitBranch || false,
         skipSdkCheck: opts.skipSdkCheck || process.env.MULTIPLAYER_SKIP_SDK_CHECK === 'true' || profile.skipSdkCheck || false,
+        sessionRecorderSetupDone: profile.sessionRecorderSetupDone || false,
       }
       const rawHealthPort = opts.healthPort || process.env.MULTIPLAYER_HEALTH_PORT
       const healthPort = rawHealthPort ? Number(rawHealthPort) : undefined

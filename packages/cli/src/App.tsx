@@ -7,7 +7,7 @@ import { StartupScreen } from './components/screens/StartupScreen.js'
 import { RuntimeController } from './runtime/controller.js'
 import { clearCredentials } from './cli/profile.js'
 import { deleteProfileTokenData } from './auth/token-store.js'
-import type { AgentChatStatus, AgentConfig, LogEntry } from './types/index.js'
+import type { AgentChatStatus, AgentConfig, LogEntry, IAgent } from './types/index.js'
 import type { QuitMode, RuntimeState, SessionDetail } from './runtime/types.js'
 
 type Screen = 'startup' | 'dashboard' | 'quit-confirm'
@@ -45,31 +45,42 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null)
   const controllerRef = useRef<RuntimeController | null>(null)
 
-  const handleAuthError = useCallback((reason: string) => {
-    const profile = profileName ?? 'default'
-    try { deleteProfileTokenData(profile) } catch { /* best-effort */ }
-    try { clearCredentials(profile) } catch { /* best-effort */ }
+  const handleAuthError = useCallback(
+    (reason: string) => {
+      const profile = profileName ?? 'default'
+      try {
+        deleteProfileTokenData(profile)
+      } catch {
+        /* best-effort */
+      }
+      try {
+        clearCredentials(profile)
+      } catch {
+        /* best-effort */
+      }
 
-    controllerRef.current?.disconnect()
-    controllerRef.current = null
+      controllerRef.current?.disconnect()
+      controllerRef.current = null
 
-    setRuntimeState(null)
-    setSessionDetails(new Map())
-    setChatStatuses(new Map())
-    setHasMoreSessions(false)
-    setAgentLogs([])
-    setStartupConfig((c) => ({
-      ...c,
-      apiKey: undefined,
-      authType: undefined,
-      workspace: undefined,
-      project: undefined,
-      workspaceDisplayName: undefined,
-      projectDisplayName: undefined,
-    }))
-    setAuthErrorMessage(reason)
-    setScreen('startup')
-  }, [profileName])
+      setRuntimeState(null)
+      setSessionDetails(new Map())
+      setChatStatuses(new Map())
+      setHasMoreSessions(false)
+      setAgentLogs([])
+      setStartupConfig((c) => ({
+        ...c,
+        apiKey: undefined,
+        authType: undefined,
+        workspace: undefined,
+        project: undefined,
+        workspaceDisplayName: undefined,
+        projectDisplayName: undefined
+      }))
+      setAuthErrorMessage(reason)
+      setScreen('startup')
+    },
+    [profileName]
+  )
 
   const handleStartupComplete = useCallback(
     (config: AgentConfig) => {
@@ -136,14 +147,17 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
     }
   }, [])
 
-  const handleLoadMessages = useCallback((chatId: string, before?: string) => {
-    void controllerRef.current?.loadSessionMessages(chatId, before)
-    // Sync chat status and fetch full chat detail on initial load (not pagination)
-    if (!before) {
-      void syncChatStatus(chatId)
-      void controllerRef.current?.loadChatDetail(chatId)
-    }
-  }, [syncChatStatus])
+  const handleLoadMessages = useCallback(
+    (chatId: string, before?: string) => {
+      void controllerRef.current?.loadSessionMessages(chatId, before)
+      // Sync chat status and fetch full chat detail on initial load (not pagination)
+      if (!before) {
+        void syncChatStatus(chatId)
+        void controllerRef.current?.loadChatDetail(chatId)
+      }
+    },
+    [syncChatStatus]
+  )
 
   const handleSendMessage = useCallback((chatId: string, content: string) => {
     void controllerRef.current?.sendUserMessage(chatId, content)
@@ -167,6 +181,16 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
     const currentCount = runtimeState?.sessions.length ?? 0
     void controller.loadAgentChats(currentCount).then((more) => setHasMoreSessions(more))
   }, [runtimeState?.sessions.length])
+
+  const handleEmitAgentSettings = useCallback((settings: Partial<NonNullable<IAgent['settings']>>) => {
+    controllerRef.current?.emitAgentSettings(settings)
+  }, [])
+
+  const handleLoadRadarLists = useCallback(async () => {
+    const controller = controllerRef.current
+    if (!controller) return { components: [] as string[], environments: [] as string[] }
+    return controller.listRadarDetections()
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -207,6 +231,8 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
             onLoadMoreSessions={handleLoadMoreSessions}
             hasMoreSessions={hasMoreSessions}
             suspendKeyboard={screen === 'quit-confirm'}
+            onEmitAgentSettings={handleEmitAgentSettings}
+            onLoadRadarLists={handleLoadRadarLists}
           />
         </box>
         {screen === 'quit-confirm' && <QuitScreen onQuit={handleQuit} onCancel={handleQuitCancel} />}
