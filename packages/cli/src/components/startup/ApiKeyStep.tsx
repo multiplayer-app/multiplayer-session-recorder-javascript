@@ -64,7 +64,7 @@ export function ApiKeyStep({ config, profileName, onComplete, onBack }: Props): 
         }
 
         setValidating(false)
-        const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
+        const profile = profileName || 'default'
         writeProfile(profile, { apiKey: trimmedApiKey, authType: 'api_key' })
         onComplete({
           apiKey: trimmedApiKey,

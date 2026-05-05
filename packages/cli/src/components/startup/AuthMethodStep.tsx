@@ -5,7 +5,7 @@ import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { stringFromInputSubmit } from '../../lib/inputSubmit.js'
 import type { AgentConfig } from '../../types/index.js'
 import { OAuthManager } from '../../auth/oauth-manager.js'
-import { writeCredentials } from '../../cli/profile.js'
+import { writeCredentials, renameAccount } from '../../cli/profile.js'
 import { createApiService } from '../../services/api.service.js'
 import { API_URL } from '../../config.js'
 import { decodeApiKeyPayload } from '../../services/radar.service.js'
@@ -45,7 +45,7 @@ interface Props {
   config: Partial<AgentConfig>
   url: string
   profileName?: string
-  onComplete: (updates: Partial<AgentConfig> & { _oauthWorkspaces?: SelectableWorkspace[] }) => void
+  onComplete: (updates: Partial<AgentConfig> & { _oauthWorkspaces?: SelectableWorkspace[]; _accountName?: string }) => void
 }
 
 export function AuthMethodStep({ config, url, profileName, onComplete }: Props): ReactElement {
@@ -151,25 +151,35 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
 
     apiService
       .fetchProject(workspaceId, projectId)
-      .then((result) => {
+      .then(async (result) => {
         if (!result) {
           setApiKeyValidating(false)
           setApiKeyError('Invalid API key or workspace/project not found.')
           return
         }
 
-        setApiKeyValidating(false)
-        const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
-        // Best-effort: fetch email for display in account selection later
-        void apiService.fetchUserSession().then((s) => {
-          if (s.email) writeCredentials(profile, { email: s.email })
-        }).catch(() => {})
+        const profile = profileName || 'default'
         writeCredentials(profile, { apiKey: trimmedApiKey, authType: 'api_key' })
+
+        let accountName = profile
+        try {
+          const session = await apiService.fetchUserSession()
+          if (session.email) {
+            writeCredentials(profile, { email: session.email })
+            if (session.email !== profile) {
+              renameAccount(profile, session.email)
+              accountName = session.email
+            }
+          }
+        } catch { /* non-fatal */ }
+
+        setApiKeyValidating(false)
         onComplete({
           apiKey: trimmedApiKey,
           authType: 'api_key',
           workspace: workspaceId,
           project: projectId,
+          _accountName: accountName,
         })
       })
       .catch((err: any) => {
@@ -197,7 +207,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           registrationEndpoint: data.registration_endpoint,
         }
 
-        const oauthManager = new OAuthManager(profileName || process.env.MULTIPLAYER_PROFILE || 'default')
+        const oauthManager = new OAuthManager(profileName || 'default')
         oauthManagerRef.current = oauthManager
         await oauthManager.init(oauthParams)
 
@@ -222,10 +232,20 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           })),
         )
 
-        const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
+        const profile = profileName || 'default'
         writeCredentials(profile, { authType: 'oauth', ...(session.email ? { email: session.email } : {}) })
 
-        onComplete({ apiKey: token, authType: 'oauth', _oauthWorkspaces: workspaces })
+        let accountName = profile
+        if (session.email) {
+          if (session.email !== profile) {
+            renameAccount(profile, session.email)
+            accountName = session.email
+          } else {
+            accountName = session.email
+          }
+        }
+
+        onComplete({ apiKey: token, authType: 'oauth', _oauthWorkspaces: workspaces, _accountName: accountName })
       } catch (err: any) {
         setOAuthState('error')
         setError(err.message)

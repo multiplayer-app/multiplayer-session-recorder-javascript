@@ -101,7 +101,7 @@ export const createApiService = (
     const session = Array.isArray(data?.sessions) ? data.sessions[0] : data
     if (!session) throw new Error('No session found in user session response')
     // email lives at the root of the response, not inside sessions[0]
-    return { email: data?.email, ...session } as UserSession
+    return { email: session.primaryEmail, ...session } as UserSession
   }
 
   const createIntegration = async (workspaceId: string, projectId: string, name: string): Promise<ApiIntegration> => {

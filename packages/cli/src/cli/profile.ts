@@ -136,7 +136,10 @@ function parseLegacyIni(content: string): Record<string, ProfileConfig> {
  * Safe to call on every startup — no-ops if credentials.json already exists.
  */
 function migrateIfNeeded(): void {
-  if (fs.existsSync(CREDENTIALS_FILE)) return
+  if (fs.existsSync(CREDENTIALS_FILE)) {
+    normaliseAccountKeysToEmail()
+    return
+  }
 
   let profiles: Record<string, ProfileConfig> = {}
 
@@ -191,12 +194,51 @@ function migrateIfNeeded(): void {
 
   writeJson(CREDENTIALS_FILE, allCredentials)
   writeJson(ROOT_SETTINGS_FILE, rootSettings)
+  normaliseAccountKeysToEmail()
+}
+
+/**
+ * Rename any account key that is NOT an email but has an `email` field stored,
+ * using the email as the new key. Runs after initial migration and on startup.
+ */
+function normaliseAccountKeysToEmail(): void {
+  if (!fs.existsSync(CREDENTIALS_FILE)) return
+  const all = readJson<Record<string, CredentialsConfig>>(CREDENTIALS_FILE, {})
+  let changed = false
+  const normalised: Record<string, CredentialsConfig> = {}
+
+  for (const [key, creds] of Object.entries(all)) {
+    const email = creds.email
+    const newKey = email && email !== key ? email : key
+    if (newKey !== key) {
+      changed = true
+      normalised[newKey] = { ...normalised[newKey], ...creds }
+      // Update root settings references
+      const settings = readJson<RootSettings>(ROOT_SETTINGS_FILE, { projects: [] })
+      const updated = settings.projects.map((p) => p.account === key ? { ...p, account: newKey } : p)
+      writeJson(ROOT_SETTINGS_FILE, { projects: updated })
+    } else {
+      normalised[key] = creds
+    }
+  }
+
+  if (changed) writeJson(CREDENTIALS_FILE, normalised)
 }
 
 // ─── Root settings (project registry) ───────────────────────────────────────
 
+function pruneStaleProjects(): void {
+  if (!fs.existsSync(ROOT_SETTINGS_FILE)) return
+  const settings = readJson<RootSettings>(ROOT_SETTINGS_FILE, { projects: [] })
+  const live = settings.projects.filter((p) => fs.existsSync(path.resolve(p.path)))
+  if (live.length !== settings.projects.length) {
+    writeJson(ROOT_SETTINGS_FILE, { projects: live })
+  }
+}
+
 export function readRootSettings(): RootSettings {
   migrateIfNeeded()
+  pruneStaleProjects()
   return readJson<RootSettings>(ROOT_SETTINGS_FILE, { projects: [] })
 }
 
@@ -244,13 +286,27 @@ export function readCredentials(accountName: string): CredentialsConfig {
 }
 
 export function writeCredentials(accountName: string, creds: Partial<CredentialsConfig>): void {
+  const defined = Object.entries(creds).filter(([, v]) => v !== undefined)
+  if (defined.length === 0) return
   migrateIfNeeded()
   const all = readJson<Record<string, CredentialsConfig>>(CREDENTIALS_FILE, {})
   if (!all[accountName]) all[accountName] = {}
-  for (const [key, value] of Object.entries(creds) as [keyof CredentialsConfig, unknown][]) {
-    if (value !== undefined) (all[accountName] as Record<string, unknown>)[key] = value
+  for (const [key, value] of defined as [keyof CredentialsConfig, unknown][]) {
+    (all[accountName] as Record<string, unknown>)[key] = value
   }
   writeJson(CREDENTIALS_FILE, all)
+}
+
+/** Fully remove an account from credentials.json and unlink its projects from the registry. */
+export function removeAccount(accountName: string): void {
+  migrateIfNeeded()
+  const all = readJson<Record<string, unknown>>(CREDENTIALS_FILE, {})
+  delete all[accountName]
+  writeJson(CREDENTIALS_FILE, all)
+
+  const settings = readRootSettings()
+  settings.projects = settings.projects.filter((p) => p.account !== accountName)
+  writeRootSettings(settings)
 }
 
 /** Clear auth tokens/keys from an account, leaving other credential fields intact. */
@@ -264,10 +320,13 @@ export function clearCredentials(accountName: string): void {
   writeJson(CREDENTIALS_FILE, all)
 }
 
-/** Return all account names that have credentials stored. */
+/** Return all account names that have actual auth credentials stored. */
 export function listAccounts(): string[] {
   migrateIfNeeded()
-  return Object.keys(readJson<Record<string, CredentialsConfig>>(CREDENTIALS_FILE, {}))
+  const all = readJson<Record<string, CredentialsConfig>>(CREDENTIALS_FILE, {})
+  return Object.entries(all)
+    .filter(([, creds]) => !!creds.apiKey || !!creds.authType)
+    .map(([name]) => name)
 }
 
 // ─── Project settings ────────────────────────────────────────────────────────
@@ -289,10 +348,28 @@ export function writeProjectSettings(projectPath: string, settings: Partial<Proj
 // ─── Project dir resolution (internal) ──────────────────────────────────────
 
 /**
+ * Rename an account key everywhere it appears (credentials + root settings).
+ * Used after authentication to replace the temporary key with the user's email.
+ */
+export function renameAccount(oldKey: string, newKey: string): void {
+  if (oldKey === newKey) return
+  const all = readJson<Record<string, unknown>>(CREDENTIALS_FILE, {})
+  if (!all[oldKey]) return
+  // Merge old into new (new takes precedence if the key already exists)
+  all[newKey] = { ...(all[oldKey] as object), ...(all[newKey] as object ?? {}) }
+  delete all[oldKey]
+  writeJson(CREDENTIALS_FILE, all)
+
+  const settings = readJson<RootSettings>(ROOT_SETTINGS_FILE, { projects: [] })
+  const updated = settings.projects.map((p) => p.account === oldKey ? { ...p, account: newKey } : p)
+  writeJson(ROOT_SETTINGS_FILE, { projects: updated })
+}
+
+/**
  * Walk up from the given path (or cwd) and return the first registered
  * project entry whose path matches. Ignores account — matches on path alone.
  */
-function findRegisteredProject(fromPath?: string): ProjectEntry | undefined {
+export function findRegisteredProject(fromPath?: string): ProjectEntry | undefined {
   const projects = listProjects()
   const home = os.homedir()
 

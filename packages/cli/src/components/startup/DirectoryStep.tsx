@@ -6,7 +6,8 @@ import fs from 'fs'
 import path from 'path'
 import type { AgentConfig } from '../../types/index.js'
 import * as GitService from '../../services/git.service.js'
-import { clickHandler, ActionButton, FooterHints, Divider } from '../shared/index.js'
+import { clickHandler, ActionButton, FooterHints, Divider, InputField } from '../shared/index.js'
+import { stringFromInputSubmit } from '../../lib/inputSubmit.js'
 
 const CONFIRM_ITEM = '__confirm__'
 const UP_ITEM = '__up__'
@@ -53,6 +54,8 @@ function readDirs(dirPath: string): DirEntry[] {
 
 interface Props {
   config: Partial<AgentConfig>
+  title?: string
+  allowCreateFolder?: boolean
   onComplete: (updates: Partial<AgentConfig>) => void
 }
 
@@ -84,8 +87,8 @@ function formatRelativeDate(date: Date): string {
   return `${Math.floor(months / 12)}y ago`
 }
 
-export function DirectoryStep({ config, onComplete }: Props): ReactElement {
-  const { height: rows } = useTerminalDimensions()
+export function DirectoryStep({ config, title = 'Select repository directory', allowCreateFolder, onComplete }: Props): ReactElement {
+  useTerminalDimensions()
   const [currentPath, setCurrentPath] = useState(config.dir ?? process.cwd())
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [validating, setValidating] = useState(false)
@@ -95,6 +98,8 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
   const [sortBy, setSortBy] = useState<SortField>('name')
   const [sortAsc, setSortAsc] = useState(true)
+  const [creatingFolder, setCreatingFolder] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
 
   const isRoot = currentPath === path.parse(currentPath).root
   const dirs = useMemo(() => readDirs(currentPath), [currentPath])
@@ -169,7 +174,35 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
     scrollRef.current?.scrollChildIntoView(`dir-item-${selectedIndex}`)
   }, [selectedIndex, items])
 
+  const handleCreateFolder = (rawName: string) => {
+    const trimmed = rawName.trim()
+    if (!trimmed) {
+      setCreatingFolder(false)
+      setNewFolderName('')
+      return
+    }
+    try {
+      const newPath = path.join(currentPath, trimmed)
+      fs.mkdirSync(newPath, { recursive: true })
+      setCurrentPath(newPath)
+      setSelectedIndex(-1)
+      setError(null)
+    } catch (err: any) {
+      setError(`Could not create folder: ${err.message}`)
+    }
+    setCreatingFolder(false)
+    setNewFolderName('')
+  }
+
   useKeyboard((key) => {
+    if (creatingFolder) {
+      if (key.name === 'escape') {
+        setCreatingFolder(false)
+        setNewFolderName('')
+        key.stopPropagation()
+      }
+      return
+    }
     if (validating) return
     const { name } = key
     if (name === 'up') {
@@ -209,6 +242,8 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
         const item = items[selectedIndex]
         if (item) activateItem(item)
       }
+    } else if (name === 'n' && allowCreateFolder) {
+      setCreatingFolder(true)
     } else if (name === 'tab') {
       key.stopPropagation()
       if (key.shift) {
@@ -226,7 +261,7 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
       {/* Title */}
       <box flexShrink={0} paddingLeft={1} marginBottom={1}>
         <text attributes={tuiAttrs({ bold: true })} fg='#e6edf3'>
-          Select repository directory
+          {title}
         </text>
       </box>
 
@@ -373,22 +408,51 @@ export function DirectoryStep({ config, onComplete }: Props): ReactElement {
           </box>
         </scrollbox>
 
-        <box marginLeft={1} marginRight={1} flexShrink={0}>
-          <ActionButton
-            label='Use this directory'
-            icon='✓'
-            iconColor='#3fb950'
-            labelColor='#3fb950'
-            onClick={() => {
-              if (!validating) activateItem(CONFIRM_ITEM)
-            }}
-          />
+        <box marginLeft={1} marginRight={1} flexShrink={0} flexDirection='column'>
+          {creatingFolder ? (
+            <box flexDirection='column' gap={0}>
+              <text fg='#c9d1d9' paddingLeft={1}>New folder name:</text>
+              <InputField
+                value={newFolderName}
+                onInput={setNewFolderName}
+                onSubmit={(p) => handleCreateFolder(stringFromInputSubmit(p, newFolderName))}
+                placeholder='my-project'
+              />
+            </box>
+          ) : (
+            <box flexDirection='column' gap={0}>
+              <ActionButton
+                label='Use this directory'
+                icon='✓'
+                iconColor='#3fb950'
+                labelColor='#3fb950'
+                onClick={() => {
+                  if (!validating) activateItem(CONFIRM_ITEM)
+                }}
+              />
+              {allowCreateFolder && (
+                <ActionButton
+                  label='New folder'
+                  icon='+'
+                  iconColor='#58a6ff'
+                  labelColor='#58a6ff'
+                  onClick={() => setCreatingFolder(true)}
+                />
+              )}
+            </box>
+          )}
         </box>
       </box>
 
       {/* Footer */}
       <FooterHints
-        hints='↑↓ navigate · ← back · →/Enter open · Tab sort · ⇧Tab reverse'
+        hints={
+          creatingFolder
+            ? 'Enter create · Esc cancel'
+            : allowCreateFolder
+              ? '↑↓ navigate · ← back · →/Enter open · Tab sort · n new folder'
+              : '↑↓ navigate · ← back · →/Enter open · Tab sort · ⇧Tab reverse'
+        }
         paddingLeft={1}
         marginTop={1}
       />

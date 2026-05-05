@@ -1,10 +1,22 @@
 import http from 'http'
+import fs from 'fs'
 import net from 'net'
 import { exec } from 'child_process'
 import { parse as parseUrl } from 'url'
 import { TokenStore, OauthClient, AuthData, OAuthServerParams as StoredOAuthServerParams } from './token-store.js'
-import oauthSuccessHtml from './oauth-success.html' with { type: 'text' }
-import oauthFailedHtml from './oauth-failed.html' with { type: 'text' }
+import { removeAccount } from '../cli/profile.js'
+
+const oauthSuccessHtml = fs.readFileSync(new URL('./oauth-success.html', import.meta.url), 'utf-8')
+const oauthFailedHtml = fs.readFileSync(new URL('./oauth-failed.html', import.meta.url), 'utf-8')
+
+class TokenError extends Error {
+  readonly status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'TokenError'
+    this.status = status
+  }
+}
 
 export interface OAuthServerParams {
   authorizationServerUrl: string
@@ -87,6 +99,7 @@ function escapeHtml(value: string): string {
 }
 
 export class OAuthManager {
+  private profileName: string
   private tokenStore: TokenStore
   private authServer: http.Server | null = null
   private authorizationServerUrl = ''
@@ -98,6 +111,7 @@ export class OAuthManager {
   private _callbackDone: Promise<void> | undefined
 
   constructor(profileName = 'default') {
+    this.profileName = profileName
     this.tokenStore = new TokenStore(profileName)
     // Load persisted server params so refresh works without re-fetching well-known config
     const stored = this.tokenStore.getOAuthServerParams()
@@ -433,7 +447,8 @@ export class OAuthManager {
           return onExpiredSecret(current!)
         }
 
-        throw new Error(
+        throw new TokenError(
+          response.status,
           `Token request failed: ${response.status} ${response.statusText} - ${errorData.error_description || errorText}`,
         )
       }
@@ -499,6 +514,10 @@ export class OAuthManager {
       this.tokenStore.storeAuthData(authData)
       return tokenData.access_token
     } catch (error) {
+      if (error instanceof TokenError && error.status === 401) {
+        removeAccount(this.profileName)
+        return null
+      }
       throw error
     }
   }

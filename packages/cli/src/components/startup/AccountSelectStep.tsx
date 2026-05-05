@@ -2,17 +2,16 @@ import { useState, type ReactElement } from 'react'
 import { useKeyboard } from '@opentui/react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import type { AgentConfig } from '../../types/index.js'
-import { listAccounts, readCredentials } from '../../cli/profile.js'
+import { listAccounts, readCredentials, writeCredentials, renameAccount } from '../../cli/profile.js'
 import { OAuthManager } from '../../auth/oauth-manager.js'
 import { createApiService } from '../../services/api.service.js'
 import { decodeApiKeyPayload } from '../../services/radar.service.js'
-import { API_URL } from '../../config.js'
 import { FooterHints, SelectionList, type SelectionItem } from '../shared/index.js'
 import type { SelectableWorkspace } from './ProjectSelectStep.js'
 
 interface Props {
   url: string
-  onComplete: (updates: Partial<AgentConfig> & { _oauthWorkspaces?: SelectableWorkspace[] }) => void
+  onComplete: (updates: Partial<AgentConfig> & { _oauthWorkspaces?: SelectableWorkspace[]; _accountName?: string }) => void
   onAddNew: () => void
 }
 
@@ -87,15 +86,43 @@ export function AccountSelectStep({ url, onComplete, onAddNew }: Props): ReactEl
           }))
         )
 
-        onComplete({ apiKey: token, authType: 'oauth', url: creds.url, _oauthWorkspaces: workspaces })
+        let resolvedAccount = accountName
+        if (session.email) {
+          if (session.email !== accountName) {
+            writeCredentials(accountName, { email: session.email })
+            renameAccount(accountName, session.email)
+            resolvedAccount = session.email
+          } else {
+            resolvedAccount = session.email
+          }
+        }
+
+        onComplete({ apiKey: token, authType: 'oauth', url: creds.url, _oauthWorkspaces: workspaces, _accountName: resolvedAccount })
       } else if (creds.authType === 'api_key' && creds.apiKey) {
         const payload = decodeApiKeyPayload(creds.apiKey)
+
+        let resolvedAccount = accountName
+        try {
+          const api = createApiService({ url: creds.url ?? url, apiKey: creds.apiKey })
+          const session = await api.fetchUserSession()
+          if (session.email) {
+            if (session.email !== accountName) {
+              writeCredentials(accountName, { email: session.email })
+              renameAccount(accountName, session.email)
+              resolvedAccount = session.email
+            } else {
+              resolvedAccount = session.email
+            }
+          }
+        } catch { /* non-fatal */ }
+
         onComplete({
           apiKey: creds.apiKey,
           authType: 'api_key',
           url: creds.url,
           workspace: payload.workspace,
           project: payload.project,
+          _accountName: resolvedAccount,
         })
       } else {
         setLoading(false)
