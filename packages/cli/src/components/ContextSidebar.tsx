@@ -125,12 +125,7 @@ function ContextSidebarImpl({
 
         {onOpenAdvancedSettings && (
           <box flexDirection='column' gap={1} marginTop={1}>
-            <box onMouseUp={clickHandler(onOpenAdvancedSettings)}>
-              <text fg={LINK_SUBTLE} attributes={tuiAttrs({ underline: true, bold: true })}>
-                Advanced settings (s)
-              </text>
-            </box>
-            <text fg={FG_MUTED}>Filter issues by env & component</text>
+            <FocusedOutlineButton label='Advanced settings' onPress={onOpenAdvancedSettings} />
           </box>
         )}
       </box>
