@@ -1,6 +1,7 @@
 import { OAuthManager } from '../auth/oauth-manager.js'
 import { deleteProfileTokenData } from '../auth/token-store.js'
-import { writeProfile } from '../cli/profile.js'
+import { writeCredentials, renameAccount } from '../cli/profile.js'
+import { createApiService } from './api.service.js'
 import { BASE_API_URL } from '../config.js'
 import logger from '../logger.js'
 
@@ -25,7 +26,7 @@ async function getOAuthParams(baseUrl: string) {
 
 export async function login(opts: LoginOptions = {}): Promise<void> {
   const baseUrl = opts.url || BASE_API_URL
-  const profileName = opts.profileName || process.env.MULTIPLAYER_PROFILE || 'default'
+  const profileName = opts.profileName || 'default'
   const oauthManager = new OAuthManager(profileName)
 
   logger.info('Fetching OAuth configuration...')
@@ -52,15 +53,30 @@ export async function login(opts: LoginOptions = {}): Promise<void> {
   process.stdin.removeListener('data', stdinHandler)
   process.stdin.pause()
 
-  // Tokens (access + refresh + expiry + client credentials) are persisted to
-  // ~/.multiplayer/tokens.json by TokenStore on every storeAuthData() call.
-  // We only write non-secret config fields to the profile INI.
-  writeProfile(profileName, {
+  const token = await oauthManager.getAccessToken()
+
+  // Fetch email and rename the account key to the user's email
+  let finalProfileName = profileName
+  try {
+    const api = createApiService({ url: baseUrl, apiKey: '', bearerToken: token! })
+    const session = await api.fetchUserSession()
+    if (session.email) {
+      writeCredentials(profileName, { authType: 'oauth', email: session.email, ...(opts.url ? { url: opts.url } : {}) })
+      if (session.email !== profileName) {
+        renameAccount(profileName, session.email)
+        finalProfileName = session.email
+      }
+      logger.info(`Successfully authenticated as ${session.email}!`)
+      return
+    }
+  } catch { /* non-fatal — fall through to generic save */ }
+
+  writeCredentials(profileName, {
     authType: 'oauth',
     ...(opts.url ? { url: opts.url } : {}),
   })
 
-  logger.info(`Successfully authenticated! Credentials saved for profile '${profileName}'.`)
+  logger.info(`Successfully authenticated! Credentials saved for profile '${finalProfileName}'.`)
 }
 
 /**

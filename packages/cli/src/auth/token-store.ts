@@ -37,11 +37,26 @@ export interface ProfileTokenData {
 
 type TokensFile = Record<string, ProfileTokenData>
 
-const TOKENS_FILE = path.join(os.homedir(), '.multiplayer', 'tokens.json')
+// All credential and token data is consolidated in credentials.json
+const CREDENTIALS_FILE = path.join(os.homedir(), '.multiplayer', 'credentials.json')
+const LEGACY_TOKENS_FILE = path.join(os.homedir(), '.multiplayer', 'tokens.json')
+
+function migrateTokensFile(): void {
+  if (!fs.existsSync(LEGACY_TOKENS_FILE)) return
+  try {
+    const legacy = JSON.parse(fs.readFileSync(LEGACY_TOKENS_FILE, 'utf-8')) as TokensFile
+    const existing = readTokensFile()
+    for (const [account, tokenData] of Object.entries(legacy)) {
+      existing[account] = { ...existing[account], ...tokenData }
+    }
+    writeTokensFile(existing)
+    fs.unlinkSync(LEGACY_TOKENS_FILE)
+  } catch { /* best-effort */ }
+}
 
 function readTokensFile(): TokensFile {
   try {
-    return JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf-8')) as TokensFile
+    return JSON.parse(fs.readFileSync(CREDENTIALS_FILE, 'utf-8')) as TokensFile
   } catch {
     return {}
   }
@@ -49,27 +64,35 @@ function readTokensFile(): TokensFile {
 
 function writeTokensFile(data: TokensFile): void {
   try {
-    const dir = path.dirname(TOKENS_FILE)
+    const dir = path.dirname(CREDENTIALS_FILE)
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-    fs.writeFileSync(TOKENS_FILE, JSON.stringify(data, null, 2), 'utf-8')
+    fs.writeFileSync(CREDENTIALS_FILE, JSON.stringify(data, null, 2), 'utf-8')
   } catch {
     // Best-effort
   }
 }
 
 export function readProfileTokenData(profileName: string): ProfileTokenData {
+  migrateTokensFile()
   return readTokensFile()[profileName] ?? {}
 }
 
 export function writeProfileTokenData(profileName: string, data: Partial<ProfileTokenData>): void {
+  migrateTokensFile()
   const all = readTokensFile()
   all[profileName] = { ...all[profileName], ...data }
   writeTokensFile(all)
 }
 
 export function deleteProfileTokenData(profileName: string): void {
+  migrateTokensFile()
   const all = readTokensFile()
-  delete all[profileName]
+  const entry = all[profileName]
+  if (!entry) return
+  // Only remove OAuth token fields — preserve apiKey, authType, workspace, etc.
+  delete entry.authData
+  delete entry.oauthClient
+  delete entry.oauthServerParams
   writeTokensFile(all)
 }
 

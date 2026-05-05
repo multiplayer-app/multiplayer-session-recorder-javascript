@@ -3,7 +3,6 @@ import { ScrollBoxRenderable } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import type { AgentConfig } from '../../types/index.js'
-import { writeProfile } from '../../cli/profile.js'
 import { collapseForSingleLine } from '../../lib/formatDisplay.js'
 import type { ApiProject } from '../../services/api.service.js'
 import { stringFromInputSubmit } from '../../lib/inputSubmit.js'
@@ -129,9 +128,6 @@ export function ProjectSelectStep({
       setError(null)
       return
     }
-
-    const profile = profileName || process.env.MULTIPLAYER_PROFILE || 'default'
-    writeProfile(profile, { workspace: opt.workspace._id, project: opt.project._id })
 
     onComplete({
       workspace: opt.workspace._id,

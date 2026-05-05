@@ -1,55 +1,80 @@
 import { useState, type ReactElement } from 'react'
 import type { KeyEvent, MouseEvent } from '@opentui/core'
-import { MouseButton, RGBA } from '@opentui/core'
+import { MouseButton } from '@opentui/core'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import type { QuitMode } from '../../runtime/types.js'
+import {
+  ACCENT,
+  BG_MODAL,
+  BORDER_MUTED,
+  FG_HINT,
+  FG_LABEL_STRONG,
+  FG_TITLE,
+  MODAL_BACKDROP_RGBA
+} from '../shared/tuiTheme.js'
 
-type Option = QuitMode | 'cancel'
+type Option = QuitMode | 'cancel' | 'restart-setup'
 
-const QUIT_BACKDROP_BG = RGBA.fromInts(10, 10, 12, 150)
-
-/** Selection border + key hints (FooterHints-style) */
-const ACCENT = { keys: '#22d3ee' } as const
+const QUIT_BACKDROP_BG = MODAL_BACKDROP_RGBA
 
 const OPTIONS: { value: Option; digit: string; label: string; description: string }[] = [
   {
     value: 'now',
     digit: '1',
     label: 'Quit now',
-    description: 'Stop immediately — active sessions are abandoned',
+    description: 'Stop immediately — active sessions are abandoned'
   },
   {
     value: 'after-current',
     digit: '2',
     label: 'Quit when idle',
-    description: 'Finish active sessions, then exit',
+    description: 'Finish active sessions, then exit'
+  },
+  {
+    value: 'restart-setup',
+    digit: '3',
+    label: 'Return to setup',
+    description: 'Disconnect and run the setup wizard again from scratch'
   },
   {
     value: 'cancel',
-    digit: '3',
+    digit: '4',
     label: 'Cancel',
-    description: 'Return to the dashboard',
-  },
+    description: 'Return to the dashboard'
+  }
 ]
 
 interface Props {
   onQuit: (mode: QuitMode) => void
   onCancel: () => void
+  onRestartSetup: () => void
 }
 
-function applyOption(opt: (typeof OPTIONS)[number], onQuit: (mode: QuitMode) => void, onCancel: () => void): void {
-  if (opt.value === 'cancel') onCancel()
-  else onQuit(opt.value)
+function applyOption(
+  opt: (typeof OPTIONS)[number],
+  onQuit: (mode: QuitMode) => void,
+  onCancel: () => void,
+  onRestartSetup: () => void
+): void {
+  if (opt.value === 'cancel') {
+    onCancel()
+    return
+  }
+  if (opt.value === 'restart-setup') {
+    onRestartSetup()
+    return
+  }
+  onQuit(opt.value)
 }
 
-export function QuitScreen({ onQuit, onCancel }: Props): ReactElement {
+export function QuitScreen({ onQuit, onCancel, onRestartSetup }: Props): ReactElement {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const { width, height } = useTerminalDimensions()
 
   const runOption = (index: number) => {
     const opt = OPTIONS[index]
-    if (opt) applyOption(opt, onQuit, onCancel)
+    if (opt) applyOption(opt, onQuit, onCancel, onRestartSetup)
   }
 
   useKeyboard((key: KeyEvent) => {
@@ -110,7 +135,7 @@ export function QuitScreen({ onQuit, onCancel }: Props): ReactElement {
         width={68}
         maxWidth={width - 2}
         minWidth={52}
-        backgroundColor='#262626'
+        backgroundColor={BG_MODAL}
         paddingLeft={2}
         paddingRight={2}
         paddingTop={1}
@@ -118,10 +143,12 @@ export function QuitScreen({ onQuit, onCancel }: Props): ReactElement {
         gap={0}
         onMouseUp={dialogMouseUp}
       >
-        <text fg='#e5e5e5' attributes={tuiAttrs({ bold: true })}>
+        <text fg={FG_TITLE} attributes={tuiAttrs({ bold: true })}>
           Quit Multiplayer Debugging Agent?
         </text>
-        <text attributes={tuiAttrs({ dim: true })}>Choose how to exit — or press Esc to go back.</text>
+        <text attributes={tuiAttrs({ dim: true })}>
+          Exit the agent, return to setup, or cancel — press Esc to go back.
+        </text>
 
         <box flexDirection='column' gap={0} marginTop={1}>
           {OPTIONS.map((opt, i) => {
@@ -132,7 +159,7 @@ export function QuitScreen({ onQuit, onCancel }: Props): ReactElement {
                 flexDirection='column'
                 border={true}
                 borderStyle='rounded'
-                borderColor={isSelected ? ACCENT.keys : '#374151'}
+                borderColor={isSelected ? ACCENT : BORDER_MUTED}
                 paddingLeft={1}
                 paddingRight={1}
                 paddingTop={0}
@@ -140,7 +167,7 @@ export function QuitScreen({ onQuit, onCancel }: Props): ReactElement {
                 gap={0}
                 onMouseUp={rowMouseUp(i)}
               >
-                <text fg={isSelected ? '#fafafa' : '#a1a1aa'} attributes={tuiAttrs({ bold: isSelected })}>
+                <text fg={isSelected ? FG_LABEL_STRONG : FG_HINT} attributes={tuiAttrs({ bold: isSelected })}>
                   {opt.label}
                 </text>
                 <text attributes={tuiAttrs({ dim: true })}>{opt.description}</text>
@@ -150,16 +177,16 @@ export function QuitScreen({ onQuit, onCancel }: Props): ReactElement {
         </box>
 
         <box marginTop={1} flexDirection='row' flexWrap='wrap' gap={0}>
-          <text fg={ACCENT.keys} attributes={tuiAttrs({ bold: true })}>
+          <text fg={ACCENT} attributes={tuiAttrs({ bold: true })}>
             ↑↓
           </text>
           <text attributes={tuiAttrs({ dim: true })}> move · </text>
-          <text fg={ACCENT.keys} attributes={tuiAttrs({ bold: true })}>
+          <text fg={ACCENT} attributes={tuiAttrs({ bold: true })}>
             Enter
           </text>
           <text attributes={tuiAttrs({ dim: true })}> select · </text>
-          <text fg={ACCENT.keys} attributes={tuiAttrs({ bold: true })}>
-            1-3
+          <text fg={ACCENT} attributes={tuiAttrs({ bold: true })}>
+            1-4
           </text>
           <text attributes={tuiAttrs({ dim: true })}> quick pick · Esc cancel</text>
         </box>

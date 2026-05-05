@@ -6,21 +6,40 @@ import { collapseForSingleLine, formatBytes, stripAgentDisplayNoise } from '../.
 import type { SessionDetail, SessionMessage, SessionStatus } from '../../runtime/types.js'
 import type { AgentToolCall } from '../../types/index.js'
 import { EmptyDetailPane } from '../EmptyDetailPane.js'
+import {
+  ACCENT,
+  BORDER_MUTED,
+  FG_DIM,
+  FG_SLATE_DETAIL,
+  FG_STONE_DIM,
+  SEM_AMBER,
+  SEM_GREEN,
+  SEM_GREEN_BRIGHT,
+  SEM_INDIGO,
+  SEM_RED,
+  SEM_SLATE,
+  SEM_VIOLET_SOFT,
+  SEM_YELLOW,
+  USER_TRANSCRIPT_COLORS,
+  activityLabelAccent
+} from '../shared/tuiTheme.js'
+
+const USER_MSG = USER_TRANSCRIPT_COLORS
 
 const STATUS_LABEL: Record<SessionStatus, { label: string; color: string }> = {
-  pending: { label: 'pending', color: '#6b7280' },
-  analyzing: { label: 'analyzing', color: '#f59e0b' },
-  pushing: { label: 'pushing', color: '#6366f1' },
-  done: { label: 'done', color: '#10b981' },
-  failed: { label: 'failed', color: '#ef4444' },
-  aborted: { label: 'aborted', color: '#6b7280' }
+  pending: { label: 'pending', color: FG_DIM },
+  analyzing: { label: 'analyzing', color: SEM_AMBER },
+  pushing: { label: 'pushing', color: SEM_INDIGO },
+  done: { label: 'done', color: SEM_GREEN },
+  failed: { label: 'failed', color: SEM_RED },
+  aborted: { label: 'aborted', color: FG_DIM }
 }
 
 const TOOL_STATUS: Record<AgentToolCall['status'], { icon: string; color: string }> = {
-  pending: { icon: '○', color: '#f59e0b' },
-  running: { icon: '◐', color: '#f59e0b' },
-  succeeded: { icon: '✓', color: '#10b981' },
-  failed: { icon: '✗', color: '#ef4444' }
+  pending: { icon: '○', color: SEM_AMBER },
+  running: { icon: '◐', color: SEM_AMBER },
+  succeeded: { icon: '✓', color: SEM_GREEN },
+  failed: { icon: '✗', color: SEM_RED }
 }
 
 const getToolStatus = (status: AgentToolCall['status'] | undefined): { icon: string; color: string } =>
@@ -115,16 +134,6 @@ const TOOL_OUTPUT_MAX_LINES = 5
 const TOOL_OUTPUT_MAX_CHARS = 2800
 
 /** Transcript styling for `role: user` (accent bar + green-tinted text). */
-const USER_MSG = {
-  background: '#27272a',
-  bar: '#15803d',
-  accent: '#4ade80',
-  body: '#d1fae5',
-  bodyMuted: '#86efac',
-  codeBorder: '#22c55e',
-  codeFg: '#fef9c3',
-  attachment: '#86efac'
-} as const
 
 function toolOutputPreviewText(tc: AgentToolCall): string | null {
   const out = tc.output
@@ -137,32 +146,27 @@ function toolOutputPreviewText(tc: AgentToolCall): string | null {
   return t
 }
 
-const ACTIVITY_ACCENT: Record<string, string> = {
-  git: '#6366f1',
-  analyzing: '#f59e0b'
-}
-
 function activityAccent(activity: string): string {
-  return ACTIVITY_ACCENT[activity] ?? '#94a3b8'
+  return activityLabelAccent(activity)
 }
 
 /** Role / activity label before message body. */
 function getContentPrefix(msg: SessionMessage): { text: string; color: string; icon?: string } | null {
   switch (msg.role) {
     case 'user':
-      return { text: 'user', color: '#4ade80', icon: '\u25C6' }
+      return { text: 'user', color: SEM_GREEN_BRIGHT, icon: '\u25C6' }
     case 'assistant':
       return msg.activity ? { text: msg.activity, color: activityAccent(msg.activity), icon: '\u25B8' } : null
     case 'agent':
-      return { text: 'issue', color: '#eab308', icon: '\u25B2' }
+      return { text: 'issue', color: SEM_YELLOW, icon: '\u25B2' }
     case 'error':
-      return { text: 'error', color: '#ef4444', icon: '\u2717' }
+      return { text: 'error', color: SEM_RED, icon: '\u2717' }
     case 'system':
-      return { text: 'system', color: '#6b7280', icon: '\u25CF' }
+      return { text: 'system', color: FG_DIM, icon: '\u25CF' }
     case 'tool':
-      return { text: 'tool', color: '#94a3b8', icon: '\u2699' }
+      return { text: 'tool', color: SEM_SLATE, icon: '\u2699' }
     // case 'reasoning':
-    //   return { text: 'thinking', color: '#a78bfa', icon: '\u2026' }
+    //   return { text: 'thinking', color: SEM_VIOLET_SOFT, icon: '\u2026' }
     default:
       return null
   }
@@ -196,7 +200,7 @@ function InlineSegments({ segments, dim }: { segments: Segment[]; dim?: boolean 
         s.bold ? (
           <strong key={i}>{s.text}</strong>
         ) : s.code ? (
-          <span key={i} fg='#f59e0b'>
+          <span key={i} fg={SEM_AMBER}>
             {s.text}
           </span>
         ) : s.dim || dim ? (
@@ -391,7 +395,7 @@ function MarkdownLine({
   variant?: MarkdownVariant
 }): ReactElement {
   const u = variant === 'user'
-  const ax = u ? USER_MSG.accent : '#22d3ee'
+  const ax = u ? USER_MSG.accent : ACCENT
   const dimBody = u ? false : muted
   const dimSoft = u ? true : muted
 
@@ -525,7 +529,7 @@ const buildMessageRows = (msg: SessionMessage, contentWidth?: number): DetailRow
 
   let prefixInfo = getContentPrefix(msg)
   if (!prefixInfo && msg.role === 'assistant' && hasAttachments && !hasContent && toolCalls.length === 0) {
-    prefixInfo = { text: 'assistant', color: '#22d3ee' }
+    prefixInfo = { text: 'assistant', color: ACCENT }
   }
   const fromUser = msg.role === 'user'
 
@@ -586,7 +590,7 @@ const buildMessageRows = (msg: SessionMessage, contentWidth?: number): DetailRow
       type: 'toolLine',
       icon,
       iconColor,
-      nameColor: '#94a3b8',
+      nameColor: SEM_SLATE,
       name: tc.name,
       detail
     })
@@ -663,19 +667,19 @@ function renderDetailRow(row: DetailRow): ReactElement | null {
           <span fg={row.nameColor} attributes={tuiAttrs({ dim: true })}>
             {row.name}
           </span>
-          {row.detail ? <span fg='#64748b'>{` ${row.detail}`}</span> : null}
+          {row.detail ? <span fg={FG_SLATE_DETAIL}>{` ${row.detail}`}</span> : null}
         </text>
       ) as ReactElement
     case 'toolError':
       return (
-        <text key={row.key} fg='#ef4444' attributes={tuiAttrs({ dim: true })}>
+        <text key={row.key} fg={SEM_RED} attributes={tuiAttrs({ dim: true })}>
           {'  ✗ '}
           {row.text}
         </text>
       ) as ReactElement
     case 'toolOutputLine':
       return (
-        <text key={row.key} fg='#78716c' attributes={tuiAttrs({ dim: true })}>
+        <text key={row.key} fg={FG_STONE_DIM} attributes={tuiAttrs({ dim: true })}>
           {row.text}
         </text>
       ) as ReactElement
@@ -690,7 +694,7 @@ function renderDetailRow(row: DetailRow): ReactElement | null {
         ) as ReactElement
       }
       return (
-        <text key={row.key} fg='#a78bfa' attributes={tuiAttrs({ dim: true })}>
+        <text key={row.key} fg={SEM_VIOLET_SOFT} attributes={tuiAttrs({ dim: true })}>
           {row.text}
         </text>
       ) as ReactElement
@@ -745,7 +749,7 @@ function renderDetailRow(row: DetailRow): ReactElement | null {
             </text>
           </UserAccentRow>
         ) : (
-          <text key={row.key} fg='#6b7280'>
+          <text key={row.key} fg={FG_DIM}>
             {'┌─ '}
             <span attributes={tuiAttrs({ dim: true })}>{row.lang}</span>
           </text>
@@ -761,7 +765,7 @@ function renderDetailRow(row: DetailRow): ReactElement | null {
             </text>
           </UserAccentRow>
         ) : (
-          <text key={row.key} fg='#f59e0b'>
+          <text key={row.key} fg={SEM_AMBER}>
             {'│ '}
             {row.line || ' '}
           </text>
@@ -774,7 +778,7 @@ function renderDetailRow(row: DetailRow): ReactElement | null {
             <text fg={USER_MSG.codeBorder}>└</text>
           </UserAccentRow>
         ) : (
-          <text key={row.key} fg='#6b7280'>
+          <text key={row.key} fg={FG_DIM}>
             └
           </text>
         )
@@ -803,7 +807,7 @@ function SessionDetailPaneImpl({
   onRequestFocus,
   onRequestLoadMore
 }: Props): ReactElement {
-  const borderColor = isFocused ? '#22d3ee' : '#374151'
+  const borderColor = isFocused ? ACCENT : BORDER_MUTED
 
   const handleMouseUpFocus =
     onRequestFocus &&
@@ -821,7 +825,10 @@ function SessionDetailPaneImpl({
       onRequestLoadMore()
     })
 
-  const { rows: allRows, activeReasoning } = useMemo(() => buildSessionRows(session, contentWidth), [session, contentWidth])
+  const { rows: allRows, activeReasoning } = useMemo(
+    () => buildSessionRows(session, contentWidth),
+    [session, contentWidth]
+  )
 
   if (!session) {
     return (
@@ -829,7 +836,7 @@ function SessionDetailPaneImpl({
         flexDirection='column'
         border={true}
         borderStyle='rounded'
-        borderColor='#374151'
+        borderColor={BORDER_MUTED}
         padding={1}
         flexGrow={1}
         onMouseUp={handleMouseUpFocus || undefined}
@@ -862,7 +869,7 @@ function SessionDetailPaneImpl({
         flexShrink={0}
         borderStyle='single'
         border={true}
-        borderColor='#374151'
+        borderColor={BORDER_MUTED}
         paddingLeft={1}
         paddingRight={1}
         paddingTop={0}
@@ -879,7 +886,7 @@ function SessionDetailPaneImpl({
             <text attributes={tuiAttrs({ dim: true })}>{collapseForSingleLine(session.issueService)}</text>
           </box>
         )}
-        {session.error && <text fg='#ef4444'>✗ {session.error}</text>}
+        {session.error && <text fg={SEM_RED}>✗ {session.error}</text>}
       </box>
 
       <scrollbox
@@ -895,8 +902,8 @@ function SessionDetailPaneImpl({
           scrollbarOptions: {
             showArrows: true,
             trackOptions: {
-              foregroundColor: '#22d3ee',
-              backgroundColor: '#374151'
+              foregroundColor: ACCENT,
+              backgroundColor: BORDER_MUTED
             }
           }
         }}
@@ -913,12 +920,12 @@ function SessionDetailPaneImpl({
             paddingBottom={0}
             border={true}
             borderStyle='rounded'
-            borderColor='#374151'
+            borderColor={BORDER_MUTED}
             justifyContent='center'
             alignItems='center'
             onMouseUp={handleMouseUpLoadMore}
           >
-            <text fg='#22d3ee' attributes={tuiAttrs({ bold: true })}>
+            <text fg={ACCENT} attributes={tuiAttrs({ bold: true })}>
               Load more messages
             </text>
           </box>
@@ -929,9 +936,7 @@ function SessionDetailPaneImpl({
           ) : (
             allRows.map((row) => renderDetailRow(row))
           )}
-          {activeReasoning && (
-            <text attributes={tuiAttrs({ dim: true })}>{activeReasoning}</text>
-          )}
+          {activeReasoning && <text attributes={tuiAttrs({ dim: true })}>{activeReasoning}</text>}
         </box>
       </scrollbox>
     </box>

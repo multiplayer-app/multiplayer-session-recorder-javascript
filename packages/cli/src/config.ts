@@ -2,6 +2,10 @@
 
 export const API_URL = process.env.MULTIPLAYER_URL || 'https://api.multiplayer.app/v0'
 export const BASE_API_URL = process.env.MULTIPLAYER_BASE_URL || 'https://api.multiplayer.app'
+// ─── Demo repo ────────────────────────────────────────────────────────────────
+
+export const DEMO_REPO_URL = 'https://github.com/multiplayer-app/cli-app-demo'
+
 // ─── Agent defaults ───────────────────────────────────────────────────────────
 
 export const DEFAULT_MAX_CONCURRENT = 2
@@ -29,3 +33,4 @@ export const EVENT_DEBUGGING_AGENT_RESOLVE_ISSUE = 'debugging-agent:resolve-issu
 export const EVENT_DEBUGGING_AGENT_READY = 'debugging-agent:ready'
 export const EVENT_DEBUGGING_AGENT_FIX_PUSHED = 'debugging-agent:fix-pushed'
 export const EVENT_DEBUGGING_AGENT_FIX_FAILED = 'debugging-agent:fix-failed'
+export const EVENT_DEBUGGING_AGENT_UPDATE = 'debugging-agent:update'

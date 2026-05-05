@@ -6,7 +6,7 @@ import { create as createDeployment } from './deployments/create.js'
 import { upload as uploadSourcemap } from './sourcemaps/upload.js'
 import { login, logout, status as authStatus } from '../services/auth.service.js'
 import { startMcpServer } from './mcp.js'
-import { loadProfile, writeProfile } from '../cli/profile.js'
+import { loadProfile, writeCredentials, writeProjectSettings, findRegisteredProject } from '../cli/profile.js'
 import { API_URL, DEFAULT_MAX_CONCURRENT } from '../config.js'
 import type { ParsedFlags } from '../cli/flags.js'
 import type { RuntimeMode } from '../runtime/types.js'
@@ -48,7 +48,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
     .command('agent', { isDefault: true })
     .description('Start the debugging agent')
     .option('--headless', 'Run without TUI (structured log output, requires full config); also set via MULTIPLAYER_HEADLESS=true')
-    .option('--profile <name>', 'Config profile to use from .multiplayer/config (default: "default"); also set via MULTIPLAYER_PROFILE')
+    .option('--profile <name>', 'Account to use (default: auto-detected from registered project)')
     .option('--url <url>', 'Multiplayer base API URL')
     .option('--api-key <key>', 'Multiplayer API key')
     .option('--name <name>', 'Agent name (defaults to hostname)')
@@ -62,9 +62,11 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
     .option('--health-port <port>', 'Port for HTTP health check endpoint (headless mode only); also set via MULTIPLAYER_HEALTH_PORT')
     .action((opts) => {
       const mode: RuntimeMode = (opts.headless || process.env.MULTIPLAYER_HEADLESS === 'true') ? 'headless' : 'tui'
-      const profileName: string = opts.profile || process.env.MULTIPLAYER_PROFILE || 'default'
+      const profileName: string = opts.profile || 'default'
       const explicitDir = opts.dir || process.env.MULTIPLAYER_DIR
-      const profile = loadProfile(profileName, explicitDir)
+      const registered = findRegisteredProject(explicitDir)
+      const effectiveProfileName = registered?.account ?? profileName
+      const profile = loadProfile(effectiveProfileName, explicitDir)
       const resolvedDir = explicitDir || profile.dir
       const initialConfig: Partial<AgentConfig> = {
         url: opts.url || process.env.MULTIPLAYER_URL || profile.url || API_URL,
@@ -82,20 +84,21 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
         ),
         noGitBranch: opts.noGitBranch || process.env.MULTIPLAYER_NO_GIT_BRANCH === 'true' || profile.noGitBranch || false,
         skipSdkCheck: opts.skipSdkCheck || process.env.MULTIPLAYER_SKIP_SDK_CHECK === 'true' || profile.skipSdkCheck || false,
+        sessionRecorderSetupDone: profile.sessionRecorderSetupDone || false,
       }
       const rawHealthPort = opts.healthPort || process.env.MULTIPLAYER_HEALTH_PORT
       const healthPort = rawHealthPort ? Number(rawHealthPort) : undefined
 
-      // Persist --url to profile if explicitly provided and not already saved
+      // Persist --url to credentials if explicitly provided and not already saved
       if (opts.url && !profile.url) {
-        writeProfile(profileName, { url: opts.url })
+        writeCredentials(effectiveProfileName, { url: opts.url })
       }
-      // Persist --skip-sdk-check to profile if explicitly set
-      if (opts.skipSdkCheck && !profile.skipSdkCheck) {
-        writeProfile(profileName, { skipSdkCheck: true })
+      // Persist --skip-sdk-check to project settings if explicitly set and dir is known
+      if (opts.skipSdkCheck && !profile.skipSdkCheck && resolvedDir) {
+        writeProjectSettings(resolvedDir, { skipSdkCheck: true })
       }
 
-      onAgent({ mode, initialConfig, healthPort, profileName })
+      onAgent({ mode, initialConfig, healthPort, profileName: effectiveProfileName })
     })
 
   // releases
@@ -184,7 +187,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
       try {
         await login({
           url: opts.url || process.env.MULTIPLAYER_URL,
-          profileName: opts.profile || process.env.MULTIPLAYER_PROFILE,
+          profileName: opts.profile,
         })
       } catch (err: any) {
         exitWithError(err.message)
@@ -195,7 +198,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
     .description('Log out and clear stored credentials')
     .option('--profile <name>', 'Config profile to log out from')
     .action((opts) => {
-      logout(opts.profile || process.env.MULTIPLAYER_PROFILE || 'default')
+      logout(opts.profile || 'default')
     })
   auth
     .command('status')
@@ -203,7 +206,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
     .option('--profile <name>', 'Config profile to check')
     .action(async (opts) => {
       try {
-        await authStatus(opts.profile || process.env.MULTIPLAYER_PROFILE || 'default')
+        await authStatus(opts.profile || 'default')
       } catch (err: any) {
         exitWithError(err.message)
       }

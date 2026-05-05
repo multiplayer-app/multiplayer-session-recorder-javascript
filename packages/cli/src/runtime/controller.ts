@@ -9,6 +9,7 @@ import {
   ChatSessionPayload,
   Release,
   ResolveIssuePayload,
+  IAgent,
 } from '../types/index.js'
 import { createRadarService, RadarService } from '../services/radar.service.js'
 import { createApiService } from '../services/api.service.js'
@@ -43,11 +44,9 @@ interface ChatContext {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const getErrorMessage = (err: unknown): string =>
-  err instanceof Error ? err.message : String(err)
+const getErrorMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err))
 
-const generateMessageId = (): string =>
-  new mongoose.Types.ObjectId().toString()
+const generateMessageId = (): string => new mongoose.Types.ObjectId().toString()
 
 /** Map backend chat status → TUI session status. */
 const CHAT_STATUS_TO_SESSION: Partial<Record<string, SessionStatus>> = {
@@ -276,6 +275,32 @@ export class RuntimeController extends EventEmitter {
   unsubscribeSession(chatId: string): void {
     this.radar?.unsubscribeChat(chatId)
     this.log('debug', `Unsubscribed from chat ${chatId}`)
+  }
+
+  emitAgentSettings(settings: Partial<NonNullable<IAgent['settings']>>): void {
+    this.radar?.emitAgentUpdate({ settings })
+    this.log('info', `Emitted agent settings update: ${JSON.stringify(settings)}`)
+  }
+
+  async listRadarDetections(): Promise<{ components: string[]; environments: string[] }> {
+    const cfg = this._config
+    const radar = this.radar
+    if (!radar || !cfg.workspace || !cfg.project) {
+      return { components: [], environments: [] }
+    }
+    try {
+      const [comps, envs] = await Promise.all([
+        radar.listComponents(cfg.workspace, cfg.project),
+        radar.listEnvironments(cfg.workspace, cfg.project),
+      ])
+      const components = [...new Set(comps.map((c) => c.componentName).filter(Boolean) as string[])].sort()
+      const environments = [...new Set(envs.map((e) => e.environmentName).filter(Boolean) as string[])].sort()
+      return { components, environments }
+    } catch (err: unknown) {
+      if (this.maybeReportAuthFailure(err)) return { components: [], environments: [] }
+      this.log('error', `listRadarDetections failed: ${getErrorMessage(err)}`)
+      throw err
+    }
   }
 
   connect(): void {
@@ -1197,12 +1222,7 @@ export class RuntimeController extends EventEmitter {
   /**
    * Resume a session where the branch was pushed but the PR wasn't created yet.
    */
-  private async resumeCreatePr(
-    chatId: string,
-    issue: Issue,
-    cfg: AgentConfig,
-    worktreeDir: string,
-  ): Promise<void> {
+  private async resumeCreatePr(chatId: string, issue: Issue, cfg: AgentConfig, worktreeDir: string): Promise<void> {
     const componentHash = issue.componentHash
     const gitBranch = issue.solution!.gitBranch!
     this.log('info', `Branch pushed but no PR — creating PR for ${componentHash}`)
@@ -1381,7 +1401,12 @@ export class RuntimeController extends EventEmitter {
 
     try {
       // 1. Build context doc, upload it, analyse fixability — bail early if unfixable
-      const { proceed, debugContext, contextMarkdown } = await this.prepareContextAndScore(chatId, issue, enriched, agentSettings)
+      const { proceed, debugContext, contextMarkdown } = await this.prepareContextAndScore(
+        chatId,
+        issue,
+        enriched,
+        agentSettings,
+      )
       if (!proceed) return
 
       // 2. Set up the initial prompt (first message in history, or build from issue data)

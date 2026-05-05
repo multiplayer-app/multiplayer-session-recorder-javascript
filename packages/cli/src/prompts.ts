@@ -112,6 +112,16 @@ If the integration legitimately requires touching a file that has no obvious saf
 1. Creating a new sibling file (provider/wrapper/init module), then
 2. Adding ONE import line + ONE call site to the existing file.
 
+## Language and File Extension Rules
+
+Match the app's existing language. Do NOT introduce TypeScript into a JavaScript project.
+
+- If the stack language is \`javascript\`, create \`.js\` or \`.jsx\` files only. Do not create \`.ts\` or \`.tsx\` files, do not add type annotations, do not add interfaces/types, and do not use TypeScript-only syntax.
+- If the existing entry/component file is \`.jsx\`, use \`.jsx\` for any React wrapper/provider file you create.
+- If the existing entry/component file is \`.js\`, use \`.js\` unless the code you create contains JSX; then use \`.jsx\`.
+- If the stack language is \`typescript\`, use \`.ts\` or \`.tsx\` consistently with nearby files and add types where useful.
+- For framework-specific filenames shown in README examples (for example \`instrumentation-client.ts\`, \`error.tsx\`, or \`src/multiplayer.ts\`), adapt the extension to the actual app language when the framework supports it. Examples are guidance, not permission to convert a JavaScript app to TypeScript.
+
 ## Heuristic Detection (may be incomplete — verify by reading the actual files)
 - Framework guess: ${stack.framework}
 - Type guess: ${stack.type}
@@ -120,21 +130,54 @@ If the integration legitimately requires touching a file that has no obvious saf
 - Language: ${stack.language}
 ${installedNote}
 
-## Env var conventions (you decide based on the actual framework you detect)
-Pick the right env var name and \`.env\` file for the framework you identify. Some common conventions (not exhaustive — if the project uses a different build tool, follow ITS rules):
-- Next.js: \`NEXT_PUBLIC_*\` for client-accessible, written to \`.env.local\`
-- Vite (React/Vue/Svelte + Vite): \`VITE_*\`, written to \`.env.local\`
-- Nuxt: \`NUXT_PUBLIC_*\`, written to \`.env\`
-- SvelteKit: \`PUBLIC_*\`, written to \`.env\`
-- Expo / React Native (Expo): \`EXPO_PUBLIC_*\`, written to \`.env\`
-- Create React App: \`REACT_APP_*\`, written to \`.env\`
-- Angular: wire through \`src/environments/environment.ts\` (no magic prefix), written to \`.env\` or the environment file the project already uses
-- Node/Python/Go/etc. backends: no prefix, written to \`.env\` (or whatever the project already uses — respect existing conventions)
+## Env Var Placement and Runtime Access Contract
 
-Rules when choosing:
-- Use the prefix that the project's build tool actually exposes to the runtime — otherwise the value won't be readable at runtime.
-- If the project already has a \`.env*\` file in context, WRITE TO THE SAME FILENAME the project is already using.
-- The env var NAME you pick must be a full identifier (e.g. \`VITE_MULTIPLAYER_API_KEY\`) — when the CLI replaces the placeholder, it expects the value \`YOUR_MULTIPLAYER_API_KEY\` to appear verbatim in the \`.env\` fileChange.
+This is a source of common setup failures. You MUST choose BOTH:
+1. The env var NAME that the runtime can read, and
+2. The exact FILE that the framework/build tool loads for this stack.
+
+Do not treat \`.env\`, \`.env.local\`, \`.env.example\`, workspace-root env files, and sibling-stack env files as interchangeable.
+
+### Step 1 — identify where the code runs
+- Browser/client code can only read variables intentionally exposed by the framework/build tool. Use the framework's public/client prefix.
+- Server/backend code can read unprefixed variables with \`process.env\` or the backend's existing env loader.
+- Full-stack frameworks may need separate client and server variables. Example: a Next.js client recorder uses \`NEXT_PUBLIC_MULTIPLAYER_SDK_API_KEY\`; server-side instrumentation uses \`MULTIPLAYER_SDK_API_KEY\`.
+
+### Step 2 — choose the name and runtime read syntax
+Common conventions (not exhaustive — if the project uses a different build tool, follow ITS rules):
+- Next.js client: \`NEXT_PUBLIC_MULTIPLAYER_SDK_API_KEY\`, read via \`process.env.NEXT_PUBLIC_MULTIPLAYER_SDK_API_KEY\`
+- Next.js server/backend: \`MULTIPLAYER_SDK_API_KEY\`, read via \`process.env.MULTIPLAYER_SDK_API_KEY\`
+- Vite browser apps: \`VITE_MULTIPLAYER_SDK_API_KEY\`, read via \`import.meta.env.VITE_MULTIPLAYER_SDK_API_KEY\`
+- Nuxt client/runtime config: \`NUXT_PUBLIC_MULTIPLAYER_SDK_API_KEY\`, expose via public runtime config if the app uses it
+- SvelteKit browser code: \`PUBLIC_MULTIPLAYER_SDK_API_KEY\`, read through SvelteKit's public env mechanism
+- Expo / React Native (Expo): \`EXPO_PUBLIC_MULTIPLAYER_SDK_API_KEY\`
+- Create React App: \`REACT_APP_MULTIPLAYER_SDK_API_KEY\`
+- Angular: prefer the project's existing environment configuration pattern (for example \`src/environments/environment.ts\`); do not invent a magic prefix unless the project already uses one
+- Node/Python/Go/etc. backends: \`MULTIPLAYER_SDK_API_KEY\`, read from the backend's normal env loader
+
+### Step 3 — choose the file to write
+- First, inspect project files/config in "Current Project Files" to see what this stack actually loads.
+- If a compatible runtime env file already exists for THIS stack, modify that same file.
+- If no runtime env file exists, create the framework's normal local runtime file:
+  - Next.js, Vite, and local browser dev stacks: \`.env.local\`
+  - Nuxt, SvelteKit, Expo, CRA, and Node/backend stacks: \`.env\`
+- Never use \`.env.example\` as the only destination for a real API key placeholder. You may update an example file only as an additional documentation change, and it must not be the only place the runtime value appears.
+- Paths are relative to THIS stack root. Do not write a monorepo root or sibling stack env file unless THIS stack explicitly loads it.
+
+### Required consistency checks before returning JSON
+- The SDK API key env var name MUST contain \`MULTIPLAYER_SDK_API_KEY\`. Do not use \`MULTIPLAYER_API_KEY\`; that name is reserved for the Multiplayer CLI itself and can conflict with user configuration.
+- The env var name in source code MUST exactly match the name written to the env file.
+- The source code read syntax MUST match the framework. For example, Vite must use \`import.meta.env.VITE_...\`, not \`process.env...\`.
+- The env file content MUST contain \`YOUR_MULTIPLAYER_API_KEY\` verbatim as the value for the API key. The CLI replaces only that placeholder.
+- The env var NAME you pick must be a full identifier, such as \`VITE_MULTIPLAYER_SDK_API_KEY\`, not a placeholder fragment.
+- If you cannot determine the framework's env loading rules, create a dedicated integration file that reads from the safest conventional env name for the detected runtime, add a warning, and keep confidence below 0.6.
+
+### Backend dotenv rules
+- Browser frameworks usually load \`.env*\` through their build tool. Plain Node backends do NOT automatically load \`.env\`.
+- For Node/backend stacks, inspect package.json and existing entry files for an env loader such as \`dotenv\`, \`dotenv/config\`, Nest ConfigModule, or a framework-specific config loader.
+- If the backend already has an env loader, reuse it and do not add \`dotenv\` again.
+- If you create or modify a backend \`.env*\` file and generated backend code reads \`process.env.MULTIPLAYER_SDK_API_KEY\`, then the app must load that file before reading the env var. If no existing loader is present, add \`dotenv\` to the installCommand and import/load it at the earliest safe point (for ESM: \`import 'dotenv/config'\`; for CommonJS: \`require('dotenv').config()\` before instrumentation reads env vars).
+- Do not add \`dotenv\` to browser/frontend stacks.
 
 ## Integration Guide (README)
 ${readme}
@@ -171,7 +214,7 @@ Return ONLY a JSON object (no markdown fences, no explanation outside JSON) with
   ],
   "envVars": [
     {
-      "name": "MULTIPLAYER_API_KEY",
+      "name": "MULTIPLAYER_SDK_API_KEY",
       "value": "YOUR_MULTIPLAYER_API_KEY",
       "description": "description"
     }
@@ -197,8 +240,8 @@ Return ONLY a JSON object (no markdown fences, no explanation outside JSON) with
        - Traces: https://otlp.multiplayer.app/v1/traces
        - Logs: https://otlp.multiplayer.app/v1/logs
      - Use a CompositeSpanExporter (or multiple exporters in the TracerProvider) so both the existing and Multiplayer exporters run in parallel
-     - The Multiplayer exporter needs an authorization header: \`Authorization: Bearer <MULTIPLAYER_API_KEY>\`
-     - Add MULTIPLAYER_API_KEY to envVars
+     - The Multiplayer exporter needs an authorization header sourced from \`MULTIPLAYER_SDK_API_KEY\`, for example \`Authorization: Bearer \${process.env.MULTIPLAYER_SDK_API_KEY}\`
+     - Add MULTIPLAYER_SDK_API_KEY to envVars
      - If the project uses an OTel Collector: add a second OTLP exporter in the collector config pipelines instead of modifying app code
    - Standard OTel OTLP exporters are sufficient — no Multiplayer SDK package, ID generator, or exporter needed for backends
 
@@ -220,10 +263,16 @@ Generate code that includes ALL applicable features for the detected stack. Do N
 ### For React / Browser frontends (@multiplayer-app/session-recorder-react or session-recorder-browser):
 
 **Core init with full options:**
+Use only public \`SessionRecorderOptions\` fields supported by @multiplayer-app/session-recorder-browser/@multiplayer-app/session-recorder-react. Do not invent option names.
+
+Allowed frontend \`SessionRecorder.init(...)\` option names:
+- Required: \`apiKey\`, \`version\`, \`application\`, \`environment\`
+- Optional: \`exporterEndpoint\`, \`apiBaseUrl\`, \`ignoreUrls\`, \`widgetButtonPlacement\`, \`showContinuousRecording\`, \`showWidget\`, \`recordCanvas\`, \`inlineImages\`, \`inlineStylesheet\`, \`recordNavigation\`, \`sampleTraceRatio\`, \`propagateTraceHeaderCorsUrls\`, \`schemifyDocSpanPayload\`, \`maxCapturingHttpPayloadSize\`, \`usePostMessageFallback\`, \`captureBody\`, \`captureHeaders\`, \`masking\`, \`widgetTextOverrides\`, \`useWebsocket\`, \`buffering\`
+
 - \`application\` — from package.json name
 - \`version\` — from package.json version
 - \`environment\` — from an env var using the SAME prefix as the API key (per convention). Default to \`'development'\` if unset.
-- \`apiKey\` — MUST be read from the env var you chose per the convention section above. Use the runtime read syntax appropriate to the build tool (e.g. \`import.meta.env.VITE_MULTIPLAYER_API_KEY\` for Vite, \`process.env.NEXT_PUBLIC_MULTIPLAYER_API_KEY\` for Next.js).
+- \`apiKey\` — MUST be read from the env var you chose per the convention section above. Use the runtime read syntax appropriate to the build tool (e.g. \`import.meta.env.VITE_MULTIPLAYER_SDK_API_KEY\` for Vite, \`process.env.NEXT_PUBLIC_MULTIPLAYER_SDK_API_KEY\` for Next.js).
 - \`showWidget: false\` — keep the built-in recording widget hidden by default; users can flip to \`true\` later if they want it rendered on screen
 - \`showContinuousRecording: false\` — disable continuous recording mode option
 
@@ -268,9 +317,18 @@ Generate code that includes ALL applicable features for the detected stack. Do N
   - \`responseHook\` with: \`maskHeadersList: ['set-cookie']\`, \`maxPayloadSizeBytes: 500000\`
 
 **Session recorder init with full options:**
-- \`apiKey\` from env var \`MULTIPLAYER_API_KEY\` (server-side, no prefix needed), read via \`process.env.MULTIPLAYER_API_KEY\`
+Use only the Node SDK's supported \`sessionRecorder.init(...)\` fields. Do not pass frontend/browser options to the Node SDK.
+
+Allowed Node \`sessionRecorder.init(...)\` option names:
+- \`apiKey\`
+- \`traceIdGenerator\`
+- \`resourceAttributes\`
+- \`generateSessionShortIdLocally\`
+- \`apiBaseUrl\`
+
+- \`apiKey\` from env var \`MULTIPLAYER_SDK_API_KEY\` (server-side, no prefix needed), read via \`process.env.MULTIPLAYER_SDK_API_KEY\`
 - \`traceIdGenerator\` — use \`SessionRecorderIdGenerator\`
-- \`resourceAttributes\` with \`componentName\`, \`version\`, \`environment\`
+- \`resourceAttributes\` with \`componentName\`, \`version\`, \`environment\`; do NOT pass \`application\`, \`version\`, or \`environment\` as top-level Node init options
 
 **Session management — set up continuous recording for long-running services:**
 - Start with \`SessionType.CONTINUOUS\` for server processes
@@ -284,17 +342,18 @@ Generate code that includes ALL applicable features for the detected stack. Do N
 ## General Rules
 
 - Use environment variables for ALL secrets (API keys, endpoints) — never hardcode
-- CRITICAL: The \`apiKey\` field in init() MUST always reference an env var (e.g. \`apiKey: process.env.MULTIPLAYER_API_KEY\` or \`apiKey: import.meta.env.VITE_MULTIPLAYER_API_KEY\`). Never inline the literal key.
-- Every env var you introduce MUST appear as a fileChange for the right \`.env*\` file for this framework (see the conventions section above). Action "modify" if the file exists in project context, "create" otherwise. PRESERVE all existing entries and comments — only add or update the keys you need.
-- Use placeholder value \`YOUR_MULTIPLAYER_API_KEY\` for the Multiplayer API key inside the \`.env*\` fileChange; the CLI will substitute the real generated key after the plan runs. Do NOT put this placeholder anywhere else (not in source code, not in install commands).
+- CRITICAL: The \`apiKey\` field in init() MUST always reference an env var with the read syntax supported by the detected runtime (for example \`process.env.MULTIPLAYER_SDK_API_KEY\` for Node/Next server code, \`process.env.NEXT_PUBLIC_MULTIPLAYER_SDK_API_KEY\` for Next client code, or \`import.meta.env.VITE_MULTIPLAYER_SDK_API_KEY\` for Vite). Never inline the literal key.
+- Every env var you introduce MUST appear as a fileChange for the runtime-loaded env file chosen in the "Env Var Placement and Runtime Access Contract" section. Action "modify" if that exact file exists in project context, "create" otherwise. PRESERVE all existing entries and comments — only add or update the keys you need.
+- The source code and env file MUST use the exact same env var name. If the env file defines \`VITE_MULTIPLAYER_SDK_API_KEY\`, the code must read \`import.meta.env.VITE_MULTIPLAYER_SDK_API_KEY\`; do not read \`process.env.MULTIPLAYER_SDK_API_KEY\` or any other name.
+- Use placeholder value \`YOUR_MULTIPLAYER_API_KEY\` for the Multiplayer API key inside the runtime-loaded \`.env*\` fileChange; the CLI will substitute the real generated key after the plan runs. Do NOT put this placeholder anywhere else (not in source code, not in install commands).
 - Also list the same env vars in the envVars array (for display/audit), using \`YOUR_MULTIPLAYER_API_KEY\` as the value for the API key.
 - Use the project's package manager: ${stack.packageManager}
 - If modifying an existing file, include the COMPLETE file content after changes — but the only difference vs. the original MUST be the Multiplayer-specific additions (see the "PRESERVE ALL EXISTING CODE" section above). Never rewrite, refactor, or reformat unrelated code.
-- Prefer creating a new dedicated file (e.g. \`src/multiplayer.ts\`, \`src/instrumentation.ts\`) and importing it from the entry point with ONE added line, instead of restructuring an existing file.
+- Prefer creating a new dedicated file (e.g. \`src/multiplayer.js\` / \`src/multiplayer.ts\`, \`src/instrumentation.js\` / \`src/instrumentation.ts\`, matching the app language) and importing it from the entry point with ONE added line, instead of restructuring an existing file.
 - Set application name and version from package.json
 - For backend: if the project already has OTel, ADD a Multiplayer exporter alongside — NEVER remove or replace existing exporters
 - Install ALL required peer dependencies (e.g. @opentelemetry/api for frontend, auto-instrumentations for backend)
-- Add TypeScript types where the project uses TypeScript
+- Add TypeScript types only where the project already uses TypeScript
 
 ## Quality of Response
 
@@ -505,11 +564,7 @@ Return only the title text, no quotes or explanation.`
 
 // ─── 6. Issue context document ────────────────────────────────────────────────
 
-export function buildIssuePromptFallback(
-  issue: Issue,
-  release?: Release,
-  debugContext?: string,
-): string {
+export function buildIssuePromptFallback(issue: Issue, release?: Release, debugContext?: string): string {
   const lines: string[] = [
     `# Issue: ${issue.title}`,
     '',

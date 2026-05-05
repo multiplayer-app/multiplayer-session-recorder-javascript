@@ -113,7 +113,6 @@ function describeAssistantBlock(block: any): string | null {
   return null
 }
 
-
 /**
  * Ceiling for the setup-plan response. Backend plans (OTel init file + modified
  * entry + .env) are much larger than frontend plans and were occasionally
@@ -281,6 +280,35 @@ function readFilesSafe(root: string, relativePaths: string[]): string {
   return parts.join('\n\n')
 }
 
+function addUnique(files: string[], filePath: string): void {
+  if (!files.includes(filePath)) files.push(filePath)
+}
+
+function addEnvFiles(files: string[], root: string): void {
+  const conventionalEnvFiles = [
+    '.env',
+    '.env.local',
+    '.env.development',
+    '.env.development.local',
+    '.env.production',
+    '.env.production.local',
+    '.env.test',
+    '.env.test.local',
+    '.env.example',
+    '.env.local.example',
+  ]
+
+  for (const file of conventionalEnvFiles) addUnique(files, file)
+
+  try {
+    for (const entry of fs.readdirSync(root)) {
+      if (entry === '.env' || entry.startsWith('.env.')) addUnique(files, entry)
+    }
+  } catch {
+    /* skip unreadable directories */
+  }
+}
+
 /** Gather key project files for AI context — broad enough for AI to detect what's really going on */
 function gatherProjectContext(stack: DetectedStack): string {
   const files: string[] = ['package.json', 'tsconfig.json']
@@ -316,13 +344,21 @@ function gatherProjectContext(stack: DetectedStack): string {
         'next.config.ts',
         'next.config.mjs',
         'src/app/layout.tsx',
+        'src/app/layout.jsx',
         'app/layout.tsx',
+        'app/layout.jsx',
         'src/pages/_app.tsx',
+        'src/pages/_app.jsx',
         'pages/_app.tsx',
+        'pages/_app.jsx',
         'src/instrumentation-client.ts',
+        'src/instrumentation-client.js',
         'instrumentation-client.ts',
+        'instrumentation-client.js',
         'src/instrumentation.ts',
+        'src/instrumentation.js',
         'instrumentation.ts',
+        'instrumentation.js',
       )
       break
     case 'angular':
@@ -334,7 +370,7 @@ function gatherProjectContext(stack: DetectedStack): string {
       break
     case 'react-native':
     case 'expo':
-      files.push('app.json', 'App.tsx', 'App.jsx', 'app/_layout.tsx')
+      files.push('app.json', 'App.tsx', 'App.jsx', 'app/_layout.tsx', 'app/_layout.jsx')
       break
     default:
       break
@@ -356,8 +392,9 @@ function gatherProjectContext(stack: DetectedStack): string {
     'otel-collector-config.yml',
   )
 
-  // Env files
-  files.push('.env', '.env.example', '.env.local')
+  // Env files. Include stack-specific variants so the planner can choose the
+  // file this framework actually loads instead of guessing between .env files.
+  addEnvFiles(files, stack.root)
 
   // Docker/compose files (may reveal OTel collector setup)
   files.push('docker-compose.yml', 'docker-compose.yaml', 'Dockerfile')
@@ -368,8 +405,6 @@ function gatherProjectContext(stack: DetectedStack): string {
 // ─── Build prompt ────────────────────────────────────────────────────────────
 
 // Prompt builders are in ../prompts.ts — edit that file to tune AI behaviour.
-
-
 
 function normalizePlan(plan: Partial<SetupPlan>): SetupPlan {
   return {
@@ -395,6 +430,136 @@ function normalizePlan(plan: Partial<SetupPlan>): SetupPlan {
   }
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function isEnvFilePath(filePath: string): boolean {
+  return path.basename(filePath).startsWith('.env')
+}
+
+function isExampleEnvFilePath(filePath: string): boolean {
+  return path.basename(filePath).includes('example')
+}
+
+function containsApiKeyPlaceholder(content: string): boolean {
+  return API_KEY_PLACEHOLDERS.some((placeholder) => content.includes(placeholder))
+}
+
+function envFileDefinesPlaceholder(content: string, name: string): boolean {
+  const assignment = new RegExp(
+    `(^|\\n)\\s*(?:export\\s+)?${escapeRegExp(name)}\\s*=\\s*["']?YOUR_MULTIPLAYER_API_KEY["']?`,
+    'm',
+  )
+  return assignment.test(content)
+}
+
+function isSdkApiKeyEnvVarName(name: string): boolean {
+  return name.includes('MULTIPLAYER_SDK_API_KEY')
+}
+
+function isReservedCliApiKeyEnvVarName(name: string): boolean {
+  return name.includes('MULTIPLAYER_API_KEY') && !isSdkApiKeyEnvVarName(name)
+}
+
+function validateSetupPlanEnv(plan: SetupPlan): string[] {
+  const errors: string[] = []
+  const apiKeyEnvVars = plan.envVars.filter(
+    (envVar) =>
+      (isSdkApiKeyEnvVarName(envVar.name) || isReservedCliApiKeyEnvVarName(envVar.name)) &&
+      containsApiKeyPlaceholder(envVar.value),
+  )
+
+  for (const envVar of apiKeyEnvVars) {
+    if (isReservedCliApiKeyEnvVarName(envVar.name)) {
+      errors.push(
+        `AI plan uses ${envVar.name}, but MULTIPLAYER_API_KEY is reserved for the CLI. Use MULTIPLAYER_SDK_API_KEY with any framework-required public prefix instead.`,
+      )
+      continue
+    }
+
+    const runtimeEnvChange = plan.fileChanges.find(
+      (change) =>
+        isEnvFilePath(change.filePath) &&
+        !isExampleEnvFilePath(change.filePath) &&
+        envFileDefinesPlaceholder(change.content, envVar.name),
+    )
+    const exampleEnvChange = plan.fileChanges.find(
+      (change) =>
+        isEnvFilePath(change.filePath) &&
+        isExampleEnvFilePath(change.filePath) &&
+        envFileDefinesPlaceholder(change.content, envVar.name),
+    )
+
+    if (!runtimeEnvChange) {
+      const exampleHint = exampleEnvChange
+        ? ' It only appears in an example env file, which the app will not load at runtime.'
+        : ''
+      errors.push(
+        `AI plan defines ${envVar.name} but does not write ${envVar.name}=YOUR_MULTIPLAYER_API_KEY to a runtime .env file.${exampleHint}`,
+      )
+    }
+  }
+
+  for (const change of plan.fileChanges) {
+    if (!isEnvFilePath(change.filePath) && containsApiKeyPlaceholder(change.content)) {
+      errors.push(
+        `AI plan places YOUR_MULTIPLAYER_API_KEY in ${change.filePath}. The placeholder must only be written to runtime .env files so generated keys are not injected into source code.`,
+      )
+    }
+  }
+
+  return errors
+}
+
+function validateSetupPlanLanguage(plan: SetupPlan, stack: DetectedStack): string[] {
+  if (stack.language !== 'javascript') return []
+
+  const createdTypeScriptFiles = plan.fileChanges
+    .filter((change) => change.action === 'create' && /\.(ts|tsx)$/.test(change.filePath))
+    .map((change) => change.filePath)
+
+  if (createdTypeScriptFiles.length === 0) return []
+
+  return [
+    `AI plan creates TypeScript files for a JavaScript stack: ${createdTypeScriptFiles.join(', ')}. Use .js/.jsx files and JavaScript syntax instead.`,
+  ]
+}
+
+function packageHasDependency(root: string, dependencyName: string): boolean {
+  try {
+    const pkgJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf-8')) as {
+      dependencies?: Record<string, string>
+      devDependencies?: Record<string, string>
+      optionalDependencies?: Record<string, string>
+      peerDependencies?: Record<string, string>
+    }
+
+    return Boolean(
+      pkgJson.dependencies?.[dependencyName] ||
+      pkgJson.devDependencies?.[dependencyName] ||
+      pkgJson.optionalDependencies?.[dependencyName] ||
+      pkgJson.peerDependencies?.[dependencyName],
+    )
+  } catch {
+    return false
+  }
+}
+
+function validateSetupPlanDependencies(plan: SetupPlan, stack: DetectedStack): string[] {
+  const usesDotenv = plan.fileChanges.some((change) =>
+    /(?:from\s+['"]dotenv['"]|require\(['"]dotenv['"]\)|['"]dotenv\/config['"])/.test(change.content),
+  )
+
+  if (!usesDotenv || packageHasDependency(stack.root, 'dotenv') || /\bdotenv\b/.test(plan.installCommand)) {
+    return []
+  }
+
+  return [
+    'AI plan loads dotenv but does not install it. Add dotenv to the installCommand or reuse an existing env loader instead.',
+  ]
+}
+
 // ─── Stack classification with AI ───────────────────────────────────────────
 
 interface StackClassification {
@@ -411,8 +576,6 @@ interface ClassifyResult {
   classifications: StackClassification[]
   error?: string
 }
-
-
 
 /**
  * Use AI to classify which detected stacks actually need the Multiplayer SDK.
@@ -573,6 +736,33 @@ export async function generateSetupPlan(
     }
 
     const plan = normalizePlan(extracted.value)
+    const envValidationErrors = validateSetupPlanEnv(plan)
+    if (envValidationErrors.length > 0) {
+      return {
+        success: false,
+        plan: null,
+        error: `AI returned an invalid env-var setup plan:\n${envValidationErrors.map((e) => `- ${e}`).join('\n')}`,
+      }
+    }
+
+    const languageValidationErrors = validateSetupPlanLanguage(plan, stack)
+    if (languageValidationErrors.length > 0) {
+      return {
+        success: false,
+        plan: null,
+        error: `AI returned an invalid language setup plan:\n${languageValidationErrors.map((e) => `- ${e}`).join('\n')}`,
+      }
+    }
+
+    const dependencyValidationErrors = validateSetupPlanDependencies(plan, stack)
+    if (dependencyValidationErrors.length > 0) {
+      return {
+        success: false,
+        plan: null,
+        error: `AI returned an invalid dependency setup plan:\n${dependencyValidationErrors.map((e) => `- ${e}`).join('\n')}`,
+      }
+    }
+
     return { success: true, plan }
   } catch (err: unknown) {
     return {
@@ -611,13 +801,14 @@ function randomSuffix(): string {
 /**
  * Placeholder tokens the AI is instructed to use in place of the real API key.
  * These MUST be specific enough not to collide with legitimate identifiers —
- * e.g. bare `MULTIPLAYER_API_KEY` is a substring of `VITE_MULTIPLAYER_API_KEY`,
+ * e.g. bare `MULTIPLAYER_SDK_API_KEY` is a substring of `VITE_MULTIPLAYER_SDK_API_KEY`,
  * which mangled env-var references in generated code.
  */
 const API_KEY_PLACEHOLDERS = [
   'YOUR_MULTIPLAYER_API_KEY',
   'your-api-key-here',
   'your_api_key_here',
+  '<MULTIPLAYER_SDK_API_KEY>',
   '<MULTIPLAYER_API_KEY>',
 ]
 

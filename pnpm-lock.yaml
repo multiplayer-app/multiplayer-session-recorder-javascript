@@ -124,7 +124,7 @@ importers:
   packages/session-recorder-browser:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.59
+        specifier: 2.0.63
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -282,7 +282,7 @@ importers:
   packages/session-recorder-node:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.59
+        specifier: 2.0.63
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -316,10 +316,10 @@ importers:
   packages/session-recorder-react:
     dependencies:
       '@multiplayer-app/session-recorder-browser':
-        specifier: 2.0.59
+        specifier: 2.0.63
         version: link:../session-recorder-browser
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.59
+        specifier: 2.0.63
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -344,7 +344,7 @@ importers:
   packages/session-recorder-react-native:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.59
+        specifier: 2.0.63
         version: link:../session-recorder-common
       '@opentelemetry/core':
         specifier: 2.0.1
@@ -8047,6 +8047,7 @@ packages:
 
   uuid@7.0.3:
     resolution: {integrity: sha512-DPSke0pXhTZgoF/d+WSt2QaKMCFSfx7QegxEWT+JOuHF5aWrKEn0G+ztjuJg/gG8/ItK+rbPCD/yNv8yyih6Cg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   v8-to-istanbul@9.3.0:

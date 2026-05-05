@@ -49,6 +49,7 @@ export interface UserSessionWorkspace {
 }
 
 export interface UserSession {
+  email?: string
   workspaces: UserSessionWorkspace[]
 }
 
@@ -96,10 +97,11 @@ export const createApiService = (
     throwIfAuthFailure(res, 'Failed to fetch user session')
     if (!res.ok) throw new Error(`Failed to fetch user session: ${res.status} ${res.statusText}`)
     const data = (await res.json()) as any
-    // API returns { sessions: [{ workspaces: [...] }] }
+    // API returns { email?, sessions: [{ workspaces: [...] }] }
     const session = Array.isArray(data?.sessions) ? data.sessions[0] : data
     if (!session) throw new Error('No session found in user session response')
-    return session as UserSession
+    // email lives at the root of the response, not inside sessions[0]
+    return { email: session.primaryEmail, ...session } as UserSession
   }
 
   const createIntegration = async (workspaceId: string, projectId: string, name: string): Promise<ApiIntegration> => {

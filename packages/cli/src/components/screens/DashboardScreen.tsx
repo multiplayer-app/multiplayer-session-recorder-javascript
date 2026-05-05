@@ -2,10 +2,12 @@ import { useState, useCallback, useEffect, useMemo, type ReactElement } from 're
 import type { KeyEvent } from '@opentui/core'
 import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import type { RuntimeState, SessionDetail } from '../../runtime/types.js'
-import type { AgentConfig, AgentChatStatus, LogEntry } from '../../types/index.js'
+import type { AgentConfig, AgentChatStatus, LogEntry, IAgent } from '../../types/index.js'
+import { AdvancedSettingsPanel } from '../AdvancedSettingsPanel.js'
 import { DashboardHeader } from '../DashboardHeader.js'
 import { SessionListPane } from '../panes/SessionListPane.js'
 import { SessionDetailPane } from '../panes/SessionDetailPane.js'
+import { dashboardAdvancedSettingsHint } from '../panes/FooterHints.js'
 import { ChatComposer } from '../ChatComposer.js'
 import { ContextSidebar } from '../ContextSidebar.js'
 import { LogsDock } from '../LogsDock.js'
@@ -42,6 +44,8 @@ interface Props {
   hasMoreSessions?: boolean
   /** When true (e.g. quit dialog open), ignore keys so the overlay handles them. */
   suspendKeyboard?: boolean
+  onEmitAgentSettings?: (settings: Partial<NonNullable<IAgent['settings']>>) => void
+  onLoadRadarLists?: () => Promise<{ components: string[]; environments: string[] }>
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -61,6 +65,8 @@ export function DashboardScreen({
   onLoadMoreSessions,
   hasMoreSessions = false,
   suspendKeyboard = false,
+  onEmitAgentSettings,
+  onLoadRadarLists
 }: Props): ReactElement {
   // ── Dimensions ──────────────────────────────────────────────────────────────
 
@@ -82,6 +88,12 @@ export function DashboardScreen({
   const [focusedPane, setFocusedPane] = useState<FocusedPane>('list')
   const [showLogs, setShowLogs] = useState(false)
   const [narrowShowsDetail, setNarrowShowsDetail] = useState(false)
+  const [showAdvancedSettingsPanel, setShowAdvancedSettingsPanel] = useState(false)
+  const [radarComponents, setRadarComponents] = useState<string[]>([])
+  const [radarEnvironments, setRadarEnvironments] = useState<string[]>([])
+  const [radarListError, setRadarListError] = useState<string | null>(null)
+  /** Last agent settings applied from this UI (for repopulating the modal). */
+  const [advancedSettingsSnapshot, setAdvancedSettingsSnapshot] = useState<Partial<NonNullable<IAgent['settings']>>>({})
 
   // ── Derived values ──────────────────────────────────────────────────────────
 
@@ -152,6 +164,22 @@ export function DashboardScreen({
     })
   }, [])
 
+  const openAdvancedSettingsPanel = useCallback(() => {
+    if (!onEmitAgentSettings || !onLoadRadarLists) return
+    setRadarListError(null)
+    setShowAdvancedSettingsPanel(true)
+    void onLoadRadarLists()
+      .then(({ components, environments }) => {
+        setRadarComponents(components)
+        setRadarEnvironments(environments)
+      })
+      .catch((err: unknown) => {
+        setRadarListError(err instanceof Error ? err.message : String(err))
+        setRadarComponents([])
+        setRadarEnvironments([])
+      })
+  }, [onEmitAgentSettings, onLoadRadarLists])
+
   const toggleNarrowStack = useCallback(() => {
     if (!isNarrow || !selectedDetail) return
     setNarrowShowsDetail((show) => {
@@ -166,7 +194,7 @@ export function DashboardScreen({
   useKeyboard(
     useCallback(
       (key: KeyEvent) => {
-        if (suspendKeyboard) return
+        if (suspendKeyboard || showAdvancedSettingsPanel) return
         const { name } = key
 
         // ── Global shortcuts ──────────────────────────────────────────────
@@ -201,6 +229,14 @@ export function DashboardScreen({
         if (name === 'l' || name === 'L') {
           toggleLogs()
           key.stopPropagation()
+          return
+        }
+
+        if (name === 's' || name === 'S') {
+          if (onEmitAgentSettings && onLoadRadarLists) {
+            openAdvancedSettingsPanel()
+            key.stopPropagation()
+          }
           return
         }
 
@@ -246,8 +282,12 @@ export function DashboardScreen({
         toggleLogs,
         isNarrow,
         toggleNarrowStack,
-      ],
-    ),
+        showAdvancedSettingsPanel,
+        onEmitAgentSettings,
+        onLoadRadarLists,
+        openAdvancedSettingsPanel
+      ]
+    )
   )
 
   // ── Status bar hints ────────────────────────────────────────────────────────
@@ -279,14 +319,18 @@ export function DashboardScreen({
         id: 'stack',
         keys: 'v',
         label: narrowShowsDetail ? 'sessions' : 'detail',
-        onPress: toggleNarrowStack,
+        onPress: toggleNarrowStack
       })
     }
 
     base.push(
       { id: 'logs', keys: 'l', label: showLogs ? 'hide logs' : 'logs', onPress: toggleLogs },
-      { id: 'quit', keys: 'q', label: 'quit', onPress: onQuitRequest },
+      { id: 'quit', keys: 'q', label: 'quit', onPress: onQuitRequest }
     )
+
+    if (onEmitAgentSettings && onLoadRadarLists) {
+      base.splice(base.length - 2, 0, dashboardAdvancedSettingsHint(openAdvancedSettingsPanel))
+    }
 
     return base
   }, [
@@ -299,6 +343,9 @@ export function DashboardScreen({
     toggleNarrowStack,
     toggleLogs,
     onQuitRequest,
+    onEmitAgentSettings,
+    onLoadRadarLists,
+    openAdvancedSettingsPanel
   ])
 
   // Resolve display names for sidebar
@@ -313,8 +360,10 @@ export function DashboardScreen({
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
+  const canAdvancedSettings = Boolean(onEmitAgentSettings && onLoadRadarLists)
+
   return (
-    <box flexDirection='column' height={rows} gap={0}>
+    <box position='relative' flexDirection='column' height={rows} width={columns} gap={0}>
       {/* Header - slim single line */}
       <DashboardHeader state={state} config={config} isNarrow={isNarrow} />
 
@@ -375,6 +424,7 @@ export function DashboardScreen({
             activeCount={activeCount}
             resolvedCount={state.resolvedCount}
             isFocused={false}
+            onOpenAdvancedSettings={canAdvancedSettings ? openAdvancedSettingsPanel : undefined}
           />
         )}
       </box>
@@ -391,6 +441,20 @@ export function DashboardScreen({
 
       {/* Status bar - clean single line at bottom */}
       <StatusBar hints={hints} version={CLI_VERSION} />
+
+      {showAdvancedSettingsPanel && canAdvancedSettings && (
+        <AdvancedSettingsPanel
+          components={radarComponents}
+          environments={radarEnvironments}
+          loadError={radarListError}
+          initialSettings={advancedSettingsSnapshot}
+          onClose={() => setShowAdvancedSettingsPanel(false)}
+          onApply={(settings) => {
+            setAdvancedSettingsSnapshot((prev) => ({ ...prev, ...settings }))
+            onEmitAgentSettings?.(settings)
+          }}
+        />
+      )}
     </box>
   ) as ReactElement
 }

@@ -2,6 +2,14 @@ import { useState, type ReactElement } from 'react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { clickHandler } from './clickHandler.js'
 import { Divider } from './Divider.js'
+import {
+  BORDER_SUBTLE,
+  BG_SURFACE_DEEP,
+  BG_SURFACE_ROW_HOVER,
+  FG_BODY_EMPHASIS,
+  FG_DIM,
+  FG_SELECTION_LABEL
+} from './tuiTheme.js'
 
 export interface SelectionItem {
   key: string
@@ -31,7 +39,7 @@ export function SelectionList({ items, selectedIndex, onSelect, flexGrow }: Sele
       flexDirection='column'
       border={true}
       borderStyle='rounded'
-      borderColor='#30363d'
+      borderColor={BORDER_SUBTLE}
       flexGrow={flexGrow}
       overflow={'hidden' as const}
     >
@@ -39,7 +47,7 @@ export function SelectionList({ items, selectedIndex, onSelect, flexGrow }: Sele
         const isActive = i === selectedIndex
         const isHovered = hoveredRow === i
         const isLast = i === items.length - 1
-        const labelFg = isActive ? '#e6edf3' : (item.labelColor ?? '#c9d1d9')
+        const labelFg = isActive ? FG_BODY_EMPHASIS : (item.labelColor ?? FG_SELECTION_LABEL)
 
         const mouse = {
           onMouseUp: clickHandler(() => onSelect(i)),
@@ -47,7 +55,7 @@ export function SelectionList({ items, selectedIndex, onSelect, flexGrow }: Sele
           onMouseOut: () => setHoveredRow((v: number | null) => (v === i ? null : v))
         }
 
-        const bg = isActive ? '#161b22' : isHovered ? '#21262d' : undefined
+        const bg = isActive ? BG_SURFACE_DEEP : isHovered ? BG_SURFACE_ROW_HOVER : undefined
 
         return (
           <box key={item.key} flexDirection='column'>
@@ -61,8 +69,10 @@ export function SelectionList({ items, selectedIndex, onSelect, flexGrow }: Sele
             </box>
             {item.description && (
               <box flexDirection='row' paddingLeft={1} paddingRight={1} backgroundColor={bg} {...mouse}>
-                <box width={3} flexShrink={0}><text> </text></box>
-                <text fg='#6b7280'>{item.description}</text>
+                <box width={3} flexShrink={0}>
+                  <text> </text>
+                </box>
+                <text fg={FG_DIM}>{item.description}</text>
               </box>
             )}
             {!isLast && <Divider />}
