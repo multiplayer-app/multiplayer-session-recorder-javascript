@@ -135,6 +135,19 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
     setScreen('dashboard')
   }, [])
 
+  const handleRestartSetupFromQuit = useCallback(() => {
+    controllerRef.current?.disconnect()
+    controllerRef.current = null
+    setRuntimeState(null)
+    setSessionDetails(new Map())
+    setChatStatuses(new Map())
+    setHasMoreSessions(false)
+    setAgentLogs([])
+    setStartupConfig(initialConfig)
+    setAuthErrorMessage(null)
+    setScreen('startup')
+  }, [initialConfig])
+
   const handleQuitCancel = useCallback(() => {
     setScreen('dashboard')
   }, [])
@@ -235,7 +248,9 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
             onLoadRadarLists={handleLoadRadarLists}
           />
         </box>
-        {screen === 'quit-confirm' && <QuitScreen onQuit={handleQuit} onCancel={handleQuitCancel} />}
+        {screen === 'quit-confirm' && (
+          <QuitScreen onQuit={handleQuit} onCancel={handleQuitCancel} onRestartSetup={handleRestartSetupFromQuit} />
+        )}
       </box>
     )
   }

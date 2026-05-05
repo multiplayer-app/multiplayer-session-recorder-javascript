@@ -9,7 +9,7 @@
   "scripts": {
     "build": "bun run scripts/build.ts",
     "publish": "bun run scripts/publish.ts",
-    "dev": "bun --inspect-brk src/index.tsx",
+    "dev": "bun src/index.tsx",
     "typecheck": "tsc --noEmit",
     "lint": "eslint 'src/**/*.ts' --config eslint.config.js"
   },

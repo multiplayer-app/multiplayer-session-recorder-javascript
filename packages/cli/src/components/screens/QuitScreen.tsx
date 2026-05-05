@@ -14,7 +14,7 @@ import {
   MODAL_BACKDROP_RGBA
 } from '../shared/tuiTheme.js'
 
-type Option = QuitMode | 'cancel'
+type Option = QuitMode | 'cancel' | 'restart-setup'
 
 const QUIT_BACKDROP_BG = MODAL_BACKDROP_RGBA
 
@@ -32,8 +32,14 @@ const OPTIONS: { value: Option; digit: string; label: string; description: strin
     description: 'Finish active sessions, then exit'
   },
   {
-    value: 'cancel',
+    value: 'restart-setup',
     digit: '3',
+    label: 'Return to setup',
+    description: 'Disconnect and run the setup wizard again from scratch'
+  },
+  {
+    value: 'cancel',
+    digit: '4',
     label: 'Cancel',
     description: 'Return to the dashboard'
   }
@@ -42,20 +48,33 @@ const OPTIONS: { value: Option; digit: string; label: string; description: strin
 interface Props {
   onQuit: (mode: QuitMode) => void
   onCancel: () => void
+  onRestartSetup: () => void
 }
 
-function applyOption(opt: (typeof OPTIONS)[number], onQuit: (mode: QuitMode) => void, onCancel: () => void): void {
-  if (opt.value === 'cancel') onCancel()
-  else onQuit(opt.value)
+function applyOption(
+  opt: (typeof OPTIONS)[number],
+  onQuit: (mode: QuitMode) => void,
+  onCancel: () => void,
+  onRestartSetup: () => void
+): void {
+  if (opt.value === 'cancel') {
+    onCancel()
+    return
+  }
+  if (opt.value === 'restart-setup') {
+    onRestartSetup()
+    return
+  }
+  onQuit(opt.value)
 }
 
-export function QuitScreen({ onQuit, onCancel }: Props): ReactElement {
+export function QuitScreen({ onQuit, onCancel, onRestartSetup }: Props): ReactElement {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const { width, height } = useTerminalDimensions()
 
   const runOption = (index: number) => {
     const opt = OPTIONS[index]
-    if (opt) applyOption(opt, onQuit, onCancel)
+    if (opt) applyOption(opt, onQuit, onCancel, onRestartSetup)
   }
 
   useKeyboard((key: KeyEvent) => {
@@ -127,7 +146,9 @@ export function QuitScreen({ onQuit, onCancel }: Props): ReactElement {
         <text fg={FG_TITLE} attributes={tuiAttrs({ bold: true })}>
           Quit Multiplayer Debugging Agent?
         </text>
-        <text attributes={tuiAttrs({ dim: true })}>Choose how to exit — or press Esc to go back.</text>
+        <text attributes={tuiAttrs({ dim: true })}>
+          Exit the agent, return to setup, or cancel — press Esc to go back.
+        </text>
 
         <box flexDirection='column' gap={0} marginTop={1}>
           {OPTIONS.map((opt, i) => {
@@ -165,7 +186,7 @@ export function QuitScreen({ onQuit, onCancel }: Props): ReactElement {
           </text>
           <text attributes={tuiAttrs({ dim: true })}> select · </text>
           <text fg={ACCENT} attributes={tuiAttrs({ bold: true })}>
-            1-3
+            1-4
           </text>
           <text attributes={tuiAttrs({ dim: true })}> quick pick · Esc cancel</text>
         </box>
