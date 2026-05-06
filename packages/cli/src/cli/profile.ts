@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+import { MP_DIR, PRODUCTION_HOSTNAME } from '../config.js'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -55,10 +56,48 @@ export interface RootSettings {
 
 // ─── File paths ─────────────────────────────────────────────────────────────
 
-const MP_DIR = path.join(os.homedir(), '.multiplayer')
-const ROOT_SETTINGS_FILE = path.join(MP_DIR, 'settings.json')
-const CREDENTIALS_FILE = path.join(MP_DIR, 'credentials.json')
-const PROJECT_SETTINGS_FILENAME = 'settings.json'
+// Active file suffix — set once at startup via initEnvironment()
+let _fileSuffix = ''
+
+/**
+ * Call once at startup with the explicit URL from --url / MULTIPLAYER_URL.
+ * Derives the file suffix from the URL hostname so that non-production
+ * environments use separate credential and settings files.
+ *
+ * Examples:
+ *   http://localhost:3000           → credentials.localhost.json
+ *   https://api.staging.example.com → credentials.api.staging.example.com.json
+ *   https://api.multiplayer.app     → credentials.json  (production — no suffix)
+ */
+export function initEnvironment(explicitUrl?: string): void {
+  if (!explicitUrl) {
+    _fileSuffix = ''
+    return
+  }
+  try {
+    const { hostname } = new URL(explicitUrl)
+    _fileSuffix = hostname && hostname !== PRODUCTION_HOSTNAME ? `.${hostname}` : ''
+  } catch {
+    _fileSuffix = ''
+  }
+}
+
+/** Returns the active file suffix, e.g. '' or '.localhost' */
+export function getFileSuffix(): string {
+  return _fileSuffix
+}
+
+function credentialsFilePath(): string {
+  return path.join(MP_DIR, `credentials${_fileSuffix}.json`)
+}
+
+function rootSettingsFilePath(): string {
+  return path.join(MP_DIR, `settings${_fileSuffix}.json`)
+}
+
+function projectSettingsFileName(): string {
+  return `settings${_fileSuffix}.json`
+}
 
 // Auth fields that belong in credentials.json (vs project settings)
 const CREDENTIAL_KEYS = new Set<string>(['apiKey', 'authType', 'url'])
@@ -136,7 +175,10 @@ function parseLegacyIni(content: string): Record<string, ProfileConfig> {
  * Safe to call on every startup — no-ops if credentials.json already exists.
  */
 function migrateIfNeeded(): void {
-  if (fs.existsSync(CREDENTIALS_FILE)) {
+  // Non-production environments start fresh — no legacy files to migrate
+  if (_fileSuffix !== '') return
+
+  if (fs.existsSync(credentialsFilePath())) {
     normaliseAccountKeysToEmail()
     return
   }
@@ -144,9 +186,9 @@ function migrateIfNeeded(): void {
   let profiles: Record<string, ProfileConfig> = {}
 
   // Try reading old JSON settings file (intermediate JSON format)
-  if (fs.existsSync(ROOT_SETTINGS_FILE)) {
+  if (fs.existsSync(rootSettingsFilePath())) {
     try {
-      const parsed = readJson<unknown>(ROOT_SETTINGS_FILE, null)
+      const parsed = readJson<unknown>(rootSettingsFilePath(), null)
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         const rec = parsed as Record<string, unknown>
         // Already new format if it has a "projects" array
@@ -185,15 +227,15 @@ function migrateIfNeeded(): void {
 
     if (profile.dir) {
       try {
-        const settingsFile = path.join(profile.dir, '.multiplayer', PROJECT_SETTINGS_FILENAME)
+        const settingsFile = path.join(profile.dir, '.multiplayer', projectSettingsFileName())
         if (!fs.existsSync(settingsFile)) writeJson(settingsFile, projectSettings)
       } catch { /* ignore — project dir may not exist */ }
       rootSettings.projects.push({ path: path.resolve(profile.dir), account: accountName })
     }
   }
 
-  writeJson(CREDENTIALS_FILE, allCredentials)
-  writeJson(ROOT_SETTINGS_FILE, rootSettings)
+  writeJson(credentialsFilePath(), allCredentials)
+  writeJson(rootSettingsFilePath(), rootSettings)
   normaliseAccountKeysToEmail()
 }
 
@@ -202,8 +244,8 @@ function migrateIfNeeded(): void {
  * using the email as the new key. Runs after initial migration and on startup.
  */
 function normaliseAccountKeysToEmail(): void {
-  if (!fs.existsSync(CREDENTIALS_FILE)) return
-  const all = readJson<Record<string, CredentialsConfig>>(CREDENTIALS_FILE, {})
+  if (!fs.existsSync(credentialsFilePath())) return
+  const all = readJson<Record<string, CredentialsConfig>>(credentialsFilePath(), {})
   let changed = false
   const normalised: Record<string, CredentialsConfig> = {}
 
@@ -214,36 +256,36 @@ function normaliseAccountKeysToEmail(): void {
       changed = true
       normalised[newKey] = { ...normalised[newKey], ...creds }
       // Update root settings references
-      const settings = readJson<RootSettings>(ROOT_SETTINGS_FILE, { projects: [] })
+      const settings = readJson<RootSettings>(rootSettingsFilePath(), { projects: [] })
       const updated = settings.projects.map((p) => p.account === key ? { ...p, account: newKey } : p)
-      writeJson(ROOT_SETTINGS_FILE, { projects: updated })
+      writeJson(rootSettingsFilePath(), { projects: updated })
     } else {
       normalised[key] = creds
     }
   }
 
-  if (changed) writeJson(CREDENTIALS_FILE, normalised)
+  if (changed) writeJson(credentialsFilePath(), normalised)
 }
 
 // ─── Root settings (project registry) ───────────────────────────────────────
 
 function pruneStaleProjects(): void {
-  if (!fs.existsSync(ROOT_SETTINGS_FILE)) return
-  const settings = readJson<RootSettings>(ROOT_SETTINGS_FILE, { projects: [] })
+  if (!fs.existsSync(rootSettingsFilePath())) return
+  const settings = readJson<RootSettings>(rootSettingsFilePath(), { projects: [] })
   const live = settings.projects.filter((p) => fs.existsSync(path.resolve(p.path)))
   if (live.length !== settings.projects.length) {
-    writeJson(ROOT_SETTINGS_FILE, { projects: live })
+    writeJson(rootSettingsFilePath(), { projects: live })
   }
 }
 
 export function readRootSettings(): RootSettings {
   migrateIfNeeded()
   pruneStaleProjects()
-  return readJson<RootSettings>(ROOT_SETTINGS_FILE, { projects: [] })
+  return readJson<RootSettings>(rootSettingsFilePath(), { projects: [] })
 }
 
 export function writeRootSettings(settings: RootSettings): void {
-  writeJson(ROOT_SETTINGS_FILE, settings)
+  writeJson(rootSettingsFilePath(), settings)
 }
 
 /** Register (or re-associate) a project path with an account. */
@@ -282,27 +324,27 @@ export function listProjects(): ProjectEntry[] {
 
 export function readCredentials(accountName: string): CredentialsConfig {
   migrateIfNeeded()
-  return readJson<Record<string, CredentialsConfig>>(CREDENTIALS_FILE, {})[accountName] ?? {}
+  return readJson<Record<string, CredentialsConfig>>(credentialsFilePath(), {})[accountName] ?? {}
 }
 
 export function writeCredentials(accountName: string, creds: Partial<CredentialsConfig>): void {
   const defined = Object.entries(creds).filter(([, v]) => v !== undefined)
   if (defined.length === 0) return
   migrateIfNeeded()
-  const all = readJson<Record<string, CredentialsConfig>>(CREDENTIALS_FILE, {})
+  const all = readJson<Record<string, CredentialsConfig>>(credentialsFilePath(), {})
   if (!all[accountName]) all[accountName] = {}
   for (const [key, value] of defined as [keyof CredentialsConfig, unknown][]) {
     (all[accountName] as Record<string, unknown>)[key] = value
   }
-  writeJson(CREDENTIALS_FILE, all)
+  writeJson(credentialsFilePath(), all)
 }
 
 /** Fully remove an account from credentials.json and unlink its projects from the registry. */
 export function removeAccount(accountName: string): void {
   migrateIfNeeded()
-  const all = readJson<Record<string, unknown>>(CREDENTIALS_FILE, {})
+  const all = readJson<Record<string, unknown>>(credentialsFilePath(), {})
   delete all[accountName]
-  writeJson(CREDENTIALS_FILE, all)
+  writeJson(credentialsFilePath(), all)
 
   const settings = readRootSettings()
   settings.projects = settings.projects.filter((p) => p.account !== accountName)
@@ -312,18 +354,18 @@ export function removeAccount(accountName: string): void {
 /** Clear auth tokens/keys from an account, leaving other credential fields intact. */
 export function clearCredentials(accountName: string): void {
   migrateIfNeeded()
-  const all = readJson<Record<string, CredentialsConfig>>(CREDENTIALS_FILE, {})
+  const all = readJson<Record<string, CredentialsConfig>>(credentialsFilePath(), {})
   const entry = all[accountName]
   if (!entry) return
   delete entry.apiKey
   delete entry.authType
-  writeJson(CREDENTIALS_FILE, all)
+  writeJson(credentialsFilePath(), all)
 }
 
 /** Return all account names that have actual auth credentials stored. */
 export function listAccounts(): string[] {
   migrateIfNeeded()
-  const all = readJson<Record<string, CredentialsConfig>>(CREDENTIALS_FILE, {})
+  const all = readJson<Record<string, CredentialsConfig>>(credentialsFilePath(), {})
   return Object.entries(all)
     .filter(([, creds]) => !!creds.apiKey || !!creds.authType)
     .map(([name]) => name)
@@ -332,12 +374,12 @@ export function listAccounts(): string[] {
 // ─── Project settings ────────────────────────────────────────────────────────
 
 export function readProjectSettings(projectPath: string): ProjectSettings {
-  const file = path.join(path.resolve(projectPath), '.multiplayer', PROJECT_SETTINGS_FILENAME)
+  const file = path.join(path.resolve(projectPath), '.multiplayer', projectSettingsFileName())
   return readJson<ProjectSettings>(file, {})
 }
 
 export function writeProjectSettings(projectPath: string, settings: Partial<ProjectSettings>): void {
-  const file = path.join(path.resolve(projectPath), '.multiplayer', PROJECT_SETTINGS_FILENAME)
+  const file = path.join(path.resolve(projectPath), '.multiplayer', projectSettingsFileName())
   const existing = readJson<ProjectSettings>(file, {})
   for (const [key, value] of Object.entries(settings) as [keyof ProjectSettings, unknown][]) {
     if (value !== undefined) (existing as Record<string, unknown>)[key] = value
@@ -353,16 +395,16 @@ export function writeProjectSettings(projectPath: string, settings: Partial<Proj
  */
 export function renameAccount(oldKey: string, newKey: string): void {
   if (oldKey === newKey) return
-  const all = readJson<Record<string, unknown>>(CREDENTIALS_FILE, {})
+  const all = readJson<Record<string, unknown>>(credentialsFilePath(), {})
   if (!all[oldKey]) return
   // Merge old into new (new takes precedence if the key already exists)
   all[newKey] = { ...(all[oldKey] as object), ...(all[newKey] as object ?? {}) }
   delete all[oldKey]
-  writeJson(CREDENTIALS_FILE, all)
+  writeJson(credentialsFilePath(), all)
 
-  const settings = readJson<RootSettings>(ROOT_SETTINGS_FILE, { projects: [] })
+  const settings = readJson<RootSettings>(rootSettingsFilePath(), { projects: [] })
   const updated = settings.projects.map((p) => p.account === oldKey ? { ...p, account: newKey } : p)
-  writeJson(ROOT_SETTINGS_FILE, { projects: updated })
+  writeJson(rootSettingsFilePath(), { projects: updated })
 }
 
 /**

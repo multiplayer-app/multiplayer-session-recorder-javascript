@@ -1,17 +1,16 @@
 import { Command } from 'commander'
 import os from 'os'
-import path from 'path'
 import { create as createRelease } from './releases/create.js'
 import { create as createDeployment } from './deployments/create.js'
 import { upload as uploadSourcemap } from './sourcemaps/upload.js'
 import { login, logout, status as authStatus } from '../services/auth.service.js'
 import { startMcpServer } from './mcp.js'
-import { loadProfile, writeCredentials, writeProjectSettings, findRegisteredProject } from '../cli/profile.js'
+import { loadProfile, writeCredentials, writeProjectSettings, findRegisteredProject, initEnvironment } from '../cli/profile.js'
 import { API_URL, DEFAULT_MAX_CONCURRENT } from '../config.js'
 import type { ParsedFlags } from '../cli/flags.js'
 import type { RuntimeMode } from '../runtime/types.js'
 import type { AgentConfig } from '../types/index.js'
-import logger from '../logger.js'
+import { logger } from '../logger.js'
 import pkg from '../../package.json' with { type: 'json' }
 
 function handleResult(err: Error | null, response: unknown): void {
@@ -61,6 +60,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
     .option('--skip-sdk-check', 'Skip the Multiplayer SDK installation check/setup step')
     .option('--health-port <port>', 'Port for HTTP health check endpoint (headless mode only); also set via MULTIPLAYER_HEALTH_PORT')
     .action((opts) => {
+      initEnvironment(opts.url || process.env.MULTIPLAYER_URL)
       const mode: RuntimeMode = (opts.headless || process.env.MULTIPLAYER_HEADLESS === 'true') ? 'headless' : 'tui'
       const profileName: string = opts.profile || 'default'
       const explicitDir = opts.dir || process.env.MULTIPLAYER_DIR
@@ -184,11 +184,10 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
     .option('--url <url>', 'Multiplayer API base URL')
     .option('--profile <name>', 'Config profile to save credentials into')
     .action(async (opts) => {
+      const url = opts.url || process.env.MULTIPLAYER_URL
+      initEnvironment(url)
       try {
-        await login({
-          url: opts.url || process.env.MULTIPLAYER_URL,
-          profileName: opts.profile,
-        })
+        await login({ url, profileName: opts.profile })
       } catch (err: any) {
         exitWithError(err.message)
       }
@@ -196,15 +195,19 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
   auth
     .command('logout')
     .description('Log out and clear stored credentials')
+    .option('--url <url>', 'Multiplayer API base URL')
     .option('--profile <name>', 'Config profile to log out from')
     .action((opts) => {
+      initEnvironment(opts.url || process.env.MULTIPLAYER_URL)
       logout(opts.profile || 'default')
     })
   auth
     .command('status')
     .description('Check authentication status')
+    .option('--url <url>', 'Multiplayer API base URL')
     .option('--profile <name>', 'Config profile to check')
     .action(async (opts) => {
+      initEnvironment(opts.url || process.env.MULTIPLAYER_URL)
       try {
         await authStatus(opts.profile || 'default')
       } catch (err: any) {

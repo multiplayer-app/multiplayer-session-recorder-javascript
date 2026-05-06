@@ -1,7 +1,8 @@
 import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
-import os from 'os'
+import { MP_DIR, LEGACY_TOKENS_FILE } from '../config.js'
+import { getFileSuffix } from '../cli/profile.js'
 
 export interface OauthClient {
   clientId: string
@@ -37,9 +38,9 @@ export interface ProfileTokenData {
 
 type TokensFile = Record<string, ProfileTokenData>
 
-// All credential and token data is consolidated in credentials.json
-const CREDENTIALS_FILE = path.join(os.homedir(), '.multiplayer', 'credentials.json')
-const LEGACY_TOKENS_FILE = path.join(os.homedir(), '.multiplayer', 'tokens.json')
+function credentialsFilePath(): string {
+  return path.join(MP_DIR, `credentials${getFileSuffix()}.json`)
+}
 
 function migrateTokensFile(): void {
   if (!fs.existsSync(LEGACY_TOKENS_FILE)) return
@@ -56,7 +57,7 @@ function migrateTokensFile(): void {
 
 function readTokensFile(): TokensFile {
   try {
-    return JSON.parse(fs.readFileSync(CREDENTIALS_FILE, 'utf-8')) as TokensFile
+    return JSON.parse(fs.readFileSync(credentialsFilePath(), 'utf-8')) as TokensFile
   } catch {
     return {}
   }
@@ -64,9 +65,9 @@ function readTokensFile(): TokensFile {
 
 function writeTokensFile(data: TokensFile): void {
   try {
-    const dir = path.dirname(CREDENTIALS_FILE)
+    const dir = path.dirname(credentialsFilePath())
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-    fs.writeFileSync(CREDENTIALS_FILE, JSON.stringify(data, null, 2), 'utf-8')
+    fs.writeFileSync(credentialsFilePath(), JSON.stringify(data, null, 2), 'utf-8')
   } catch {
     // Best-effort
   }

@@ -3,7 +3,7 @@ import fs from 'fs'
 import net from 'net'
 import { exec } from 'child_process'
 import { parse as parseUrl } from 'url'
-import { TokenStore, OauthClient, AuthData, OAuthServerParams as StoredOAuthServerParams } from './token-store.js'
+import { TokenStore, OauthClient, AuthData, OAuthServerParams } from './token-store.js'
 import { removeAccount } from '../cli/profile.js'
 
 const oauthSuccessHtml = fs.readFileSync(new URL('./oauth-success.html', import.meta.url), 'utf-8')
@@ -16,13 +16,6 @@ class TokenError extends Error {
     this.name = 'TokenError'
     this.status = status
   }
-}
-
-export interface OAuthServerParams {
-  authorizationServerUrl: string
-  registrationEndpoint: string
-  authorizationEndpoint: string
-  tokenEndpoint: string
 }
 
 interface ClientRegistrationResponse {
@@ -42,9 +35,10 @@ interface TokenResponse {
 }
 
 function isLikelyOfflineError(error: unknown): boolean {
-  const msg = ((error as any)?.message || '').toString()
+  const msg = error instanceof Error ? error.message : String(error)
+  const name = error instanceof Error ? error.name : ''
   return (
-    (error as any)?.name === 'AbortError' ||
+    name === 'AbortError' ||
     msg.includes('fetch failed') ||
     msg.includes('ENOTFOUND') ||
     msg.includes('ECONNREFUSED') ||
@@ -128,13 +122,13 @@ export class OAuthManager {
   /** Prime OAuth server params without starting the callback server (used for silent refresh). */
   loadParams(params: OAuthServerParams): void {
     this.setParams(params)
-    this.tokenStore.storeOAuthServerParams(params as StoredOAuthServerParams)
+    this.tokenStore.storeOAuthServerParams(params as OAuthServerParams)
   }
 
   async init(oauthParams: OAuthServerParams, retry = 0): Promise<void> {
     if (retry > 10) throw new Error('Too many registration retries')
     this.setParams(oauthParams)
-    this.tokenStore.storeOAuthServerParams(oauthParams as StoredOAuthServerParams)
+    this.tokenStore.storeOAuthServerParams(oauthParams as OAuthServerParams)
 
     const { redirectUri } = await this.getClientCredentials()
     const urlObj = new URL(redirectUri)
@@ -348,11 +342,11 @@ export class OAuthManager {
           res.writeHead(200, { 'Content-Type': 'text/html' })
           res.end(oauthSuccessHtml)
           this._callbackResolve?.()
-        } catch (err: any) {
+        } catch (err: unknown) {
           res.writeHead(400, { 'Content-Type': 'text/html' })
-          const errorMessage = escapeHtml(err?.message ?? String(err))
+          const errorMessage = escapeHtml(err instanceof Error ? err.message : String(err))
           res.end(oauthFailedHtml.replace('{{error}}', errorMessage))
-          this._callbackReject?.(err)
+          this._callbackReject?.(err instanceof Error ? err : new Error(String(err)))
         } finally {
           await this.stopCallbackServer()
         }
@@ -429,9 +423,10 @@ export class OAuthManager {
 
       if (!response.ok) {
         const errorText = await response.text()
-        let errorData: any
+        interface TokenErrorBody { error?: string; error_description?: string }
+        let errorData: TokenErrorBody
         try {
-          errorData = JSON.parse(errorText)
+          errorData = JSON.parse(errorText) as TokenErrorBody
         } catch {
           errorData = { error_description: errorText }
         }
