@@ -13,7 +13,7 @@ import { DEMO_REPO_URL } from '../../config.js'
 import { FooterHints } from '../shared/index.js'
 import { clickHandler } from '../shared/clickHandler.js'
 import { DirectoryStep } from './DirectoryStep.js'
-import { listProjects, loadProfile, type ProjectEntry } from '../../cli/profile.js'
+import { listProjects, loadProfile, touchProject, type ProjectEntry } from '../../cli/profile.js'
 import { OAuthManager } from '../../auth/oauth-manager.js'
 
 const SCROLLBAR_STYLE = {
@@ -49,9 +49,8 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
   const registeredProjects = useMemo(() => listProjects(), [])
 
   const navItems = useMemo<NavItem[]>(() => {
-    const items: NavItem[] = registeredProjects.map((entry) => ({ kind: 'project', entry }))
-    items.push({ kind: 'existing' })
-    items.push({ kind: 'example' })
+    const items: NavItem[] = [{ kind: 'existing' }, { kind: 'example' }]
+    for (const entry of registeredProjects) items.push({ kind: 'project', entry })
     return items
   }, [registeredProjects])
 
@@ -78,6 +77,7 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
       void (async () => {
         try {
           const { entry } = item
+          touchProject(entry.path)
           const profile = loadProfile(entry.account, entry.path)
           let apiKey = profile.apiKey
 
@@ -163,8 +163,6 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
     ) as ReactElement
   }
 
-  const hasProjects = registeredProjects.length > 0
-
   return (
     <box flexDirection='column' flexGrow={1} gap={1}>
       <text attributes={tuiAttrs({ dim: true })}>
@@ -173,88 +171,80 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
 
       <scrollbox ref={scrollRef} flexGrow={1} scrollY focused={false} style={SCROLLBAR_STYLE}>
         <box flexDirection='column' flexShrink={0} width='100%'>
-          {hasProjects && (
-            <box paddingLeft={1} paddingBottom={1}>
-              <text fg='#6b7280' attributes={tuiAttrs({ dim: true })}>Recent projects</text>
-            </box>
-          )}
-
           {navItems.map((item, i) => {
             const isActive = i === selected
             const isHovered = hoveredIndex === i
 
             if (item.kind === 'project') {
+              const isFirstProject = navItems[i - 1]?.kind !== 'project'
               const label = path.basename(item.entry.path)
               const desc = item.entry.path.length > 52
                 ? `…${item.entry.path.slice(-49)}`
                 : item.entry.path
               return (
-                <box
-                  key={`proj-${i}`}
-                  id={`pt-item-${i}`}
-                  flexDirection='row'
-                  paddingLeft={1}
-                  paddingRight={1}
-                  paddingTop={0}
-                  paddingBottom={1}
-                  backgroundColor={isActive ? '#161b22' : isHovered ? '#21262d' : undefined}
-                  onMouseUp={clickHandler(() => handleSelect(i))}
-                  onMouseOver={() => setHoveredIndex(i)}
-                  onMouseOut={() => setHoveredIndex((v) => (v === i ? null : v))}
-                >
-                  <box width={3} flexShrink={0}>
-                    <text fg='#22d3ee'>{isActive ? '❯' : ' '}</text>
-                  </box>
-                  <box flexDirection='column' flexGrow={1}>
-                    <text fg={isActive ? '#e6edf3' : '#c9d1d9'} attributes={tuiAttrs({ bold: isActive })}>
-                      {label}
-                    </text>
-                    <text fg='#484f58'>{desc}</text>
-                  </box>
-                  <box flexShrink={0} paddingLeft={1}>
-                    <text fg='#484f58'>{item.entry.account}</text>
+                <box key={`proj-${i}`} flexDirection='column'>
+                  {isFirstProject && (
+                    <box paddingLeft={1} paddingTop={1} paddingBottom={1}>
+                      <text fg='#6b7280' attributes={tuiAttrs({ dim: true })}>Recent projects</text>
+                    </box>
+                  )}
+                  <box
+                    id={`pt-item-${i}`}
+                    flexDirection='row'
+                    paddingLeft={1}
+                    paddingRight={1}
+                    paddingTop={0}
+                    paddingBottom={1}
+                    backgroundColor={isActive ? '#161b22' : isHovered ? '#21262d' : undefined}
+                    onMouseUp={clickHandler(() => handleSelect(i))}
+                    onMouseOver={() => setHoveredIndex(i)}
+                    onMouseOut={() => setHoveredIndex((v) => (v === i ? null : v))}
+                  >
+                    <box width={3} flexShrink={0}>
+                      <text fg='#22d3ee'>{isActive ? '❯' : ' '}</text>
+                    </box>
+                    <box flexDirection='column' flexGrow={1}>
+                      <text fg={isActive ? '#e6edf3' : '#c9d1d9'} attributes={tuiAttrs({ bold: isActive })}>
+                        {label}
+                      </text>
+                      <text fg='#484f58'>{desc}</text>
+                    </box>
+                    <box flexShrink={0} paddingLeft={1}>
+                      <text fg='#484f58'>{item.entry.account}</text>
+                    </box>
                   </box>
                 </box>
               )
             }
 
-            // Action items (existing / example) — show section header before first one
-            const isFirstAction = item.kind === 'existing'
             const icon = item.kind === 'existing' ? '◆' : '◇'
             const iconColor = item.kind === 'existing' ? '#22d3ee' : '#f59e0b'
-            const label = item.kind === 'existing' ? 'Add existing project' : 'Example project'
+            const label = item.kind === 'existing' ? 'Setup existing project' : 'Try demo'
             const desc = item.kind === 'existing'
               ? 'Link an existing repository to Multiplayer'
               : 'Clone and explore the Multiplayer demo app'
 
             return (
-              <box key={item.kind} flexDirection='column'>
-                {hasProjects && isFirstAction && (
-                  <box paddingLeft={1} paddingTop={1} paddingBottom={1}>
-                    <text fg='#6b7280' attributes={tuiAttrs({ dim: true })}>Add new</text>
-                  </box>
-                )}
-                <box
-                  id={`pt-item-${i}`}
-                  flexDirection='row'
-                  paddingLeft={1}
-                  paddingRight={1}
-                  paddingTop={0}
-                  paddingBottom={1}
-                  backgroundColor={isActive ? '#161b22' : isHovered ? '#21262d' : undefined}
-                  onMouseUp={clickHandler(() => handleSelect(i))}
-                  onMouseOver={() => setHoveredIndex(i)}
-                  onMouseOut={() => setHoveredIndex((v) => (v === i ? null : v))}
-                >
-                  <box width={3} flexShrink={0}>
-                    <text fg={iconColor}>{isActive ? '❯' : icon}</text>
-                  </box>
-                  <box flexDirection='column' flexGrow={1}>
-                    <text fg={isActive ? '#e6edf3' : '#c9d1d9'} attributes={tuiAttrs({ bold: isActive })}>
-                      {label}
-                    </text>
-                    <text fg='#484f58'>{desc}</text>
-                  </box>
+              <box key={item.kind}
+                id={`pt-item-${i}`}
+                flexDirection='row'
+                paddingLeft={1}
+                paddingRight={1}
+                paddingTop={0}
+                paddingBottom={1}
+                backgroundColor={isActive ? '#161b22' : isHovered ? '#21262d' : undefined}
+                onMouseUp={clickHandler(() => handleSelect(i))}
+                onMouseOver={() => setHoveredIndex(i)}
+                onMouseOut={() => setHoveredIndex((v) => (v === i ? null : v))}
+              >
+                <box width={3} flexShrink={0}>
+                  <text fg={iconColor}>{isActive ? '❯' : icon}</text>
+                </box>
+                <box flexDirection='column' flexGrow={1}>
+                  <text fg={isActive ? '#e6edf3' : '#c9d1d9'} attributes={tuiAttrs({ bold: isActive })}>
+                    {label}
+                  </text>
+                  <text fg='#484f58'>{desc}</text>
                 </box>
               </box>
             )

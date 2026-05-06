@@ -8,4 +8,4 @@ const logger = {
   debug: (msg: string, ...args: unknown[]) => console.debug(msg, ...args),
 }
 
-export default logger
+export { logger }

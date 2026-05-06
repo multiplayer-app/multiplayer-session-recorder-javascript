@@ -1,7 +1,16 @@
+import path from 'path'
+import os from 'os'
+
+// ─── Multiplayer home directory ───────────────────────────────────────────────
+
+export const MP_DIR = path.join(os.homedir(), '.multiplayer')
+export const LEGACY_TOKENS_FILE = path.join(MP_DIR, 'tokens.json')
+
 // ─── API ──────────────────────────────────────────────────────────────────────
 
-export const API_URL = process.env.MULTIPLAYER_URL || 'https://api.multiplayer.app/v0'
-export const BASE_API_URL = process.env.MULTIPLAYER_BASE_URL || 'https://api.multiplayer.app'
+export const PRODUCTION_HOSTNAME = 'api.multiplayer.app'
+export const API_URL = process.env.MULTIPLAYER_URL || `https://${PRODUCTION_HOSTNAME}/v0`
+export const BASE_API_URL = process.env.MULTIPLAYER_BASE_URL || `https://${PRODUCTION_HOSTNAME}`
 // ─── Demo repo ────────────────────────────────────────────────────────────────
 
 export const DEMO_REPO_URL = 'https://github.com/multiplayer-app/cli-app-demo'

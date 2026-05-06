@@ -3,7 +3,7 @@ import { deleteProfileTokenData } from '../auth/token-store.js'
 import { writeCredentials, renameAccount } from '../cli/profile.js'
 import { createApiService } from './api.service.js'
 import { BASE_API_URL } from '../config.js'
-import logger from '../logger.js'
+import { logger } from '../logger.js'
 
 interface LoginOptions {
   url?: string

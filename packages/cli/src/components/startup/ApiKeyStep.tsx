@@ -47,35 +47,23 @@ export function ApiKeyStep({ config, profileName, onComplete, onBack }: Props): 
     const workspaceId = apiKeyPayload.workspace!
     const projectId = apiKeyPayload.project!
 
-    const apiService = createApiService({
-      url: config.url || API_URL,
-      apiKey: trimmedApiKey
-    })
+    const apiService = createApiService({ url: config.url || API_URL, apiKey: trimmedApiKey })
     setValidating(true)
     setError(null)
 
-    apiService
-      .fetchProject(workspaceId, projectId)
+    apiService.fetchProject(workspaceId, projectId)
       .then((result) => {
+        setValidating(false)
         if (!result) {
-          setValidating(false)
           setError('Invalid API key or workspace/project not found.')
           return
         }
-
-        setValidating(false)
-        const profile = profileName || 'default'
-        writeProfile(profile, { apiKey: trimmedApiKey, authType: 'api_key' })
-        onComplete({
-          apiKey: trimmedApiKey,
-          authType: 'api_key',
-          workspace: workspaceId,
-          project: projectId
-        })
+        writeProfile(profileName || 'default', { apiKey: trimmedApiKey, authType: 'api_key' })
+        onComplete({ apiKey: trimmedApiKey, authType: 'api_key', workspace: workspaceId, project: projectId })
       })
-      .catch((err: any) => {
+      .catch((err: unknown) => {
         setValidating(false)
-        setError(err.message)
+        setError(err instanceof Error ? err.message : String(err))
       })
   }
 
