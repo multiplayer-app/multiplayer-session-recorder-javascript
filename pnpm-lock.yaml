@@ -124,7 +124,7 @@ importers:
   packages/session-recorder-browser:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.63
+        specifier: 2.0.65
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -282,7 +282,7 @@ importers:
   packages/session-recorder-node:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.63
+        specifier: 2.0.65
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -316,10 +316,10 @@ importers:
   packages/session-recorder-react:
     dependencies:
       '@multiplayer-app/session-recorder-browser':
-        specifier: 2.0.63
+        specifier: 2.0.65
         version: link:../session-recorder-browser
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.63
+        specifier: 2.0.65
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -344,7 +344,7 @@ importers:
   packages/session-recorder-react-native:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.63
+        specifier: 2.0.65
         version: link:../session-recorder-common
       '@opentelemetry/core':
         specifier: 2.0.1
@@ -3086,6 +3086,7 @@ packages:
 
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
+    deprecated: Potential CWE-502 - Update to 1.3.1 or higher
 
   '@vscode/sudo-prompt@9.3.2':
     resolution: {integrity: sha512-gcXoCN00METUNFeQOFJ+C9xUI0DKB+0EGMVg7wbVYRHBw2Eq3fKisDZOkRdOz3kqXRKOENMfShPOmypw1/8nOw==}
