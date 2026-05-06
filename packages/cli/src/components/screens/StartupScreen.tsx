@@ -41,7 +41,7 @@ interface StepMeta {
 
 const STEP_DEFS: Record<StepId, StepMeta> = {
   'project-type': {
-    title: 'Add a Project',
+    title: 'Setup a project',
     description: 'Choose how you want to get started with Multiplayer.',
     shortLabel: 'Project',
     canSkip: (c) => !!c.dir,
@@ -406,40 +406,42 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
             )}
           </box>
 
-          <box
-            border={true}
-            borderStyle='rounded'
-            borderColor='#30363d'
-            paddingLeft={1}
-            paddingRight={1}
-            paddingTop={0}
-            paddingBottom={0}
-            marginBottom={1}
-            flexDirection='column'
-            flexGrow={1}
-            flexShrink={0}
-            gap={1}
-          >
-            <box flexDirection='row' flexWrap='wrap'>
-              <text attributes={tuiAttrs({ dim: true })}>API key </text>
-              <text attributes={tuiAttrs({ bold: true })}>{maskedApiKey}</text>
-              <text attributes={tuiAttrs({ dim: true })}> · Workspace </text>
-              <text attributes={tuiAttrs({ bold: true })}>{setupWorkspaceLabel}</text>
-              <text attributes={tuiAttrs({ dim: true })}> / </text>
-              <text attributes={tuiAttrs({ bold: true })}>{setupProjectLabel}</text>
+          {step !== 'project-type' && (
+            <box
+              border={true}
+              borderStyle='rounded'
+              borderColor='#30363d'
+              paddingLeft={1}
+              paddingRight={1}
+              paddingTop={0}
+              paddingBottom={0}
+              marginBottom={1}
+              flexDirection='column'
+              flexGrow={1}
+              flexShrink={0}
+              gap={1}
+            >
+              <box flexDirection='row' flexWrap='wrap'>
+                <text attributes={tuiAttrs({ dim: true })}>API key </text>
+                <text attributes={tuiAttrs({ bold: true })}>{maskedApiKey}</text>
+                <text attributes={tuiAttrs({ dim: true })}> · Workspace </text>
+                <text attributes={tuiAttrs({ bold: true })}>{setupWorkspaceLabel}</text>
+                <text attributes={tuiAttrs({ dim: true })}> / </text>
+                <text attributes={tuiAttrs({ bold: true })}>{setupProjectLabel}</text>
+              </box>
+              <box flexDirection='row' flexWrap='wrap'>
+                <text attributes={tuiAttrs({ dim: true })}>Dir </text>
+                <text>{compactDir}</text>
+                <text attributes={tuiAttrs({ dim: true })}> · Model </text>
+                <text attributes={tuiAttrs({ bold: true })}>{config.model ?? '—'}</text>
+                <text attributes={tuiAttrs({ dim: true })}> ({provider}) · Concurrency </text>
+                <text attributes={tuiAttrs({ bold: true })}>{config.maxConcurrentIssues ?? '—'}</text>
+              </box>
+              <text attributes={tuiAttrs({ dim: true })}>
+                Account {account} · Enter confirm · Esc back · Ctrl+C quit
+              </text>
             </box>
-            <box flexDirection='row' flexWrap='wrap'>
-              <text attributes={tuiAttrs({ dim: true })}>Dir </text>
-              <text>{compactDir}</text>
-              <text attributes={tuiAttrs({ dim: true })}> · Model </text>
-              <text attributes={tuiAttrs({ bold: true })}>{config.model ?? '—'}</text>
-              <text attributes={tuiAttrs({ dim: true })}> ({provider}) · Concurrency </text>
-              <text attributes={tuiAttrs({ bold: true })}>{config.maxConcurrentIssues ?? '—'}</text>
-            </box>
-            <text attributes={tuiAttrs({ dim: true })}>
-              Account {account} · Enter confirm · Esc back · Ctrl+C quit
-            </text>
-          </box>
+          )}
 
           {step === 'project-type' && (
             <ProjectTypeStep onComplete={(updates) => handleAuthComplete(updates)} />
