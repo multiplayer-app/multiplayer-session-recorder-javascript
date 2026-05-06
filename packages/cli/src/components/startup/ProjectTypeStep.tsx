@@ -1,8 +1,12 @@
 import { useState, useRef, useLayoutEffect, useMemo, type ReactElement } from 'react'
 import { ScrollBoxRenderable } from '@opentui/core'
 import { execFile } from 'child_process'
+import { promisify } from 'util'
+import { rm } from 'fs/promises'
 import { useKeyboard } from '@opentui/react'
 import path from 'path'
+
+const execFileAsync = promisify(execFile)
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import type { AgentConfig } from '../../types/index.js'
 import { DEMO_REPO_URL } from '../../config.js'
@@ -107,18 +111,19 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
     }
   }
 
-  const handleParentDirSelected = ({ dir }: Partial<AgentConfig>) => {
+  const handleParentDirSelected = async ({ dir }: Partial<AgentConfig>) => {
     if (!dir) return
     setSubStep('cloning')
 
-    execFile('git', ['clone', DEMO_REPO_URL, dir], (_err, _stdout, stderr) => {
-      if (_err) {
-        setError(stderr?.trim() || _err.message)
-        setSubStep('error')
-        return
-      }
+    try {
+      await execFileAsync('git', ['clone', '--depth=1', DEMO_REPO_URL, dir])
+      await rm(path.join(dir, '.git'), { recursive: true, force: true })
+      await execFileAsync('git', ['init'], { cwd: dir })
       onComplete({ dir })
-    })
+    } catch (err: any) {
+      setError(err.stderr?.trim() || err.message)
+      setSubStep('error')
+    }
   }
 
   if (subStep === 'pick-parent') {
