@@ -47,6 +47,7 @@ export interface ProfileConfig extends CredentialsConfig, ProjectSettings {
 export interface ProjectEntry {
   path: string
   account: string
+  lastOpenedAt?: string
 }
 
 /** Root settings stored in ~/.multiplayer/settings.json. */
@@ -317,7 +318,24 @@ export function getProjectAccount(projectPath: string): string | undefined {
 }
 
 export function listProjects(): ProjectEntry[] {
-  return readRootSettings().projects
+  const { projects } = readRootSettings()
+  return [...projects].sort((a, b) => {
+    if (!a.lastOpenedAt && !b.lastOpenedAt) return 0
+    if (!a.lastOpenedAt) return 1
+    if (!b.lastOpenedAt) return -1
+    return b.lastOpenedAt.localeCompare(a.lastOpenedAt)
+  })
+}
+
+/** Update the lastOpenedAt timestamp for a registered project. */
+export function touchProject(projectPath: string): void {
+  const settings = readRootSettings()
+  const resolved = path.resolve(projectPath)
+  const idx = settings.projects.findIndex((p) => path.resolve(p.path) === resolved)
+  if (idx >= 0) {
+    settings.projects[idx]!.lastOpenedAt = new Date().toISOString()
+    writeRootSettings(settings)
+  }
 }
 
 // ─── Credentials ────────────────────────────────────────────────────────────
