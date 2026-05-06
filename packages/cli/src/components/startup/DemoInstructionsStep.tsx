@@ -39,7 +39,7 @@ export function DemoInstructionsStep({ config, onComplete, onBack }: Props): Rea
       <box flexDirection='column' border={true} borderStyle='rounded' borderColor='#30363d' padding={1} marginTop={1}>
         <CommandLine command={`cd ${dir}`} />
         <CommandLine command='npm install' />
-        <CommandLine command='npm dev' />
+        <CommandLine command='npm run dev' />
       </box>
 
       <box flexDirection='column' marginTop={1} gap={0}>
@@ -50,6 +50,18 @@ export function DemoInstructionsStep({ config, onComplete, onBack }: Props): Rea
           Backend: <span fg='#22d3ee'>http://localhost:8787</span>
         </text>
         <text attributes={tuiAttrs({ dim: true })}>Vite proxies /api requests to the backend.</text>
+      </box>
+
+      <box flexDirection='column' marginTop={1} gap={1}>
+        <text attributes={tuiAttrs({ bold: true })}>Optional: connect your own Git remote</text>
+        <text attributes={tuiAttrs({ dim: true })}>
+          The demo app is reinitialized without the template repository remote. Add your own repository before pushing.
+        </text>
+        <box flexDirection='column' border={true} borderStyle='rounded' borderColor='#30363d' padding={1}>
+          <CommandLine command='git remote add origin <your-repository-url>' />
+          <CommandLine command='git branch -M main' />
+          <CommandLine command='git push -u origin main' />
+        </box>
       </box>
 
       <box marginTop={1}>
