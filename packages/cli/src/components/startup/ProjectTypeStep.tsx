@@ -49,7 +49,10 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
   const registeredProjects = useMemo(() => listProjects(), [])
 
   const navItems = useMemo<NavItem[]>(() => {
-    const items: NavItem[] = [{ kind: 'existing' }, { kind: 'example' }]
+    const items: NavItem[] = [
+      { kind: 'example' },
+      { kind: 'existing' },
+    ]
     for (const entry of registeredProjects) items.push({ kind: 'project', entry })
     return items
   }, [registeredProjects])
@@ -165,9 +168,6 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
 
   return (
     <box flexDirection='column' flexGrow={1} gap={1}>
-      <text attributes={tuiAttrs({ dim: true })}>
-        Choose how you want to get started with Multiplayer.
-      </text>
 
       <scrollbox ref={scrollRef} flexGrow={1} scrollY focused={false} style={SCROLLBAR_STYLE}>
         <box flexDirection='column' flexShrink={0} width='100%'>
@@ -219,7 +219,9 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
 
             const icon = item.kind === 'existing' ? '◆' : '◇'
             const iconColor = item.kind === 'existing' ? '#22d3ee' : '#f59e0b'
-            const label = item.kind === 'existing' ? 'Setup existing project' : 'Try demo'
+            const label = item.kind === 'existing'
+              ? 'Setup existing project'
+              : 'Try a demo'
             const desc = item.kind === 'existing'
               ? 'Link an existing repository to Multiplayer'
               : 'Clone and explore the Multiplayer demo app'

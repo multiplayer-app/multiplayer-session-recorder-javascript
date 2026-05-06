@@ -273,7 +273,12 @@ function normaliseAccountKeysToEmail(): void {
 function pruneStaleProjects(): void {
   if (!fs.existsSync(rootSettingsFilePath())) return
   const settings = readJson<RootSettings>(rootSettingsFilePath(), { projects: [] })
-  const live = settings.projects.filter((p) => fs.existsSync(path.resolve(p.path)))
+  const live = settings.projects.filter((p) => {
+    const resolved = path.resolve(p.path)
+    if (!fs.existsSync(resolved)) return false
+    const settingsFile = path.join(resolved, '.multiplayer', projectSettingsFileName())
+    return fs.existsSync(settingsFile)
+  })
   if (live.length !== settings.projects.length) {
     writeJson(rootSettingsFilePath(), { projects: live })
   }
