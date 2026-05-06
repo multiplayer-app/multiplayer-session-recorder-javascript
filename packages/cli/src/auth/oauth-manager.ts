@@ -1,13 +1,11 @@
 import http from 'http'
-import fs from 'fs'
 import net from 'net'
 import { exec } from 'child_process'
 import { parse as parseUrl } from 'url'
 import { TokenStore, OauthClient, AuthData, OAuthServerParams } from './token-store.js'
 import { removeAccount } from '../cli/profile.js'
-
-const oauthSuccessHtml = fs.readFileSync(new URL('./oauth-success.html', import.meta.url), 'utf-8')
-const oauthFailedHtml = fs.readFileSync(new URL('./oauth-failed.html', import.meta.url), 'utf-8')
+import oauthSuccessHtml from './oauth-success.html' with { type: 'text' }
+import oauthFailedHtml from './oauth-failed.html' with { type: 'text' }
 
 class TokenError extends Error {
   readonly status: number
