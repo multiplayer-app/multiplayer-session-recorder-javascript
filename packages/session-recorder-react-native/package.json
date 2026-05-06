@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-react-native",
-  "version": "2.0.67",
+  "version": "2.0.69",
   "description": "Multiplayer Fullstack Session Recorder for React Native",
   "author": {
     "name": "Multiplayer Software, Inc.",
@@ -113,7 +113,7 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@multiplayer-app/session-recorder-common": "2.0.67",
+    "@multiplayer-app/session-recorder-common": "2.0.69",
     "@opentelemetry/core": "2.0.1",
     "@opentelemetry/exporter-trace-otlp-http": "0.203.0",
     "@opentelemetry/instrumentation": "0.203.0",
