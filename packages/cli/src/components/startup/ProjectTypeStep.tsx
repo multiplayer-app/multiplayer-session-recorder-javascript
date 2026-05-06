@@ -5,16 +5,16 @@ import { promisify } from 'util'
 import { rm } from 'fs/promises'
 import { useKeyboard } from '@opentui/react'
 import path from 'path'
-
-const execFileAsync = promisify(execFile)
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import type { AgentConfig } from '../../types/index.js'
-import { DEMO_REPO_URL } from '../../config.js'
+import { DEFAULT_MAX_CONCURRENT, DEMO_REPO_URL } from '../../config.js'
 import { FooterHints } from '../shared/index.js'
 import { clickHandler } from '../shared/clickHandler.js'
 import { DirectoryStep } from './DirectoryStep.js'
 import { listProjects, loadProfile, touchProject, type ProjectEntry } from '../../cli/profile.js'
 import { OAuthManager } from '../../auth/oauth-manager.js'
+
+const execFileAsync = promisify(execFile)
 
 const SCROLLBAR_STYLE = {
   wrapperOptions: { flexGrow: 1 },
@@ -23,9 +23,9 @@ const SCROLLBAR_STYLE = {
     showArrows: false,
     trackOptions: {
       foregroundColor: '#484f58',
-      backgroundColor: '#21262d',
-    },
-  },
+      backgroundColor: '#21262d'
+    }
+  }
 } as const
 
 type SubStep = 'select' | 'pick-parent' | 'cloning' | 'loading' | 'error'
@@ -34,14 +34,12 @@ interface Props {
   onComplete: (updates: Partial<AgentConfig> & { _accountName?: string }) => void
 }
 
-type NavItem =
-  | { kind: 'project'; entry: ProjectEntry }
-  | { kind: 'existing' }
-  | { kind: 'example' }
+type NavItem = { kind: 'project'; entry: ProjectEntry } | { kind: 'existing' } | { kind: 'example' }
 
 export function ProjectTypeStep({ onComplete }: Props): ReactElement {
   const [selected, setSelected] = useState(0)
   const [subStep, setSubStep] = useState<SubStep>('select')
+  const [errorBackStep, setErrorBackStep] = useState<SubStep>('select')
   const [error, setError] = useState<string | null>(null)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
@@ -49,10 +47,7 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
   const registeredProjects = useMemo(() => listProjects(), [])
 
   const navItems = useMemo<NavItem[]>(() => {
-    const items: NavItem[] = [
-      { kind: 'example' },
-      { kind: 'existing' },
-    ]
+    const items: NavItem[] = [{ kind: 'example' }, { kind: 'existing' }]
     for (const entry of registeredProjects) items.push({ kind: 'project', entry })
     return items
   }, [registeredProjects])
@@ -61,7 +56,14 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
     scrollRef.current?.scrollChildIntoView(`pt-item-${selected}`)
   }, [selected])
 
-  useKeyboard(({ name }) => {
+  useKeyboard((key) => {
+    const { name } = key
+    if (subStep === 'error' && name === 'escape') {
+      setError(null)
+      setSubStep(errorBackStep)
+      key.stopPropagation()
+      return
+    }
     if (subStep !== 'select') return
     if (name === 'up' || name === 'k') setSelected((s) => Math.max(0, s - 1))
     else if (name === 'down' || name === 'j') setSelected((s) => Math.min(navItems.length - 1, s + 1))
@@ -104,9 +106,10 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
             modelKey: profile.modelKey,
             modelUrl: profile.modelUrl,
             maxConcurrentIssues: profile.maxConcurrentIssues,
-            _accountName: entry.account,
+            _accountName: entry.account
           })
         } catch (err: any) {
+          setErrorBackStep('select')
           setError(err.message)
           setSubStep('error')
         }
@@ -122,8 +125,9 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
       await execFileAsync('git', ['clone', '--depth=1', DEMO_REPO_URL, dir])
       await rm(path.join(dir, '.git'), { recursive: true, force: true })
       await execFileAsync('git', ['init'], { cwd: dir })
-      onComplete({ dir })
+      onComplete({ dir, isDemoProject: true, maxConcurrentIssues: DEFAULT_MAX_CONCURRENT })
     } catch (err: any) {
+      setErrorBackStep('pick-parent')
       setError(err.stderr?.trim() || err.message)
       setSubStep('error')
     }
@@ -168,7 +172,6 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
 
   return (
     <box flexDirection='column' flexGrow={1} gap={1}>
-
       <scrollbox ref={scrollRef} flexGrow={1} scrollY focused={false} style={SCROLLBAR_STYLE}>
         <box flexDirection='column' flexShrink={0} width='100%'>
           {navItems.map((item, i) => {
@@ -178,14 +181,14 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
             if (item.kind === 'project') {
               const isFirstProject = navItems[i - 1]?.kind !== 'project'
               const label = path.basename(item.entry.path)
-              const desc = item.entry.path.length > 52
-                ? `…${item.entry.path.slice(-49)}`
-                : item.entry.path
+              const desc = item.entry.path.length > 52 ? `…${item.entry.path.slice(-49)}` : item.entry.path
               return (
                 <box key={`proj-${i}`} flexDirection='column'>
                   {isFirstProject && (
                     <box paddingLeft={1} paddingTop={1} paddingBottom={1}>
-                      <text fg='#6b7280' attributes={tuiAttrs({ dim: true })}>Recent projects</text>
+                      <text fg='#6b7280' attributes={tuiAttrs({ dim: true })}>
+                        Recent projects
+                      </text>
                     </box>
                   )}
                   <box
@@ -219,15 +222,15 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
 
             const icon = item.kind === 'existing' ? '◆' : '◇'
             const iconColor = item.kind === 'existing' ? '#22d3ee' : '#f59e0b'
-            const label = item.kind === 'existing'
-              ? 'Setup existing project'
-              : 'Try a demo'
-            const desc = item.kind === 'existing'
-              ? 'Link an existing repository to Multiplayer'
-              : 'Clone and explore the Multiplayer demo app'
+            const label = item.kind === 'existing' ? 'Setup existing project' : 'Try a demo'
+            const desc =
+              item.kind === 'existing'
+                ? 'Link an existing repository to Multiplayer'
+                : 'Clone and explore the Multiplayer demo app'
 
             return (
-              <box key={item.kind}
+              <box
+                key={item.kind}
                 id={`pt-item-${i}`}
                 flexDirection='row'
                 paddingLeft={1}

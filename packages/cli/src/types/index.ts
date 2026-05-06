@@ -22,6 +22,12 @@ export interface AgentConfig {
   sessionRecorderSetupDone?: boolean
   /** Detected stacks that need session recorder SDK setup (populated when user confirms setup) */
   sessionRecorderStacks?: import('../session-recorder/detectStacks.js').DetectedStack[]
+  /** True for projects cloned through the "Try a demo" setup path. */
+  isDemoProject?: boolean
+  /** Whether the demo app env files have been populated with generated SDK keys. */
+  demoSetupDone?: boolean
+  /** Whether the user has reviewed the demo app run instructions. */
+  demoInstructionsDone?: boolean
 }
 
 export interface IssueMetadata {

@@ -16,6 +16,8 @@ import { ModelStep } from '../startup/ModelStep.js'
 import { RateLimitsStep } from '../startup/RateLimitsStep.js'
 import { ConnectingStep } from '../startup/ConnectingStep.js'
 import { MultiplayerSdkStep } from '../startup/MultiplayerSdkStep.js'
+import { DemoSetupStep } from '../startup/DemoSetupStep.js'
+import { DemoInstructionsStep } from '../startup/DemoInstructionsStep.js'
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
@@ -28,6 +30,8 @@ type StepId =
   | 'directory'
   | 'model'
   | 'rate-limits'
+  | 'demo-setup'
+  | 'demo-instructions'
   | 'session-recorder'
   | 'connecting'
 
@@ -36,6 +40,7 @@ interface StepMeta {
   description: string
   shortLabel: string
   sidebarGroup?: string
+  hideFromSidebar?: boolean
   canSkip: (c: Partial<AgentConfig>) => boolean
 }
 
@@ -44,21 +49,21 @@ const STEP_DEFS: Record<StepId, StepMeta> = {
     title: 'Setup a project',
     description: 'Choose how you want to get started with Multiplayer.',
     shortLabel: 'Project',
-    canSkip: (c) => !!c.dir,
+    canSkip: (c) => !!c.dir
   },
   'account-select': {
     title: 'Select Account',
     description: 'Link this project to an existing Multiplayer account or add a new one.',
     shortLabel: 'Account',
     sidebarGroup: 'auth',
-    canSkip: (c) => listAccounts().length === 0 || (!!c.apiKey && !!c.workspace && !!c.project),
+    canSkip: (c) => listAccounts().length === 0 || (!!c.apiKey && !!c.workspace && !!c.project)
   },
   'auth-method': {
     title: 'Authentication',
     description: 'Choose how to authenticate with Multiplayer.',
     shortLabel: 'Auth',
     sidebarGroup: 'auth',
-    canSkip: (c) => !!c.apiKey,
+    canSkip: (c) => !!c.apiKey
   },
   'project-select': {
     title: 'Select Project',
@@ -68,45 +73,58 @@ const STEP_DEFS: Record<StepId, StepMeta> = {
     canSkip: (c) => {
       if (c.authType === 'oauth' && !(c.workspace && c.project)) return false
       return !!(c.workspace && c.project)
-    },
+    }
   },
   workspace: {
     title: 'Workspace Confirmation',
     description: 'Review the workspace and project that will receive agent updates.',
     shortLabel: 'Workspace',
     sidebarGroup: 'auth',
-    canSkip: (c) => !!(c.workspace && c.project && c.apiKey),
+    canSkip: (c) => !!(c.workspace && c.project && c.apiKey)
   },
   directory: {
     title: 'Repository Directory',
     description: 'Select the git repository where patches, commits, and branches are created.',
     shortLabel: 'Directory',
-    canSkip: (c) => !!c.dir,
+    canSkip: (c) => !!c.dir
   },
   model: {
     title: 'AI Model',
     description: 'Choose an AI provider and model for issue resolution.',
     shortLabel: 'Model',
-    canSkip: (c) => !!(c.model && (c.model.startsWith('claude') || c.modelKey)),
+    canSkip: (c) => !!(c.model && (c.model.startsWith('claude') || c.modelKey))
   },
   'rate-limits': {
     title: 'Concurrency',
     description: 'Set how many issues can be processed in parallel.',
     shortLabel: 'Concurrency',
-    canSkip: (c) => typeof c.maxConcurrentIssues === 'number',
+    canSkip: (c) => !!c.isDemoProject || typeof c.maxConcurrentIssues === 'number'
+  },
+  'demo-setup': {
+    title: 'Preparing Demo App',
+    description: 'Configure the cloned demo app before showing run instructions.',
+    shortLabel: 'Prepare Demo',
+    hideFromSidebar: true,
+    canSkip: (c) => !c.isDemoProject || !!c.demoSetupDone
+  },
+  'demo-instructions': {
+    title: 'Run Demo App',
+    description: 'Review the commands for starting the example client and server.',
+    shortLabel: 'Run Demo',
+    canSkip: (c) => !c.isDemoProject || !!c.demoInstructionsDone
   },
   'session-recorder': {
     title: 'Session Recorder',
     description: 'Detect your app stack and set up the Multiplayer Session Recorder SDK.',
     shortLabel: 'Multiplayer SDK',
-    canSkip: (c) => !!c.sessionRecorderSetupDone || !!process.env.MULTIPLAYER_SKIP_SR_SETUP,
+    canSkip: (c) => !!c.isDemoProject || !!c.sessionRecorderSetupDone || !!process.env.MULTIPLAYER_SKIP_SR_SETUP
   },
   connecting: {
     title: 'Final Checks',
     description: 'Verify git and provider requirements before starting runtime.',
     shortLabel: 'Verify',
-    canSkip: () => false,
-  },
+    canSkip: () => false
+  }
 }
 
 const STEPS = Object.keys(STEP_DEFS) as StepId[]
@@ -118,7 +136,7 @@ function prevStep(current: StepId, config: Partial<AgentConfig>): StepId | null 
     case 'project-type':
       return null
     case 'account-select':
-      return STEP_DEFS['project-type'].canSkip(config) ? null : 'project-type'
+      return 'project-type'
     case 'auth-method':
       return listAccounts().length > 0 ? 'account-select' : 'project-type'
     case 'project-select':
@@ -132,9 +150,13 @@ function prevStep(current: StepId, config: Partial<AgentConfig>): StepId | null 
     case 'rate-limits':
       return 'model'
     case 'session-recorder':
-      return 'rate-limits'
+      return config.isDemoProject ? 'demo-instructions' : 'rate-limits'
+    case 'demo-instructions':
+      return 'model'
+    case 'demo-setup':
+      return 'model'
     case 'connecting':
-      return 'session-recorder'
+      return config.isDemoProject ? 'demo-instructions' : 'session-recorder'
   }
 }
 
@@ -174,7 +196,12 @@ interface Props {
   onComplete: (config: AgentConfig) => void
 }
 
-export function StartupScreen({ initialConfig, profileName, authErrorMessage, onComplete }: Props): ReactElement | null {
+export function StartupScreen({
+  initialConfig,
+  profileName,
+  authErrorMessage,
+  onComplete
+}: Props): ReactElement | null {
   const [config, setConfig] = useState<Partial<AgentConfig>>(initialConfig)
   const [step, setStep] = useState<StepId>(() => firstRequiredStep(initialConfig))
   const [ready, setReady] = useState(false)
@@ -209,13 +236,13 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
           modelKey: next.modelKey,
           modelUrl: next.modelUrl,
           maxConcurrentIssues: next.maxConcurrentIssues,
-          sessionRecorderSetupDone: next.sessionRecorderSetupDone,
+          sessionRecorderSetupDone: next.sessionRecorderSetupDone
         })
       }
 
       setStep(nextStep(step, next))
     },
-    [config, step, account],
+    [config, step, account]
   )
 
   const handleAuthComplete = useCallback(
@@ -225,7 +252,12 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
       if (updates._oauthWorkspaces) {
         const workspaces = updates._oauthWorkspaces
         setOauthWorkspaces(workspaces)
-        const next = { ...config, apiKey: updates.apiKey, authType: updates.authType, ...(updates.url ? { url: updates.url } : {}) }
+        const next = {
+          ...config,
+          apiKey: updates.apiKey,
+          authType: updates.authType,
+          ...(updates.url ? { url: updates.url } : {})
+        }
         setConfig(next)
         const resolvedUrl = next.url || API_URL
         setOauthApi(createApiService({ url: resolvedUrl, apiKey: '', bearerToken: updates.apiKey! }))
@@ -234,7 +266,7 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
         advance(updates, updates._accountName)
       }
     },
-    [config, advance],
+    [config, advance]
   )
 
   const goBack = useCallback(() => {
@@ -265,14 +297,16 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
           session.workspaces.map(async (ws) => ({
             _id: ws._id,
             name: ws.name,
-            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name),
-          })),
+            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name)
+          }))
         )
         writeCredentials(account, { authType: 'oauth' })
         setConfig((c) => ({ ...c, authType: 'oauth' }))
         setOauthWorkspaces(workspaces)
       })
-      .catch(() => { /* empty list handled by ProjectSelectStep */ })
+      .catch(() => {
+        /* empty list handled by ProjectSelectStep */
+      })
       .finally(() => setFetchingWorkspaces(false))
   }, [step])
 
@@ -287,9 +321,13 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
   }, [ready, step])
 
   useEffect(() => {
-    const onResize = () => { console.clear() }
+    const onResize = () => {
+      console.clear()
+    }
     process.stdout.on('resize', onResize)
-    return () => { process.stdout.off('resize', onResize) }
+    return () => {
+      process.stdout.off('resize', onResize)
+    }
   }, [])
 
   useEffect(() => {
@@ -312,20 +350,25 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
           return {
             ...c,
             ...(workspaceDisplayName ? { workspaceDisplayName } : {}),
-            ...(projectDisplayName ? { projectDisplayName } : {}),
+            ...(projectDisplayName ? { projectDisplayName } : {})
           }
         })
-      } catch { /* non-fatal */ }
+      } catch {
+        /* non-fatal */
+      }
     })()
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [config.apiKey, config.workspace, config.project, config.url])
 
   // ── Sidebar ───────────────────────────────────────────────────────────────
 
   const currentStepIndex = STEPS.indexOf(step)
   const visibleSteps = STEPS.filter(
-    (s, i) => i <= currentStepIndex || !STEP_DEFS[s].canSkip(config) || s === 'connecting',
+    (s, i) =>
+      !STEP_DEFS[s].hideFromSidebar && (i <= currentStepIndex || !STEP_DEFS[s].canSkip(config) || s === 'connecting')
   )
   const currentVisibleIndex = visibleSteps.indexOf(step)
 
@@ -346,7 +389,7 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
         id: `group-${group}`,
         label: 'Auth',
         isDone: lastGroupIdx < currentVisibleIndex,
-        isCurrent: anyGroupCurrent,
+        isCurrent: anyGroupCurrent
       })
     } else {
       const i = visibleSteps.indexOf(s)
@@ -364,7 +407,9 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
   const maskedApiKey = config.apiKey ? `${config.apiKey.slice(0, 4)}••••${config.apiKey.slice(-3)}` : '—'
   const provider = config.model?.startsWith('claude') ? 'Claude' : config.model ? 'OpenAI-compatible' : '—'
   const compactDir = config.dir
-    ? config.dir.length > 30 ? `${config.dir.slice(0, 14)}…${config.dir.slice(-14)}` : config.dir
+    ? config.dir.length > 30
+      ? `${config.dir.slice(0, 14)}…${config.dir.slice(-14)}`
+      : config.dir
     : '—'
   const setupWorkspaceLabel = compactContextLabel(config.workspaceDisplayName, config.workspace)
   const setupProjectLabel = compactContextLabel(config.projectDisplayName, config.project)
@@ -443,14 +488,13 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
             </box>
           )}
 
-          {step === 'project-type' && (
-            <ProjectTypeStep onComplete={(updates) => handleAuthComplete(updates)} />
-          )}
+          {step === 'project-type' && <ProjectTypeStep onComplete={(updates) => handleAuthComplete(updates)} />}
           {step === 'account-select' && (
             <AccountSelectStep
               url={config.url || API_URL}
               onComplete={(updates) => handleAuthComplete(updates)}
               onAddNew={() => setStep('auth-method')}
+              onBack={goBack}
             />
           )}
           {step === 'auth-method' && (
@@ -459,6 +503,7 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
               url={config.url || API_URL}
               profileName={profileName}
               onComplete={(updates) => handleAuthComplete(updates)}
+              onBack={goBack}
             />
           )}
           {step === 'project-select' && (
@@ -471,15 +516,13 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
               onCreateWorkspace={
                 oauthApi
                   ? async (name, handle) => {
-                    const ws = await oauthApi.createWorkspace(name, handle)
-                    return { _id: ws._id!, name: ws.name!, projects: [] }
-                  }
+                      const ws = await oauthApi.createWorkspace(name, handle)
+                      return { _id: ws._id!, name: ws.name!, projects: [] }
+                    }
                   : undefined
               }
               onCreateProject={
-                oauthApi
-                  ? async (workspaceId, name) => oauthApi.createProject(workspaceId, name)
-                  : undefined
+                oauthApi ? async (workspaceId, name) => oauthApi.createProject(workspaceId, name) : undefined
               }
             />
           )}
@@ -487,6 +530,10 @@ export function StartupScreen({ initialConfig, profileName, authErrorMessage, on
           {step === 'directory' && <DirectoryStep config={config} onComplete={advance} />}
           {step === 'model' && <ModelStep config={config} onComplete={advance} />}
           {step === 'rate-limits' && <RateLimitsStep config={config} onComplete={advance} />}
+          {step === 'demo-setup' && <DemoSetupStep config={config} onComplete={advance} onBack={goBack} />}
+          {step === 'demo-instructions' && (
+            <DemoInstructionsStep config={config} onComplete={advance} onBack={goBack} />
+          )}
           {step === 'session-recorder' && <MultiplayerSdkStep config={config} onComplete={advance} onBack={goBack} />}
           {step === 'connecting' && (
             <ConnectingStep config={config as AgentConfig} onComplete={onComplete} onBack={goBack} />
