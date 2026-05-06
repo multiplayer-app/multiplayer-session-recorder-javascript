@@ -11,11 +11,14 @@ import type { SelectableWorkspace } from './ProjectSelectStep.js'
 
 interface Props {
   url: string
-  onComplete: (updates: Partial<AgentConfig> & { _oauthWorkspaces?: SelectableWorkspace[]; _accountName?: string }) => void
+  onComplete: (
+    updates: Partial<AgentConfig> & { _oauthWorkspaces?: SelectableWorkspace[]; _accountName?: string }
+  ) => void
   onAddNew: () => void
+  onBack?: () => void
 }
 
-export function AccountSelectStep({ url, onComplete, onAddNew }: Props): ReactElement {
+export function AccountSelectStep({ url, onComplete, onAddNew, onBack }: Props): ReactElement {
   const accounts = listAccounts()
 
   const items: SelectionItem[] = [
@@ -28,7 +31,7 @@ export function AccountSelectStep({ url, onComplete, onAddNew }: Props): ReactEl
         icon: '◆',
         iconColor: '#22d3ee',
         label,
-        description: badge,
+        description: badge
       } satisfies SelectionItem
     }),
     {
@@ -36,20 +39,25 @@ export function AccountSelectStep({ url, onComplete, onAddNew }: Props): ReactEl
       icon: '◇',
       iconColor: '#f59e0b',
       label: 'Login with new account',
-      description: 'Authenticate with a different Multiplayer account',
-    },
+      description: 'Authenticate with a different Multiplayer account'
+    }
   ]
 
   const [selected, setSelected] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useKeyboard(({ name }) => {
+  useKeyboard((key) => {
+    const { name } = key
     if (loading) return
     if (name === 'up' || name === 'k') setSelected((s) => Math.max(0, s - 1))
     else if (name === 'down' || name === 'j') setSelected((s) => Math.min(items.length - 1, s + 1))
     else if (name === 'return') void handleConfirm(selected)
     else if (name === 'escape' && error) setError(null)
+    else if (name === 'escape') {
+      onBack?.()
+      key.stopPropagation()
+    }
   })
 
   const handleConfirm = async (idx: number) => {
@@ -82,7 +90,7 @@ export function AccountSelectStep({ url, onComplete, onAddNew }: Props): ReactEl
           session.workspaces.map(async (ws) => ({
             _id: ws._id,
             name: ws.name,
-            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name),
+            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name)
           }))
         )
 
@@ -97,7 +105,13 @@ export function AccountSelectStep({ url, onComplete, onAddNew }: Props): ReactEl
           }
         }
 
-        onComplete({ apiKey: token, authType: 'oauth', url: creds.url, _oauthWorkspaces: workspaces, _accountName: resolvedAccount })
+        onComplete({
+          apiKey: token,
+          authType: 'oauth',
+          url: creds.url,
+          _oauthWorkspaces: workspaces,
+          _accountName: resolvedAccount
+        })
       } else if (creds.authType === 'api_key' && creds.apiKey) {
         const payload = decodeApiKeyPayload(creds.apiKey)
 
@@ -114,7 +128,9 @@ export function AccountSelectStep({ url, onComplete, onAddNew }: Props): ReactEl
               resolvedAccount = session.email
             }
           }
-        } catch { /* non-fatal */ }
+        } catch {
+          /* non-fatal */
+        }
 
         onComplete({
           apiKey: creds.apiKey,
@@ -122,7 +138,7 @@ export function AccountSelectStep({ url, onComplete, onAddNew }: Props): ReactEl
           url: creds.url,
           workspace: payload.workspace,
           project: payload.project,
-          _accountName: resolvedAccount,
+          _accountName: resolvedAccount
         })
       } else {
         setLoading(false)
@@ -157,7 +173,7 @@ export function AccountSelectStep({ url, onComplete, onAddNew }: Props): ReactEl
               void handleConfirm(idx)
             }}
           />
-          <FooterHints hints='↑↓ navigate · Enter select · Click to select' />
+          <FooterHints hints='↑↓ navigate · Enter select · Click to select · Esc back' />
         </>
       )}
     </box>

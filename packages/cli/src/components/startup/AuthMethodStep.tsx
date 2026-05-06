@@ -27,7 +27,7 @@ type AuthMethod = 'oauth' | 'api-token'
 
 const OPTIONS: { id: AuthMethod; label: string; description: string }[] = [
   { id: 'oauth', label: 'Browser login (OAuth)', description: 'Opens your browser to authenticate with Multiplayer' },
-  { id: 'api-token', label: 'API token', description: 'Paste a personal API key from the Multiplayer dashboard' },
+  { id: 'api-token', label: 'API token', description: 'Paste a personal API key from the Multiplayer dashboard' }
 ]
 
 const SELECTION_ITEMS: SelectionItem[] = OPTIONS.map((opt) => ({
@@ -35,7 +35,7 @@ const SELECTION_ITEMS: SelectionItem[] = OPTIONS.map((opt) => ({
   icon: opt.id === 'oauth' ? '◆' : '◇',
   iconColor: opt.id === 'oauth' ? '#22d3ee' : '#f59e0b',
   label: opt.label,
-  description: opt.description,
+  description: opt.description
 }))
 
 type SubStep = 'select' | 'api-key'
@@ -45,10 +45,13 @@ interface Props {
   config: Partial<AgentConfig>
   url: string
   profileName?: string
-  onComplete: (updates: Partial<AgentConfig> & { _oauthWorkspaces?: SelectableWorkspace[]; _accountName?: string }) => void
+  onComplete: (
+    updates: Partial<AgentConfig> & { _oauthWorkspaces?: SelectableWorkspace[]; _accountName?: string }
+  ) => void
+  onBack?: () => void
 }
 
-export function AuthMethodStep({ config, url, profileName, onComplete }: Props): ReactElement {
+export function AuthMethodStep({ config, url, profileName, onComplete, onBack }: Props): ReactElement {
   const [subStep, setSubStep] = useState<SubStep>('select')
   const [selected, setSelected] = useState(0)
   const [oauthState, setOAuthState] = useState<OAuthState>('idle')
@@ -91,7 +94,10 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
 
     // Selection sub-step
     if (oauthState === 'idle') {
-      if (name === 'up' || name === 'k') setSelected((s) => Math.max(0, s - 1))
+      if (name === 'escape') {
+        onBack?.()
+        key.stopPropagation()
+      } else if (name === 'up' || name === 'k') setSelected((s) => Math.max(0, s - 1))
       else if (name === 'down' || name === 'j') setSelected((s) => Math.min(OPTIONS.length - 1, s + 1))
       else if (name === 'return') handleConfirm()
       return
@@ -134,7 +140,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
 
     if (apiKeyPayload.type && apiKeyPayload.type !== 'API_KEY') {
       setApiKeyError(
-        `Invalid key type "${apiKeyPayload.type}". Please use an Agent API key from the Multiplayer dashboard (Settings → API Keys).`,
+        `Invalid key type "${apiKeyPayload.type}". Please use an Agent API key from the Multiplayer dashboard (Settings → API Keys).`
       )
       return
     }
@@ -144,7 +150,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
 
     const apiService = createApiService({
       url: config.url || API_URL,
-      apiKey: trimmedApiKey,
+      apiKey: trimmedApiKey
     })
     setApiKeyValidating(true)
     setApiKeyError(null)
@@ -171,7 +177,9 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
               accountName = session.email
             }
           }
-        } catch { /* non-fatal */ }
+        } catch {
+          /* non-fatal */
+        }
 
         setApiKeyValidating(false)
         onComplete({
@@ -179,7 +187,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           authType: 'api_key',
           workspace: workspaceId,
           project: projectId,
-          _accountName: accountName,
+          _accountName: accountName
         })
       })
       .catch((err: any) => {
@@ -204,7 +212,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           authorizationServerUrl: data.issuer,
           authorizationEndpoint: data.authorization_endpoint,
           tokenEndpoint: data.token_endpoint,
-          registrationEndpoint: data.registration_endpoint,
+          registrationEndpoint: data.registration_endpoint
         }
 
         const oauthManager = new OAuthManager(profileName || 'default')
@@ -228,8 +236,8 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
           session.workspaces.map(async (ws) => ({
             _id: ws._id,
             name: ws.name,
-            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name),
-          })),
+            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name)
+          }))
         )
 
         const profile = profileName || 'default'
@@ -305,7 +313,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete }: Props):
         <>
           <text attributes={tuiAttrs({ dim: true })}>Choose how to authenticate with Multiplayer.</text>
           <SelectionList items={SELECTION_ITEMS} selectedIndex={selected} onSelect={selectOption} />
-          <FooterHints hints='↑↓ navigate · Enter select · Click to select' />
+          <FooterHints hints='↑↓ navigate · Enter select · Click to select · Esc back' />
         </>
       )}
 

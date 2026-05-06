@@ -3,7 +3,9 @@ import {
   MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
+  MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
 } from '../constants/constants.base'
+import { isErrorSpan } from '../sdk'
 
 export interface SessionRecorderHttpTraceExporterConfig {
   /** The URL to send traces to. Defaults to MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL */
@@ -55,7 +57,9 @@ export class SessionRecorderHttpTraceExporter extends OTLPTraceExporter {
     const filteredSpans = spans.filter(span => {
       const traceId = span.spanContext().traceId
       return traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
-        traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
+        traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX) ||
+        traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX) ||
+        isErrorSpan(span)
     })
 
     if (filteredSpans.length === 0) {

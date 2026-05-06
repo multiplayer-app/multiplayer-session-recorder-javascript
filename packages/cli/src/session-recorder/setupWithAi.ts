@@ -447,8 +447,9 @@ function containsApiKeyPlaceholder(content: string): boolean {
 }
 
 function envFileDefinesPlaceholder(content: string, name: string): boolean {
+  const placeholderPattern = `(?:${API_KEY_PLACEHOLDERS.map(escapeRegExp).join('|')})`
   const assignment = new RegExp(
-    `(^|\\n)\\s*(?:export\\s+)?${escapeRegExp(name)}\\s*=\\s*["']?YOUR_MULTIPLAYER_API_KEY["']?`,
+    `(^|\\n)\\s*(?:export\\s+)?${escapeRegExp(name)}\\s*=\\s*(["']?)[^\\n"']*${placeholderPattern}[^\\n"']*\\2`,
     'm',
   )
   return assignment.test(content)
@@ -456,6 +457,10 @@ function envFileDefinesPlaceholder(content: string, name: string): boolean {
 
 function isSdkApiKeyEnvVarName(name: string): boolean {
   return name.includes('MULTIPLAYER_SDK_API_KEY')
+}
+
+function isOtelHeadersEnvVarName(name: string): boolean {
+  return /^OTEL_EXPORTER_OTLP(?:_(?:TRACES|LOGS))?_HEADERS$/.test(name)
 }
 
 function isReservedCliApiKeyEnvVarName(name: string): boolean {
@@ -466,7 +471,9 @@ function validateSetupPlanEnv(plan: SetupPlan): string[] {
   const errors: string[] = []
   const apiKeyEnvVars = plan.envVars.filter(
     (envVar) =>
-      (isSdkApiKeyEnvVarName(envVar.name) || isReservedCliApiKeyEnvVarName(envVar.name)) &&
+      (isSdkApiKeyEnvVarName(envVar.name) ||
+        isReservedCliApiKeyEnvVarName(envVar.name) ||
+        isOtelHeadersEnvVarName(envVar.name)) &&
       containsApiKeyPlaceholder(envVar.value),
   )
 
@@ -474,6 +481,13 @@ function validateSetupPlanEnv(plan: SetupPlan): string[] {
     if (isReservedCliApiKeyEnvVarName(envVar.name)) {
       errors.push(
         `AI plan uses ${envVar.name}, but MULTIPLAYER_API_KEY is reserved for the CLI. Use MULTIPLAYER_SDK_API_KEY with any framework-required public prefix instead.`,
+      )
+      continue
+    }
+
+    if (isOtelHeadersEnvVarName(envVar.name) && !/^Authorization=/.test(envVar.value)) {
+      errors.push(
+        `AI plan defines ${envVar.name} with an API key placeholder, but OpenTelemetry header env vars must use Authorization=YOUR_MULTIPLAYER_API_KEY.`,
       )
       continue
     }
@@ -812,6 +826,14 @@ const API_KEY_PLACEHOLDERS = [
   '<MULTIPLAYER_API_KEY>',
 ]
 
+function replaceApiKeyPlaceholders(value: string, apiKey: string): string {
+  let next = value
+  for (const placeholder of API_KEY_PLACEHOLDERS) {
+    next = next.replaceAll(placeholder, apiKey)
+  }
+  return next
+}
+
 export interface CreatedApiKey {
   name: string
   apiKey: string
@@ -888,14 +910,12 @@ export function injectApiKeysIntoPlan(plan: SetupPlan, keys: CreatedApiKey[], st
   // Replace in envVars
   for (const envVar of plan.envVars) {
     if (API_KEY_PLACEHOLDERS.some((p) => envVar.value === p || envVar.value.includes(p))) {
-      envVar.value = key.apiKey
+      envVar.value = replaceApiKeyPlaceholders(envVar.value, key.apiKey)
     }
   }
 
   // Replace in fileChanges content
   for (const change of plan.fileChanges) {
-    for (const placeholder of API_KEY_PLACEHOLDERS) {
-      change.content = change.content.replaceAll(placeholder, key.apiKey)
-    }
+    change.content = replaceApiKeyPlaceholders(change.content, key.apiKey)
   }
 }
