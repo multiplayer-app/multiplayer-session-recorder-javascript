@@ -2,6 +2,7 @@ import { type Span } from '@opentelemetry/api';
 import {
   MULTIPLAYER_TRACE_DEBUG_PREFIX,
   MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX,
+  MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX,
   ATTR_MULTIPLAYER_HTTP_REQUEST_BODY,
   ATTR_MULTIPLAYER_HTTP_REQUEST_HEADERS,
   ATTR_MULTIPLAYER_HTTP_RESPONSE_BODY,
@@ -30,7 +31,8 @@ export interface ProcessedHttpPayload {
 export function shouldProcessTrace(traceId: string): boolean {
   return (
     traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
-    traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
+    traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX) ||
+    traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX)
   );
 }
 
@@ -61,7 +63,8 @@ export function processBody(
   // Apply masking for debug traces
   if (
     traceId.startsWith(MULTIPLAYER_TRACE_DEBUG_PREFIX) ||
-    traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX)
+    traceId.startsWith(MULTIPLAYER_TRACE_CONTINUOUS_DEBUG_PREFIX) ||
+    traceId.startsWith(MULTIPLAYER_TRACE_SESSION_CACHE_PREFIX)
   ) {
     if (masking.isContentMaskingEnabled) {
       requestBody = requestBody && masking.maskBody?.(requestBody, span);
