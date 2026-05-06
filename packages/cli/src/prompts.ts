@@ -45,7 +45,7 @@ export function buildSetupPrompt(
   stack: DetectedStack,
   readme: string,
   projectContext: string,
-  ctx?: SetupGenerationContext,
+  ctx?: SetupGenerationContext
 ): string {
   const installedNote = stack.alreadyInstalled
     ? `- NOTE: A Multiplayer SDK is already installed: ${stack.installedSdkPackage}`
@@ -165,10 +165,11 @@ Common conventions (not exhaustive — if the project uses a different build too
 - Paths are relative to THIS stack root. Do not write a monorepo root or sibling stack env file unless THIS stack explicitly loads it.
 
 ### Required consistency checks before returning JSON
-- The SDK API key env var name MUST contain \`MULTIPLAYER_SDK_API_KEY\`. Do not use \`MULTIPLAYER_API_KEY\`; that name is reserved for the Multiplayer CLI itself and can conflict with user configuration.
+- The SDK API key env var name MUST contain \`MULTIPLAYER_SDK_API_KEY\` when app code or a Multiplayer SDK option reads a raw API key. Do not use \`MULTIPLAYER_API_KEY\`; that name is reserved for the Multiplayer CLI itself and can conflict with user configuration.
+- Exception for standard OpenTelemetry exporter header env vars: use \`OTEL_EXPORTER_OTLP_HEADERS\`, \`OTEL_EXPORTER_OTLP_TRACES_HEADERS\`, or \`OTEL_EXPORTER_OTLP_LOGS_HEADERS\` with value \`Authorization=YOUR_MULTIPLAYER_API_KEY\`.
 - The env var name in source code MUST exactly match the name written to the env file.
 - The source code read syntax MUST match the framework. For example, Vite must use \`import.meta.env.VITE_...\`, not \`process.env...\`.
-- The env file content MUST contain \`YOUR_MULTIPLAYER_API_KEY\` verbatim as the value for the API key. The CLI replaces only that placeholder.
+- The env file content MUST contain \`YOUR_MULTIPLAYER_API_KEY\` verbatim in the API key value. For raw SDK/API key vars, use exactly \`YOUR_MULTIPLAYER_API_KEY\`; for standard OpenTelemetry header env vars, use \`Authorization=YOUR_MULTIPLAYER_API_KEY\`. The CLI replaces only that placeholder and preserves any surrounding prefix.
 - The env var NAME you pick must be a full identifier, such as \`VITE_MULTIPLAYER_SDK_API_KEY\`, not a placeholder fragment.
 - If you cannot determine the framework's env loading rules, create a dedicated integration file that reads from the safest conventional env name for the detected runtime, add a warning, and keep confidence below 0.6.
 
@@ -240,8 +241,10 @@ Return ONLY a JSON object (no markdown fences, no explanation outside JSON) with
        - Traces: https://otlp.multiplayer.app/v1/traces
        - Logs: https://otlp.multiplayer.app/v1/logs
      - Use a CompositeSpanExporter (or multiple exporters in the TracerProvider) so both the existing and Multiplayer exporters run in parallel
-     - The Multiplayer exporter needs an authorization header sourced from \`MULTIPLAYER_SDK_API_KEY\`, for example \`Authorization: Bearer \${process.env.MULTIPLAYER_SDK_API_KEY}\`
-     - Add MULTIPLAYER_SDK_API_KEY to envVars
+     - If configuring the exporter through OpenTelemetry env vars, add \`OTEL_EXPORTER_OTLP_HEADERS=Authorization=YOUR_MULTIPLAYER_API_KEY\` (or the traces/logs-specific header env vars). Do not use a Bearer prefix.
+     - If configuring the exporter in code with a headers object, keep the env var as a raw key: \`MULTIPLAYER_SDK_API_KEY=YOUR_MULTIPLAYER_API_KEY\`, then set \`Authorization: process.env.MULTIPLAYER_SDK_API_KEY\`. Do not use a Bearer prefix.
+     - If using Multiplayer SDK exporters or \`sessionRecorder.init({ apiKey })\`, pass the raw API key from \`MULTIPLAYER_SDK_API_KEY\`; do not prepend \`Authorization=\`.
+     - Add the chosen auth env var(s) to envVars
      - If the project uses an OTel Collector: add a second OTLP exporter in the collector config pipelines instead of modifying app code
    - Standard OTel OTLP exporters are sufficient — no Multiplayer SDK package, ID generator, or exporter needed for backends
 
@@ -345,8 +348,8 @@ Allowed Node \`sessionRecorder.init(...)\` option names:
 - CRITICAL: The \`apiKey\` field in init() MUST always reference an env var with the read syntax supported by the detected runtime (for example \`process.env.MULTIPLAYER_SDK_API_KEY\` for Node/Next server code, \`process.env.NEXT_PUBLIC_MULTIPLAYER_SDK_API_KEY\` for Next client code, or \`import.meta.env.VITE_MULTIPLAYER_SDK_API_KEY\` for Vite). Never inline the literal key.
 - Every env var you introduce MUST appear as a fileChange for the runtime-loaded env file chosen in the "Env Var Placement and Runtime Access Contract" section. Action "modify" if that exact file exists in project context, "create" otherwise. PRESERVE all existing entries and comments — only add or update the keys you need.
 - The source code and env file MUST use the exact same env var name. If the env file defines \`VITE_MULTIPLAYER_SDK_API_KEY\`, the code must read \`import.meta.env.VITE_MULTIPLAYER_SDK_API_KEY\`; do not read \`process.env.MULTIPLAYER_SDK_API_KEY\` or any other name.
-- Use placeholder value \`YOUR_MULTIPLAYER_API_KEY\` for the Multiplayer API key inside the runtime-loaded \`.env*\` fileChange; the CLI will substitute the real generated key after the plan runs. Do NOT put this placeholder anywhere else (not in source code, not in install commands).
-- Also list the same env vars in the envVars array (for display/audit), using \`YOUR_MULTIPLAYER_API_KEY\` as the value for the API key.
+- Use placeholder value \`YOUR_MULTIPLAYER_API_KEY\` for raw SDK/API key env vars inside the runtime-loaded \`.env*\` fileChange; the CLI will substitute the real generated key after the plan runs. For standard OpenTelemetry header env vars, use \`Authorization=YOUR_MULTIPLAYER_API_KEY\` so the generated value becomes \`Authorization=<api key>\`. Do NOT put this placeholder anywhere else (not in source code, not in install commands).
+- Also list the same env vars in the envVars array (for display/audit), preserving the same value shape: raw \`YOUR_MULTIPLAYER_API_KEY\` for SDK \`apiKey\` usage, or \`Authorization=YOUR_MULTIPLAYER_API_KEY\` for OTel header env vars.
 - Use the project's package manager: ${stack.packageManager}
 - If modifying an existing file, include the COMPLETE file content after changes — but the only difference vs. the original MUST be the Multiplayer-specific additions (see the "PRESERVE ALL EXISTING CODE" section above). Never rewrite, refactor, or reformat unrelated code.
 - Prefer creating a new dedicated file (e.g. \`src/multiplayer.js\` / \`src/multiplayer.ts\`, \`src/instrumentation.js\` / \`src/instrumentation.ts\`, matching the app language) and importing it from the entry point with ONE added line, instead of restructuring an existing file.
@@ -373,7 +376,7 @@ export function buildClassifyPrompt(stacks: DetectedStack[], sdkSummary: string)
         `  Description: ${s.packageDescription ?? 'none'}`,
         `  Framework: ${s.framework}, Type: ${s.type}`,
         `  SDK installed: ${s.alreadyInstalled ? `yes (${s.installedSdkPackage})` : 'no'}${s.installedSdkPackage === 'otel+otlp.multiplayer.app' ? ' — using standard OTel with Multiplayer OTLP endpoint' : ''}`,
-        `  Recommended SDK: ${s.sdkPackage}`,
+        `  Recommended SDK: ${s.sdkPackage}`
       ]
       if (s.internalDeps?.length) {
         parts.push(`  Depends on (internal): ${s.internalDeps.join(', ')}`)
@@ -526,7 +529,7 @@ Use clear markdown with section headers. Do not include any other text outside t
 export function buildPrUserMessage(
   issue: Issue,
   conversationContext: string,
-  diffStats: { additions: number; deletions: number },
+  diffStats: { additions: number; deletions: number }
 ): string {
   const issueContext = [
     issue.metadata?.type && `Error type: ${issue.metadata.type}`,
@@ -535,7 +538,7 @@ export function buildPrUserMessage(
     issue.metadata?.stacktrace && `Stack trace:\n${issue.metadata.stacktrace.slice(0, 800)}`,
     issue.service?.serviceName && `Service: ${issue.service.serviceName}`,
     issue.service?.environment && `Environment: ${issue.service.environment}`,
-    issue.category && `Category: ${issue.category}`,
+    issue.category && `Category: ${issue.category}`
   ]
     .filter(Boolean)
     .join('\n')
@@ -569,7 +572,7 @@ export function buildIssuePromptFallback(issue: Issue, release?: Release, debugC
     `# Issue: ${issue.title}`,
     '',
     `**Category:** ${issue.category}`,
-    `**Service:** ${issue.service.serviceName}`,
+    `**Service:** ${issue.service.serviceName}`
   ]
 
   if (issue.service.environment) {
@@ -614,7 +617,7 @@ export function buildIssuePromptFallback(issue: Issue, release?: Release, debugC
 
   lines.push(
     '',
-    'Please analyze this issue and produce file patches to fix it. Read relevant source files to understand the code before making changes.',
+    'Please analyze this issue and produce file patches to fix it. Read relevant source files to understand the code before making changes.'
   )
 
   return lines.join('\n')
