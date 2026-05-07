@@ -1586,7 +1586,7 @@ export class RuntimeController extends EventEmitter {
         this.emitToRadar(chatId, msg, 'assistant', 'git')
         this.addSessionMessage(chatId, { role: 'assistant', content: msg, activity: 'git' })
       } else {
-        this.log('info', `Branch creation disabled — applying patches to current branch`)
+        this.log('info', 'Branch creation disabled — applying patches to current branch')
         const msg = 'Branch creation disabled — applying patches to current branch...'
         this.emitToRadar(chatId, msg, 'assistant', 'git')
         this.addSessionMessage(chatId, { role: 'assistant', content: msg, activity: 'git' })
