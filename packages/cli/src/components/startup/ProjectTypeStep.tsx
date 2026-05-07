@@ -1,5 +1,4 @@
-import { useState, useRef, useLayoutEffect, useMemo, type ReactElement } from 'react'
-import { ScrollBoxRenderable } from '@opentui/core'
+import { useState, useMemo, type ReactElement } from 'react'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { rm } from 'fs/promises'
@@ -8,25 +7,12 @@ import path from 'path'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import type { AgentConfig } from '../../types/index.js'
 import { DEFAULT_MAX_CONCURRENT, DEMO_REPO_URL } from '../../config.js'
-import { FooterHints } from '../shared/index.js'
-import { clickHandler } from '../shared/clickHandler.js'
+import { FooterHints, SelectionList, type SelectionItem } from '../shared/index.js'
 import { DirectoryStep } from './DirectoryStep.js'
 import { listProjects, loadProfile, touchProject, type ProjectEntry } from '../../cli/profile.js'
 import { OAuthManager } from '../../auth/oauth-manager.js'
 
 const execFileAsync = promisify(execFile)
-
-const SCROLLBAR_STYLE = {
-  wrapperOptions: { flexGrow: 1 },
-  viewportOptions: { flexGrow: 1 },
-  scrollbarOptions: {
-    showArrows: false,
-    trackOptions: {
-      foregroundColor: '#484f58',
-      backgroundColor: '#21262d'
-    }
-  }
-} as const
 
 type SubStep = 'select' | 'pick-parent' | 'cloning' | 'loading' | 'error'
 
@@ -34,27 +20,56 @@ interface Props {
   onComplete: (updates: Partial<AgentConfig> & { _accountName?: string }) => void
 }
 
-type NavItem = { kind: 'project'; entry: ProjectEntry } | { kind: 'existing' } | { kind: 'example' }
+type PrimaryNavItem = { kind: 'existing' } | { kind: 'example' }
+type ProjectNavItem = { kind: 'project'; entry: ProjectEntry }
+type NavItem = ProjectNavItem | PrimaryNavItem
+
+const PRIMARY_NAV_ITEMS: PrimaryNavItem[] = [{ kind: 'example' }, { kind: 'existing' }]
+const PRIMARY_SELECTION_ITEMS: SelectionItem[] = [
+  {
+    key: 'example',
+    icon: '◇',
+    iconColor: '#f59e0b',
+    label: 'Try a demo',
+    description: 'Clone and explore the Multiplayer demo app'
+  },
+  {
+    key: 'existing',
+    icon: '◆',
+    iconColor: '#22d3ee',
+    label: 'Setup existing project',
+    description: 'Link an existing repository to Multiplayer'
+  }
+]
 
 export function ProjectTypeStep({ onComplete }: Props): ReactElement {
   const [selected, setSelected] = useState(0)
   const [subStep, setSubStep] = useState<SubStep>('select')
   const [errorBackStep, setErrorBackStep] = useState<SubStep>('select')
   const [error, setError] = useState<string | null>(null)
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
-  const scrollRef = useRef<ScrollBoxRenderable | null>(null)
 
   const registeredProjects = useMemo(() => listProjects(), [])
 
-  const navItems = useMemo<NavItem[]>(() => {
-    const items: NavItem[] = [{ kind: 'example' }, { kind: 'existing' }]
-    for (const entry of registeredProjects) items.push({ kind: 'project', entry })
-    return items
-  }, [registeredProjects])
+  const projectNavItems = useMemo<ProjectNavItem[]>(
+    () => registeredProjects.map((entry) => ({ kind: 'project', entry })),
+    [registeredProjects]
+  )
+  const navItems = useMemo<NavItem[]>(() => [...PRIMARY_NAV_ITEMS, ...projectNavItems], [projectNavItems])
 
-  useLayoutEffect(() => {
-    scrollRef.current?.scrollChildIntoView(`pt-item-${selected}`)
-  }, [selected])
+  const projectSelectionItems = useMemo<SelectionItem[]>(
+    () =>
+      projectNavItems.map((item) => {
+        const entry = item.entry
+        return {
+          key: `project:${entry.account}:${entry.path}`,
+          icon: '◆',
+          iconColor: '#22d3ee',
+          label: path.basename(entry.path),
+          description: `${entry.path} · ${entry.account}`
+        }
+      }),
+    [projectNavItems]
+  )
 
   useKeyboard((key) => {
     const { name } = key
@@ -106,6 +121,7 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
             modelKey: profile.modelKey,
             modelUrl: profile.modelUrl,
             maxConcurrentIssues: profile.maxConcurrentIssues,
+            sessionRecorderSetupDone: profile.sessionRecorderSetupDone,
             _accountName: entry.account
           })
         } catch (err: any) {
@@ -125,7 +141,12 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
       await execFileAsync('git', ['clone', '--depth=1', DEMO_REPO_URL, dir])
       await rm(path.join(dir, '.git'), { recursive: true, force: true })
       await execFileAsync('git', ['init'], { cwd: dir })
-      onComplete({ dir, isDemoProject: true, maxConcurrentIssues: DEFAULT_MAX_CONCURRENT })
+      onComplete({
+        dir,
+        isDemoProject: true,
+        maxConcurrentIssues: DEFAULT_MAX_CONCURRENT,
+        sessionRecorderSetupDone: true
+      })
     } catch (err: any) {
       setErrorBackStep('pick-parent')
       setError(err.stderr?.trim() || err.message)
@@ -171,92 +192,27 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
   }
 
   return (
-    <box flexDirection='column' flexGrow={1} gap={1}>
-      <scrollbox ref={scrollRef} flexGrow={1} scrollY focused={false} style={SCROLLBAR_STYLE}>
-        <box flexDirection='column' flexShrink={0} width='100%'>
-          {navItems.map((item, i) => {
-            const isActive = i === selected
-            const isHovered = hoveredIndex === i
-
-            if (item.kind === 'project') {
-              const isFirstProject = navItems[i - 1]?.kind !== 'project'
-              const label = path.basename(item.entry.path)
-              const desc = item.entry.path.length > 52 ? `…${item.entry.path.slice(-49)}` : item.entry.path
-              return (
-                <box key={`proj-${i}`} flexDirection='column'>
-                  {isFirstProject && (
-                    <box paddingLeft={1} paddingTop={1} paddingBottom={1}>
-                      <text fg='#6b7280' attributes={tuiAttrs({ dim: true })}>
-                        Recent projects
-                      </text>
-                    </box>
-                  )}
-                  <box
-                    id={`pt-item-${i}`}
-                    flexDirection='row'
-                    paddingLeft={1}
-                    paddingRight={1}
-                    paddingTop={0}
-                    paddingBottom={1}
-                    backgroundColor={isActive ? '#161b22' : isHovered ? '#21262d' : undefined}
-                    onMouseUp={clickHandler(() => handleSelect(i))}
-                    onMouseOver={() => setHoveredIndex(i)}
-                    onMouseOut={() => setHoveredIndex((v) => (v === i ? null : v))}
-                  >
-                    <box width={3} flexShrink={0}>
-                      <text fg='#22d3ee'>{isActive ? '❯' : ' '}</text>
-                    </box>
-                    <box flexDirection='column' flexGrow={1}>
-                      <text fg={isActive ? '#e6edf3' : '#c9d1d9'} attributes={tuiAttrs({ bold: isActive })}>
-                        {label}
-                      </text>
-                      <text fg='#484f58'>{desc}</text>
-                    </box>
-                    <box flexShrink={0} paddingLeft={1}>
-                      <text fg='#484f58'>{item.entry.account}</text>
-                    </box>
-                  </box>
-                </box>
-              )
-            }
-
-            const icon = item.kind === 'existing' ? '◆' : '◇'
-            const iconColor = item.kind === 'existing' ? '#22d3ee' : '#f59e0b'
-            const label = item.kind === 'existing' ? 'Setup existing project' : 'Try a demo'
-            const desc =
-              item.kind === 'existing'
-                ? 'Link an existing repository to Multiplayer'
-                : 'Clone and explore the Multiplayer demo app'
-
-            return (
-              <box
-                key={item.kind}
-                id={`pt-item-${i}`}
-                flexDirection='row'
-                paddingLeft={1}
-                paddingRight={1}
-                paddingTop={0}
-                paddingBottom={1}
-                backgroundColor={isActive ? '#161b22' : isHovered ? '#21262d' : undefined}
-                onMouseUp={clickHandler(() => handleSelect(i))}
-                onMouseOver={() => setHoveredIndex(i)}
-                onMouseOut={() => setHoveredIndex((v) => (v === i ? null : v))}
-              >
-                <box width={3} flexShrink={0}>
-                  <text fg={iconColor}>{isActive ? '❯' : icon}</text>
-                </box>
-                <box flexDirection='column' flexGrow={1}>
-                  <text fg={isActive ? '#e6edf3' : '#c9d1d9'} attributes={tuiAttrs({ bold: isActive })}>
-                    {label}
-                  </text>
-                  <text fg='#484f58'>{desc}</text>
-                </box>
-              </box>
-            )
-          })}
-        </box>
-      </scrollbox>
-
+    <box flexDirection='column' flexGrow={1} flexShrink={1} gap={1} overflow={'hidden' as const}>
+      <SelectionList
+        items={PRIMARY_SELECTION_ITEMS}
+        selectedIndex={selected < PRIMARY_NAV_ITEMS.length ? selected : -1}
+        onSelect={handleSelect}
+        flexGrow={0}
+        scrollable={false}
+      />
+      {projectSelectionItems.length > 0 && (
+        <>
+          <box flexShrink={0}>
+            <text attributes={tuiAttrs({ bold: true })}>Recent projects</text>
+          </box>
+          <SelectionList
+            items={projectSelectionItems}
+            selectedIndex={selected >= PRIMARY_NAV_ITEMS.length ? selected - PRIMARY_NAV_ITEMS.length : -1}
+            onSelect={(idx) => handleSelect(idx + PRIMARY_NAV_ITEMS.length)}
+            flexGrow={1}
+          />
+        </>
+      )}
       <FooterHints hints='↑↓ navigate · Enter select · Click to select' />
     </box>
   ) as ReactElement
