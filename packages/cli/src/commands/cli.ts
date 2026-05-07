@@ -10,7 +10,7 @@ import {
   writeCredentials,
   writeProjectSettings,
   findRegisteredProject,
-  initEnvironment
+  initEnvironment,
 } from '../cli/profile.js'
 import { API_URL, DEFAULT_MAX_CONCURRENT } from '../config.js'
 import type { ParsedFlags } from '../cli/flags.js'
@@ -54,7 +54,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
     .description('Start the debugging agent')
     .option(
       '--headless',
-      'Run without TUI (structured log output, requires full config); also set via MULTIPLAYER_HEADLESS=true'
+      'Run without TUI (structured log output, requires full config); also set via MULTIPLAYER_HEADLESS=true',
     )
     .option('--profile <name>', 'Account to use (default: auto-detected from registered project)')
     .option('--url <url>', 'Multiplayer base API URL')
@@ -69,7 +69,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
     .option('--skip-sdk-check', 'Skip the Multiplayer SDK installation check/setup step')
     .option(
       '--health-port <port>',
-      'Port for HTTP health check endpoint (headless mode only); also set via MULTIPLAYER_HEALTH_PORT'
+      'Port for HTTP health check endpoint (headless mode only); also set via MULTIPLAYER_HEALTH_PORT',
     )
     .action((opts) => {
       initEnvironment(opts.url || process.env.MULTIPLAYER_URL)
@@ -95,7 +95,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
           opts.maxConcurrent ||
             process.env.MULTIPLAYER_MAX_CONCURRENT ||
             profile.maxConcurrentIssues ||
-            DEFAULT_MAX_CONCURRENT
+            DEFAULT_MAX_CONCURRENT,
         ),
         noGitBranch:
           opts.noGitBranch || process.env.MULTIPLAYER_NO_GIT_BRANCH === 'true' || profile.noGitBranch || false,
@@ -105,7 +105,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
         sessionRecorderStacks: profile.sessionRecorderStacks,
         isDemoProject: profile.isDemoProject,
         demoSetupDone: profile.demoSetupDone,
-        demoInstructionsDone: profile.demoInstructionsDone
+        demoInstructionsDone: profile.demoInstructionsDone,
       }
 
       const rawHealthPort = opts.healthPort || process.env.MULTIPLAYER_HEALTH_PORT
@@ -143,7 +143,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
         commitHash: opts.commitHash || process.env.COMMIT_HASH,
         repositoryUrl: opts.repositoryUrl || process.env.REPOSITORY_URL,
         releaseNotes: opts.releaseNotes || process.env.RELEASE_NOTES,
-        baseUrl: opts.baseUrl || process.env.BASE_URL
+        baseUrl: opts.baseUrl || process.env.BASE_URL,
       }
       if (!options.apiKey) exitWithError('A Multiplayer personal user API key is required.')
       if (!options.service) exitWithError('A service name is required.')
@@ -167,7 +167,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
         service: opts.service || process.env.SERVICE_NAME,
         release: opts.release || process.env.RELEASE,
         environment: opts.environment || process.env.ENVIRONMENT,
-        baseUrl: opts.baseUrl || process.env.BASE_URL
+        baseUrl: opts.baseUrl || process.env.BASE_URL,
       }
       if (!options.apiKey) exitWithError('A Multiplayer personal user API key is required.')
       if (!options.service) exitWithError('A service name is required.')
@@ -190,7 +190,7 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
         apiKey: opts.apiKey || process.env.MULTIPLAYER_API_KEY,
         service: opts.service || process.env.SERVICE_NAME,
         release: opts.release || process.env.RELEASE,
-        baseUrl: opts.baseUrl || process.env.BASE_URL
+        baseUrl: opts.baseUrl || process.env.BASE_URL,
       }
       if (!options.apiKey) exitWithError('A Multiplayer personal user API key is required.')
       if (!options.service) exitWithError('A service name is required.')
