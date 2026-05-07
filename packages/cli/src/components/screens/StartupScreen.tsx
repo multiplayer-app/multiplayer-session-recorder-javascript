@@ -11,7 +11,7 @@ import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import type { AgentConfig } from '../../types/index.js'
 import { createApiService } from '../../services/api.service.js'
 import { API_URL } from '../../config.js'
-import { writeCredentials, addProject, writeProjectSettings, listAccounts } from '../../cli/profile.js'
+import { writeCredentials, addProject, writeProjectSettings, setProjectDemo, listAccounts } from '../../cli/profile.js'
 import { Logo } from '../Logo.js'
 import { ProjectTypeStep } from '../startup/ProjectTypeStep.js'
 import { AccountSelectStep } from '../startup/AccountSelectStep.js'
@@ -27,6 +27,14 @@ import { DemoSetupStep } from '../startup/DemoSetupStep.js'
 import { DemoInstructionsStep } from '../startup/DemoInstructionsStep.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const DEMO_GIT_SETTINGS = {
+  commit: false,
+  branch_create: false,
+  pr_create: false,
+  push: false,
+  use_worktree: false,
+} as const
 
 function findUniqueDemoProjectName(existingProjects: Array<{ name: string }>): string {
   const names = new Set(existingProjects.map((p) => p.name.toLowerCase()))
@@ -248,6 +256,7 @@ export function StartupScreen({
       // Project settings → <dir>/.multiplayer/settings.json
       if (next.dir) {
         addProject(next.dir, effectiveAccount)
+        if (next.isDemoProject) setProjectDemo(next.dir, true)
         writeProjectSettings(next.dir, {
           workspace: next.workspace,
           project: next.project,
@@ -256,6 +265,7 @@ export function StartupScreen({
           modelUrl: next.modelUrl,
           maxConcurrentIssues: next.maxConcurrentIssues,
           sessionRecorderSetupDone: next.sessionRecorderSetupDone,
+          ...(next.isDemoProject ? { git: DEMO_GIT_SETTINGS } : {}),
         })
       }
 
@@ -336,6 +346,7 @@ export function StartupScreen({
           setConfig(next)
           if (next.dir) {
             addProject(next.dir, account)
+            if (next.isDemoProject) setProjectDemo(next.dir, true)
             writeProjectSettings(next.dir, {
               workspace: next.workspace,
               project: next.project,
@@ -344,6 +355,7 @@ export function StartupScreen({
               modelUrl: next.modelUrl,
               maxConcurrentIssues: next.maxConcurrentIssues,
               sessionRecorderSetupDone: next.sessionRecorderSetupDone,
+              ...(next.isDemoProject ? { git: DEMO_GIT_SETTINGS } : {}),
             })
           }
           setStep(nextStep('project-select', next))
