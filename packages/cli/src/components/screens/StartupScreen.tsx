@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useLayoutEffect, type ReactElement } from 'react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
-import { useKeyboard } from '@opentui/react'
+import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import type { AgentConfig } from '../../types/index.js'
 import { createApiService } from '../../services/api.service.js'
 import { API_URL } from '../../config.js'
@@ -208,6 +208,7 @@ export function StartupScreen({
   const [oauthWorkspaces, setOauthWorkspaces] = useState<SelectableWorkspace[]>([])
   const [fetchingWorkspaces, setFetchingWorkspaces] = useState(false)
   const [oauthApi, setOauthApi] = useState<ReturnType<typeof createApiService> | null>(null)
+  const { width: termWidth, height: termHeight } = useTerminalDimensions()
 
   // ── Navigation ────────────────────────────────────────────────────────────
 
@@ -419,11 +420,11 @@ export function StartupScreen({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <box flexDirection='column' padding={1}>
+    <box flexDirection='column' width={termWidth} height={termHeight} padding={1} overflow={'hidden' as const}>
       <Logo />
-      <box flexDirection='row' gap={1} alignItems='stretch'>
+      <box flexDirection='row' gap={1} alignItems='stretch' flexGrow={1} flexShrink={1} overflow={'hidden' as const}>
         {/* Left sidebar */}
-        <box width={STEP_PANEL_WIDTH} flexDirection='column'>
+        <box width={STEP_PANEL_WIDTH} flexShrink={0} flexDirection='column' overflow={'hidden' as const}>
           <text attributes={tuiAttrs({ bold: true })}>Setup Steps</text>
           {sidebarSteps.map((entry) => {
             const marker = entry.isDone ? '✓' : entry.isCurrent ? '❯' : '·'
@@ -442,7 +443,7 @@ export function StartupScreen({
         </box>
 
         {/* Right content pane */}
-        <box flexDirection='column' flexGrow={1}>
+        <box flexDirection='column' flexGrow={1} flexShrink={1} overflow={'hidden' as const}>
           <box flexDirection='column' flexShrink={0} marginBottom={1}>
             <text attributes={tuiAttrs({ bold: true })}>{label.title}</text>
             <text attributes={tuiAttrs({ dim: true })}>{label.description}</text>
@@ -462,7 +463,6 @@ export function StartupScreen({
               paddingBottom={0}
               marginBottom={1}
               flexDirection='column'
-              flexGrow={1}
               flexShrink={0}
               gap={1}
             >
@@ -488,56 +488,58 @@ export function StartupScreen({
             </box>
           )}
 
-          {step === 'project-type' && <ProjectTypeStep onComplete={(updates) => handleAuthComplete(updates)} />}
-          {step === 'account-select' && (
-            <AccountSelectStep
-              url={config.url || API_URL}
-              onComplete={(updates) => handleAuthComplete(updates)}
-              onAddNew={() => setStep('auth-method')}
-              onBack={goBack}
-            />
-          )}
-          {step === 'auth-method' && (
-            <AuthMethodStep
-              config={config}
-              url={config.url || API_URL}
-              profileName={profileName}
-              onComplete={(updates) => handleAuthComplete(updates)}
-              onBack={goBack}
-            />
-          )}
-          {step === 'project-select' && (
-            <ProjectSelectStep
-              workspaces={oauthWorkspaces}
-              profileName={profileName}
-              loading={fetchingWorkspaces}
-              onComplete={advance}
-              onBack={goBack}
-              onCreateWorkspace={
-                oauthApi
-                  ? async (name, handle) => {
-                      const ws = await oauthApi.createWorkspace(name, handle)
-                      return { _id: ws._id!, name: ws.name!, projects: [] }
-                    }
-                  : undefined
-              }
-              onCreateProject={
-                oauthApi ? async (workspaceId, name) => oauthApi.createProject(workspaceId, name) : undefined
-              }
-            />
-          )}
-          {step === 'workspace' && <WorkspaceStep config={config} onComplete={advance} />}
-          {step === 'directory' && <DirectoryStep config={config} onComplete={advance} />}
-          {step === 'model' && <ModelStep config={config} onComplete={advance} />}
-          {step === 'rate-limits' && <RateLimitsStep config={config} onComplete={advance} />}
-          {step === 'demo-setup' && <DemoSetupStep config={config} onComplete={advance} onBack={goBack} />}
-          {step === 'demo-instructions' && (
-            <DemoInstructionsStep config={config} onComplete={advance} onBack={goBack} />
-          )}
-          {step === 'session-recorder' && <MultiplayerSdkStep config={config} onComplete={advance} onBack={goBack} />}
-          {step === 'connecting' && (
-            <ConnectingStep config={config as AgentConfig} onComplete={onComplete} onBack={goBack} />
-          )}
+          <box flexDirection='column' flexGrow={1} flexShrink={1} overflow={'hidden' as const}>
+            {step === 'project-type' && <ProjectTypeStep onComplete={(updates) => handleAuthComplete(updates)} />}
+            {step === 'account-select' && (
+              <AccountSelectStep
+                url={config.url || API_URL}
+                onComplete={(updates) => handleAuthComplete(updates)}
+                onAddNew={() => setStep('auth-method')}
+                onBack={goBack}
+              />
+            )}
+            {step === 'auth-method' && (
+              <AuthMethodStep
+                config={config}
+                url={config.url || API_URL}
+                profileName={profileName}
+                onComplete={(updates) => handleAuthComplete(updates)}
+                onBack={goBack}
+              />
+            )}
+            {step === 'project-select' && (
+              <ProjectSelectStep
+                workspaces={oauthWorkspaces}
+                profileName={profileName}
+                loading={fetchingWorkspaces}
+                onComplete={advance}
+                onBack={goBack}
+                onCreateWorkspace={
+                  oauthApi
+                    ? async (name, handle) => {
+                        const ws = await oauthApi.createWorkspace(name, handle)
+                        return { _id: ws._id!, name: ws.name!, projects: [] }
+                      }
+                    : undefined
+                }
+                onCreateProject={
+                  oauthApi ? async (workspaceId, name) => oauthApi.createProject(workspaceId, name) : undefined
+                }
+              />
+            )}
+            {step === 'workspace' && <WorkspaceStep config={config} onComplete={advance} />}
+            {step === 'directory' && <DirectoryStep config={config} onComplete={advance} />}
+            {step === 'model' && <ModelStep config={config} onComplete={advance} />}
+            {step === 'rate-limits' && <RateLimitsStep config={config} onComplete={advance} />}
+            {step === 'demo-setup' && <DemoSetupStep config={config} onComplete={advance} onBack={goBack} />}
+            {step === 'demo-instructions' && (
+              <DemoInstructionsStep config={config} onComplete={advance} onBack={goBack} />
+            )}
+            {step === 'session-recorder' && <MultiplayerSdkStep config={config} onComplete={advance} onBack={goBack} />}
+            {step === 'connecting' && (
+              <ConnectingStep config={config as AgentConfig} onComplete={onComplete} onBack={goBack} />
+            )}
+          </box>
         </box>
       </box>
     </box>
