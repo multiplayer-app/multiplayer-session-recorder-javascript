@@ -237,7 +237,11 @@ export function StartupScreen({
           modelKey: next.modelKey,
           modelUrl: next.modelUrl,
           maxConcurrentIssues: next.maxConcurrentIssues,
-          sessionRecorderSetupDone: next.sessionRecorderSetupDone
+          sessionRecorderSetupDone: next.sessionRecorderSetupDone,
+          sessionRecorderStacks: next.sessionRecorderStacks,
+          isDemoProject: next.isDemoProject,
+          demoSetupDone: next.demoSetupDone,
+          demoInstructionsDone: next.demoInstructionsDone
         })
       }
 

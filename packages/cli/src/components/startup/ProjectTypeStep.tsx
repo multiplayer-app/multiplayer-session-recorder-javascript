@@ -122,6 +122,10 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
             modelUrl: profile.modelUrl,
             maxConcurrentIssues: profile.maxConcurrentIssues,
             sessionRecorderSetupDone: profile.sessionRecorderSetupDone,
+            sessionRecorderStacks: profile.sessionRecorderStacks,
+            isDemoProject: profile.isDemoProject,
+            demoSetupDone: profile.demoSetupDone,
+            demoInstructionsDone: profile.demoInstructionsDone,
             _accountName: entry.account
           })
         } catch (err: any) {

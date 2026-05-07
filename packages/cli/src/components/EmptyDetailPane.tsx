@@ -2,12 +2,19 @@ import type { ReactElement } from 'react'
 import { tuiAttrs } from '../lib/tuiAttrs.js'
 
 import { ACCENT, BRAND_MARK_PRIMARY, FG_DIM, FG_HINT } from './shared/tuiTheme.js'
+import { DemoRunInstructions } from './DemoRunInstructions.js'
 
 interface Props {
   hasSessions: boolean
+  isDemoProject?: boolean
+  demoDir?: string
+  workspace?: string
+  project?: string
 }
 
-function EmptyDetailPaneImpl({ hasSessions }: Props): ReactElement {
+function EmptyDetailPaneImpl({ hasSessions, isDemoProject, demoDir, workspace, project }: Props): ReactElement {
+  const showDemo = isDemoProject && !!demoDir
+
   return (
     <box flexDirection='column' flexGrow={1} justifyContent='center' alignItems='center' gap={1}>
       {/* Brand */}
@@ -49,6 +56,12 @@ function EmptyDetailPaneImpl({ hasSessions }: Props): ReactElement {
           </>
         )}
       </box>
+
+      {showDemo && (
+        <box flexDirection='column' marginTop={2} width='80%' alignItems='stretch'>
+          <DemoRunInstructions dir={demoDir!} workspace={workspace} project={project} alignCenter={true} />
+        </box>
+      )}
     </box>
   ) as ReactElement
 }

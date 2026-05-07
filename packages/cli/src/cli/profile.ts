@@ -32,6 +32,14 @@ export interface ProjectSettings {
   skipSdkCheck?: boolean
   /** True once the user has either completed or explicitly skipped the Session Recorder SDK step. */
   sessionRecorderSetupDone?: boolean
+  /** Stacks detected during onboarding that need session-recorder SDK setup. */
+  sessionRecorderStacks?: import('../session-recorder/detectStacks.js').DetectedStack[]
+  /** True for projects cloned through the "Try a demo" setup path. */
+  isDemoProject?: boolean
+  /** Whether the demo app env files have been populated with generated SDK keys. */
+  demoSetupDone?: boolean
+  /** Whether the user has reviewed the demo app run instructions. */
+  demoInstructionsDone?: boolean
 }
 
 /**

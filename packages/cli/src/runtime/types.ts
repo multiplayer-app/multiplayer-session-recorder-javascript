@@ -34,6 +34,7 @@ export interface SessionMessage {
 }
 
 export interface SessionDetail extends SessionSummary {
+  id: string
   messages: SessionMessage[]
   hasMore?: boolean
   model?: string
