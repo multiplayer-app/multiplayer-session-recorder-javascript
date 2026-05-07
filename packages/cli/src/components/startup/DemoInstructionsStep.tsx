@@ -3,7 +3,8 @@ import { ScrollBoxRenderable } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import type { AgentConfig } from '../../types/index.js'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
-import { ActionButton, FooterHints } from '../shared/index.js'
+import { openUrl } from '../../lib/openUrl.js'
+import { ActionButton, FooterHints, clickHandler } from '../shared/index.js'
 
 interface Props {
   config: Partial<AgentConfig>
@@ -42,6 +43,10 @@ export function DemoInstructionsStep({ config, onComplete, onBack }: Props): Rea
   })
 
   const dir = config.dir ?? '<demo-app-directory>'
+  const agentsUrl =
+    config.workspace && config.project
+      ? `https://go.multiplayer.app/project/${config.workspace}/${config.project}/default/agents`
+      : null
 
   return (
     <box flexDirection='column' flexGrow={1} flexShrink={1} overflow={'hidden' as const}>
@@ -56,11 +61,8 @@ export function DemoInstructionsStep({ config, onComplete, onBack }: Props): Rea
             <CommandLine command={`cd ${dir}`} />
             <CommandLine command='npm run dev' />
           </box>
-          <text attributes={tuiAttrs({ dim: true })}>
-            Dependencies are already installed (npm install ran during setup).
-          </text>
 
-          <box flexDirection='column' marginTop={1} gap={0}>
+          <box flexDirection='column' gap={0}>
             <text>
               Frontend: <span fg='#22d3ee'>http://localhost:5173</span>
             </text>
@@ -70,7 +72,21 @@ export function DemoInstructionsStep({ config, onComplete, onBack }: Props): Rea
             <text attributes={tuiAttrs({ dim: true })}>Vite proxies /api requests to the backend.</text>
           </box>
 
-          <box flexDirection='column' marginTop={1} gap={1}>
+          <box flexDirection='column' gap={0}>
+            <text attributes={tuiAttrs({ bold: true })}>Open the Multiplayer dashboard</text>
+            <text attributes={tuiAttrs({ dim: true })}>
+              Watch agent activity for this project on the Multiplayer dashboard.
+            </text>
+            <box marginTop={1} onMouseUp={agentsUrl ? clickHandler(() => openUrl(agentsUrl)) : undefined}>
+              <text>
+                <span fg='#22d3ee' attributes={tuiAttrs({ underline: true })}>
+                  {agentsUrl ?? 'https://go.multiplayer.app'}
+                </span>
+              </text>
+            </box>
+          </box>
+
+          <box flexDirection='column' gap={1}>
             <text attributes={tuiAttrs({ bold: true })}>Optional: connect your own Git remote</text>
             <text attributes={tuiAttrs({ dim: true })}>
               The demo app is reinitialized without the template repository remote. Add your own repository before

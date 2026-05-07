@@ -7,7 +7,7 @@ import path from 'path'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import type { AgentConfig } from '../../types/index.js'
 import { DEFAULT_MAX_CONCURRENT, DEMO_REPO_URL } from '../../config.js'
-import { FooterHints, SelectionList, type SelectionItem } from '../shared/index.js'
+import { AnimatedLoading, FooterHints, SelectionList, type SelectionItem } from '../shared/index.js'
 import { DirectoryStep } from './DirectoryStep.js'
 import { listProjects, loadProfile, touchProject, type ProjectEntry } from '../../cli/profile.js'
 import { OAuthManager } from '../../auth/oauth-manager.js'
@@ -168,8 +168,7 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
   if (subStep === 'cloning') {
     return (
       <box flexDirection='column' gap={1}>
-        <text fg='#f59e0b'>◌ Cloning example project...</text>
-        <text attributes={tuiAttrs({ dim: true })}>{DEMO_REPO_URL}</text>
+        <AnimatedLoading title='Cloning example project' subtitle={DEMO_REPO_URL} color='#22d3ee' />
       </box>
     ) as ReactElement
   }

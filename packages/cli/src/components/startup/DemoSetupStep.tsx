@@ -8,7 +8,7 @@ import crypto from 'crypto'
 import type { AgentConfig } from '../../types/index.js'
 import { createApiService } from '../../services/api.service.js'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
-import { FooterHints, StatusIcon } from '../shared/index.js'
+import { AnimatedLoading, FooterHints, StatusIcon } from '../shared/index.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -120,19 +120,28 @@ export function DemoSetupStep({ config, onComplete, onBack }: Props): ReactEleme
   return (
     <box flexDirection='column' gap={1}>
       <text attributes={tuiAttrs({ bold: true })}>Preparing Demo App</text>
-      <box flexDirection='row' gap={2} marginTop={1}>
-        <StatusIcon status={status === 'error' ? 'error' : status === 'done' ? 'success' : 'loading'} />
-        <text>
-          {status === 'installing'
-            ? 'Installing dependencies (npm install)...'
-            : status === 'done'
-              ? 'Demo app is ready.'
-              : 'Configuring the cloned demo app...'}
-        </text>
-      </box>
-      <text attributes={tuiAttrs({ dim: true })}>
-        {status === 'installing' ? 'This can take a minute or two.' : 'This may take a few seconds.'}
-      </text>
+      {status === 'installing' ? (
+        <box marginTop={1}>
+          <AnimatedLoading
+            title='Installing dependencies...'
+            subtitle='This can take a minute or two.'
+            color='#f59e0b'
+          />
+        </box>
+      ) : status === 'preparing' ? (
+        <box marginTop={1}>
+          <AnimatedLoading
+            title='Configuring the cloned demo app...'
+            subtitle='This may take a few seconds.'
+            color='#22d3ee'
+          />
+        </box>
+      ) : (
+        <box flexDirection='row' gap={2} marginTop={1}>
+          <StatusIcon status={status === 'error' ? 'error' : 'success'} />
+          <text>{status === 'done' ? 'Demo app is ready.' : 'Setup failed.'}</text>
+        </box>
+      )}
 
       {error && (
         <box flexDirection='column' gap={1} marginTop={1}>
