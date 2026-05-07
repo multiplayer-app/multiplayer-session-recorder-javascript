@@ -52,14 +52,7 @@ export function DemoInstructionsStep({ config, onComplete, onBack }: Props): Rea
             The demo includes a Vite client and an Express server. Start both from the cloned app root.
           </text>
 
-          <box
-            flexDirection='column'
-            border={true}
-            borderStyle='rounded'
-            borderColor='#30363d'
-            padding={1}
-            marginTop={1}
-          >
+          <box flexDirection='column' border={true} borderStyle='rounded' borderColor='#30363d' padding={1}>
             <CommandLine command={`cd ${dir}`} />
             <CommandLine command='npm install' />
             <CommandLine command='npm run dev' />

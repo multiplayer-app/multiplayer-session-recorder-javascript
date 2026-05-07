@@ -121,6 +121,7 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
             modelKey: profile.modelKey,
             modelUrl: profile.modelUrl,
             maxConcurrentIssues: profile.maxConcurrentIssues,
+            sessionRecorderSetupDone: profile.sessionRecorderSetupDone,
             _accountName: entry.account
           })
         } catch (err: any) {
@@ -140,7 +141,12 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
       await execFileAsync('git', ['clone', '--depth=1', DEMO_REPO_URL, dir])
       await rm(path.join(dir, '.git'), { recursive: true, force: true })
       await execFileAsync('git', ['init'], { cwd: dir })
-      onComplete({ dir, isDemoProject: true, maxConcurrentIssues: DEFAULT_MAX_CONCURRENT })
+      onComplete({
+        dir,
+        isDemoProject: true,
+        maxConcurrentIssues: DEFAULT_MAX_CONCURRENT,
+        sessionRecorderSetupDone: true
+      })
     } catch (err: any) {
       setErrorBackStep('pick-parent')
       setError(err.stderr?.trim() || err.message)
