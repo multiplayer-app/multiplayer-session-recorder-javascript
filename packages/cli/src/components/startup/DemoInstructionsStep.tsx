@@ -54,9 +54,11 @@ export function DemoInstructionsStep({ config, onComplete, onBack }: Props): Rea
 
           <box flexDirection='column' border={true} borderStyle='rounded' borderColor='#30363d' padding={1}>
             <CommandLine command={`cd ${dir}`} />
-            <CommandLine command='npm install' />
             <CommandLine command='npm run dev' />
           </box>
+          <text attributes={tuiAttrs({ dim: true })}>
+            Dependencies are already installed (npm install ran during setup).
+          </text>
 
           <box flexDirection='column' marginTop={1} gap={0}>
             <text>

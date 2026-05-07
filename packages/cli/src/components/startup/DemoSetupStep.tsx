@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import { useKeyboard } from '@opentui/react'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
 import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
@@ -8,13 +10,15 @@ import { createApiService } from '../../services/api.service.js'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { FooterHints, StatusIcon } from '../shared/index.js'
 
+const execFileAsync = promisify(execFile)
+
 interface Props {
   config: Partial<AgentConfig>
   onComplete: (updates: Partial<AgentConfig>) => void
   onBack?: () => void
 }
 
-type Status = 'preparing' | 'done' | 'error'
+type Status = 'preparing' | 'installing' | 'done' | 'error'
 
 function updateEnvFile(filePath: string, updates: Record<string, string>): void {
   let content = ''
@@ -94,6 +98,10 @@ export function DemoSetupStep({ config, onComplete, onBack }: Props): ReactEleme
         })
 
         if (cancelled) return
+        setStatus('installing')
+        await execFileAsync('npm', ['install'], { cwd: dir, timeout: 300_000 })
+
+        if (cancelled) return
         setStatus('done')
         onComplete({ demoSetupDone: true, sessionRecorderSetupDone: true })
       } catch (err: unknown) {
@@ -114,9 +122,17 @@ export function DemoSetupStep({ config, onComplete, onBack }: Props): ReactEleme
       <text attributes={tuiAttrs({ bold: true })}>Preparing Demo App</text>
       <box flexDirection='row' gap={2} marginTop={1}>
         <StatusIcon status={status === 'error' ? 'error' : status === 'done' ? 'success' : 'loading'} />
-        <text>Configuring the cloned demo app...</text>
+        <text>
+          {status === 'installing'
+            ? 'Installing dependencies (npm install)...'
+            : status === 'done'
+              ? 'Demo app is ready.'
+              : 'Configuring the cloned demo app...'}
+        </text>
       </box>
-      <text attributes={tuiAttrs({ dim: true })}>This may take a few seconds.</text>
+      <text attributes={tuiAttrs({ dim: true })}>
+        {status === 'installing' ? 'This can take a minute or two.' : 'This may take a few seconds.'}
+      </text>
 
       {error && (
         <box flexDirection='column' gap={1} marginTop={1}>
