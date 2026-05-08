@@ -6,6 +6,7 @@ import { FocusedOutlineButton } from './shared/FocusedOutlineButton.js'
 import type { SessionDetail, SessionStatus, RateLimitState } from '../runtime/types.js'
 import type { AgentChatStatus } from '../types/index.js'
 import type { GitSettings } from '../cli/profile.js'
+import { GitModeSection } from './shared/GitModeSection.js'
 import {
   ACCENT,
   BORDER_MUTED,
@@ -67,31 +68,6 @@ interface Props {
   gitSettings?: GitSettings
   isFocused: boolean
   onOpenSettings?: () => void
-}
-
-const GIT_FIELD_LABELS: { key: keyof GitSettings; label: string }[] = [
-  { key: 'commit', label: 'Commit' },
-  { key: 'branch_create', label: 'Branch' },
-  { key: 'pr_create', label: 'PR' },
-  { key: 'push', label: 'Push' },
-  { key: 'use_worktree', label: 'Worktree' }
-]
-
-function GitSection({ git }: { git: GitSettings }): ReactElement {
-  return (
-    <box flexDirection='column' gap={0}>
-      <SectionTitle title='Git' />
-      {GIT_FIELD_LABELS.map(({ key, label }) => {
-        const on = git[key] ?? true
-        return (
-          <box key={key} flexDirection='row' justifyContent='space-between'>
-            <text fg={FG_DIM}>{label}</text>
-            <text fg={on ? SEM_GREEN : FG_DIM}>{on ? 'on' : 'off'}</text>
-          </box>
-        )
-      })}
-    </box>
-  ) as ReactElement
 }
 
 function SectionTitle({ title }: { title: string }): ReactElement {
@@ -194,7 +170,7 @@ function ContextSidebarImpl({
               </box>
             </box>
 
-            {gitSettings && <GitSection git={gitSettings} />}
+            {gitSettings && <GitModeSection git={gitSettings} />}
           </box>
         </scrollbox>
 
@@ -316,7 +292,7 @@ function ContextSidebarImpl({
             </box>
           </box>
 
-          {gitSettings && <GitSection git={gitSettings} />}
+          {gitSettings && <GitModeSection git={gitSettings} />}
         </box>
       </scrollbox>
       {actionButtons}
