@@ -6,6 +6,11 @@ import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import type { IAgent } from '../types/index.js'
 import type { GitSettings } from '../cli/profile.js'
 import {
+  GIT_MODE_OPTIONS as SHARED_GIT_MODE_OPTIONS,
+  GIT_MODE_PRESETS,
+  detectGitMode
+} from '../lib/gitMode.js'
+import {
   Checkbox,
   CheckboxGroup,
   checkboxGroupKeys,
@@ -46,13 +51,16 @@ type Focus = { area: 'list'; idx: number } | { area: 'apply' } | { area: 'cancel
 const AUTO_RESOLVE_KEY = 'auto-resolve'
 
 const GIT_FIELDS: { key: keyof GitSettings; rowKey: string; label: string }[] = [
-  { key: 'commit', rowKey: 'git-commit', label: 'Commit changes' },
+  { key: 'use_worktree', rowKey: 'git-use_worktree', label: 'Use worktree' },
   { key: 'branch_create', rowKey: 'git-branch_create', label: 'Create branch' },
-  { key: 'pr_create', rowKey: 'git-pr_create', label: 'Create pull request' },
+  { key: 'commit', rowKey: 'git-commit', label: 'Commit changes' },
   { key: 'push', rowKey: 'git-push', label: 'Push to remote' },
-  { key: 'use_worktree', rowKey: 'git-use_worktree', label: 'Use worktree' }
+  { key: 'pr_create', rowKey: 'git-pr_create', label: 'Create pull request' }
 ]
-const GIT_ROW_KEYS = GIT_FIELDS.map((f) => f.rowKey)
+
+const GIT_MODE_OPTIONS = SHARED_GIT_MODE_OPTIONS.map((o) => ({ ...o, rowKey: `git-mode-${o.mode}` }))
+
+const GIT_ADVANCED_KEY = 'git-advanced'
 
 function buildIssueSubscription(
   env: CheckboxSelection,
@@ -95,9 +103,11 @@ export function SettingsPanel({
   const [envDim, setEnvDim] = useState<CheckboxSelection>({ mode: 'all' })
   const [compDim, setCompDim] = useState<CheckboxSelection>({ mode: 'all' })
   const [autoResolve, setAutoResolve] = useState(false)
-  const [gitState, setGitState] = useState<GitSettings>({})
+  const [gitState, setGitState] = useState<GitSettings>(() => initialGitSettings ?? {})
+  const [gitAdvanced, setGitAdvanced] = useState<boolean>(() => detectGitMode(initialGitSettings ?? {}) === null)
   const [focus, setFocus] = useState<Focus>({ area: 'list', idx: 0 })
   const listScrollRef = useRef<ScrollBoxRenderable | null>(null)
+  const currentGitMode = useMemo(() => detectGitMode(gitState), [gitState])
 
   const modalMaxHeight = Math.max(14, height - 4)
 
@@ -109,7 +119,9 @@ export function SettingsPanel({
   }, [initialSettings, environments, components])
 
   useEffect(() => {
-    setGitState(initialGitSettings ?? {})
+    const next = initialGitSettings ?? {}
+    setGitState(next)
+    setGitAdvanced(detectGitMode(next) === null)
   }, [initialGitSettings])
 
   const envItems: CheckboxItem[] = useMemo(
@@ -124,11 +136,13 @@ export function SettingsPanel({
   const flatKeys = useMemo<string[]>(
     () => [
       AUTO_RESOLVE_KEY,
-      ...GIT_ROW_KEYS,
+      ...GIT_MODE_OPTIONS.map((o) => o.rowKey),
+      GIT_ADVANCED_KEY,
+      ...(gitAdvanced ? GIT_FIELDS.map((f) => f.rowKey) : []),
       ...checkboxGroupKeys('env', envItems),
       ...checkboxGroupKeys('comp', compItems)
     ],
-    [envItems, compItems]
+    [envItems, compItems, gitAdvanced]
   )
 
   const lastListIdx = Math.max(0, flatKeys.length - 1)
@@ -164,6 +178,15 @@ export function SettingsPanel({
     (key: string) => {
       if (key === AUTO_RESOLVE_KEY) {
         setAutoResolve((v) => !v)
+        return
+      }
+      const modeOption = GIT_MODE_OPTIONS.find((o) => o.rowKey === key)
+      if (modeOption) {
+        setGitState({ ...GIT_MODE_PRESETS[modeOption.mode] })
+        return
+      }
+      if (key === GIT_ADVANCED_KEY) {
+        setGitAdvanced((v) => !v)
         return
       }
       const gitField = GIT_FIELDS.find((f) => f.rowKey === key)
@@ -351,21 +374,66 @@ export function SettingsPanel({
               maxLabelWidth={maxLabelWidth}
             />
 
-            <text marginTop={1} fg={FG_HINT} attributes={tuiAttrs({ bold: true })}>
-              Git operations
-            </text>
-            {GIT_FIELDS.map((field) => (
+            <box marginTop={1} flexDirection='row' gap={1}>
+              <text fg={FG_HINT} attributes={tuiAttrs({ bold: true })}>
+                Git operations
+              </text>
+              {currentGitMode === null && (
+                <text fg={FG_HINT} attributes={tuiAttrs({ dim: true })}>
+                  (custom)
+                </text>
+              )}
+            </box>
+            {GIT_MODE_OPTIONS.map((opt) => (
               <Checkbox
-                key={field.rowKey}
-                rowKey={field.rowKey}
-                label={field.label}
-                state={(gitState[field.key] ?? true) ? 'on' : 'off'}
-                focused={focusedKey === field.rowKey}
-                onActivate={() => setGitState((g) => ({ ...g, [field.key]: !(g[field.key] ?? true) }))}
-                onFocus={() => setFocusByKey(field.rowKey)}
+                key={opt.rowKey}
+                rowKey={opt.rowKey}
+                label={opt.label}
+                desc={opt.desc}
+                state={currentGitMode === opt.mode ? 'on' : 'off'}
+                focused={focusedKey === opt.rowKey}
+                onActivate={() => setGitState({ ...GIT_MODE_PRESETS[opt.mode] })}
+                onFocus={() => setFocusByKey(opt.rowKey)}
                 maxLabelWidth={maxLabelWidth}
               />
             ))}
+            <box
+              id={`cb-${GIT_ADVANCED_KEY}`}
+              flexDirection='row'
+              gap={1}
+              paddingLeft={1}
+              border={true}
+              borderStyle='rounded'
+              borderColor={focusedKey === GIT_ADVANCED_KEY ? ACCENT : 'transparent'}
+              onMouseUp={(e: MouseEvent) => {
+                if (e.button !== MouseButton.LEFT) return
+                e.stopPropagation()
+                setFocusByKey(GIT_ADVANCED_KEY)
+                setGitAdvanced((v) => !v)
+              }}
+            >
+              <text fg={ACCENT}>{gitAdvanced ? '▾' : '▸'}</text>
+              <text fg={FG_HINT} attributes={tuiAttrs({ dim: !gitAdvanced })}>
+                Advanced — fine-tune individual steps
+              </text>
+            </box>
+            {gitAdvanced &&
+              GIT_FIELDS.map((field) => {
+                const on = gitState[field.key] ?? true
+                const masterOff = field.key !== 'use_worktree' && (gitState.use_worktree ?? true) === false
+                return (
+                  <Checkbox
+                    key={field.rowKey}
+                    rowKey={field.rowKey}
+                    label={masterOff ? `${field.label} (no effect — worktree off)` : field.label}
+                    state={on ? 'on' : 'off'}
+                    focused={focusedKey === field.rowKey}
+                    onActivate={() => setGitState((g) => ({ ...g, [field.key]: !(g[field.key] ?? true) }))}
+                    onFocus={() => setFocusByKey(field.rowKey)}
+                    maxLabelWidth={maxLabelWidth}
+                  />
+                )
+              })}
 
             <CheckboxGroup
               name='Environments'
