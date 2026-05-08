@@ -11,7 +11,14 @@ import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import type { AgentConfig } from '../../types/index.js'
 import { createApiService } from '../../services/api.service.js'
 import { API_URL } from '../../config.js'
-import { writeCredentials, addProject, writeProjectSettings, setProjectDemo, listAccounts } from '../../cli/profile.js'
+import {
+  writeCredentials,
+  addProject,
+  writeProjectSettings,
+  setProjectDemo,
+  listAccounts,
+  readProjectSettings
+} from '../../cli/profile.js'
 import { Logo } from '../Logo.js'
 import { ProjectTypeStep } from '../startup/ProjectTypeStep.js'
 import { AccountSelectStep } from '../startup/AccountSelectStep.js'
@@ -35,6 +42,15 @@ const DEMO_GIT_SETTINGS = {
   push: false,
   use_worktree: false,
 } as const
+
+/**
+ * Returns `{ git: DEMO_GIT_SETTINGS }` only if the project hasn't persisted git settings yet.
+ * Once the user has toggled them via the Settings panel, we must not overwrite them on every
+ * startup-flow advance.
+ */
+function seedDemoGitIfUnset(dir: string): { git?: typeof DEMO_GIT_SETTINGS } {
+  return readProjectSettings(dir).git === undefined ? { git: DEMO_GIT_SETTINGS } : {}
+}
 
 function findUniqueDemoProjectName(existingProjects: Array<{ name: string }>): string {
   const names = new Set(existingProjects.map((p) => p.name.toLowerCase()))
@@ -266,7 +282,7 @@ export function StartupScreen({
           maxConcurrentIssues: next.maxConcurrentIssues,
           sessionRecorderSetupDone: next.sessionRecorderSetupDone,
           sessionRecorderStacks: next.sessionRecorderStacks,
-          ...(next.isDemoProject ? { git: DEMO_GIT_SETTINGS } : {}),
+          ...(next.isDemoProject ? seedDemoGitIfUnset(next.dir) : {}),
         })
       }
 
@@ -356,7 +372,7 @@ export function StartupScreen({
               modelUrl: next.modelUrl,
               maxConcurrentIssues: next.maxConcurrentIssues,
               sessionRecorderSetupDone: next.sessionRecorderSetupDone,
-              ...(next.isDemoProject ? { git: DEMO_GIT_SETTINGS } : {}),
+              ...(next.isDemoProject ? seedDemoGitIfUnset(next.dir) : {}),
             })
           }
           setStep(nextStep('project-select', next))

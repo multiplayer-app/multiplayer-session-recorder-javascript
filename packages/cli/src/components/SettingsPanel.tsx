@@ -4,6 +4,7 @@ import { MouseButton, ScrollBoxRenderable } from '@opentui/core'
 import { tuiAttrs } from '../lib/tuiAttrs.js'
 import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import type { IAgent } from '../types/index.js'
+import type { GitSettings } from '../cli/profile.js'
 import {
   Checkbox,
   CheckboxGroup,
@@ -44,6 +45,15 @@ type Focus = { area: 'list'; idx: number } | { area: 'apply' } | { area: 'cancel
 
 const AUTO_RESOLVE_KEY = 'auto-resolve'
 
+const GIT_FIELDS: { key: keyof GitSettings; rowKey: string; label: string }[] = [
+  { key: 'commit', rowKey: 'git-commit', label: 'Commit changes' },
+  { key: 'branch_create', rowKey: 'git-branch_create', label: 'Create branch' },
+  { key: 'pr_create', rowKey: 'git-pr_create', label: 'Create pull request' },
+  { key: 'push', rowKey: 'git-push', label: 'Push to remote' },
+  { key: 'use_worktree', rowKey: 'git-use_worktree', label: 'Use worktree' }
+]
+const GIT_ROW_KEYS = GIT_FIELDS.map((f) => f.rowKey)
+
 function buildIssueSubscription(
   env: CheckboxSelection,
   comp: CheckboxSelection
@@ -56,29 +66,36 @@ function buildIssueSubscription(
   return issueSubscription
 }
 
-export interface AdvancedSettingsPanelProps {
+export interface SettingsPanelProps {
   /** Pre-filled subscription + agent toggles when we have them (optional). */
   initialSettings?: Partial<IAgent['settings']>
+  /** Pre-filled git settings (the booleans persisted in <projectDir>/.multiplayer/settings.json under `git`). */
+  initialGitSettings?: GitSettings
   components: string[]
   environments: string[]
   loadError?: string | null
   onApply: (settings: Partial<NonNullable<IAgent['settings']>>) => void
+  /** Fires alongside onApply when git toggles change. */
+  onApplyGitSettings?: (git: GitSettings) => void
   onClose: () => void
 }
 
-export function AdvancedSettingsPanel({
+export function SettingsPanel({
   initialSettings,
+  initialGitSettings,
   components,
   environments,
   loadError,
   onApply,
+  onApplyGitSettings,
   onClose
-}: AdvancedSettingsPanelProps): ReactElement {
+}: SettingsPanelProps): ReactElement {
   const { width, height } = useTerminalDimensions()
 
   const [envDim, setEnvDim] = useState<CheckboxSelection>({ mode: 'all' })
   const [compDim, setCompDim] = useState<CheckboxSelection>({ mode: 'all' })
   const [autoResolve, setAutoResolve] = useState(false)
+  const [gitState, setGitState] = useState<GitSettings>({})
   const [focus, setFocus] = useState<Focus>({ area: 'list', idx: 0 })
   const listScrollRef = useRef<ScrollBoxRenderable | null>(null)
 
@@ -91,6 +108,10 @@ export function AdvancedSettingsPanel({
     setAutoResolve(Boolean(initialSettings?.autoResolveIssues))
   }, [initialSettings, environments, components])
 
+  useEffect(() => {
+    setGitState(initialGitSettings ?? {})
+  }, [initialGitSettings])
+
   const envItems: CheckboxItem[] = useMemo(
     () => environments.map((name) => ({ value: name, label: name })),
     [environments]
@@ -101,7 +122,12 @@ export function AdvancedSettingsPanel({
   )
 
   const flatKeys = useMemo<string[]>(
-    () => [AUTO_RESOLVE_KEY, ...checkboxGroupKeys('env', envItems), ...checkboxGroupKeys('comp', compItems)],
+    () => [
+      AUTO_RESOLVE_KEY,
+      ...GIT_ROW_KEYS,
+      ...checkboxGroupKeys('env', envItems),
+      ...checkboxGroupKeys('comp', compItems)
+    ],
     [envItems, compItems]
   )
 
@@ -130,13 +156,19 @@ export function AdvancedSettingsPanel({
       issueSubscription: buildIssueSubscription(envDim, compDim),
       autoResolveIssues: autoResolve
     })
+    onApplyGitSettings?.(gitState)
     onClose()
-  }, [envDim, compDim, autoResolve, onApply, onClose])
+  }, [envDim, compDim, autoResolve, gitState, onApply, onApplyGitSettings, onClose])
 
   const activateKey = useCallback(
     (key: string) => {
       if (key === AUTO_RESOLVE_KEY) {
         setAutoResolve((v) => !v)
+        return
+      }
+      const gitField = GIT_FIELDS.find((f) => f.rowKey === key)
+      if (gitField) {
+        setGitState((g) => ({ ...g, [gitField.key]: !(g[gitField.key] ?? true) }))
         return
       }
       if (key === 'env-all') {
@@ -287,7 +319,7 @@ export function AdvancedSettingsPanel({
       >
         <box flexDirection='column' flexShrink={0} gap={0}>
           <text fg={FG_TITLE} attributes={tuiAttrs({ bold: true })}>
-            Advanced settings
+            Settings
           </text>
           {loadError && (
             <text marginTop={1} fg={FG_ERROR_SOFT}>
@@ -306,12 +338,9 @@ export function AdvancedSettingsPanel({
           style={ADVANCED_SETTINGS_SCROLL_STYLE}
         >
           <box flexDirection='column' flexShrink={0} width='100%' gap={0}>
-            {environments.length === 0 && components.length === 0 && !loadError && (
-              <text fg={FG_HINT} marginBottom={1}>
-                No named environments/components from radar yet — you can still subscribe to all.
-              </text>
-            )}
-
+            <text marginTop={1} fg={FG_HINT} attributes={tuiAttrs({ bold: true })}>
+              Issues
+            </text>
             <Checkbox
               rowKey={AUTO_RESOLVE_KEY}
               label='Auto-resolve issues'
@@ -321,6 +350,22 @@ export function AdvancedSettingsPanel({
               onFocus={() => setFocusByKey(AUTO_RESOLVE_KEY)}
               maxLabelWidth={maxLabelWidth}
             />
+
+            <text marginTop={1} fg={FG_HINT} attributes={tuiAttrs({ bold: true })}>
+              Git operations
+            </text>
+            {GIT_FIELDS.map((field) => (
+              <Checkbox
+                key={field.rowKey}
+                rowKey={field.rowKey}
+                label={field.label}
+                state={(gitState[field.key] ?? true) ? 'on' : 'off'}
+                focused={focusedKey === field.rowKey}
+                onActivate={() => setGitState((g) => ({ ...g, [field.key]: !(g[field.key] ?? true) }))}
+                onFocus={() => setFocusByKey(field.rowKey)}
+                maxLabelWidth={maxLabelWidth}
+              />
+            ))}
 
             <CheckboxGroup
               name='Environments'

@@ -127,6 +127,7 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
             isDemoProject: entry.demo ?? false,
             demoSetupDone: entry.demo ? true : undefined,
             demoInstructionsDone: entry.demo ? true : undefined,
+            git: profile.git,
             _accountName: entry.account,
           })
         } catch (err: any) {
@@ -174,6 +175,7 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
             sessionRecorderSetupDone: true,
             isDemoProject: true,
             demoSetupDone: true,
+            git: profile.git,
             _accountName: registeredEntry.account,
           })
         } catch (err: any) {

@@ -14,9 +14,9 @@ export interface FooterHintItem {
   onPress?: () => void
 }
 
-/** Dashboard status bar: open issue subscription / agent advanced settings (keyboard `s`). */
-export function dashboardAdvancedSettingsHint(onPress: () => void): FooterHintItem {
-  return { id: 'advanced-settings', keys: 's', label: 'advanced settings', onPress }
+/** Dashboard status bar: open issue subscription / agent settings (keyboard `s`). */
+export function dashboardSettingsHint(onPress: () => void): FooterHintItem {
+  return { id: 'settings', keys: 's', label: 'settings', onPress }
 }
 
 interface Props {

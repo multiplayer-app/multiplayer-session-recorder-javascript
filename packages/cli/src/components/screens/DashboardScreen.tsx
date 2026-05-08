@@ -3,11 +3,12 @@ import type { KeyEvent } from '@opentui/core'
 import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import type { RuntimeState, SessionDetail } from '../../runtime/types.js'
 import type { AgentConfig, AgentChatStatus, LogEntry, IAgent } from '../../types/index.js'
-import { AdvancedSettingsPanel } from '../AdvancedSettingsPanel.js'
+import type { GitSettings } from '../../cli/profile.js'
+import { SettingsPanel } from '../SettingsPanel.js'
 import { DashboardHeader } from '../DashboardHeader.js'
 import { SessionListPane } from '../panes/SessionListPane.js'
 import { SessionDetailPane } from '../panes/SessionDetailPane.js'
-import { dashboardAdvancedSettingsHint } from '../panes/FooterHints.js'
+import { dashboardSettingsHint } from '../panes/FooterHints.js'
 import { ChatComposer } from '../ChatComposer.js'
 import { ContextSidebar } from '../ContextSidebar.js'
 import { LogsDock } from '../LogsDock.js'
@@ -45,6 +46,7 @@ interface Props {
   /** When true (e.g. quit dialog open), ignore keys so the overlay handles them. */
   suspendKeyboard?: boolean
   onEmitAgentSettings?: (settings: Partial<NonNullable<IAgent['settings']>>) => void
+  onUpdateGitSettings?: (git: GitSettings) => void
   onLoadRadarLists?: () => Promise<{ components: string[]; environments: string[] }>
 }
 
@@ -66,6 +68,7 @@ export function DashboardScreen({
   hasMoreSessions = false,
   suspendKeyboard = false,
   onEmitAgentSettings,
+  onUpdateGitSettings,
   onLoadRadarLists
 }: Props): ReactElement {
   // ── Dimensions ──────────────────────────────────────────────────────────────
@@ -88,12 +91,13 @@ export function DashboardScreen({
   const [focusedPane, setFocusedPane] = useState<FocusedPane>('list')
   const [showLogs, setShowLogs] = useState(false)
   const [narrowShowsDetail, setNarrowShowsDetail] = useState(false)
-  const [showAdvancedSettingsPanel, setShowAdvancedSettingsPanel] = useState(false)
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false)
   const [radarComponents, setRadarComponents] = useState<string[]>([])
   const [radarEnvironments, setRadarEnvironments] = useState<string[]>([])
   const [radarListError, setRadarListError] = useState<string | null>(null)
   /** Last agent settings applied from this UI (for repopulating the modal). */
-  const [advancedSettingsSnapshot, setAdvancedSettingsSnapshot] = useState<Partial<NonNullable<IAgent['settings']>>>({})
+  const [settingsSnapshot, setSettingsSnapshot] = useState<Partial<NonNullable<IAgent['settings']>>>({})
+  const [gitSettings, setGitSettings] = useState<GitSettings>(() => config.git ?? {})
 
   // ── Derived values ──────────────────────────────────────────────────────────
 
@@ -164,10 +168,10 @@ export function DashboardScreen({
     })
   }, [])
 
-  const openAdvancedSettingsPanel = useCallback(() => {
+  const openSettingsPanel = useCallback(() => {
     if (!onEmitAgentSettings || !onLoadRadarLists) return
     setRadarListError(null)
-    setShowAdvancedSettingsPanel(true)
+    setShowSettingsPanel(true)
     void onLoadRadarLists()
       .then(({ components, environments }) => {
         setRadarComponents(components)
@@ -194,7 +198,7 @@ export function DashboardScreen({
   useKeyboard(
     useCallback(
       (key: KeyEvent) => {
-        if (suspendKeyboard || showAdvancedSettingsPanel) return
+        if (suspendKeyboard || showSettingsPanel) return
         const { name } = key
 
         // ── Global shortcuts ──────────────────────────────────────────────
@@ -234,7 +238,7 @@ export function DashboardScreen({
 
         if (name === 's' || name === 'S') {
           if (onEmitAgentSettings && onLoadRadarLists) {
-            openAdvancedSettingsPanel()
+            openSettingsPanel()
             key.stopPropagation()
           }
           return
@@ -282,10 +286,10 @@ export function DashboardScreen({
         toggleLogs,
         isNarrow,
         toggleNarrowStack,
-        showAdvancedSettingsPanel,
+        showSettingsPanel,
         onEmitAgentSettings,
         onLoadRadarLists,
-        openAdvancedSettingsPanel
+        openSettingsPanel
       ]
     )
   )
@@ -329,7 +333,7 @@ export function DashboardScreen({
     )
 
     if (onEmitAgentSettings && onLoadRadarLists) {
-      base.splice(base.length - 2, 0, dashboardAdvancedSettingsHint(openAdvancedSettingsPanel))
+      base.splice(base.length - 2, 0, dashboardSettingsHint(openSettingsPanel))
     }
 
     return base
@@ -345,7 +349,7 @@ export function DashboardScreen({
     onQuitRequest,
     onEmitAgentSettings,
     onLoadRadarLists,
-    openAdvancedSettingsPanel
+    openSettingsPanel
   ])
 
   // Resolve display names for sidebar
@@ -360,7 +364,7 @@ export function DashboardScreen({
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  const canAdvancedSettings = Boolean(onEmitAgentSettings && onLoadRadarLists)
+  const canOpenSettings = Boolean(onEmitAgentSettings && onLoadRadarLists)
 
   return (
     <box position='relative' flexDirection='column' height={rows} width={columns} gap={0}>
@@ -429,8 +433,9 @@ export function DashboardScreen({
             rateLimitState={state.rateLimitState}
             activeCount={activeCount}
             resolvedCount={state.resolvedCount}
+            gitSettings={gitSettings}
             isFocused={false}
-            onOpenAdvancedSettings={canAdvancedSettings ? openAdvancedSettingsPanel : undefined}
+            onOpenSettings={canOpenSettings ? openSettingsPanel : undefined}
           />
         )}
       </box>
@@ -448,16 +453,21 @@ export function DashboardScreen({
       {/* Status bar - clean single line at bottom */}
       <StatusBar hints={hints} version={CLI_VERSION} />
 
-      {showAdvancedSettingsPanel && canAdvancedSettings && (
-        <AdvancedSettingsPanel
+      {showSettingsPanel && canOpenSettings && (
+        <SettingsPanel
           components={radarComponents}
           environments={radarEnvironments}
           loadError={radarListError}
-          initialSettings={advancedSettingsSnapshot}
-          onClose={() => setShowAdvancedSettingsPanel(false)}
+          initialSettings={settingsSnapshot}
+          initialGitSettings={gitSettings}
+          onClose={() => setShowSettingsPanel(false)}
           onApply={(settings) => {
-            setAdvancedSettingsSnapshot((prev) => ({ ...prev, ...settings }))
+            setSettingsSnapshot((prev) => ({ ...prev, ...settings }))
             onEmitAgentSettings?.(settings)
+          }}
+          onApplyGitSettings={(git) => {
+            setGitSettings((prev) => ({ ...prev, ...git }))
+            onUpdateGitSettings?.(git)
           }}
         />
       )}
