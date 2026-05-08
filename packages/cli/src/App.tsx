@@ -5,7 +5,7 @@ import { DashboardScreen } from './components/screens/DashboardScreen.js'
 import { QuitScreen } from './components/screens/QuitScreen.js'
 import { StartupScreen } from './components/screens/StartupScreen.js'
 import { RuntimeController } from './runtime/controller.js'
-import { clearCredentials } from './cli/profile.js'
+import { clearCredentials, type GitSettings } from './cli/profile.js'
 import { deleteProfileTokenData } from './auth/token-store.js'
 import type { AgentChatStatus, AgentConfig, LogEntry, IAgent } from './types/index.js'
 import type { QuitMode, RuntimeState, SessionDetail } from './runtime/types.js'
@@ -199,6 +199,10 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
     controllerRef.current?.emitAgentSettings(settings)
   }, [])
 
+  const handleUpdateGitSettings = useCallback((git: GitSettings) => {
+    controllerRef.current?.updateGitSettings(git)
+  }, [])
+
   const handleLoadRadarLists = useCallback(async () => {
     const controller = controllerRef.current
     if (!controller) return { components: [] as string[], environments: [] as string[] }
@@ -245,6 +249,7 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
             hasMoreSessions={hasMoreSessions}
             suspendKeyboard={screen === 'quit-confirm'}
             onEmitAgentSettings={handleEmitAgentSettings}
+            onUpdateGitSettings={handleUpdateGitSettings}
             onLoadRadarLists={handleLoadRadarLists}
           />
         </box>

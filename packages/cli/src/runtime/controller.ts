@@ -23,6 +23,7 @@ import {
 import * as GitService from '../services/git.service.js'
 import * as AiService from '../services/ai.service.js'
 import * as PrService from '../services/pr.service.js'
+import { writeProjectSettings, type GitSettings } from '../cli/profile.js'
 import type { SessionSummary, SessionDetail, SessionMessage, SessionStatus, RuntimeState, QuitMode } from './types.js'
 import {
   initialRuntimeState,
@@ -227,6 +228,16 @@ export class RuntimeController extends EventEmitter {
   emitAgentSettings(settings: Partial<NonNullable<IAgent['settings']>>): void {
     this.radar?.emitAgentUpdate({ settings })
     this.log('info', `Emitted agent settings update: ${JSON.stringify(settings)}`)
+  }
+
+  updateGitSettings(git: GitSettings): void {
+    const merged: GitSettings = { ...(this._config.git ?? {}), ...git }
+    this._config.git = merged
+    if (this._config.dir) {
+      writeProjectSettings(this._config.dir, { git: merged })
+    }
+    this.log('info', `Updated git settings: ${JSON.stringify(merged)}`)
+    this.emit('config-updated', this._config)
   }
 
   async listRadarDetections(): Promise<{ components: string[]; environments: string[] }> {
