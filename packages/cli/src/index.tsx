@@ -10,6 +10,7 @@ import { decodeApiKeyPayload, validateApiKey } from './services/radar.service.js
 import { refreshOAuthTokenIfNeeded } from './services/auth.service.js'
 
 import { startHealthServer } from './services/health.service.js'
+import { logToTui } from './lib/tuiSink.js'
 import type { AgentConfig } from './types/index.js'
 import type { ParsedFlags } from './cli/flags.js'
 
@@ -88,11 +89,23 @@ runCli(process.argv, ({ mode, initialConfig, healthPort, profileName }: ParsedFl
       })()
     } else {
       void (async () => {
+        process.on('uncaughtException', (err: Error) => {
+          logToTui('error', `Uncaught exception: ${err.message}`)
+        })
+        process.on('unhandledRejection', (reason: unknown) => {
+          const msg = reason instanceof Error ? reason.message : String(reason)
+          logToTui('error', `Unhandled rejection: ${msg}`)
+        })
+
         const renderer = await createCliRenderer({
           exitOnCtrlC: false,
           targetFps: 60,
           screenMode: 'alternate-screen',
-          consoleMode: 'console-overlay',
+          // Capture console output but don't render the overlay — it has no
+          // close affordance in our TUI. Errors are surfaced through LogsDock
+          // instead (see src/lib/tuiSink.ts).
+          consoleMode: 'disabled',
+          openConsoleOnError: false,
         })
 
         const exitApp = () => {
