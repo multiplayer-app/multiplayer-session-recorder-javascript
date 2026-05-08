@@ -28,6 +28,8 @@ export interface AgentConfig {
   demoSetupDone?: boolean
   /** Whether the user has reviewed the demo app run instructions. */
   demoInstructionsDone?: boolean
+  /** Granular git operation controls loaded from <projectDir>/.multiplayer/settings.json */
+  git?: import('../cli/profile.js').GitSettings
 }
 
 export interface IssueMetadata {

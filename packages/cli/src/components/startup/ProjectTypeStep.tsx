@@ -3,13 +3,14 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { rm } from 'fs/promises'
 import { useKeyboard } from '@opentui/react'
+import fs from 'fs'
 import path from 'path'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import type { AgentConfig } from '../../types/index.js'
 import { DEFAULT_MAX_CONCURRENT, DEMO_REPO_URL } from '../../config.js'
 import { AnimatedLoading, FooterHints, SelectionList, type SelectionItem } from '../shared/index.js'
 import { DirectoryStep } from './DirectoryStep.js'
-import { listProjects, loadProfile, touchProject, type ProjectEntry } from '../../cli/profile.js'
+import { listProjects, loadProfile, touchProject, readRootSettings, type ProjectEntry } from '../../cli/profile.js'
 import { OAuthManager } from '../../auth/oauth-manager.js'
 
 const execFileAsync = promisify(execFile)
@@ -31,15 +32,15 @@ const PRIMARY_SELECTION_ITEMS: SelectionItem[] = [
     icon: '◇',
     iconColor: '#f59e0b',
     label: 'Try a demo',
-    description: 'Clone and explore the Multiplayer demo app'
+    description: 'Clone and explore the Multiplayer demo app',
   },
   {
     key: 'existing',
     icon: '◆',
     iconColor: '#22d3ee',
     label: 'Setup existing project',
-    description: 'Link an existing repository to Multiplayer'
-  }
+    description: 'Link an existing repository to Multiplayer',
+  },
 ]
 
 export function ProjectTypeStep({ onComplete }: Props): ReactElement {
@@ -52,7 +53,7 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
 
   const projectNavItems = useMemo<ProjectNavItem[]>(
     () => registeredProjects.map((entry) => ({ kind: 'project', entry })),
-    [registeredProjects]
+    [registeredProjects],
   )
   const navItems = useMemo<NavItem[]>(() => [...PRIMARY_NAV_ITEMS, ...projectNavItems], [projectNavItems])
 
@@ -65,10 +66,10 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
           icon: '◆',
           iconColor: '#22d3ee',
           label: path.basename(entry.path),
-          description: `${entry.path} · ${entry.account}`
+          description: `${entry.path} · ${entry.account}`,
         }
       }),
-    [projectNavItems]
+    [projectNavItems],
   )
 
   useKeyboard((key) => {
@@ -123,10 +124,10 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
             maxConcurrentIssues: profile.maxConcurrentIssues,
             sessionRecorderSetupDone: profile.sessionRecorderSetupDone,
             sessionRecorderStacks: profile.sessionRecorderStacks,
-            isDemoProject: profile.isDemoProject,
-            demoSetupDone: profile.demoSetupDone,
-            demoInstructionsDone: profile.demoInstructionsDone,
-            _accountName: entry.account
+            isDemoProject: entry.demo ?? false,
+            demoSetupDone: entry.demo ? true : undefined,
+            demoInstructionsDone: entry.demo ? true : undefined,
+            _accountName: entry.account,
           })
         } catch (err: any) {
           setErrorBackStep('select')
@@ -139,8 +140,56 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
 
   const handleParentDirSelected = async ({ dir }: Partial<AgentConfig>) => {
     if (!dir) return
-    setSubStep('cloning')
 
+    const settingsFile = path.join(dir, '.multiplayer', 'settings.json')
+    if (fs.existsSync(settingsFile)) {
+      const registeredEntry = readRootSettings().projects.find(
+        (p) => path.resolve(p.path) === path.resolve(dir),
+      )
+
+      if (registeredEntry?.demo) {
+        setSubStep('loading')
+        try {
+          touchProject(dir)
+          const profile = loadProfile(registeredEntry.account, dir)
+          let apiKey = profile.apiKey
+
+          if (profile.authType === 'oauth') {
+            const oauthManager = new OAuthManager(registeredEntry.account)
+            const token = await oauthManager.getAccessToken()
+            if (!token) {
+              onComplete({ dir, isDemoProject: true, demoSetupDone: true, _accountName: registeredEntry.account })
+              return
+            }
+            apiKey = token
+          }
+
+          onComplete({
+            dir,
+            apiKey,
+            authType: profile.authType,
+            workspace: profile.workspace,
+            project: profile.project,
+            maxConcurrentIssues: profile.maxConcurrentIssues,
+            sessionRecorderSetupDone: true,
+            isDemoProject: true,
+            demoSetupDone: true,
+            _accountName: registeredEntry.account,
+          })
+        } catch (err: any) {
+          setErrorBackStep('pick-parent')
+          setError(err.message)
+          setSubStep('error')
+        }
+      } else {
+        setErrorBackStep('pick-parent')
+        setError('Selected folder not empty. Create or select another folder.')
+        setSubStep('error')
+      }
+      return
+    }
+
+    setSubStep('cloning')
     try {
       await execFileAsync('git', ['clone', '--depth=1', DEMO_REPO_URL, dir])
       await rm(path.join(dir, '.git'), { recursive: true, force: true })
@@ -149,7 +198,7 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
         dir,
         isDemoProject: true,
         maxConcurrentIssues: DEFAULT_MAX_CONCURRENT,
-        sessionRecorderSetupDone: true
+        sessionRecorderSetupDone: true,
       })
     } catch (err: any) {
       setErrorBackStep('pick-parent')

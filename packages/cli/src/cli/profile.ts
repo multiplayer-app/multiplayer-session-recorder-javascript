@@ -16,6 +16,14 @@ export interface CredentialsConfig {
   email?: string
 }
 
+export interface GitSettings {
+  commit?: boolean
+  branch_create?: boolean
+  pr_create?: boolean
+  push?: boolean
+  use_worktree?: boolean
+}
+
 /**
  * Project-specific settings stored in <projectDir>/.multiplayer/settings.json.
  * Contains no auth or user information.
@@ -34,12 +42,7 @@ export interface ProjectSettings {
   sessionRecorderSetupDone?: boolean
   /** Stacks detected during onboarding that need session-recorder SDK setup. */
   sessionRecorderStacks?: import('../session-recorder/detectStacks.js').DetectedStack[]
-  /** True for projects cloned through the "Try a demo" setup path. */
-  isDemoProject?: boolean
-  /** Whether the demo app env files have been populated with generated SDK keys. */
-  demoSetupDone?: boolean
-  /** Whether the user has reviewed the demo app run instructions. */
-  demoInstructionsDone?: boolean
+  git?: GitSettings
 }
 
 /**
@@ -56,6 +59,7 @@ export interface ProjectEntry {
   path: string
   account: string
   lastOpenedAt?: string
+  demo?: boolean
 }
 
 /** Root settings stored in ~/.multiplayer/settings.json. */
@@ -347,6 +351,17 @@ export function touchProject(projectPath: string): void {
   const idx = settings.projects.findIndex((p) => path.resolve(p.path) === resolved)
   if (idx >= 0) {
     settings.projects[idx]!.lastOpenedAt = new Date().toISOString()
+    writeRootSettings(settings)
+  }
+}
+
+/** Mark or unmark a project as a demo project. */
+export function setProjectDemo(projectPath: string, demo: boolean): void {
+  const settings = readRootSettings()
+  const resolved = path.resolve(projectPath)
+  const idx = settings.projects.findIndex((p) => path.resolve(p.path) === resolved)
+  if (idx >= 0) {
+    settings.projects[idx]!.demo = demo
     writeRootSettings(settings)
   }
 }
