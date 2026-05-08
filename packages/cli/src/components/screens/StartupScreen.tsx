@@ -82,6 +82,10 @@ interface StepMeta {
   shortLabel: string
   sidebarGroup?: string
   hideFromSidebar?: boolean
+  // Whether this step belongs to the user's flow at all (vs. skipped because
+  // completed). Used by the sidebar to hide non-applicable branches like the
+  // demo flow on a custom project, or the SDK setup on a demo project.
+  applicable?: (c: Partial<AgentConfig>) => boolean
   canSkip: (c: Partial<AgentConfig>) => boolean
 }
 
@@ -146,18 +150,21 @@ const STEP_DEFS: Record<StepId, StepMeta> = {
     description: 'Configure the cloned demo app before showing run instructions.',
     shortLabel: 'Prepare Demo',
     hideFromSidebar: true,
+    applicable: (c) => !!c.isDemoProject,
     canSkip: (c) => !c.isDemoProject || !!c.demoSetupDone,
   },
   'demo-instructions': {
     title: 'Run Demo App',
     description: 'Review the commands for starting the example client and server.',
     shortLabel: 'Run Demo',
+    applicable: (c) => !!c.isDemoProject,
     canSkip: (c) => !c.isDemoProject || !!c.demoInstructionsDone,
   },
   'session-recorder': {
     title: 'Session Recorder',
     description: 'Detect your app stack and set up the Multiplayer Session Recorder SDK.',
     shortLabel: 'Multiplayer SDK',
+    applicable: (c) => !c.isDemoProject && !process.env.MULTIPLAYER_SKIP_SR_SETUP,
     canSkip: (c) => !!c.isDemoProject || !!c.sessionRecorderSetupDone || !!process.env.MULTIPLAYER_SKIP_SR_SETUP,
   },
   connecting: {
@@ -492,11 +499,24 @@ export function StartupScreen({
   // ── Sidebar ───────────────────────────────────────────────────────────────
 
   const currentStepIndex = STEPS.indexOf(step)
-  const visibleSteps = STEPS.filter(
-    (s, i) =>
-      !STEP_DEFS[s].hideFromSidebar && (i <= currentStepIndex || !STEP_DEFS[s].canSkip(config) || s === 'connecting'),
-  )
-  const currentVisibleIndex = visibleSteps.indexOf(step)
+  const visibleSteps = STEPS.filter((s, i) => {
+    const def = STEP_DEFS[s]
+    if (def.hideFromSidebar) return false
+    if (def.applicable && !def.applicable(config)) return false
+    return i <= currentStepIndex || !def.canSkip(config) || s === 'connecting'
+  })
+  // If the current step is hidden from the sidebar (e.g. demo-setup), attribute
+  // it to the next visible step so progress and the active marker don't reset.
+  let effectiveStep: StepId = step
+  if (!visibleSteps.includes(step)) {
+    for (let i = currentStepIndex + 1; i < STEPS.length; i++) {
+      if (visibleSteps.includes(STEPS[i]!)) {
+        effectiveStep = STEPS[i]!
+        break
+      }
+    }
+  }
+  const currentVisibleIndex = visibleSteps.indexOf(effectiveStep)
 
   type SidebarEntry = { id: string; label: string; isDone: boolean; isCurrent: boolean }
   const sidebarSteps: SidebarEntry[] = []
@@ -510,7 +530,9 @@ export function StartupScreen({
       if (groupsSeen.has(group)) continue
       groupsSeen.add(group)
       const lastGroupIdx = visibleSteps.reduce((acc, vs, i) => (STEP_DEFS[vs].sidebarGroup === group ? i : acc), -1)
-      const anyGroupCurrent = visibleSteps.some((vs) => STEP_DEFS[vs].sidebarGroup === group && vs === step)
+      const anyGroupCurrent = visibleSteps.some(
+        (vs) => STEP_DEFS[vs].sidebarGroup === group && vs === effectiveStep,
+      )
       sidebarSteps.push({
         id: `group-${group}`,
         label: 'Auth',
@@ -519,7 +541,12 @@ export function StartupScreen({
       })
     } else {
       const i = visibleSteps.indexOf(s)
-      sidebarSteps.push({ id: s, label: def.shortLabel, isDone: i < currentVisibleIndex, isCurrent: s === step })
+      sidebarSteps.push({
+        id: s,
+        label: def.shortLabel,
+        isDone: i < currentVisibleIndex,
+        isCurrent: s === effectiveStep,
+      })
     }
   }
 
