@@ -101,10 +101,12 @@ runCli(process.argv, ({ mode, initialConfig, healthPort, profileName }: ParsedFl
           exitOnCtrlC: false,
           targetFps: 60,
           screenMode: 'alternate-screen',
-          // Capture console output but don't render the overlay — it has no
-          // close affordance in our TUI. Errors are surfaced through LogsDock
-          // instead (see src/lib/tuiSink.ts).
-          consoleMode: 'disabled',
+          // Keep 'console-overlay' so console.log/error are captured rather
+          // than writing through to stdout (which would corrupt the
+          // alt-screen). Disable auto-open on error: surface errors through
+          // LogsDock instead (see src/lib/tuiSink.ts) — the overlay has no
+          // close affordance in our TUI.
+          consoleMode: 'console-overlay',
           openConsoleOnError: false,
         })
 
