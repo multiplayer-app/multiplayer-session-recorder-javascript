@@ -28,7 +28,7 @@ function DemoRunInstructionsImpl({ dir, workspace, project, alignCenter = false 
         <CopyableCommand command='npm run dev' />
       </box>
 
-      <box flexDirection='column' gap={0}>
+      <box flexDirection='column' alignItems='flex-start' gap={0}>
         <text attributes={tuiAttrs({ bold: true })}>Open the demo app</text>
         <text attributes={tuiAttrs({ dim: true })}>Open the demo app in your browser.</text>
         <box marginTop={1} onMouseUp={clickHandler(() => openUrl('http://localhost:5173'))}>
@@ -40,7 +40,7 @@ function DemoRunInstructionsImpl({ dir, workspace, project, alignCenter = false 
         </box>
       </box>
 
-      <box flexDirection='column' gap={0}>
+      <box flexDirection='column' gap={0} alignItems='flex-start'>
         <text attributes={tuiAttrs({ bold: true })}>Open the Multiplayer dashboard</text>
         <text attributes={tuiAttrs({ dim: true })}>
           Watch agent activity for this project on the Multiplayer dashboard.

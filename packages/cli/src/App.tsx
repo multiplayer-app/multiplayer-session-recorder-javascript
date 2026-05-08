@@ -7,6 +7,7 @@ import { StartupScreen } from './components/screens/StartupScreen.js'
 import { RuntimeController } from './runtime/controller.js'
 import { clearCredentials, type GitSettings } from './cli/profile.js'
 import { deleteProfileTokenData } from './auth/token-store.js'
+import { setTuiSink } from './lib/tuiSink.js'
 import type { AgentChatStatus, AgentConfig, LogEntry, IAgent } from './types/index.js'
 import type { QuitMode, RuntimeState, SessionDetail } from './runtime/types.js'
 
@@ -92,6 +93,7 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
           return next.length > MAX_AGENT_LOGS ? next.slice(-MAX_AGENT_LOGS) : next
         })
       }
+      setTuiSink(tuiLogger)
       const controller = new RuntimeController(config, tuiLogger)
 
       controller.on('state', (state: RuntimeState) => {
@@ -212,6 +214,7 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
   useEffect(() => {
     return () => {
       controllerRef.current?.disconnect()
+      setTuiSink(null)
     }
   }, [])
 
