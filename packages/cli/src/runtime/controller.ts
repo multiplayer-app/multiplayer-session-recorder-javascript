@@ -511,7 +511,7 @@ export class RuntimeController extends EventEmitter {
         }
         this.setState(addSession(this._state, summary))
 
-        const detail: SessionDetail = { ...summary, hasMore: false, messages: [] }
+        const detail: SessionDetail = { ...summary, id: chatId, hasMore: false, messages: [] }
         this.sessionDetails.set(chatId, detail)
         this.emit('session-detail', chatId, { ...detail })
 
@@ -933,7 +933,7 @@ export class RuntimeController extends EventEmitter {
       const exists = this._state.sessions.some((s) => s.chatId === chatId)
       this.setState(exists ? upsertSession(this._state, summary) : addSession(this._state, summary))
 
-      const detail: SessionDetail = { ...summary, hasMore: false, messages: [] }
+      const detail: SessionDetail = { ...summary, id: chatId, hasMore: false, messages: [] }
       this.sessionDetails.set(chatId, detail)
       this.emit('session-detail', chatId, { ...detail })
       this.log('info', `Manual chat session registered: ${chatId}`)
@@ -1047,7 +1047,7 @@ export class RuntimeController extends EventEmitter {
       createdAt: new Date(m.createdAt ?? Date.now()),
     }))
 
-    const detail: SessionDetail = { ...summary, hasMore, messages: sessionMessages }
+    const detail: SessionDetail = { ...summary, id: chatId, hasMore, messages: sessionMessages }
     this.sessionDetails.set(chatId, detail)
     this.emit('session-detail', chatId, { ...detail })
 
@@ -1339,7 +1339,7 @@ export class RuntimeController extends EventEmitter {
       startedAt: new Date(),
     }
     this.setState(addSession(this._state, summary))
-    const detail: SessionDetail = { ...summary, messages: [] }
+    const detail: SessionDetail = { ...summary, id: chatId, messages: [] }
     this.sessionDetails.set(chatId, detail)
     this.emit('session-detail', chatId, { ...detail })
     this.log('info', `New issue: ${issue.title} (chat: ${chatId})`)

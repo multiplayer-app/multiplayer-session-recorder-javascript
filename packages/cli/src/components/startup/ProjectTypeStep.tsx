@@ -32,15 +32,15 @@ const PRIMARY_SELECTION_ITEMS: SelectionItem[] = [
     icon: '◇',
     iconColor: '#f59e0b',
     label: 'Try a demo',
-    description: 'Clone and explore the Multiplayer demo app'
+    description: 'Clone and explore the Multiplayer demo app',
   },
   {
     key: 'existing',
     icon: '◆',
     iconColor: '#22d3ee',
     label: 'Setup existing project',
-    description: 'Link an existing repository to Multiplayer'
-  }
+    description: 'Link an existing repository to Multiplayer',
+  },
 ]
 
 export function ProjectTypeStep({ onComplete }: Props): ReactElement {
@@ -53,7 +53,7 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
 
   const projectNavItems = useMemo<ProjectNavItem[]>(
     () => registeredProjects.map((entry) => ({ kind: 'project', entry })),
-    [registeredProjects]
+    [registeredProjects],
   )
   const navItems = useMemo<NavItem[]>(() => [...PRIMARY_NAV_ITEMS, ...projectNavItems], [projectNavItems])
 
@@ -66,10 +66,10 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
           icon: '◆',
           iconColor: '#22d3ee',
           label: path.basename(entry.path),
-          description: `${entry.path} · ${entry.account}`
+          description: `${entry.path} · ${entry.account}`,
         }
       }),
-    [projectNavItems]
+    [projectNavItems],
   )
 
   useKeyboard((key) => {
@@ -124,10 +124,10 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
             maxConcurrentIssues: profile.maxConcurrentIssues,
             sessionRecorderSetupDone: profile.sessionRecorderSetupDone,
             sessionRecorderStacks: profile.sessionRecorderStacks,
-            isDemoProject: profile.isDemoProject,
-            demoSetupDone: profile.demoSetupDone,
-            demoInstructionsDone: profile.demoInstructionsDone,
-            _accountName: entry.account
+            isDemoProject: entry.demo ?? false,
+            demoSetupDone: entry.demo ? true : undefined,
+            demoInstructionsDone: entry.demo ? true : undefined,
+            _accountName: entry.account,
           })
         } catch (err: any) {
           setErrorBackStep('select')
@@ -144,7 +144,7 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
     const settingsFile = path.join(dir, '.multiplayer', 'settings.json')
     if (fs.existsSync(settingsFile)) {
       const registeredEntry = readRootSettings().projects.find(
-        (p) => path.resolve(p.path) === path.resolve(dir)
+        (p) => path.resolve(p.path) === path.resolve(dir),
       )
 
       if (registeredEntry?.demo) {
@@ -198,7 +198,7 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
         dir,
         isDemoProject: true,
         maxConcurrentIssues: DEFAULT_MAX_CONCURRENT,
-        sessionRecorderSetupDone: true
+        sessionRecorderSetupDone: true,
       })
     } catch (err: any) {
       setErrorBackStep('pick-parent')

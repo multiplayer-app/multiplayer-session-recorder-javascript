@@ -93,9 +93,9 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
         modelUrl: opts.modelUrl || process.env.AI_BASE_URL || profile.modelUrl,
         maxConcurrentIssues: Number(
           opts.maxConcurrent ||
-            process.env.MULTIPLAYER_MAX_CONCURRENT ||
-            profile.maxConcurrentIssues ||
-            DEFAULT_MAX_CONCURRENT,
+          process.env.MULTIPLAYER_MAX_CONCURRENT ||
+          profile.maxConcurrentIssues ||
+          DEFAULT_MAX_CONCURRENT,
         ),
         noGitBranch:
           opts.noGitBranch || process.env.MULTIPLAYER_NO_GIT_BRANCH === 'true' || profile.noGitBranch || false,
@@ -104,7 +104,9 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
         sessionRecorderSetupDone: profile.sessionRecorderSetupDone || false,
         sessionRecorderStacks: profile.sessionRecorderStacks,
         isDemoProject: registered?.demo ?? false,
-        git: profile.git,
+        git: registered?.demo
+          ? { commit: false, branch_create: false, pr_create: false, push: false, use_worktree: false, ...profile.git }
+          : profile.git,
       }
 
       const rawHealthPort = opts.healthPort || process.env.MULTIPLAYER_HEALTH_PORT
