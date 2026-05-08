@@ -44,12 +44,18 @@ const DEMO_GIT_SETTINGS = {
 } as const
 
 /**
- * Returns `{ git: DEMO_GIT_SETTINGS }` only if the project hasn't persisted git settings yet.
- * Once the user has toggled them via the Settings panel, we must not overwrite them on every
- * startup-flow advance.
+ * Resolves the demo git settings to apply: the persisted value if the project already has
+ * one, or `DEMO_GIT_SETTINGS` as the seed for first-time setup.
+ *
+ * Callers must (a) mirror `current` into the in-memory `AgentConfig.git` so the dashboard's
+ * initial state matches what's on disk, and (b) only include `current` in
+ * `writeProjectSettings` when `firstTime` is true — once the user has toggled settings via
+ * the Settings panel, we must not overwrite them on every startup-flow advance.
  */
-function seedDemoGitIfUnset(dir: string): { git?: typeof DEMO_GIT_SETTINGS } {
-  return readProjectSettings(dir).git === undefined ? { git: DEMO_GIT_SETTINGS } : {}
+function resolveDemoGitSettings(dir: string): { current: typeof DEMO_GIT_SETTINGS; firstTime: boolean } {
+  const existing = readProjectSettings(dir).git
+  if (existing !== undefined) return { current: existing as typeof DEMO_GIT_SETTINGS, firstTime: false }
+  return { current: { ...DEMO_GIT_SETTINGS }, firstTime: true }
 }
 
 function findUniqueDemoProjectName(existingProjects: Array<{ name: string }>): string {
@@ -280,6 +286,11 @@ export function StartupScreen({
       if (next.dir) {
         addProject(next.dir, effectiveAccount)
         if (next.isDemoProject) setProjectDemo(next.dir, true)
+        const demoGit = next.isDemoProject ? resolveDemoGitSettings(next.dir) : null
+        if (demoGit) {
+          next.git = demoGit.current
+          setConfig(next)
+        }
         writeProjectSettings(next.dir, {
           workspace: next.workspace,
           project: next.project,
@@ -289,7 +300,7 @@ export function StartupScreen({
           maxConcurrentIssues: next.maxConcurrentIssues,
           sessionRecorderSetupDone: next.sessionRecorderSetupDone,
           sessionRecorderStacks: next.sessionRecorderStacks,
-          ...(next.isDemoProject ? seedDemoGitIfUnset(next.dir) : {}),
+          ...(demoGit?.firstTime ? { git: demoGit.current } : {}),
         })
       }
 
@@ -367,10 +378,11 @@ export function StartupScreen({
             workspaceDisplayName: ws.name,
             projectDisplayName: proj.name,
           }
-          setConfig(next)
           if (next.dir) {
             addProject(next.dir, account)
             if (next.isDemoProject) setProjectDemo(next.dir, true)
+            const demoGit = next.isDemoProject ? resolveDemoGitSettings(next.dir) : null
+            if (demoGit) next.git = demoGit.current
             writeProjectSettings(next.dir, {
               workspace: next.workspace,
               project: next.project,
@@ -379,9 +391,10 @@ export function StartupScreen({
               modelUrl: next.modelUrl,
               maxConcurrentIssues: next.maxConcurrentIssues,
               sessionRecorderSetupDone: next.sessionRecorderSetupDone,
-              ...(next.isDemoProject ? seedDemoGitIfUnset(next.dir) : {}),
+              ...(demoGit?.firstTime ? { git: demoGit.current } : {}),
             })
           }
+          setConfig(next)
           setStep(nextStep('project-select', next))
         } else {
           setConfig((c) => ({ ...c, authType: 'oauth' }))
@@ -419,9 +432,11 @@ export function StartupScreen({
           workspaceDisplayName: ws.name,
           projectDisplayName: proj.name,
         }
-        setConfig(next)
         if (next.dir) {
           addProject(next.dir, account)
+          if (next.isDemoProject) setProjectDemo(next.dir, true)
+          const demoGit = next.isDemoProject ? resolveDemoGitSettings(next.dir) : null
+          if (demoGit) next.git = demoGit.current
           writeProjectSettings(next.dir, {
             workspace: next.workspace,
             project: next.project,
@@ -430,8 +445,10 @@ export function StartupScreen({
             modelUrl: next.modelUrl,
             maxConcurrentIssues: next.maxConcurrentIssues,
             sessionRecorderSetupDone: next.sessionRecorderSetupDone,
+            ...(demoGit?.firstTime ? { git: demoGit.current } : {}),
           })
         }
+        setConfig(next)
         setStep(nextStep('project-select', next))
       })
       .catch(() => {
