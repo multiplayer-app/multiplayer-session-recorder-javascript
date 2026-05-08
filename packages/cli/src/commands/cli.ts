@@ -5,7 +5,13 @@ import { create as createDeployment } from './deployments/create.js'
 import { upload as uploadSourcemap } from './sourcemaps/upload.js'
 import { login, logout, status as authStatus } from '../services/auth.service.js'
 import { startMcpServer } from './mcp.js'
-import { loadProfile, writeCredentials, writeProjectSettings, findRegisteredProject, initEnvironment } from '../cli/profile.js'
+import {
+  loadProfile,
+  writeCredentials,
+  writeProjectSettings,
+  findRegisteredProject,
+  initEnvironment,
+} from '../cli/profile.js'
 import { API_URL, DEFAULT_MAX_CONCURRENT } from '../config.js'
 import type { ParsedFlags } from '../cli/flags.js'
 import type { RuntimeMode } from '../runtime/types.js'
@@ -46,7 +52,10 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
   program
     .command('agent', { isDefault: true })
     .description('Start the debugging agent')
-    .option('--headless', 'Run without TUI (structured log output, requires full config); also set via MULTIPLAYER_HEADLESS=true')
+    .option(
+      '--headless',
+      'Run without TUI (structured log output, requires full config); also set via MULTIPLAYER_HEADLESS=true',
+    )
     .option('--profile <name>', 'Account to use (default: auto-detected from registered project)')
     .option('--url <url>', 'Multiplayer base API URL')
     .option('--api-key <key>', 'Multiplayer API key')
@@ -58,10 +67,13 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
     .option('--max-concurrent <n>', 'Maximum number of issues to resolve in parallel', String(DEFAULT_MAX_CONCURRENT))
     .option('--no-git-branch', 'Work in current branch — no worktree, no new branch, no push')
     .option('--skip-sdk-check', 'Skip the Multiplayer SDK installation check/setup step')
-    .option('--health-port <port>', 'Port for HTTP health check endpoint (headless mode only); also set via MULTIPLAYER_HEALTH_PORT')
+    .option(
+      '--health-port <port>',
+      'Port for HTTP health check endpoint (headless mode only); also set via MULTIPLAYER_HEALTH_PORT',
+    )
     .action((opts) => {
       initEnvironment(opts.url || process.env.MULTIPLAYER_URL)
-      const mode: RuntimeMode = (opts.headless || process.env.MULTIPLAYER_HEADLESS === 'true') ? 'headless' : 'tui'
+      const mode: RuntimeMode = opts.headless || process.env.MULTIPLAYER_HEADLESS === 'true' ? 'headless' : 'tui'
       const profileName: string = opts.profile || 'default'
       const explicitDir = opts.dir || process.env.MULTIPLAYER_DIR
       const registered = findRegisteredProject(explicitDir)
@@ -80,14 +92,21 @@ export function runCli(argv: string[], onAgent: (flags: ParsedFlags) => void): v
         modelKey: opts.modelKey || process.env.AI_API_KEY || profile.modelKey,
         modelUrl: opts.modelUrl || process.env.AI_BASE_URL || profile.modelUrl,
         maxConcurrentIssues: Number(
-          opts.maxConcurrent || process.env.MULTIPLAYER_MAX_CONCURRENT || profile.maxConcurrentIssues || DEFAULT_MAX_CONCURRENT,
+          opts.maxConcurrent ||
+            process.env.MULTIPLAYER_MAX_CONCURRENT ||
+            profile.maxConcurrentIssues ||
+            DEFAULT_MAX_CONCURRENT,
         ),
-        noGitBranch: opts.noGitBranch || process.env.MULTIPLAYER_NO_GIT_BRANCH === 'true' || profile.noGitBranch || false,
-        skipSdkCheck: opts.skipSdkCheck || process.env.MULTIPLAYER_SKIP_SDK_CHECK === 'true' || profile.skipSdkCheck || false,
+        noGitBranch:
+          opts.noGitBranch || process.env.MULTIPLAYER_NO_GIT_BRANCH === 'true' || profile.noGitBranch || false,
+        skipSdkCheck:
+          opts.skipSdkCheck || process.env.MULTIPLAYER_SKIP_SDK_CHECK === 'true' || profile.skipSdkCheck || false,
         sessionRecorderSetupDone: profile.sessionRecorderSetupDone || false,
+        sessionRecorderStacks: profile.sessionRecorderStacks,
         isDemoProject: registered?.demo ?? false,
         git: profile.git,
       }
+
       const rawHealthPort = opts.healthPort || process.env.MULTIPLAYER_HEALTH_PORT
       const healthPort = rawHealthPort ? Number(rawHealthPort) : undefined
 

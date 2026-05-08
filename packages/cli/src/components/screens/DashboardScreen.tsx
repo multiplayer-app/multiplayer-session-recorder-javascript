@@ -392,6 +392,10 @@ export function DashboardScreen({
               contentWidth={contentWidth}
               isFocused={focusedPane === 'detail'}
               hasSessions={hasSessions}
+              isDemoProject={config.isDemoProject}
+              demoDir={config.dir}
+              workspace={config.workspace}
+              project={config.project}
               onRequestFocus={() => setFocusedPane('detail')}
               onRequestLoadMore={() =>
                 selectedDetail?.messages[0]?.id &&
@@ -420,6 +424,8 @@ export function DashboardScreen({
             chatStatus={selectedChatStatus}
             workspace={workspaceLabel || undefined}
             project={projectLabel || undefined}
+            workspaceId={config.workspace || undefined}
+            projectId={config.project || undefined}
             rateLimitState={state.rateLimitState}
             activeCount={activeCount}
             resolvedCount={state.resolvedCount}

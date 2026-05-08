@@ -8,6 +8,7 @@ import type { AgentChatStatus } from '../types/index.js'
 import {
   ACCENT,
   BORDER_MUTED,
+  BRAND_MARK_PRIMARY,
   FG_DIM,
   FG_ERROR_SOFT,
   FG_META,
@@ -45,6 +46,8 @@ interface Props {
   chatStatus: AgentChatStatus | string | null
   workspace?: string
   project?: string
+  workspaceId?: string
+  projectId?: string
   rateLimitState: RateLimitState
   activeCount: number
   resolvedCount: number
@@ -78,11 +81,22 @@ function timeAgo(date: Date): string {
   return `${hours}h ago`
 }
 
+const getBrowserUrl = (workspaceId?: string, projectId?: string, session?: SessionDetail | null): string | null => {
+  if (!workspaceId || !projectId) return null
+  let url = `https://go.multiplayer.app/project/${workspaceId}/${projectId}/default/agents`
+  if (session) {
+    url += `/session/${session.id}`
+  }
+  return url
+}
+
 function ContextSidebarImpl({
   session,
   chatStatus,
   workspace,
   project,
+  workspaceId,
+  projectId,
   rateLimitState,
   activeCount,
   resolvedCount,
@@ -90,6 +104,7 @@ function ContextSidebarImpl({
   onOpenAdvancedSettings
 }: Props): ReactElement {
   const borderColor = isFocused ? SEM_INDIGO : BORDER_MUTED
+  const browserUrl = getBrowserUrl(workspaceId, projectId, session)
 
   if (!session) {
     return (
@@ -113,7 +128,7 @@ function ContextSidebarImpl({
         </box>
 
         {/* Rate Limit */}
-        <box flexDirection='column' gap={1}>
+        <box flexDirection='column' gap={1} flexGrow={1}>
           <SectionTitle title='Rate Limit' />
           <box flexDirection='row' gap={1}>
             <text fg={FG_DIM}>Slots:</text>
@@ -123,11 +138,18 @@ function ContextSidebarImpl({
           </box>
         </box>
 
-        {onOpenAdvancedSettings && (
-          <box flexDirection='column' gap={1} marginTop={1}>
+        <box flexDirection='column' gap={0} marginTop={1} flexShrink={0}>
+          {onOpenAdvancedSettings && (
             <FocusedOutlineButton label='Advanced settings' onPress={onOpenAdvancedSettings} />
-          </box>
-        )}
+          )}
+          {browserUrl && (
+            <FocusedOutlineButton
+              label='Open in browser'
+              idleBorderColor={BRAND_MARK_PRIMARY}
+              onPress={() => openUrl(browserUrl)}
+            />
+          )}
+        </box>
       </box>
     ) as ReactElement
   }
@@ -137,17 +159,6 @@ function ContextSidebarImpl({
 
   // Chat activity indicator
   const chatActivity = (() => {
-    if (!chatStatus) return null
-    if (chatStatus === 'processing' || chatStatus === 'streaming') {
-      return (
-        <box flexDirection='row' gap={1}>
-          <text fg={SEM_AMBER} attributes={tuiAttrs({ bold: true })}>
-            ●
-          </text>
-          <text fg={SEM_AMBER}>generating...</text>
-        </box>
-      )
-    }
     if (chatStatus === 'error') {
       return (
         <box flexDirection='row' gap={1}>
@@ -240,7 +251,7 @@ function ContextSidebarImpl({
       </box>
 
       {/* Context section */}
-      <box flexDirection='column' gap={1}>
+      <box flexDirection='column' gap={1} flexGrow={1}>
         <SectionTitle title='Context' />
         <InfoRow label='Messages:' value={String(session.messages.length)} />
         <InfoRow label='Active:' value={String(activeCount)} valueColor={SEM_AMBER} />
@@ -253,11 +264,16 @@ function ContextSidebarImpl({
         </box>
       </box>
 
-      {onOpenAdvancedSettings && (
-        <box flexDirection='column' gap={1} marginTop={1}>
-          <FocusedOutlineButton label='Advanced settings' onPress={onOpenAdvancedSettings} />
-        </box>
-      )}
+      <box flexDirection='column' gap={0} marginTop={1} flexShrink={0}>
+        {onOpenAdvancedSettings && <FocusedOutlineButton label='Advanced settings' onPress={onOpenAdvancedSettings} />}
+        {browserUrl && (
+          <FocusedOutlineButton
+            label='Open in browser'
+            idleBorderColor={BRAND_MARK_PRIMARY}
+            onPress={() => openUrl(browserUrl)}
+          />
+        )}
+      </box>
     </box>
   ) as ReactElement
 }

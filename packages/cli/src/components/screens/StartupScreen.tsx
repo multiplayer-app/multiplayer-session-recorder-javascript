@@ -265,6 +265,7 @@ export function StartupScreen({
           modelUrl: next.modelUrl,
           maxConcurrentIssues: next.maxConcurrentIssues,
           sessionRecorderSetupDone: next.sessionRecorderSetupDone,
+          sessionRecorderStacks: next.sessionRecorderStacks,
           ...(next.isDemoProject ? { git: DEMO_GIT_SETTINGS } : {}),
         })
       }
@@ -417,17 +418,20 @@ export function StartupScreen({
   }, [step, oauthWorkspaces, oauthApi])
 
   useLayoutEffect(() => {
+    // eslint-disable-next-line no-console
     console.clear()
     setReady(true)
   }, [])
 
   useLayoutEffect(() => {
     if (!ready) return
+    // eslint-disable-next-line no-console
     console.clear()
   }, [ready, step])
 
   useEffect(() => {
     const onResize = () => {
+      // eslint-disable-next-line no-console
       console.clear()
     }
     process.stdout.on('resize', onResize)

@@ -794,6 +794,11 @@ interface Props {
   isFocused: boolean
   /** Whether sessions exist at all (for empty-state messaging). */
   hasSessions?: boolean
+  /** Demo project context for empty-pane instructions. */
+  isDemoProject?: boolean
+  demoDir?: string
+  workspace?: string
+  project?: string
   /** Primary click anywhere in the pane moves dashboard focus here (terminal mouse). */
   onRequestFocus?: () => void
   onRequestLoadMore?: () => void
@@ -804,6 +809,10 @@ function SessionDetailPaneImpl({
   contentWidth,
   isFocused,
   hasSessions = true,
+  isDemoProject,
+  demoDir,
+  workspace,
+  project,
   onRequestFocus,
   onRequestLoadMore
 }: Props): ReactElement {
@@ -839,9 +848,33 @@ function SessionDetailPaneImpl({
         borderColor={BORDER_MUTED}
         padding={1}
         flexGrow={1}
+        overflow='hidden'
         onMouseUp={handleMouseUpFocus || undefined}
       >
-        <EmptyDetailPane hasSessions={hasSessions} />
+        <scrollbox
+          flexGrow={1}
+          scrollY
+          focused={isFocused}
+          style={{
+            wrapperOptions: { flexGrow: 1 },
+            viewportOptions: { flexGrow: 1 },
+            scrollbarOptions: {
+              showArrows: true,
+              trackOptions: {
+                foregroundColor: ACCENT,
+                backgroundColor: BORDER_MUTED
+              }
+            }
+          }}
+        >
+          <EmptyDetailPane
+            hasSessions={hasSessions}
+            isDemoProject={isDemoProject}
+            demoDir={demoDir}
+            workspace={workspace}
+            project={project}
+          />
+        </scrollbox>
       </box>
     ) as ReactElement
   }

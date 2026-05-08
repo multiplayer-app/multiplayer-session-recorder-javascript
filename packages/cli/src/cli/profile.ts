@@ -40,6 +40,8 @@ export interface ProjectSettings {
   skipSdkCheck?: boolean
   /** True once the user has either completed or explicitly skipped the Session Recorder SDK step. */
   sessionRecorderSetupDone?: boolean
+  /** Stacks detected during onboarding that need session-recorder SDK setup. */
+  sessionRecorderStacks?: import('../session-recorder/detectStacks.js').DetectedStack[]
   git?: GitSettings
 }
 
