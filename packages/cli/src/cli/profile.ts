@@ -420,7 +420,16 @@ export function listAccounts(): string[] {
 // ─── Project settings ────────────────────────────────────────────────────────
 
 export function readProjectSettings(projectPath: string): ProjectSettings {
-  const file = path.join(path.resolve(projectPath), '.multiplayer', projectSettingsFileName())
+  const resolved = path.resolve(projectPath)
+  const file = path.join(resolved, '.multiplayer', projectSettingsFileName())
+  if (_fileSuffix) {
+    // In non-production envs, merge the base settings.json (lower priority) with the
+    // env-specific file so that project-level settings (git, etc.) set in production
+    // remain accessible without needing a separate per-environment setup.
+    const base = readJson<ProjectSettings>(path.join(resolved, '.multiplayer', 'settings.json'), {})
+    const env = readJson<ProjectSettings>(file, {})
+    return { ...base, ...env }
+  }
   return readJson<ProjectSettings>(file, {})
 }
 
@@ -457,10 +466,8 @@ export function renameAccount(oldKey: string, newKey: string): void {
  * Walk up from the given path (or cwd) and return the first registered
  * project entry whose path matches. Ignores account — matches on path alone.
  */
-export function findRegisteredProject(fromPath?: string): ProjectEntry | undefined {
-  const projects = listProjects()
+function searchProjects(projects: ProjectEntry[], fromPath?: string): ProjectEntry | undefined {
   const home = os.homedir()
-
   let current = path.resolve(fromPath ?? process.cwd())
   while (current !== home) {
     const match = projects.find((p) => path.resolve(p.path) === current)
@@ -468,6 +475,20 @@ export function findRegisteredProject(fromPath?: string): ProjectEntry | undefin
     const parent = path.dirname(current)
     if (parent === current) break
     current = parent
+  }
+  return undefined
+}
+
+export function findRegisteredProject(fromPath?: string): ProjectEntry | undefined {
+  const result = searchProjects(listProjects(), fromPath)
+  if (result) return result
+
+  // In non-production envs the env-specific registry may not include projects that
+  // were registered in production. Fall back to the production settings.json so that
+  // project-level settings (git flags, etc.) are still discoverable.
+  if (_fileSuffix) {
+    const prodSettings = readJson<RootSettings>(path.join(MP_DIR, 'settings.json'), { projects: [] })
+    return searchProjects(prodSettings.projects, fromPath)
   }
 
   return undefined

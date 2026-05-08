@@ -1,7 +1,6 @@
 import { useState, useMemo, type ReactElement } from 'react'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import { rm } from 'fs/promises'
 import { useKeyboard } from '@opentui/react'
 import fs from 'fs'
 import path from 'path'
@@ -194,8 +193,6 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
     setSubStep('cloning')
     try {
       await execFileAsync('git', ['clone', '--depth=1', DEMO_REPO_URL, dir])
-      await rm(path.join(dir, '.git'), { recursive: true, force: true })
-      await execFileAsync('git', ['init'], { cwd: dir })
       onComplete({
         dir,
         isDemoProject: true,
