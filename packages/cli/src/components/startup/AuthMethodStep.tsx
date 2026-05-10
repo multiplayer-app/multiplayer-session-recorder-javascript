@@ -332,7 +332,7 @@ export function AuthMethodStep({ config, url, profileName, onComplete, onBack }:
             <box flexDirection='column' gap={1}>
               <box flexDirection='column' gap={0}>
                 <text attributes={tuiAttrs({ dim: true })}>
-                  If the browser did not open, visit this URL and copy the token shown:
+                  If the browser did not open, visit this URL and copy the code shown:
                 </text>
                 <text fg='#22d3ee' attributes={tuiAttrs({ underline: true })}>
                   {oauthFallbackUrl}
@@ -347,12 +347,12 @@ export function AuthMethodStep({ config, url, profileName, onComplete, onBack }:
                   )}
                 </box>
               </box>
-              <text attributes={tuiAttrs({ dim: true })}>Or paste the token here:</text>
+              <text attributes={tuiAttrs({ dim: true })}>Or paste the code here:</text>
               <InputField
                 value={manualToken}
                 onInput={(v) => setManualToken(v)}
                 onSubmit={(p) => handleManualTokenSubmit(stringFromInputSubmit(p, manualToken))}
-                placeholder='Paste token here...'
+                placeholder='Paste code here...'
               />
             </box>
           )}

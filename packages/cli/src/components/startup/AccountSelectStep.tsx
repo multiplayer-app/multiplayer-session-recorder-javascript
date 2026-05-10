@@ -2,7 +2,8 @@ import { useState, type ReactElement } from 'react'
 import { useKeyboard } from '@opentui/react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import type { AgentConfig } from '../../types/index.js'
-import { listAccounts, readCredentials, writeCredentials, renameAccount } from '../../cli/profile.js'
+import { listAccounts, readCredentials, writeCredentials, renameAccount, clearCredentials } from '../../cli/profile.js'
+import { deleteProfileTokenData } from '../../auth/token-store.js'
 import { OAuthManager } from '../../auth/oauth-manager.js'
 import { createApiService } from '../../services/api.service.js'
 import { decodeApiKeyPayload } from '../../services/radar.service.js'
@@ -19,7 +20,7 @@ interface Props {
 }
 
 export function AccountSelectStep({ url, onComplete, onAddNew, onBack }: Props): ReactElement {
-  const accounts = listAccounts()
+  const [accounts, setAccounts] = useState(() => listAccounts())
 
   const items: SelectionItem[] = [
     ...accounts.map((name) => {
@@ -31,7 +32,7 @@ export function AccountSelectStep({ url, onComplete, onAddNew, onBack }: Props):
         icon: '◆',
         iconColor: '#22d3ee',
         label,
-        description: badge
+        description: badge,
       } satisfies SelectionItem
     }),
     {
@@ -39,8 +40,8 @@ export function AccountSelectStep({ url, onComplete, onAddNew, onBack }: Props):
       icon: '◇',
       iconColor: '#f59e0b',
       label: 'Login with new account',
-      description: 'Authenticate with a different Multiplayer account'
-    }
+      description: 'Authenticate with a different Multiplayer account',
+    },
   ]
 
   const [selected, setSelected] = useState(0)
@@ -79,8 +80,13 @@ export function AccountSelectStep({ url, onComplete, onAddNew, onBack }: Props):
         const oauthManager = new OAuthManager(accountName)
         const token = await oauthManager.getAccessToken()
         if (!token) {
+          clearCredentials(accountName)
+          deleteProfileTokenData(accountName)
+          setAccounts(listAccounts())
+          setSelected(0)
           setLoading(false)
           setError('Token expired — please login with a new account or re-authenticate.')
+
           return
         }
 
@@ -90,8 +96,8 @@ export function AccountSelectStep({ url, onComplete, onAddNew, onBack }: Props):
           session.workspaces.map(async (ws) => ({
             _id: ws._id,
             name: ws.name,
-            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name)
-          }))
+            projects: (await api.fetchProjects(ws._id)).filter((p) => !!p._id && !!p.name),
+          })),
         )
 
         let resolvedAccount = accountName
@@ -110,7 +116,7 @@ export function AccountSelectStep({ url, onComplete, onAddNew, onBack }: Props):
           authType: 'oauth',
           url: creds.url,
           _oauthWorkspaces: workspaces,
-          _accountName: resolvedAccount
+          _accountName: resolvedAccount,
         })
       } else if (creds.authType === 'api_key' && creds.apiKey) {
         const payload = decodeApiKeyPayload(creds.apiKey)
@@ -138,7 +144,7 @@ export function AccountSelectStep({ url, onComplete, onAddNew, onBack }: Props):
           url: creds.url,
           workspace: payload.workspace,
           project: payload.project,
-          _accountName: resolvedAccount
+          _accountName: resolvedAccount,
         })
       } else {
         setLoading(false)
