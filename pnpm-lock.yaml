@@ -124,7 +124,7 @@ importers:
   packages/session-recorder-browser:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.72
+        specifier: 2.0.74
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -282,7 +282,7 @@ importers:
   packages/session-recorder-node:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.72
+        specifier: 2.0.74
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -316,10 +316,10 @@ importers:
   packages/session-recorder-react:
     dependencies:
       '@multiplayer-app/session-recorder-browser':
-        specifier: 2.0.72
+        specifier: 2.0.74
         version: link:../session-recorder-browser
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.72
+        specifier: 2.0.74
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -344,7 +344,7 @@ importers:
   packages/session-recorder-react-native:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.72
+        specifier: 2.0.74
         version: link:../session-recorder-common
       '@opentelemetry/core':
         specifier: 2.0.1
