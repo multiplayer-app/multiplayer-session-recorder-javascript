@@ -38,6 +38,7 @@ export interface ProjectSettings {
   maxConcurrentIssues?: number
   noGitBranch?: boolean
   skipSdkCheck?: boolean
+  demo?: boolean
   /** True once the user has either completed or explicitly skipped the Session Recorder SDK step. */
   sessionRecorderSetupDone?: boolean
   /** Stacks detected during onboarding that need session-recorder SDK setup. */
@@ -364,6 +365,7 @@ export function setProjectDemo(projectPath: string, demo: boolean): void {
     settings.projects[idx]!.demo = demo
     writeRootSettings(settings)
   }
+  writeProjectSettings(projectPath, { demo })
 }
 
 // ─── Credentials ────────────────────────────────────────────────────────────
