@@ -98,6 +98,7 @@ export class OAuthManager {
   private registrationEndpoint = ''
   private authorizationEndpoint = ''
   private tokenEndpoint = ''
+  private fallbackRedirectUri = ''
   private _callbackResolve: (() => void) | undefined
   private _callbackReject: ((err: Error) => void) | undefined
   private _callbackDone: Promise<void> | undefined
@@ -127,6 +128,7 @@ export class OAuthManager {
     if (retry > 10) throw new Error('Too many registration retries')
     this.setParams(oauthParams)
     this.tokenStore.storeOAuthServerParams(oauthParams as OAuthServerParams)
+    this.fallbackRedirectUri = `${new URL(oauthParams.authorizationEndpoint).origin}/auth/authorize/oauth/callback`
 
     const { redirectUri } = await this.getClientCredentials()
     const urlObj = new URL(redirectUri)
@@ -140,38 +142,15 @@ export class OAuthManager {
     }
   }
 
-  private async registerEphemeralClient(redirectUri: string): Promise<OauthClient> {
-    const clientMetadata = {
-      client_name: 'Multiplayer CLI',
-      client_uri: 'https://multiplayer.app',
-      redirect_uris: [redirectUri],
-      grant_types: ['authorization_code', 'refresh_token'],
-      response_types: ['code'],
-    }
-    const response = await fetch(this.registrationEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(clientMetadata),
-    })
-    if (!response.ok) {
-      throw new Error(`Client registration failed: ${response.status} ${response.statusText}`)
-    }
-    const resp = (await response.json()) as ClientRegistrationResponse
-    return {
-      clientId: resp.client_id,
-      clientSecret: resp.client_secret,
-      redirectUri: resp.redirect_uris[0]!,
-      registrationToken: resp.registration_access_token,
-      clientSecretExpiresAt: resp.client_secret_expires_at,
-    }
-  }
-
   private async registerClient(redirectUri: string): Promise<OauthClient> {
     const serverUrl = this.authorizationServerUrl
+    const redirectUris = this.fallbackRedirectUri
+      ? [redirectUri, this.fallbackRedirectUri]
+      : [redirectUri]
     const clientMetadata = {
       client_name: 'Multiplayer CLI',
       client_uri: 'https://multiplayer.app',
-      redirect_uris: [redirectUri],
+      redirect_uris: redirectUris,
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
     }
@@ -192,6 +171,7 @@ export class OAuthManager {
         clientId: resp.client_id,
         clientSecret: resp.client_secret,
         redirectUri: resp.redirect_uris[0]!,
+        fallbackRedirectUri: resp.redirect_uris[1],
         registrationToken: resp.registration_access_token,
         clientSecretExpiresAt: resp.client_secret_expires_at,
       }
@@ -220,6 +200,9 @@ export class OAuthManager {
       clientData = await this.registerClient(`http://localhost:${callbackPort}/callback`)
     } else if (this.isClientSecretExpired(clientData)) {
       clientData = await this.registerClient(clientData.redirectUri)
+    } else if (this.fallbackRedirectUri && !clientData.fallbackRedirectUri) {
+      // Re-register to add the fallback redirect URI so both flows share one client.
+      clientData = await this.registerClient(clientData.redirectUri)
     }
 
     return clientData
@@ -227,9 +210,9 @@ export class OAuthManager {
 
   /**
    * Starts the OAuth flow. Opens the browser with a localhost redirect_uri.
-   * Also builds a separate fallback URL with the web page as redirect_uri — for
-   * cases when the browser didn't open. The fallback URL encodes codeVerifier +
-   * client info in the state so the web page can exchange the code for a token.
+   * Also builds a fallback URL pointing to the web callback page — for cases when
+   * the browser didn't open. The user copies the code shown on that page and pastes
+   * it into the CLI; the CLI then exchanges it directly using the same client.
    *
    * @param onUrls  Called with (browserUrl, fallbackUrl) once both are ready.
    * @param fallbackRedirectUri  The redirect_uri for the manually-copied URL
@@ -239,7 +222,8 @@ export class OAuthManager {
     onUrls?: (browserUrl: string, fallbackUrl: string) => void,
     fallbackRedirectUri?: string,
   ): Promise<void> {
-    const { clientId, redirectUri } = await this.getClientCredentials()
+    const clientData = await this.getClientCredentials()
+    const { clientId, redirectUri } = clientData
     const authClientParams = this.tokenStore.generateAuthParams()
     const urlObj = new URL(redirectUri)
     const callbackPort = Number(urlObj.port)
@@ -256,21 +240,16 @@ export class OAuthManager {
     })
     const browserUrl = `${this.authorizationEndpoint}?${browserParams.toString()}`
 
-    // Fallback URL — separate client with web page as redirect_uri.
-    // codeVerifier is encoded into state so the web page can do the token exchange.
+    // Fallback URL — same client, web page as redirect_uri.
+    // The web page displays the code; the CLI exchanges it directly using stored credentials.
+    const effectiveFallbackUri = fallbackRedirectUri ?? clientData.fallbackRedirectUri
     let fallbackUrl = browserUrl
-    if (fallbackRedirectUri) {
-      const fallbackClient = await this.registerEphemeralClient(fallbackRedirectUri)
-      const fallbackState = Buffer.from(JSON.stringify({
-        codeVerifier: authClientParams.codeVerifier,
-        clientId: fallbackClient.clientId,
-        redirectUri: fallbackRedirectUri,
-      })).toString('base64url')
+    if (effectiveFallbackUri) {
       const fallbackParams = new URLSearchParams({
         response_type: 'code',
-        client_id: fallbackClient.clientId,
-        redirect_uri: fallbackRedirectUri,
-        state: fallbackState,
+        client_id: clientData.clientId,
+        redirect_uri: effectiveFallbackUri,
+        state: authClientParams.state,
         code_challenge: authClientParams.codeChallenge,
         code_challenge_method: 'S256',
         token_type: 'PERSONAL',
@@ -287,17 +266,38 @@ export class OAuthManager {
   }
 
   /**
-   * Stores a token obtained via the fallback URL and resolves the pending
-   * authenticate() promise (cancels waiting for the localhost callback).
+   * Exchanges an authorization code obtained from the fallback web page for tokens.
+   * The CLI holds the code_verifier and client credentials, so it can do the exchange
+   * directly and receive both access_token and refresh_token.
    */
-  completeManualAuth(token: string): void {
-    this.tokenStore.storeAuthData({
-      oauthAccessToken: token,
-      oauthRefreshToken: '',
-      accessTokenExpiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
-    })
-    void this.stopCallbackServer()
-    this._callbackResolve?.()
+  async completeManualAuth(code: string): Promise<void> {
+    try {
+      const authParams = this.tokenStore.getAuthParams()
+      const clientData = this.tokenStore.getOauthClient(this.authorizationServerUrl)
+      if (!authParams?.codeVerifier) throw new Error('No pending auth session — please restart authentication')
+      if (!clientData?.fallbackRedirectUri) throw new Error('No OAuth client configured for manual auth')
+
+      const tokenParams = new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: clientData.fallbackRedirectUri,
+        client_id: clientData.clientId,
+        client_secret: clientData.clientSecret,
+        code_verifier: authParams.codeVerifier,
+      })
+
+      const tokenData = await this.fetchToken(tokenParams)
+
+      this.tokenStore.storeAuthData({
+        oauthAccessToken: tokenData.access_token,
+        oauthRefreshToken: tokenData.refresh_token,
+        accessTokenExpiresAt: Date.now() + tokenData.expires_in * 1000,
+      })
+      void this.stopCallbackServer()
+      this._callbackResolve?.()
+    } catch (err) {
+      this._callbackReject?.(err instanceof Error ? err : new Error(String(err)))
+    }
   }
 
   /**
@@ -476,6 +476,11 @@ export class OAuthManager {
   }
 
   private async refreshToken(refreshToken: string): Promise<string | null> {
+    if (!refreshToken) {
+      // Manual paste flow stores no refresh token — can't renew silently.
+      this.tokenStore.cleanup(false, this.authorizationServerUrl)
+      return null
+    }
     const { clientId, clientSecret, redirectUri } = await this.getClientCredentials()
 
     const tokenParams = new URLSearchParams({

@@ -15,8 +15,19 @@ export const isGitRepo = async (dir: string): Promise<boolean> => {
 
 export const getCurrentBranch = async (dir: string): Promise<string> => {
   const git: SimpleGit = simpleGit(dir)
-  const branch = await git.revparse(['--abbrev-ref', 'HEAD'])
-  return branch.trim()
+  try {
+    const branch = await git.revparse(['--abbrev-ref', 'HEAD'])
+    return branch.trim()
+  } catch {
+    // rev-parse fails on unborn branches (no commits yet) — fall back to symbolic-ref
+    // which reads the branch name directly from HEAD without needing a commit to exist
+    try {
+      const ref = await git.raw(['symbolic-ref', '--short', 'HEAD'])
+      return ref.trim()
+    } catch {
+      return 'HEAD'
+    }
+  }
 }
 
 export const createBranch = async (dir: string, branchName: string): Promise<void> => {
@@ -97,8 +108,23 @@ export const getDefaultBranch = async (dir: string): Promise<string> => {
     await git.raw(['rev-parse', '--verify', 'origin/main'])
     return 'main'
   } catch {
-    return 'master'
+    // origin/main not in local tracking refs
   }
+  try {
+    await git.raw(['rev-parse', '--verify', 'origin/master'])
+    return 'master'
+  } catch {
+    // origin/master not in local tracking refs either
+  }
+  try {
+    // Auto-detect via network and re-read the symbolic ref
+    await git.raw(['remote', 'set-head', 'origin', '--auto'])
+    const result = await git.raw(['symbolic-ref', 'refs/remotes/origin/HEAD'])
+    return result.trim().replace('refs/remotes/origin/', '')
+  } catch {
+    // network unreachable or no remote configured
+  }
+  return 'main'
 }
 
 export const getDiffStats = async (dir: string): Promise<{ additions: number; deletions: number }> => {

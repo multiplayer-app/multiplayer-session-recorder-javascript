@@ -46,7 +46,7 @@ export async function login(opts: LoginOptions = {}): Promise<void> {
   const fallbackRedirectUri = `${new URL(oauthParams.authorizationEndpoint).origin}/auth/authorize/oauth/callback`
   await oauthManager.authenticate((_browserUrl, fallbackUrl) => {
     process.stdout.write(
-      `\nIf your browser did not open, visit this URL to authenticate and copy the token shown:\n\n  ${fallbackUrl}\n\nPaste the token: `,
+      `\nIf your browser did not open, visit this URL to authenticate and copy the code shown:\n\n  ${fallbackUrl}\n\nPaste the code: `,
     )
   }, fallbackRedirectUri)
 

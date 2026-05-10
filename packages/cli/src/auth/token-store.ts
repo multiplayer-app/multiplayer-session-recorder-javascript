@@ -9,6 +9,7 @@ export interface OauthClient {
   clientSecret: string
   registrationToken?: string
   redirectUri: string
+  fallbackRedirectUri?: string
   clientSecretExpiresAt?: number // Unix timestamp in seconds
 }
 
