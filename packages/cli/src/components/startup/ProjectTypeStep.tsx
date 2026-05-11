@@ -14,6 +14,10 @@ import { OAuthManager } from '../../auth/oauth-manager.js'
 
 const execFileAsync = promisify(execFile)
 
+function normalizeGitUrl(url: string): string {
+  return url.trim().replace(/^(https?|git):\/\//, '').replace(/\.git$/, '')
+}
+
 type SubStep = 'select' | 'pick-parent' | 'cloning' | 'loading' | 'error'
 
 interface Props {
@@ -191,6 +195,25 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
       } else {
         onComplete({ dir })
         return
+      }
+      return
+    }
+
+    const entries = fs.readdirSync(dir)
+    if (entries.length > 0) {
+      let isDemoOrigin = false
+      if (fs.existsSync(path.join(dir, '.git'))) {
+        try {
+          const { stdout } = await execFileAsync('git', ['-C', dir, 'remote', 'get-url', 'origin'])
+          isDemoOrigin = normalizeGitUrl(stdout) === normalizeGitUrl(DEMO_REPO_URL)
+        } catch { /* no remote or not a git repo */ }
+      }
+      if (isDemoOrigin) {
+        onComplete({ dir, isDemoProject: true, demoSetupDone: true })
+      } else {
+        setErrorBackStep('pick-parent')
+        setError('Selected folder is not empty. Create or select an empty folder.')
+        setSubStep('error')
       }
       return
     }
