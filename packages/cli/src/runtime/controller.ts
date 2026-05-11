@@ -47,6 +47,7 @@ interface ChatContext {
   abortController: AbortController | null
   isProcessing: boolean
   worktreeDir?: string
+  resolvedCounted?: boolean
 }
 
 const getErrorMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err))
@@ -326,6 +327,13 @@ export class RuntimeController extends EventEmitter {
       if (!terminalFromServer && localAuthoritative.has(current.status)) return
       if (current.status === nextStatus) return
       this.updateSession({ chatId: chat._id, status: nextStatus })
+      if (nextStatus === 'done') {
+        const ctx = this.chatContexts.get(chat._id)
+        if (!ctx?.resolvedCounted) {
+          if (ctx) ctx.resolvedCounted = true
+          this.setState(incrementResolved(this._state))
+        }
+      }
     })
 
     radar.onAction((params) => {
@@ -1441,6 +1449,8 @@ export class RuntimeController extends EventEmitter {
       // 5. Dry-run mode: skip commit/push
       if (cfg.noGitBranch || cfg.git?.use_worktree === false) {
         const effectiveBranch = await GitService.getCurrentBranch(cfg.dir)
+        const dryCtx = this.chatContexts.get(chatId)
+        if (dryCtx) dryCtx.resolvedCounted = true
         this.updateSession({ chatId, status: 'done', branchName: effectiveBranch })
         this.setState(incrementResolved(this._state))
         const dryRunMsg = `Dry run: patches applied to current branch \`${effectiveBranch}\` (no commit or push)`
@@ -1640,6 +1650,8 @@ export class RuntimeController extends EventEmitter {
       GitService.getRemoteUrl(workDir),
     ])
 
+    const pushCtx = this.chatContexts.get(chatId)
+    if (pushCtx) pushCtx.resolvedCounted = true
     this.updateSession({ chatId, status: 'done', branchName })
     this.setState(incrementResolved(this._state))
     this.emit('chat-status', chatId, 'finished')

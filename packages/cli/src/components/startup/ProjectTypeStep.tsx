@@ -9,10 +9,14 @@ import type { AgentConfig } from '../../types/index.js'
 import { DEFAULT_MAX_CONCURRENT, DEMO_REPO_URL } from '../../config.js'
 import { AnimatedLoading, FooterHints, SelectionList, type SelectionItem } from '../shared/index.js'
 import { DirectoryStep } from './DirectoryStep.js'
-import { listProjects, loadProfile, touchProject, readRootSettings, type ProjectEntry } from '../../cli/profile.js'
+import { listProjects, loadProfile, touchProject, readRootSettings, readProjectSettings, type ProjectEntry } from '../../cli/profile.js'
 import { OAuthManager } from '../../auth/oauth-manager.js'
 
 const execFileAsync = promisify(execFile)
+
+function normalizeGitUrl(url: string): string {
+  return url.trim().replace(/^(https?|git):\/\//, '').replace(/\.git$/, '')
+}
 
 type SubStep = 'select' | 'pick-parent' | 'cloning' | 'loading' | 'error'
 
@@ -147,44 +151,68 @@ export function ProjectTypeStep({ onComplete }: Props): ReactElement {
         (p) => path.resolve(p.path) === path.resolve(dir),
       )
 
-      if (registeredEntry?.demo) {
+      const isDemo = registeredEntry?.demo || readProjectSettings(dir).demo
+
+      if (isDemo) {
         setSubStep('loading')
         try {
-          touchProject(dir)
-          const profile = loadProfile(registeredEntry.account, dir)
-          let apiKey = profile.apiKey
+          if (registeredEntry) {
+            touchProject(dir)
+            const profile = loadProfile(registeredEntry.account, dir)
+            let apiKey = profile.apiKey
 
-          if (profile.authType === 'oauth') {
-            const oauthManager = new OAuthManager(registeredEntry.account)
-            const token = await oauthManager.getAccessToken()
-            if (!token) {
-              onComplete({ dir, isDemoProject: true, demoSetupDone: true, _accountName: registeredEntry.account })
-              return
+            if (profile.authType === 'oauth') {
+              const oauthManager = new OAuthManager(registeredEntry.account)
+              const token = await oauthManager.getAccessToken()
+              if (!token) {
+                onComplete({ dir, isDemoProject: true, demoSetupDone: true, _accountName: registeredEntry.account })
+                return
+              }
+              apiKey = token
             }
-            apiKey = token
-          }
 
-          onComplete({
-            dir,
-            apiKey,
-            authType: profile.authType,
-            workspace: profile.workspace,
-            project: profile.project,
-            maxConcurrentIssues: profile.maxConcurrentIssues,
-            sessionRecorderSetupDone: true,
-            isDemoProject: true,
-            demoSetupDone: true,
-            git: profile.git,
-            _accountName: registeredEntry.account,
-          })
+            onComplete({
+              dir,
+              apiKey,
+              authType: profile.authType,
+              workspace: profile.workspace,
+              project: profile.project,
+              maxConcurrentIssues: profile.maxConcurrentIssues,
+              sessionRecorderSetupDone: true,
+              isDemoProject: true,
+              demoSetupDone: true,
+              git: profile.git,
+              _accountName: registeredEntry.account,
+            })
+          } else {
+            onComplete({ dir, isDemoProject: true, demoSetupDone: true })
+          }
         } catch (err: any) {
           setErrorBackStep('pick-parent')
           setError(err.message)
           setSubStep('error')
         }
       } else {
+        onComplete({ dir })
+        return
+      }
+      return
+    }
+
+    const entries = fs.readdirSync(dir)
+    if (entries.length > 0) {
+      let isDemoOrigin = false
+      if (fs.existsSync(path.join(dir, '.git'))) {
+        try {
+          const { stdout } = await execFileAsync('git', ['-C', dir, 'remote', 'get-url', 'origin'])
+          isDemoOrigin = normalizeGitUrl(stdout) === normalizeGitUrl(DEMO_REPO_URL)
+        } catch { /* no remote or not a git repo */ }
+      }
+      if (isDemoOrigin) {
+        onComplete({ dir, isDemoProject: true, demoSetupDone: true })
+      } else {
         setErrorBackStep('pick-parent')
-        setError('Selected folder not empty. Create or select another folder.')
+        setError('Selected folder is not empty. Create or select an empty folder.')
         setSubStep('error')
       }
       return

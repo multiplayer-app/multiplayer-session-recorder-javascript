@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder",
-  "version": "2.0.74",
+  "version": "2.0.76",
   "description": "Multiplayer Fullstack Session Recorder",
   "scripts": {
     "lint": "turbo run lint",
@@ -9,7 +9,8 @@
     "publish": "./scripts/publish.sh",
     "preinstall": "cd ./packages/session-recorder-react-native && yarn",
     "postinstall": "cd node_modules/bun && node install.js",
-    "postversion": "git push && git push --tags"
+    "postversion": "git push && git push --tags",
+    "preversion": "npm run lint"
   },
   "repository": {
     "type": "git",
