@@ -145,7 +145,15 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
     setChatStatuses(new Map())
     setHasMoreSessions(false)
     setAgentLogs([])
-    setStartupConfig(initialConfig)
+    // "Return to setup" promises a from-scratch wizard run. If we restored the
+    // fully-populated initialConfig, every step's canSkip would be satisfied
+    // and StartupScreen would land directly on 'connecting' → dashboard.
+    // Drop the cached selections so each step is shown again; keep only
+    // environment-level fields (url, name).
+    setStartupConfig({
+      url: initialConfig.url,
+      name: initialConfig.name,
+    })
     setAuthErrorMessage(null)
     setScreen('startup')
   }, [initialConfig])
@@ -243,6 +251,7 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
             agentLogs={agentLogs}
             chatStatuses={chatStatuses}
             onQuitRequest={handleQuitRequest}
+            onRestartSetupRequest={handleRestartSetupFromQuit}
             onLoadMessages={handleLoadMessages}
             onSendMessage={handleSendMessage}
             onAbortChat={handleAbortChat}

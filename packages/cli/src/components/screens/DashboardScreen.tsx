@@ -36,6 +36,7 @@ interface Props {
   agentLogs: LogEntry[]
   chatStatuses: Map<string, AgentChatStatus | string>
   onQuitRequest: () => void
+  onRestartSetupRequest: () => void
   onLoadMessages: (chatId: string, before?: string) => void
   onSendMessage: (chatId: string, content: string) => void
   onAbortChat: (chatId: string) => void
@@ -59,6 +60,7 @@ export function DashboardScreen({
   agentLogs,
   chatStatuses,
   onQuitRequest,
+  onRestartSetupRequest,
   onLoadMessages,
   onSendMessage,
   onAbortChat,
@@ -273,6 +275,11 @@ export function DashboardScreen({
           onQuitRequest()
           key.stopPropagation()
         }
+
+        if (name === 'r' || name === 'R') {
+          onRestartSetupRequest()
+          key.stopPropagation()
+        }
       },
       [
         suspendKeyboard,
@@ -282,6 +289,7 @@ export function DashboardScreen({
         selectedDetail,
         showComposer,
         onQuitRequest,
+        onRestartSetupRequest,
         showLogs,
         toggleLogs,
         isNarrow,
@@ -329,6 +337,7 @@ export function DashboardScreen({
 
     base.push(
       { id: 'logs', keys: 'l', label: showLogs ? 'hide logs' : 'logs', onPress: toggleLogs },
+      { id: 'setup', keys: 'r', label: 'setup', onPress: onRestartSetupRequest },
       { id: 'quit', keys: 'q', label: 'quit', onPress: onQuitRequest }
     )
 
@@ -347,6 +356,7 @@ export function DashboardScreen({
     toggleNarrowStack,
     toggleLogs,
     onQuitRequest,
+    onRestartSetupRequest,
     onEmitAgentSettings,
     onLoadRadarLists,
     openSettingsPanel
