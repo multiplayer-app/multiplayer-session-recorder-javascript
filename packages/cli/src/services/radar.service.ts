@@ -62,9 +62,9 @@ export interface RadarService {
       branchName: string
       branchUrl?: string
       prUrl?: string
-      repositoryUrl: string
-      prTitle: string
-      prBody: string
+      repositoryUrl?: string
+      prTitle?: string
+      prBody?: string
       codeChanges?: { additions: number; deletions: number }
     }
     issue: { componentHash: string }
@@ -217,7 +217,12 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
   }
 
   const onDisconnect = (handler: (reason: string) => void) => {
-    socket.on('disconnect', handler)
+    socket.on('disconnect', (reason) => {
+      handler(reason)
+      if (reason === 'io server disconnect') {
+        socket.connect()
+      }
+    })
   }
 
   const onError = (handler: (err: Error) => void) => {
@@ -230,9 +235,9 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
       branchName: string
       branchUrl?: string
       prUrl?: string
-      repositoryUrl: string
-      prTitle: string
-      prBody: string
+      repositoryUrl?: string
+      prTitle?: string
+      prBody?: string
       codeChanges?: { additions: number; deletions: number }
     }
     issue: { componentHash: string }

@@ -429,43 +429,6 @@ const SPAN_ATTR_SKIP = new Set([
   'multiplayer.integration._id',
 ])
 
-const getSpanId = (span: any): string | undefined =>
-  span.SpanId ?? span.spanId ?? span.span_id
-
-const getSpanHasError = (span: any): boolean => {
-  if (span.SpanId) {
-    const eventNames = (span['Events.Name'] as string[] | undefined) ?? []
-    return eventNames.includes('exception')
-  }
-  const code = span.status?.code ?? span.status?.Code ?? 0
-  return code === 2 || code === 'STATUS_CODE_ERROR'
-}
-
-const getSpanDurationMs = (span: any): number | undefined => {
-  const start = span.startTimeUnixNano ?? span.start_time_unix_nano
-  const end = span.endTimeUnixNano ?? span.end_time_unix_nano
-  if (start != null && end != null) {
-    return Math.round((Number(end) - Number(start)) / 1_000_000)
-  }
-  return undefined
-}
-
-const collectAllSpans = (traces: any[]): any[] => {
-  const spans: any[] = []
-  for (const item of traces) {
-    if (item.SpanId) {
-      spans.push(item)
-    } else {
-      const scopeSpans = item.scopeSpans ?? item.scope_spans ?? []
-      for (const scope of scopeSpans) {
-        for (const span of scope.spans ?? []) {
-          spans.push(span)
-        }
-      }
-    }
-  }
-  return spans
-}
 
 export const buildIssueContextDoc = (
   issue: Issue,
@@ -555,46 +518,6 @@ export const buildIssueContextDoc = (
       }
     }
 
-    if (Array.isArray(parsedCtx.traces) && parsedCtx.traces.length > 0) {
-      const issueSpanId = parsedCtx.issueSpan ? getSpanId(parsedCtx.issueSpan) : undefined
-      const allSpans = collectAllSpans(parsedCtx.traces)
-      lines.push('', `### Trace Spans (${allSpans.length} total)`)
-
-      const MAX_SPANS = 50
-      for (const span of allSpans.slice(0, MAX_SPANS)) {
-        const isIssue = issueSpanId !== undefined && getSpanId(span) === issueSpanId
-        const data = extractSpanData(span)
-        const hasError = getSpanHasError(span)
-        const durationMs = getSpanDurationMs(span)
-
-        const httpMethod = data.attributes['http.method'] ?? data.attributes['http.request.method']
-        const httpRoute = data.attributes['http.route'] ?? data.attributes['http.target'] ?? data.attributes['url.path']
-        const httpStatus = data.attributes['http.status_code'] ?? data.attributes['http.response.status_code']
-        const dbSystem = data.attributes['db.system']
-        const dbOperation = data.attributes['db.operation']
-        const dbStatement = data.attributes['db.statement']
-
-        const prefix = isIssue ? '**→ [issue]**' : '-'
-        let headline = `${prefix} \`${data.operation ?? '(unnamed)'}\``
-        if (httpMethod) {
-          headline += ` — ${httpMethod}${httpRoute ? ` ${httpRoute}` : ''}${httpStatus ? ` → ${httpStatus}` : ''}`
-        } else if (dbSystem) {
-          headline += ` — ${dbSystem}${dbOperation ? `:${dbOperation}` : ''}`
-        }
-        if (hasError) headline += ' ⚠ ERROR'
-        if (durationMs !== undefined) headline += ` (${durationMs}ms)`
-        lines.push(headline)
-
-        if (data.service) lines.push(`  Service: ${data.service}`)
-        if (dbStatement) lines.push(`  Query: \`${String(dbStatement).slice(0, 200)}\``)
-        if (data.exception?.type || data.exception?.message) {
-          const exc = [data.exception.type, data.exception.message].filter(Boolean).join(': ')
-          lines.push(`  Exception: ${exc.slice(0, 200)}`)
-        }
-      }
-
-      if (allSpans.length > MAX_SPANS) lines.push(`  … and ${allSpans.length - MAX_SPANS} more spans`)
-    }
 
     if (Array.isArray(parsedCtx.logs) && parsedCtx.logs.length > 0) {
       lines.push('', `### Logs (${parsedCtx.logs.length} entries)`)
@@ -614,6 +537,14 @@ export const buildIssueContextDoc = (
       collectLogs(parsedCtx.logs)
       lines.push(...logLines.slice(0, 30))
       if (logLines.length > 30) lines.push(`  … and ${logLines.length - 30} more log entries`)
+    }
+
+    if (Array.isArray(parsedCtx.traces) && parsedCtx.traces.length > 0) {
+      lines.push('', '### Raw OTLP Spans', '```json', JSON.stringify(parsedCtx.traces, null, 2), '```')
+    }
+
+    if (Array.isArray(parsedCtx.logs) && parsedCtx.logs.length > 0) {
+      lines.push('', '### Raw OTLP Logs', '```json', JSON.stringify(parsedCtx.logs, null, 2), '```')
     }
   }
 
