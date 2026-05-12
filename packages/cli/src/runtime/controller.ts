@@ -1453,10 +1453,17 @@ export class RuntimeController extends EventEmitter {
         if (dryCtx) dryCtx.resolvedCounted = true
         this.updateSession({ chatId, status: 'done', branchName: effectiveBranch })
         this.setState(incrementResolved(this._state))
-        const dryRunMsg = `Dry run: patches applied to current branch \`${effectiveBranch}\` (no commit or push)`
+        this.emit('chat-status', chatId, 'finished')
+        const dryRunMsg = `Patches applied to current branch \`${effectiveBranch}\` (no commit or push)`
         this.log('info', dryRunMsg)
         this.emitToRadar(chatId, dryRunMsg, 'assistant', 'git')
         this.addSessionMessage(chatId, { role: 'assistant', content: dryRunMsg, activity: 'git' })
+        const repositoryUrl = await GitService.getRemoteUrl(cfg.dir).catch(() => '')
+        this.radar?.notifyFixPushed({
+          chatId,
+          git: { branchName: effectiveBranch, repositoryUrl: repositoryUrl ?? '' },
+          issue: { componentHash: issue.componentHash },
+        })
         return
       }
 
