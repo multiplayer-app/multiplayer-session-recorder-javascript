@@ -9,6 +9,7 @@ export const LEGACY_TOKENS_FILE = path.join(MP_DIR, 'tokens.json')
 // ─── API ──────────────────────────────────────────────────────────────────────
 
 export const PRODUCTION_HOSTNAME = 'api.multiplayer.app'
+export const PRODUCTION_WEB_HOSTNAME = 'go.multiplayer.app'
 export const API_URL = process.env.MULTIPLAYER_URL || `https://${PRODUCTION_HOSTNAME}/v0`
 export const BASE_API_URL = process.env.MULTIPLAYER_BASE_URL || `https://${PRODUCTION_HOSTNAME}`
 // ─── Demo repo ────────────────────────────────────────────────────────────────

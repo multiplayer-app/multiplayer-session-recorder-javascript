@@ -7,6 +7,7 @@ import type { SessionDetail, SessionStatus, RateLimitState } from '../runtime/ty
 import type { AgentChatStatus } from '../types/index.js'
 import type { GitSettings } from '../cli/profile.js'
 import { GitModeSection } from './shared/GitModeSection.js'
+import { PRODUCTION_HOSTNAME, PRODUCTION_WEB_HOSTNAME } from '../config.js'
 import {
   ACCENT,
   BORDER_MUTED,
@@ -62,6 +63,7 @@ interface Props {
   project?: string
   workspaceId?: string
   projectId?: string
+  apiUrl?: string
   rateLimitState: RateLimitState
   activeCount: number
   resolvedCount: number
@@ -96,9 +98,21 @@ function timeAgo(date: Date): string {
   return `${hours}h ago`
 }
 
-const getBrowserUrl = (workspaceId?: string, projectId?: string, session?: SessionDetail | null): string | null => {
+function getWebBaseUrl(apiUrl?: string): string {
+  if (!apiUrl) return `https://${PRODUCTION_WEB_HOSTNAME}`
+  try {
+    const { hostname } = new URL(apiUrl)
+    if (hostname === PRODUCTION_HOSTNAME) return `https://${PRODUCTION_WEB_HOSTNAME}`
+    return new URL(apiUrl).origin
+  } catch {
+    return `https://${PRODUCTION_WEB_HOSTNAME}`
+  }
+}
+
+const getBrowserUrl = (workspaceId?: string, projectId?: string, session?: SessionDetail | null, apiUrl?: string): string | null => {
   if (!workspaceId || !projectId) return null
-  let url = `https://go.multiplayer.app/project/${workspaceId}/${projectId}/default/agents`
+  const base = getWebBaseUrl(apiUrl)
+  let url = `${base}/project/${workspaceId}/${projectId}/default/agents`
   if (session) {
     url += `/session/${session.id}`
   }
@@ -112,6 +126,7 @@ function ContextSidebarImpl({
   project,
   workspaceId,
   projectId,
+  apiUrl,
   rateLimitState,
   activeCount,
   resolvedCount,
@@ -120,7 +135,7 @@ function ContextSidebarImpl({
   onOpenSettings
 }: Props): ReactElement {
   const borderColor = isFocused ? SEM_INDIGO : BORDER_MUTED
-  const browserUrl = getBrowserUrl(workspaceId, projectId, session)
+  const browserUrl = getBrowserUrl(workspaceId, projectId, session, apiUrl)
 
   const actionButtons = (
     <box flexDirection='column' gap={0} marginTop={1} flexShrink={0}>
