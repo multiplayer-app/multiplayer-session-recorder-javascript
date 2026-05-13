@@ -67,7 +67,10 @@ runCli(process.argv, ({ mode, initialConfig, healthPort, profileName }: ParsedFl
           process.exit(1)
         }
 
-        const controller = new RuntimeController(config, logger)
+        const getToken = config.authType === 'oauth'
+          ? async () => (await refreshOAuthTokenIfNeeded(config.url, profileName)) ?? config.apiKey
+          : undefined
+        const controller = new RuntimeController(config, logger, getToken)
 
         if (healthPort) {
           const healthServer = startHealthServer(healthPort, controller)

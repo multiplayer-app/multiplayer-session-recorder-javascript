@@ -136,7 +136,7 @@ const computeAvailableModels = (config: AgentConfig): string[] => {
   return [...new Set(models)]
 }
 
-export const createRadarService = (config: AgentConfig, logger: Logger): RadarService => {
+export const createRadarService = (config: AgentConfig, logger: Logger, getToken?: () => Promise<string>): RadarService => {
   // URL.origin never has a trailing slash, so we use it directly as the API base
   const host = new URL(config.url).origin
   const apiBase = `${host}/v0/radar`
@@ -187,9 +187,18 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
     return res
   }
 
-  const socket: Socket = io(`${host}/workspaces/${config.workspace}/projects/${config.project}/agents`, {
-    path: '/v0/radar/ws',
-    auth: {
+  const buildAuthData = async (): Promise<Record<string, string>> => {
+    if (getToken) {
+      try {
+        const fresh = await getToken()
+        // Propagate the refreshed token back onto the shared config object so
+        // subsequent HTTP fetch calls (fetchJson/fetchRaw) also use the new token.
+        config.apiKey = fresh
+      } catch {
+        // Fall through and use the current token
+      }
+    }
+    return {
       ...getAuthHeaders(config.apiKey),
       'x-is-debugging-agent': 'true',
       ...(config.name ? { 'x-agent-name': config.name } : {}),
@@ -198,7 +207,16 @@ export const createRadarService = (config: AgentConfig, logger: Logger): RadarSe
       ...(config.noGitBranch ? { 'x-no-git-branch': 'true' } : {}),
       ...(config.model ? { 'x-model': config.model } : {}),
       'x-available-models': JSON.stringify(computeAvailableModels(config)),
-    },
+    }
+  }
+
+  const socket: Socket = io(`${host}/workspaces/${config.workspace}/projects/${config.project}/agents`, {
+    path: '/v0/radar/ws',
+    // Use a function (not a static object) so auth data is built fresh for every
+    // connection attempt, including reconnects.  This allows the token to be
+    // refreshed before it is sent, preventing "Authorization failed" errors when
+    // an OAuth access token expires while the socket is alive.
+    auth: (cb) => { void buildAuthData().then(cb) },
     transports: ['websocket'],
     secure: host.startsWith('https'),
     reconnection: true,

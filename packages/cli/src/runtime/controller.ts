@@ -131,10 +131,12 @@ export class RuntimeController extends EventEmitter {
   private _consecutiveAuthErrors = 0
   // Number of consecutive auth errors on reconnect before treating it as permanent
   private static readonly AUTH_ERROR_RECONNECT_THRESHOLD = 5
+  private readonly _getToken: (() => Promise<string>) | undefined
 
-  constructor(config: AgentConfig, logger?: Logger) {
+  constructor(config: AgentConfig, logger?: Logger, getToken?: () => Promise<string>) {
     super()
     this._config = config
+    this._getToken = getToken
     this._state = {
       ...initialRuntimeState(config.maxConcurrentIssues),
       ...(config.workspaceDisplayName?.trim() ? { workspaceDisplayName: config.workspaceDisplayName.trim() } : {}),
@@ -270,7 +272,7 @@ export class RuntimeController extends EventEmitter {
     this.setState(setConnection(this._state, 'connecting'))
     this.log('info', `Connecting to ${this._config.url}`)
 
-    const radar = createRadarService(this._config, logger)
+    const radar = createRadarService(this._config, logger, this._getToken)
     this.radar = radar
 
     radar.onConnect(() => {
