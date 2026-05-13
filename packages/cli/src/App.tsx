@@ -8,6 +8,7 @@ import { RuntimeController } from './runtime/controller.js'
 import { clearCredentials, type GitSettings } from './cli/profile.js'
 import { deleteProfileTokenData } from './auth/token-store.js'
 import { setTuiSink } from './lib/tuiSink.js'
+import { refreshOAuthTokenIfNeeded } from './services/auth.service.js'
 import type { AgentChatStatus, AgentConfig, LogEntry, IAgent } from './types/index.js'
 import type { QuitMode, RuntimeState, SessionDetail } from './runtime/types.js'
 
@@ -95,7 +96,10 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit, onReg
         })
       }
       setTuiSink(tuiLogger)
-      const controller = new RuntimeController(config, tuiLogger)
+      const getToken = config.authType === 'oauth'
+        ? async () => (await refreshOAuthTokenIfNeeded(config.url, profileName ?? 'default')) ?? config.apiKey
+        : undefined
+      const controller = new RuntimeController(config, tuiLogger, getToken)
 
       controller.on('state', (state: RuntimeState) => {
         setRuntimeState({ ...state })
