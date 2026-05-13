@@ -19,9 +19,10 @@ interface Props {
   initialConfig: Partial<AgentConfig>
   profileName?: string
   onExit: () => void
+  onRegisterBeforeExit?: (fn: () => void) => void
 }
 
-export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => {
+export const App: React.FC<Props> = ({ initialConfig, profileName, onExit, onRegisterBeforeExit }) => {
   /** Raw TUI mode often delivers Ctrl+C as a key event, not SIGINT — mirror SIGINT handler from index.tsx. */
   useKeyboard(
     useCallback(
@@ -31,8 +32,8 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
           onExit()
         }
       },
-      [onExit]
-    )
+      [onExit],
+    ),
   )
 
   const { width: termWidth, height: termHeight } = useTerminalDimensions()
@@ -75,12 +76,12 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
         workspace: undefined,
         project: undefined,
         workspaceDisplayName: undefined,
-        projectDisplayName: undefined
+        projectDisplayName: undefined,
       }))
       setAuthErrorMessage(reason)
       setScreen('startup')
     },
-    [profileName]
+    [profileName],
   )
 
   const handleStartupComplete = useCallback(
@@ -118,13 +119,14 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
 
       controller.connect()
       controllerRef.current = controller
+      onRegisterBeforeExit?.(() => controllerRef.current?.disconnect())
       setRuntimeState(controller.getState())
       setScreen('dashboard')
 
       // Load initial agent chats from API
       void controller.loadAgentChats(0).then((more) => setHasMoreSessions(more))
     },
-    [onExit, handleAuthError]
+    [onExit, handleAuthError],
   )
 
   const handleQuitRequest = useCallback(() => {
@@ -179,7 +181,7 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit }) => 
         void controllerRef.current?.loadChatDetail(chatId)
       }
     },
-    [syncChatStatus]
+    [syncChatStatus],
   )
 
   const handleSendMessage = useCallback((chatId: string, content: string) => {

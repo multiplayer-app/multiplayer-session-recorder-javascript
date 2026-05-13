@@ -127,6 +127,10 @@ export class RuntimeController extends EventEmitter {
   private log: Logger
   private _pendingDetailEmit = new Map<string, { detail: SessionDetail; timer: ReturnType<typeof setTimeout> }>()
   private _authErrorEmitted = false
+  private _hasConnected = false
+  private _consecutiveAuthErrors = 0
+  // Number of consecutive auth errors on reconnect before treating it as permanent
+  private static readonly AUTH_ERROR_RECONNECT_THRESHOLD = 5
 
   constructor(config: AgentConfig, logger?: Logger) {
     super()
@@ -270,6 +274,8 @@ export class RuntimeController extends EventEmitter {
     this.radar = radar
 
     radar.onConnect(() => {
+      this._hasConnected = true
+      this._consecutiveAuthErrors = 0
       this.setState(setConnection(this._state, 'connected'))
       setTimeout(() => radar.emitIssueCheck(), 1500)
     })
@@ -283,7 +289,19 @@ export class RuntimeController extends EventEmitter {
       this.setState(setConnection(this._state, 'error', err.message))
       this.log('error', `Connection error: ${err.message}`)
       if (isAuthErrorMessage(err.message)) {
-        this.handleAuthFailure(err.message)
+        if (!this._hasConnected) {
+          // Never connected yet — bad credentials, fail immediately.
+          this.handleAuthFailure(err.message)
+        } else {
+          // Reconnecting — could be a transient error during server restart.
+          // Only give up after several consecutive auth errors.
+          this._consecutiveAuthErrors++
+          if (this._consecutiveAuthErrors >= RuntimeController.AUTH_ERROR_RECONNECT_THRESHOLD) {
+            this.handleAuthFailure(err.message)
+          } else {
+            this.log('info', `Auth error during reconnect (${this._consecutiveAuthErrors}/${RuntimeController.AUTH_ERROR_RECONNECT_THRESHOLD}) — retrying`)
+          }
+        }
       }
     })
 

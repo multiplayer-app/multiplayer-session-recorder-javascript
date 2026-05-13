@@ -440,6 +440,7 @@ export function DashboardScreen({
             project={projectLabel || undefined}
             workspaceId={config.workspace || undefined}
             projectId={config.project || undefined}
+            apiUrl={config.url}
             rateLimitState={state.rateLimitState}
             activeCount={activeCount}
             resolvedCount={state.resolvedCount}

@@ -84,6 +84,7 @@ runCli(process.argv, ({ mode, initialConfig, healthPort, profileName }: ParsedFl
           controller.quit('after-current')
         })
         process.on('SIGINT', () => controller.quit('now'))
+        process.on('SIGHUP', () => controller.quit('now'))
 
         controller.connect()
       })()
@@ -110,17 +111,27 @@ runCli(process.argv, ({ mode, initialConfig, healthPort, profileName }: ParsedFl
           openConsoleOnError: false,
         })
 
+        let beforeExit: (() => void) | null = null
         const exitApp = () => {
-        // stop() only halts the loop; destroy() restores tty (raw mode, mouse, alt screen).
+          // Disconnect the socket synchronously so the server gets a clean close frame
+          // before the process terminates (covers SIGHUP / terminal close).
+          beforeExit?.()
+          // stop() only halts the loop; destroy() restores tty (raw mode, mouse, alt screen).
           renderer.destroy()
           process.exit(0)
         }
 
+        process.on('SIGHUP', exitApp)
         process.on('SIGINT', exitApp)
         process.on('SIGTERM', exitApp)
 
         createRoot(renderer).render(
-          React.createElement(App, { initialConfig, profileName, onExit: exitApp }),
+          React.createElement(App, {
+            initialConfig,
+            profileName,
+            onExit: exitApp,
+            onRegisterBeforeExit: (fn) => { beforeExit = fn },
+          }),
         )
 
         renderer.start()
