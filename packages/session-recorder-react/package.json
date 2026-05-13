@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-react",
-  "version": "2.0.77",
+  "version": "2.0.78",
   "description": "Multiplayer Fullstack Session Recorder for React (browser wrapper)",
   "author": {
     "name": "Multiplayer Software, Inc.",
@@ -35,8 +35,8 @@
     "@opentelemetry/api": "^1.9.0"
   },
   "dependencies": {
-    "@multiplayer-app/session-recorder-browser": "2.0.77",
-    "@multiplayer-app/session-recorder-common": "2.0.77"
+    "@multiplayer-app/session-recorder-browser": "2.0.78",
+    "@multiplayer-app/session-recorder-common": "2.0.78"
   },
   "devDependencies": {
     "eslint": "10.1.0",
