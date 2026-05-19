@@ -24,18 +24,33 @@ interface Props {
 }
 
 export const App: React.FC<Props> = ({ initialConfig, profileName, onExit, onRegisterBeforeExit }) => {
+  const [ctrlCPending, setCtrlCPending] = useState(false)
+  const ctrlCTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   /** Raw TUI mode often delivers Ctrl+C as a key event, not SIGINT — mirror SIGINT handler from index.tsx. */
   useKeyboard(
     useCallback(
       (key: KeyEvent) => {
         if (key.ctrl && key.name === 'c' && !key.repeated) {
           key.stopPropagation()
-          onExit()
+          if (ctrlCPending) {
+            onExit()
+          } else {
+            setCtrlCPending(true)
+            if (ctrlCTimerRef.current) clearTimeout(ctrlCTimerRef.current)
+            ctrlCTimerRef.current = setTimeout(() => setCtrlCPending(false), 2000)
+          }
         }
       },
-      [onExit],
+      [onExit, ctrlCPending],
     ),
   )
+
+  useEffect(() => {
+    return () => {
+      if (ctrlCTimerRef.current) clearTimeout(ctrlCTimerRef.current)
+    }
+  }, [])
 
   const { width: termWidth, height: termHeight } = useTerminalDimensions()
   const [screen, setScreen] = useState<Screen>('startup')
@@ -232,17 +247,46 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit, onReg
     }
   }, [])
 
+  const ctrlCToast = ctrlCPending && (
+    <box
+      position='absolute'
+      top={termHeight - 4}
+      left={0}
+      width={termWidth}
+      alignItems='center'
+      justifyContent='center'
+    >
+      <box
+        flexDirection='column'
+        alignItems='center'
+        backgroundColor='#292524'
+        border={true}
+        borderStyle='rounded'
+        borderColor='#f59e0b'
+        paddingLeft={3}
+        paddingRight={3}
+        paddingTop={0}
+        paddingBottom={0}
+      >
+        <text fg='#f59e0b'>Press Ctrl+C again to exit</text>
+      </box>
+    </box>
+  )
+
   if (screen === 'startup') {
     return (
-      <StartupScreen
-        initialConfig={startupConfig}
-        profileName={profileName}
-        authErrorMessage={authErrorMessage}
-        onComplete={(cfg) => {
-          setAuthErrorMessage(null)
-          handleStartupComplete(cfg)
-        }}
-      />
+      <box position='relative' width={termWidth} height={termHeight}>
+        <StartupScreen
+          initialConfig={startupConfig}
+          profileName={profileName}
+          authErrorMessage={authErrorMessage}
+          onComplete={(cfg) => {
+            setAuthErrorMessage(null)
+            handleStartupComplete(cfg)
+          }}
+        />
+        {ctrlCToast}
+      </box>
     )
   }
 
@@ -274,6 +318,7 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit, onReg
         {screen === 'quit-confirm' && (
           <QuitScreen onQuit={handleQuit} onCancel={handleQuitCancel} onRestartSetup={handleRestartSetupFromQuit} />
         )}
+        {ctrlCToast}
       </box>
     )
   }

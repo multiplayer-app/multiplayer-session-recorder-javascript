@@ -1,4 +1,4 @@
-import { useState, useRef, type ReactElement } from 'react'
+import { useState, useRef, useEffect, type ReactElement } from 'react'
 import { exec } from 'child_process'
 import { useKeyboard } from '@opentui/react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
@@ -57,9 +57,16 @@ export function AuthMethodStep({ config, url, profileName, onComplete, onBack }:
   const [oauthState, setOAuthState] = useState<OAuthState>('idle')
   const [oauthFallbackUrl, setOAuthFallbackUrl] = useState<string | null>(null)
   const [urlCopied, setUrlCopied] = useState(false)
+  const urlCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [manualToken, setManualToken] = useState('')
   const oauthManagerRef = useRef<OAuthManager | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (urlCopiedTimerRef.current) clearTimeout(urlCopiedTimerRef.current)
+    }
+  }, [])
 
   // API key sub-step state
   const [apiKeyValue, setApiKeyValue] = useState(config.authType === 'api_key' ? (config.apiKey ?? '') : '')
@@ -267,6 +274,8 @@ export function AuthMethodStep({ config, url, profileName, onComplete, onBack }:
     if (oauthFallbackUrl) {
       copyToClipboard(oauthFallbackUrl)
       setUrlCopied(true)
+      if (urlCopiedTimerRef.current) clearTimeout(urlCopiedTimerRef.current)
+      urlCopiedTimerRef.current = setTimeout(() => setUrlCopied(false), 3000)
     }
   }
 
