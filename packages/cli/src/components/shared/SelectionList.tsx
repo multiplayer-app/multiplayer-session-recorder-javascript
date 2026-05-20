@@ -27,6 +27,8 @@ interface SelectionListProps {
   onSelect: (index: number) => void
   flexGrow?: number
   scrollable?: boolean
+  /** When true, selected rows use bold text only — no row background fill. */
+  plain?: boolean
 }
 
 /**
@@ -38,7 +40,8 @@ export function SelectionList({
   selectedIndex,
   onSelect,
   flexGrow,
-  scrollable = true
+  scrollable = true,
+  plain = false
 }: SelectionListProps): ReactElement {
   const [hoveredRow, setHoveredRow] = useState<number | null>(null)
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
@@ -60,7 +63,7 @@ export function SelectionList({
       onMouseOut: () => setHoveredRow((v: number | null) => (v === i ? null : v))
     }
 
-    const bg = isActive ? BG_SURFACE_DEEP : isHovered ? BG_SURFACE_ROW_HOVER : undefined
+    const bg = plain ? undefined : isActive ? BG_SURFACE_DEEP : isHovered ? BG_SURFACE_ROW_HOVER : undefined
 
     return (
       <box key={item.key} id={`selection-item-${i}`} flexShrink={0} flexDirection='column'>

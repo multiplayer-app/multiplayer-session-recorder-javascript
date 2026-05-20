@@ -42,8 +42,8 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit, onReg
           }
         }
       },
-      [onExit, ctrlCPending],
-    ),
+      [onExit, ctrlCPending]
+    )
   )
 
   useEffect(() => {
@@ -62,6 +62,19 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit, onReg
   const [hasMoreSessions, setHasMoreSessions] = useState(false)
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null)
   const controllerRef = useRef<RuntimeController | null>(null)
+
+  const appendLog = useCallback((level: LogEntry['level'], msg: string) => {
+    setAgentLogs((prev) => {
+      const entry: LogEntry = { timestamp: new Date(), level, message: msg }
+      const next = [...prev, entry]
+      return next.length > MAX_AGENT_LOGS ? next.slice(-MAX_AGENT_LOGS) : next
+    })
+  }, [])
+
+  useEffect(() => {
+    setTuiSink(appendLog)
+    return () => setTuiSink(null)
+  }, [appendLog])
 
   const handleAuthError = useCallback(
     (reason: string) => {
@@ -92,29 +105,21 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit, onReg
         workspace: undefined,
         project: undefined,
         workspaceDisplayName: undefined,
-        projectDisplayName: undefined,
+        projectDisplayName: undefined
       }))
       setAuthErrorMessage(reason)
       setScreen('startup')
     },
-    [profileName],
+    [profileName]
   )
 
   const handleStartupComplete = useCallback(
     (config: AgentConfig) => {
-      setAgentLogs([])
-      const tuiLogger = (level: LogEntry['level'], msg: string) => {
-        setAgentLogs((prev) => {
-          const entry: LogEntry = { timestamp: new Date(), level, message: msg }
-          const next = [...prev, entry]
-          return next.length > MAX_AGENT_LOGS ? next.slice(-MAX_AGENT_LOGS) : next
-        })
-      }
-      setTuiSink(tuiLogger)
-      const getToken = config.authType === 'oauth'
-        ? async () => (await refreshOAuthTokenIfNeeded(config.url, profileName ?? 'default')) ?? config.apiKey
-        : undefined
-      const controller = new RuntimeController(config, tuiLogger, getToken)
+      const getToken =
+        config.authType === 'oauth'
+          ? async () => (await refreshOAuthTokenIfNeeded(config.url, profileName ?? 'default')) ?? config.apiKey
+          : undefined
+      const controller = new RuntimeController(config, appendLog, getToken)
 
       controller.on('state', (state: RuntimeState) => {
         setRuntimeState({ ...state })
@@ -145,7 +150,7 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit, onReg
       // Load initial agent chats from API
       void controller.loadAgentChats(0).then((more) => setHasMoreSessions(more))
     },
-    [onExit, handleAuthError],
+    [onExit, handleAuthError, appendLog, profileName]
   )
 
   const handleQuitRequest = useCallback(() => {
@@ -173,7 +178,7 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit, onReg
     // environment-level fields (url, name).
     setStartupConfig({
       url: initialConfig.url,
-      name: initialConfig.name,
+      name: initialConfig.name
     })
     setAuthErrorMessage(null)
     setScreen('startup')
@@ -200,7 +205,7 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit, onReg
         void controllerRef.current?.loadChatDetail(chatId)
       }
     },
-    [syncChatStatus],
+    [syncChatStatus]
   )
 
   const handleSendMessage = useCallback((chatId: string, content: string) => {
@@ -243,7 +248,6 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit, onReg
   useEffect(() => {
     return () => {
       controllerRef.current?.disconnect()
-      setTuiSink(null)
     }
   }, [])
 

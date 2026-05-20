@@ -5,11 +5,12 @@ import cliPath from '@anthropic-ai/claude-agent-sdk/embed'
 import { simpleGit } from 'simple-git'
 import fs from 'fs'
 import path from 'path'
-import os from 'os'
-import { exec } from 'child_process'
+import { exec, spawn } from 'child_process'
 import { promisify } from 'util'
 import { Issue, FilePatch, Release, ConversationMessage } from '../types/index.js'
 import { MAX_FILE_SIZE, MAX_FILES_TO_READ } from '../config.js'
+import { logger } from '../logger.js'
+import { logToTui } from '../lib/tuiSink.js'
 import { getAuthHeaders } from '../lib/authHeaders.js'
 import {
   escapePromptMarkup,
@@ -37,25 +38,80 @@ export interface McpConfig {
 
 // ─── Provider requirement checks ─────────────────────────────────────────────
 
+const CLAUDE_NOT_LOGGED_IN = /not logged in|please run \/login/i
+
+const claudeAuthLog = (msg: string): void => {
+  logger.debug(msg)
+  logToTui('info', msg)
+}
+
+const probeClaudeLoginViaCli = (loginError: Error): Promise<void> => {
+  // The Agent SDK can return result:success even when the CLI is not logged in.
+  // The installed `claude` binary is the source of truth — same as `claude -p "ok"`.
+  claudeAuthLog('[claude-auth] probing login via `claude -p "ok"`')
+
+  return new Promise((resolve, reject) => {
+    const child = spawn('claude', ['-p', 'ok'], { stdio: ['ignore', 'pipe', 'pipe'] })
+    let stdout = ''
+    let stderr = ''
+
+    child.stdout.on('data', (chunk: Buffer | string) => {
+      stdout += chunk.toString()
+    })
+    child.stderr.on('data', (chunk: Buffer | string) => {
+      stderr += chunk.toString()
+    })
+
+    const timer = setTimeout(() => {
+      child.kill()
+      reject(new Error('Claude login probe timed out'))
+    }, 30_000)
+
+    child.on('error', (err) => {
+      clearTimeout(timer)
+      reject(err)
+    })
+
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      const output = `${stdout}\n${stderr}`.trim()
+      claudeAuthLog(`[claude-auth] CLI probe output: ${output || '(empty)'} (exit ${code ?? '?'})`)
+      if (CLAUDE_NOT_LOGGED_IN.test(output)) {
+        reject(loginError)
+        return
+      }
+      if (code !== 0) {
+        reject(new Error(`Claude login probe exited with code ${code ?? '?'}`))
+        return
+      }
+      claudeAuthLog('[claude-auth] Claude Code is authenticated')
+      resolve()
+    })
+  })
+}
+
 export const checkClaudeRequirements = async (): Promise<void> => {
+  claudeAuthLog('[claude-auth] checking Claude Code requirements')
+
   try {
-    await execAsync('claude --version', { timeout: 5000 })
+    const { stdout } = await execAsync('claude --version', { timeout: 5000 })
+    claudeAuthLog(`[claude-auth] claude CLI found: ${stdout.trim()}`)
   } catch {
+    claudeAuthLog('[claude-auth] claude CLI not found in PATH')
     throw new Error('Claude CLI is not installed. Install it with:\n  npm install -g @anthropic-ai/claude-code')
   }
 
-  const hasEnvKey = !!process.env.ANTHROPIC_API_KEY
-  const hasConfigFile = (() => {
-    try {
-      return fs.existsSync(path.join(os.homedir(), '.claude.json'))
-    } catch {
-      return false
-    }
-  })()
-
-  if (!hasEnvKey && !hasConfigFile) {
-    throw new Error('Claude CLI is not authenticated. Run:\n  claude auth login')
+  // An ANTHROPIC_API_KEY bypasses interactive login — no probe needed.
+  if (process.env.ANTHROPIC_API_KEY) {
+    claudeAuthLog('[claude-auth] ANTHROPIC_API_KEY is set — skipping interactive login probe')
+    return
   }
+
+  const loginError = new Error(
+    'Claude Code is not authenticated.\n' + 'Open a new terminal, run "claude" and complete login, then press Retry.'
+  )
+
+  await probeClaudeLoginViaCli(loginError)
 }
 
 export const fetchAnthropicModels = async (modelKey?: string): Promise<string[]> => {
