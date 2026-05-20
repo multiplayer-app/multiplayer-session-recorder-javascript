@@ -5,16 +5,36 @@ import { useKeyboard } from '@opentui/react'
 import { tuiAttrs } from '../../lib/tuiAttrs.js'
 import { clampTextLines, collapseForSingleLine } from '../../lib/formatDisplay.js'
 import type { SessionSummary, SessionStatus } from '../../runtime/types.js'
+import {
+  ACCENT,
+  BORDER_MUTED,
+  FG_BODY,
+  FG_TIMESTAMP,
+  SCROLLBAR_TRACK_STYLE,
+  SESSION_STATUS_COLORS
+} from '../shared/tuiTheme.js'
 
 const SIDEBAR_WIDTH = 32
 
+function relativeTime(date: Date): string {
+  const diffMs = Date.now() - date.getTime()
+  const diffSec = Math.floor(diffMs / 1000)
+  if (diffSec < 60) return 'Now'
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${diffHr}h ago`
+  const diffDay = Math.floor(diffHr / 24)
+  return `${diffDay}d ago`
+}
+
 const STATUS_SYMBOL: Record<SessionStatus, { symbol: string; color: string }> = {
-  pending: { symbol: '○', color: '#6b7280' },
-  analyzing: { symbol: '◐', color: '#f59e0b' },
-  pushing: { symbol: '◑', color: '#6366f1' },
-  done: { symbol: '●', color: '#10b981' },
-  failed: { symbol: '✕', color: '#ef4444' },
-  aborted: { symbol: '◌', color: '#6b7280' }
+  pending: { symbol: '○', color: SESSION_STATUS_COLORS.pending },
+  analyzing: { symbol: '◐', color: SESSION_STATUS_COLORS.analyzing },
+  pushing: { symbol: '◑', color: SESSION_STATUS_COLORS.pushing },
+  done: { symbol: '●', color: SESSION_STATUS_COLORS.done },
+  failed: { symbol: '✕', color: SESSION_STATUS_COLORS.failed },
+  aborted: { symbol: '◌', color: SESSION_STATUS_COLORS.aborted }
 }
 
 interface Props {
@@ -38,10 +58,7 @@ const SCROLLBAR_STYLE = {
   viewportOptions: { flexGrow: 1 },
   scrollbarOptions: {
     showArrows: true,
-    trackOptions: {
-      foregroundColor: '#22d3ee',
-      backgroundColor: '#374151'
-    }
+    trackOptions: SCROLLBAR_TRACK_STYLE
   }
 } as const
 
@@ -55,7 +72,7 @@ function SessionListPaneImpl({
   hasMore = false,
   onLoadMore
 }: Props): ReactElement {
-  const borderColor = isFocused ? '#22d3ee' : '#374151'
+  const borderColor = isFocused ? ACCENT : BORDER_MUTED
   const sidebarInner = SIDEBAR_WIDTH - 4 // border(2) + padding(2)
   const contentWidth = layout === 'fluid' ? Math.max(16, fluidTextWidth ?? sidebarInner) : sidebarInner
   const rowTextWidth = Math.max(12, contentWidth - 5) // arrow + status + gaps
@@ -115,6 +132,7 @@ function SessionListPaneImpl({
               const { symbol, color } = STATUS_SYMBOL[s.status]
               const titleTwoLines = clampTextLines(s.issueTitle, rowTextWidth, 2)
               const serviceOneLine = collapseForSingleLine(s.issueService).slice(0, rowTextWidth)
+              const timeLabel = relativeTime(s.startedAt)
               return (
                 <box
                   key={s.chatId}
@@ -132,19 +150,20 @@ function SessionListPaneImpl({
                   }
                 >
                   <box flexDirection='row' gap={1}>
-                    <text fg={isSelected ? '#22d3ee' : undefined}>{isSelected ? '▶' : ' '}</text>
+                    <text fg={isSelected ? ACCENT : undefined}>{isSelected ? '▶' : ' '}</text>
                     <text fg={color}>{symbol}</text>
-                    <box flexDirection='column' width={rowTextWidth}>
+                    <box flexDirection='column' width={rowTextWidth} gap={0}>
                       {titleTwoLines.map((line, lineIndex) => (
                         <text
                           key={`session-title-${s.chatId}-${lineIndex}`}
-                          fg={isSelected ? '#f8fafc' : undefined}
+                          fg={isSelected ? FG_BODY : undefined}
                           attributes={tuiAttrs({ bold: isSelected })}
                         >
                           {line}
                         </text>
                       ))}
-                      <text>{serviceOneLine}</text>
+                      {serviceOneLine && <text fg={FG_TIMESTAMP}>{serviceOneLine}</text>}
+                      <text fg={FG_TIMESTAMP}>{timeLabel}</text>
                     </box>
                   </box>
                 </box>
@@ -162,7 +181,7 @@ function SessionListPaneImpl({
                 onLoadMore()
               }}
             >
-              <text attributes={tuiAttrs({ bold: true })} fg='#22d3ee'>
+              <text attributes={tuiAttrs({ bold: true })} fg={ACCENT}>
                 ▼ Load more
               </text>
             </box>

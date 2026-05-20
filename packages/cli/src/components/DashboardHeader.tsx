@@ -2,16 +2,15 @@ import type { ReactElement } from 'react'
 import { tuiAttrs } from '../lib/tuiAttrs.js'
 import type { RuntimeState } from '../runtime/types.js'
 import type { AgentConfig } from '../types/index.js'
-
-type ConnectionState = RuntimeState['connection']
-
-const CONNECTION_BADGE: Record<ConnectionState, { symbol: string; color: string; label: string }> = {
-  idle: { symbol: '○', color: '#6b7280', label: 'idle' },
-  connecting: { symbol: '◌', color: '#f59e0b', label: 'connecting' },
-  connected: { symbol: '●', color: '#10b981', label: 'connected' },
-  disconnected: { symbol: '○', color: '#6b7280', label: 'disconnected' },
-  error: { symbol: '✕', color: '#ef4444', label: 'error' },
-}
+import {
+  BORDER_MUTED,
+  BRAND_MARK_PRIMARY,
+  CONNECTION_STATUS_COLORS,
+  FG_DIM,
+  FG_META,
+  FG_MUTED,
+  SEM_RED
+} from './shared/tuiTheme.js'
 
 interface Props {
   state: RuntimeState
@@ -27,9 +26,9 @@ function shortenPath(dir: string): string {
 }
 
 function DashboardHeaderImpl({ state, config, isNarrow }: Props): ReactElement {
-  const conn = CONNECTION_BADGE[state.connection]
+  const conn = CONNECTION_STATUS_COLORS[state.connection]
   const displayDir = shortenPath(config.dir)
-  const separator = <text fg='#374151'> │ </text>
+  const separator = <text fg={BORDER_MUTED}> │ </text>
 
   return (
     <box
@@ -39,11 +38,10 @@ function DashboardHeaderImpl({ state, config, isNarrow }: Props): ReactElement {
       paddingLeft={1}
       paddingRight={1}
       height={1}
-      // backgroundColor='#1e1e2e'
     >
       {/* Left: Brand */}
       <box flexDirection='row' gap={0} flexShrink={0}>
-        <text fg='#6366f1' attributes={tuiAttrs({ bold: true })}>
+        <text fg={BRAND_MARK_PRIMARY} attributes={tuiAttrs({ bold: true })}>
           ◆ MULTIPLAYER
         </text>
       </box>
@@ -52,12 +50,12 @@ function DashboardHeaderImpl({ state, config, isNarrow }: Props): ReactElement {
       <box flexDirection='row' gap={0} flexShrink={1}>
         {!isNarrow && (
           <>
-            <text fg='#6b7280'>{displayDir}</text>
+            <text fg={FG_DIM}>{displayDir}</text>
             {separator}
           </>
         )}
-        <text fg='#4b5563'>model:</text>
-        <text fg='#9ca3af'>{config.model}</text>
+        <text fg={FG_META}>model:</text>
+        <text fg={FG_MUTED}>{config.model}</text>
         {separator}
         <text fg={conn.color}>
           {conn.symbol} {conn.label}
@@ -65,7 +63,7 @@ function DashboardHeaderImpl({ state, config, isNarrow }: Props): ReactElement {
         {state.connectionError && (
           <>
             <text> </text>
-            <text fg='#ef4444' attributes={tuiAttrs({ dim: true })}>
+            <text fg={SEM_RED} attributes={tuiAttrs({ dim: true })}>
               {state.connectionError.slice(0, 30)}
             </text>
           </>

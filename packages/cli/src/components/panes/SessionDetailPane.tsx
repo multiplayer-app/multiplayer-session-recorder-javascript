@@ -10,8 +10,10 @@ import {
   ACCENT,
   BORDER_MUTED,
   FG_DIM,
+  FG_MUTED,
   FG_SLATE_DETAIL,
   FG_STONE_DIM,
+  FG_TIMESTAMP,
   SEM_AMBER,
   SEM_GREEN,
   SEM_GREEN_BRIGHT,
@@ -590,7 +592,7 @@ const buildMessageRows = (msg: SessionMessage, contentWidth?: number): DetailRow
       type: 'toolLine',
       icon,
       iconColor,
-      nameColor: SEM_SLATE,
+      nameColor: FG_MUTED,
       name: tc.name,
       detail
     })
@@ -664,9 +666,7 @@ function renderDetailRow(row: DetailRow): ReactElement | null {
       return (
         <text key={row.key}>
           <span fg={row.iconColor}>{row.icon} </span>
-          <span fg={row.nameColor} attributes={tuiAttrs({ dim: true })}>
-            {row.name}
-          </span>
+          <span fg={row.nameColor}>{row.name}</span>
           {row.detail ? <span fg={FG_SLATE_DETAIL}>{` ${row.detail}`}</span> : null}
         </text>
       ) as ReactElement
@@ -679,7 +679,7 @@ function renderDetailRow(row: DetailRow): ReactElement | null {
       ) as ReactElement
     case 'toolOutputLine':
       return (
-        <text key={row.key} fg={FG_STONE_DIM} attributes={tuiAttrs({ dim: true })}>
+        <text key={row.key} fg={FG_STONE_DIM}>
           {row.text}
         </text>
       ) as ReactElement
@@ -916,7 +916,7 @@ function SessionDetailPaneImpl({
         </box>
         {session.issueService && (
           <box flexDirection='row'>
-            <text attributes={tuiAttrs({ dim: true })}>{collapseForSingleLine(session.issueService)}</text>
+            <text fg={FG_TIMESTAMP}>{collapseForSingleLine(session.issueService)}</text>
           </box>
         )}
         {session.error && <text fg={SEM_RED}>✗ {session.error}</text>}

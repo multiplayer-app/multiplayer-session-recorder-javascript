@@ -16,7 +16,7 @@ const GIT_MODE_COLORS: Record<GitMode | 'custom', string> = {
   'dry-run': FG_DIM,
   'local-commit': SEM_AMBER,
   'full-pr': SEM_GREEN,
-  custom: SEM_INDIGO,
+  custom: SEM_INDIGO
 }
 
 const CUSTOM_DISPLAY = { label: 'Custom', desc: 'Mix of individual git toggles' }
@@ -27,7 +27,7 @@ function resolveModeDisplay(mode: GitMode | null): { label: string; desc: string
   return {
     label: opt?.label ?? mode,
     desc: opt?.desc ?? '',
-    color: GIT_MODE_COLORS[mode],
+    color: GIT_MODE_COLORS[mode]
   }
 }
 
@@ -52,16 +52,14 @@ export function GitModeSection({ git, title = 'Git operations' }: Props): ReactE
         <text fg={display.color}>●</text>
         <text fg={display.color}>{display.label}</text>
       </box>
-      <text fg={FG_DIM} attributes={tuiAttrs({ dim: true })}>
-        {display.desc}
-      </text>
+      <text fg={FG_MUTED}>{display.desc}</text>
       {mode === null && (
         <box flexDirection='column' marginTop={0}>
           {GIT_FIELD_LABELS.map(({ key, label }) => {
             const on = git[key] ?? true
             return (
               <box key={key} flexDirection='row' justifyContent='space-between'>
-                <text fg={FG_DIM}>{label}</text>
+                <text fg={FG_MUTED}>{label}</text>
                 <text fg={on ? SEM_GREEN : FG_DIM}>{on ? 'on' : 'off'}</text>
               </box>
             )

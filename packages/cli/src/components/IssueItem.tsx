@@ -2,23 +2,24 @@ import React from 'react'
 import { tuiAttrs } from '../lib/tuiAttrs.js'
 import { collapseForSingleLine } from '../lib/formatDisplay.js'
 import { ActiveIssue } from '../types/index.js'
+import { FG_BODY, ISSUE_STATUS_COLORS, SEM_GREEN, SEM_RED } from './shared/tuiTheme.js'
 
 interface Props {
   activeIssue: ActiveIssue
 }
 
 const statusLabel: Record<string, { label: string; color: string }> = {
-  pending: { label: 'PENDING', color: '#6b7280' },
-  analyzing: { label: 'ANALYZING', color: '#22d3ee' },
-  applying: { label: 'APPLYING', color: '#f59e0b' },
-  pushing: { label: 'PUSHING', color: '#f59e0b' },
-  done: { label: 'DONE', color: '#10b981' },
-  failed: { label: 'FAILED', color: '#ef4444' },
+  pending: { label: 'PENDING', color: ISSUE_STATUS_COLORS.pending },
+  analyzing: { label: 'ANALYZING', color: ISSUE_STATUS_COLORS.analyzing },
+  applying: { label: 'APPLYING', color: ISSUE_STATUS_COLORS.applying },
+  pushing: { label: 'PUSHING', color: ISSUE_STATUS_COLORS.pushing },
+  done: { label: 'DONE', color: ISSUE_STATUS_COLORS.done },
+  failed: { label: 'FAILED', color: ISSUE_STATUS_COLORS.failed }
 }
 
 export const IssueItem: React.FC<Props> = ({ activeIssue }) => {
   const { issue, status, branchName, error } = activeIssue
-  const { label, color } = statusLabel[status] ?? { label: status.toUpperCase(), color: '#f8fafc' }
+  const { label, color } = statusLabel[status] ?? { label: status.toUpperCase(), color: FG_BODY }
 
   const elapsed = Math.round((Date.now() - activeIssue.startedAt.getTime()) / 1000)
 
@@ -45,12 +46,12 @@ export const IssueItem: React.FC<Props> = ({ activeIssue }) => {
       </box>
       {branchName && (
         <box>
-          <text fg="#10b981">branch: {branchName}</text>
+          <text fg={SEM_GREEN}>branch: {branchName}</text>
         </box>
       )}
       {error && (
         <box>
-          <text fg="#ef4444">error: {error}</text>
+          <text fg={SEM_RED}>error: {error}</text>
         </box>
       )}
     </box>

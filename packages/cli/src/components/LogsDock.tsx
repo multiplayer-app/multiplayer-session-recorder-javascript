@@ -4,6 +4,7 @@ import { MouseButton } from '@opentui/core'
 import { tuiAttrs } from '../lib/tuiAttrs.js'
 import { LogOutput } from './LogOutput.js'
 import type { LogEntry } from '../types/index.js'
+import { BORDER_MUTED, SEM_VIOLET_SOFT } from './shared/tuiTheme.js'
 
 interface Props {
   logs: LogEntry[]
@@ -23,7 +24,7 @@ function LogsDockImpl({ logs, height, isFocused, onRequestFocus }: Props): React
     <box
       border={true}
       borderStyle='rounded'
-      borderColor={isFocused ? '#a78bfa' : '#374151'}
+      borderColor={isFocused ? SEM_VIOLET_SOFT : BORDER_MUTED}
       padding={1}
       flexShrink={0}
       flexDirection='column'
@@ -47,10 +48,10 @@ function LogsDockImpl({ logs, height, isFocused, onRequestFocus }: Props): React
           scrollbarOptions: {
             showArrows: true,
             trackOptions: {
-              foregroundColor: '#a78bfa',
-              backgroundColor: '#374151',
-            },
-          },
+              foregroundColor: SEM_VIOLET_SOFT,
+              backgroundColor: BORDER_MUTED
+            }
+          }
         }}
       >
         <LogOutput logs={logs} showTitle={false} />

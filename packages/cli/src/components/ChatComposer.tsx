@@ -4,6 +4,18 @@ import { useKeyboard } from '@opentui/react'
 import type { KeyEvent } from '@opentui/core'
 import { tuiAttrs } from '../lib/tuiAttrs.js'
 import type { AgentChatStatus } from '../types/index.js'
+import {
+  ACCENT,
+  BG_SEND_ACTIVE,
+  BORDER_MUTED,
+  BRAND_MARK_PRIMARY,
+  FG_DIM,
+  FG_META,
+  FG_VALUE,
+  SEM_AMBER,
+  SEM_GREEN,
+  SEM_RED
+} from './shared/tuiTheme.js'
 
 /** Chat statuses that indicate the agent is actively working. */
 const ACTIVE_STATUSES = new Set<AgentChatStatus | string>(['processing', 'streaming'])
@@ -123,7 +135,7 @@ export function ChatComposer({
     if (isActive) {
       return (
         <box flexDirection='row' gap={1} flexShrink={0}>
-          <text fg='#f59e0b' attributes={tuiAttrs({ bold: true })}>
+          <text fg={SEM_AMBER} attributes={tuiAttrs({ bold: true })}>
             ● generating...
           </text>
         </box>
@@ -131,7 +143,7 @@ export function ChatComposer({
     }
     if (chatStatus === 'error') {
       return (
-        <text fg='#ef4444' attributes={tuiAttrs({ dim: true })}>
+        <text fg={SEM_RED} attributes={tuiAttrs({ dim: true })}>
           ✕ error
         </text>
       )
@@ -144,7 +156,7 @@ export function ChatComposer({
     if (canAbort) {
       return (
         <text
-          fg='#ef4444'
+          fg={SEM_RED}
           attributes={tuiAttrs({ bold: true })}
           onMouseUp={(e) => {
             e.stopPropagation()
@@ -158,8 +170,8 @@ export function ChatComposer({
     if (canSend) {
       return (
         <text
-          fg='#10b981'
-          bg='#064e3b'
+          fg={SEM_GREEN}
+          bg={BG_SEND_ACTIVE}
           attributes={tuiAttrs({ bold: true })}
           onMouseUp={(e) => {
             e.stopPropagation()
@@ -171,13 +183,13 @@ export function ChatComposer({
       )
     }
     return (
-      <text fg='#4b5563' attributes={tuiAttrs({ dim: true })}>
+      <text fg={FG_META} attributes={tuiAttrs({ dim: true })}>
         {' ↵ Send '}
       </text>
     )
   })()
 
-  const borderColor = isFocused ? '#6366f1' : '#374151'
+  const borderColor = isFocused ? BRAND_MARK_PRIMARY : BORDER_MUTED
 
   return (
     <box flexDirection='column' flexShrink={0} gap={0}>
@@ -194,7 +206,7 @@ export function ChatComposer({
       >
         {/* Textarea row */}
         <box flexDirection='row' gap={1} padding={1}>
-          <text fg={isFocused ? '#6366f1' : '#6b7280'}>{isFocused ? '❯' : ' '}</text>
+          <text fg={isFocused ? BRAND_MARK_PRIMARY : FG_DIM}>{isFocused ? '❯' : ' '}</text>
           <textarea
             ref={textareaRef}
             width={textareaWidth}
@@ -203,12 +215,12 @@ export function ChatComposer({
             placeholder={
               disabled ? 'Select a session...' : isActive ? 'Agent is working...' : 'Type a message... (Enter to send)'
             }
-            placeholderColor='#6b7280'
+            placeholderColor={FG_DIM}
             wrapMode='word'
             backgroundColor='transparent'
             focusedBackgroundColor='transparent'
-            textColor={disabled ? '#6b7280' : '#e5e7eb'}
-            focusedTextColor='#f3f4f6'
+            textColor={disabled ? FG_DIM : FG_VALUE}
+            focusedTextColor={FG_VALUE}
             keyBindings={[
               { name: 'return', action: 'submit' },
               { name: 'return', shift: true, action: 'newline' }
@@ -221,32 +233,32 @@ export function ChatComposer({
         <box flexDirection='row' justifyContent='space-between' paddingLeft={1} paddingRight={1} paddingBottom={1}>
           <box flexDirection='row' gap={1}>
             {/* Mode tabs */}
-            <text fg='#6366f1' attributes={tuiAttrs({ bold: true })}>
+            <text fg={BRAND_MARK_PRIMARY} attributes={tuiAttrs({ bold: true })}>
               Chat
             </text>
-            <text fg='#6b7280'>│</text>
+            <text fg={FG_DIM}>│</text>
             {statusIndicator ??
               (isFocused ? (
                 <box flexDirection='row' gap={0}>
-                  <text fg='#22d3ee' attributes={tuiAttrs({ bold: true })}>
+                  <text fg={ACCENT} attributes={tuiAttrs({ bold: true })}>
                     ↵
                   </text>
-                  <text fg='#6b7280'> send · </text>
-                  <text fg='#22d3ee' attributes={tuiAttrs({ bold: true })}>
+                  <text fg={FG_DIM}> send · </text>
+                  <text fg={ACCENT} attributes={tuiAttrs({ bold: true })}>
                     ⇧↵
                   </text>
-                  <text fg='#6b7280'> newline · </text>
-                  <text fg='#22d3ee' attributes={tuiAttrs({ bold: true })}>
+                  <text fg={FG_DIM}> newline · </text>
+                  <text fg={ACCENT} attributes={tuiAttrs({ bold: true })}>
                     Esc
                   </text>
-                  <text fg='#6b7280'> back</text>
+                  <text fg={FG_DIM}> back</text>
                 </box>
               ) : (
                 <box flexDirection='row' gap={0}>
-                  <text fg='#22d3ee' attributes={tuiAttrs({ bold: true })}>
+                  <text fg={ACCENT} attributes={tuiAttrs({ bold: true })}>
                     i
                   </text>
-                  <text fg='#6b7280'> to compose</text>
+                  <text fg={FG_DIM}> to compose</text>
                 </box>
               ))}
           </box>

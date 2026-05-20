@@ -12,16 +12,17 @@ import {
   ACCENT,
   BORDER_MUTED,
   BRAND_MARK_PRIMARY,
-  FG_DIM,
   FG_ERROR_SOFT,
-  FG_META,
   FG_MUTED,
+  FG_TIMESTAMP,
   FG_VALUE,
   LINK_SUBTLE,
+  SCROLLBAR_TRACK_STYLE,
   SEM_AMBER,
   SEM_GREEN,
   SEM_INDIGO,
-  SEM_RED
+  SEM_RED,
+  SESSION_STATUS_COLORS
 } from './shared/tuiTheme.js'
 
 const SIDEBAR_WIDTH = 30
@@ -31,20 +32,17 @@ const SIDEBAR_SCROLL_STYLE = {
   viewportOptions: { flexGrow: 1 },
   scrollbarOptions: {
     showArrows: false,
-    trackOptions: {
-      foregroundColor: ACCENT,
-      backgroundColor: BORDER_MUTED
-    }
+    trackOptions: SCROLLBAR_TRACK_STYLE
   }
 } as const
 
 const STATUS_LABEL: Record<SessionStatus, { label: string; color: string }> = {
-  pending: { label: 'Pending', color: FG_DIM },
-  analyzing: { label: 'Analyzing', color: SEM_AMBER },
-  pushing: { label: 'Pushing', color: SEM_INDIGO },
-  done: { label: 'Done', color: SEM_GREEN },
-  failed: { label: 'Failed', color: SEM_RED },
-  aborted: { label: 'Aborted', color: FG_DIM }
+  pending: { label: 'Pending', color: SESSION_STATUS_COLORS.pending },
+  analyzing: { label: 'Analyzing', color: SESSION_STATUS_COLORS.analyzing },
+  pushing: { label: 'Pushing', color: SESSION_STATUS_COLORS.pushing },
+  done: { label: 'Done', color: SESSION_STATUS_COLORS.done },
+  failed: { label: 'Failed', color: SESSION_STATUS_COLORS.failed },
+  aborted: { label: 'Aborted', color: SESSION_STATUS_COLORS.aborted }
 }
 
 const STATUS_SYMBOL: Record<SessionStatus, string> = {
@@ -83,7 +81,7 @@ function SectionTitle({ title }: { title: string }): ReactElement {
 function InfoRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }): ReactElement {
   return (
     <box flexDirection='column'>
-      <text fg={FG_DIM}>{label}</text>
+      <text fg={FG_MUTED}>{label}</text>
       <text fg={valueColor ?? FG_VALUE}>{value}</text>
     </box>
   ) as ReactElement
@@ -109,7 +107,12 @@ function getWebBaseUrl(apiUrl?: string): string {
   }
 }
 
-const getBrowserUrl = (workspaceId?: string, projectId?: string, session?: SessionDetail | null, apiUrl?: string): string | null => {
+const getBrowserUrl = (
+  workspaceId?: string,
+  projectId?: string,
+  session?: SessionDetail | null,
+  apiUrl?: string
+): string | null => {
   if (!workspaceId || !projectId) return null
   const base = getWebBaseUrl(apiUrl)
   let url = `${base}/project/${workspaceId}/${projectId}/default/agents`
@@ -178,7 +181,7 @@ function ContextSidebarImpl({
             <box flexDirection='column' gap={1}>
               <SectionTitle title='Rate Limit' />
               <box flexDirection='row' gap={1}>
-                <text fg={FG_DIM}>Slots:</text>
+                <text fg={FG_MUTED}>Slots:</text>
                 <text fg={rateLimitState.active >= rateLimitState.limit ? SEM_RED : FG_VALUE}>
                   {rateLimitState.active} / {rateLimitState.limit}
                 </text>
@@ -242,9 +245,7 @@ function ContextSidebarImpl({
               </text>
             </box>
             {chatActivity}
-            <text fg={FG_META} attributes={tuiAttrs({ dim: true })}>
-              {timeAgo(session.startedAt)}
-            </text>
+            <text fg={FG_TIMESTAMP}>{timeAgo(session.startedAt)}</text>
           </box>
 
           {/* Session section */}
@@ -260,13 +261,13 @@ function ContextSidebarImpl({
             {session.debugSessionId && <InfoRow label='Debug Session:' value={session.debugSessionId.slice(-8)} />}
             {session.branchName && (
               <box flexDirection='column'>
-                <text fg={FG_DIM}>Branch:</text>
+                <text fg={FG_MUTED}>Branch:</text>
                 <text fg={LINK_SUBTLE}>{session.branchName}</text>
               </box>
             )}
             {session.prUrl && (
               <box flexDirection='column' onMouseUp={clickHandler(() => openUrl(session.prUrl!))}>
-                <text fg={FG_DIM}>PR:</text>
+                <text fg={FG_MUTED}>PR:</text>
                 <text fg={LINK_SUBTLE} attributes={tuiAttrs({ underline: true })}>
                   {session.prUrl.length > SIDEBAR_WIDTH - 6
                     ? session.prUrl.slice(0, SIDEBAR_WIDTH - 9) + '...'
@@ -276,7 +277,7 @@ function ContextSidebarImpl({
             )}
             {session.codeChanges && (
               <box flexDirection='column'>
-                <text fg={FG_DIM}>Changes:</text>
+                <text fg={FG_MUTED}>Changes:</text>
                 <box flexDirection='row' gap={1}>
                   <text fg={SEM_GREEN}>+{session.codeChanges.additions}</text>
                   <text fg={SEM_RED}>-{session.codeChanges.deletions}</text>
@@ -286,9 +287,7 @@ function ContextSidebarImpl({
             {session.error && (
               <box flexDirection='column'>
                 <text fg={SEM_RED}>Error:</text>
-                <text fg={FG_ERROR_SOFT} attributes={tuiAttrs({ dim: true })}>
-                  {session.error.slice(0, 60)}
-                </text>
+                <text fg={FG_ERROR_SOFT}>{session.error.slice(0, 60)}</text>
               </box>
             )}
           </box>
@@ -300,7 +299,7 @@ function ContextSidebarImpl({
             <InfoRow label='Active:' value={String(activeCount)} valueColor={SEM_AMBER} />
             <InfoRow label='Resolved:' value={String(resolvedCount)} valueColor={SEM_GREEN} />
             <box flexDirection='row' gap={1}>
-              <text fg={FG_DIM}>Slots:</text>
+              <text fg={FG_MUTED}>Slots:</text>
               <text fg={rateLimitState.active >= rateLimitState.limit ? SEM_RED : FG_VALUE}>
                 {rateLimitState.active} / {rateLimitState.limit}
               </text>

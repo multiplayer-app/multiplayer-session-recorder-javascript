@@ -1,12 +1,13 @@
 import type { ReactElement } from 'react'
+import { STATUS_ICON_COLORS } from './tuiTheme.js'
 
 type StatusType = 'loading' | 'success' | 'error' | 'idle'
 
 const STATUS_MAP: Record<StatusType, { symbol: string; color: string }> = {
-  loading: { symbol: '◌', color: '#f59e0b' },
-  success: { symbol: '✓', color: '#10b981' },
-  error: { symbol: '✕', color: '#ef4444' },
-  idle: { symbol: '·', color: '#6b7280' }
+  loading: { symbol: '◌', color: STATUS_ICON_COLORS.loading },
+  success: { symbol: '✓', color: STATUS_ICON_COLORS.success },
+  error: { symbol: '✕', color: STATUS_ICON_COLORS.error },
+  idle: { symbol: '·', color: STATUS_ICON_COLORS.idle }
 }
 
 interface StatusIconProps {

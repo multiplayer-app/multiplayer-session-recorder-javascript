@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { tuiAttrs } from '../lib/tuiAttrs.js'
+import { FG_BODY, LOG_LEVEL_COLORS } from './shared/tuiTheme.js'
 import { LogEntry } from '../types/index.js'
 
 interface Props {
@@ -8,12 +9,6 @@ interface Props {
   maxLines?: number
   /** When false, omit the banner (use inside a titled panel). */
   showTitle?: boolean
-}
-
-const levelColor: Record<string, string> = {
-  info: '#f8fafc',
-  error: '#ef4444',
-  debug: '#6b7280',
 }
 
 /** Return narrowed to ReactElement — OpenTUI JSX is typed as ReactNode (TS2786 under React 19). */
@@ -30,7 +25,7 @@ export function LogOutput({ logs, maxLines, showTitle = true }: Props): ReactEle
       )}
       {visible.map((entry, i) => {
         const ts = entry.timestamp.toTimeString().slice(0, 8)
-        const color = levelColor[entry.level] ?? '#f8fafc'
+        const color = LOG_LEVEL_COLORS[entry.level as keyof typeof LOG_LEVEL_COLORS] ?? FG_BODY
         return (
           <box key={`${entry.timestamp.getTime()}-${i}`} flexDirection="row" gap={1}>
             <text attributes={tuiAttrs({ dim: true })}>{ts}</text>
