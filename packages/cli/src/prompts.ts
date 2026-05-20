@@ -46,7 +46,7 @@ export function buildSetupPrompt(
   stack: DetectedStack,
   readme: string,
   projectContext: string,
-  ctx?: SetupGenerationContext
+  ctx?: SetupGenerationContext,
 ): string {
   const installedNote = stack.alreadyInstalled
     ? `- NOTE: A Multiplayer SDK is already installed: ${stack.installedSdkPackage}`
@@ -377,7 +377,7 @@ export function buildClassifyPrompt(stacks: DetectedStack[], sdkSummary: string)
         `  Description: ${s.packageDescription ?? 'none'}`,
         `  Framework: ${s.framework}, Type: ${s.type}`,
         `  SDK installed: ${s.alreadyInstalled ? `yes (${s.installedSdkPackage})` : 'no'}${s.installedSdkPackage === 'otel+otlp.multiplayer.app' ? ' — using standard OTel with Multiplayer OTLP endpoint' : ''}`,
-        `  Recommended SDK: ${s.sdkPackage}`
+        `  Recommended SDK: ${s.sdkPackage}`,
       ]
       if (s.internalDeps?.length) {
         parts.push(`  Depends on (internal): ${s.internalDeps.join(', ')}`)
@@ -542,7 +542,7 @@ Use clear markdown with section headers. Do not include any other text outside t
 export function buildPrUserMessage(
   issue: Issue,
   conversationContext: string,
-  diffStats: { additions: number; deletions: number }
+  diffStats: { additions: number; deletions: number },
 ): string {
   const issueContext = [
     issue.metadata?.type && `Error type: ${issue.metadata.type}`,
@@ -551,7 +551,7 @@ export function buildPrUserMessage(
     issue.metadata?.stacktrace && `Stack trace:\n${issue.metadata.stacktrace.slice(0, 800)}`,
     issue.service?.serviceName && `Service: ${issue.service.serviceName}`,
     issue.service?.environment && `Environment: ${issue.service.environment}`,
-    issue.category && `Category: ${issue.category}`
+    issue.category && `Category: ${issue.category}`,
   ]
     .filter(Boolean)
     .join('\n')
@@ -585,7 +585,7 @@ export function buildIssuePromptFallback(issue: Issue, release?: Release, debugC
     `# Issue: ${issue.title}`,
     '',
     `**Category:** ${issue.category}`,
-    `**Service:** ${issue.service.serviceName}`
+    `**Service:** ${issue.service.serviceName}`,
   ]
 
   if (issue.service.environment) {
@@ -613,7 +613,7 @@ export function buildIssuePromptFallback(issue: Issue, release?: Release, debugC
   if (issue.metadata.httpMethod && issue.metadata.httpRoute) {
     if (capturedLines.length > 0) capturedLines.push('')
     capturedLines.push(
-      `**HTTP:** ${escapePromptMarkup(issue.metadata.httpMethod)} ${escapePromptMarkup(issue.metadata.httpRoute)}`
+      `**HTTP:** ${escapePromptMarkup(issue.metadata.httpMethod)} ${escapePromptMarkup(issue.metadata.httpRoute)}`,
     )
   }
   if (issue.metadata.value) {
@@ -640,13 +640,13 @@ export function buildIssuePromptFallback(issue: Issue, release?: Release, debugC
     lines.push(
       '',
       '## Runtime Debug Context',
-      wrapUntrustedObservabilityData(['```json', escapePromptMarkup(debugContext), '```'].join('\n'))
+      wrapUntrustedObservabilityData(['```json', escapePromptMarkup(debugContext), '```'].join('\n')),
     )
   }
 
   lines.push(
     '',
-    'Please analyze this issue and produce file patches to fix it. Read relevant source files to understand the code before making changes.'
+    'Please analyze this issue and produce file patches to fix it. Read relevant source files to understand the code before making changes.',
   )
 
   return lines.join('\n')

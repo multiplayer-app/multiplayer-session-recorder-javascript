@@ -65,7 +65,7 @@ export const BG_SEND_ACTIVE = '#064e3b'
 /** Scrollbar track colors (OpenTUI scrollbox style). */
 export const SCROLLBAR_TRACK_STYLE = {
   foregroundColor: ACCENT,
-  backgroundColor: BORDER_MUTED
+  backgroundColor: BORDER_MUTED,
 } as const
 
 /** Session list / sidebar status indicator colors. */
@@ -75,7 +75,7 @@ export const SESSION_STATUS_COLORS = {
   pushing: SEM_INDIGO,
   done: SEM_GREEN,
   failed: SEM_RED,
-  aborted: FG_DIM
+  aborted: FG_DIM,
 } as const
 
 /** Dashboard header connection badge colors. */
@@ -84,7 +84,7 @@ export const CONNECTION_STATUS_COLORS = {
   connecting: { symbol: '◌', color: SEM_AMBER, label: 'connecting' },
   connected: { symbol: '●', color: SEM_GREEN, label: 'connected' },
   disconnected: { symbol: '○', color: FG_DIM, label: 'disconnected' },
-  error: { symbol: '✕', color: SEM_RED, label: 'error' }
+  error: { symbol: '✕', color: SEM_RED, label: 'error' },
 } as const
 
 /** Generic status icon colors (startup wizards, inline indicators). */
@@ -92,7 +92,7 @@ export const STATUS_ICON_COLORS = {
   loading: SEM_AMBER,
   success: SEM_GREEN,
   error: SEM_RED,
-  idle: FG_DIM
+  idle: FG_DIM,
 } as const
 
 /** Active issue card status labels (legacy list view). */
@@ -102,14 +102,14 @@ export const ISSUE_STATUS_COLORS = {
   applying: SEM_AMBER,
   pushing: SEM_AMBER,
   done: SEM_GREEN,
-  failed: SEM_RED
+  failed: SEM_RED,
 } as const
 
 /** Log output level colors. */
 export const LOG_LEVEL_COLORS = {
   info: FG_BODY,
   error: SEM_RED,
-  debug: FG_DIM
+  debug: FG_DIM,
 } as const
 
 /** User transcript bubble / attachments (session detail). */
