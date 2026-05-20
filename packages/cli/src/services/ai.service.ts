@@ -12,6 +12,11 @@ import { Issue, FilePatch, Release, ConversationMessage } from '../types/index.j
 import { MAX_FILE_SIZE, MAX_FILES_TO_READ } from '../config.js'
 import { getAuthHeaders } from '../lib/authHeaders.js'
 import {
+  escapePromptMarkup,
+  sanitizeCapturedValue,
+  wrapUntrustedObservabilityData
+} from '../lib/untrustedObservability.js'
+import {
   buildChatTitlePrompt,
   buildDebuggingSystemPrompt,
   ANALYSE_ISSUE_SYSTEM_PROMPT,
@@ -19,7 +24,7 @@ import {
   PR_GENERATION_SYSTEM_PROMPT,
   buildPrUserMessage,
   buildIssuePromptFallback,
-  buildClaudeCodeDebuggingSystemPrompt,
+  buildClaudeCodeDebuggingSystemPrompt
 } from '../prompts.js'
 
 const execAsync = promisify(exec)
@@ -79,7 +84,7 @@ export const checkOpenAiRequirements = async (apiKey: string, baseUrl?: string):
   }
   const client = new OpenAI({
     apiKey,
-    ...(baseUrl ? { baseURL: baseUrl } : {}),
+    ...(baseUrl ? { baseURL: baseUrl } : {})
   })
   try {
     await client.models.list()
@@ -156,8 +161,10 @@ export const classifyAiError = (err: unknown): string => {
   if (lower.includes('claude code process exited with code')) {
     const codeMatch = message.match(/code (\d+)/)
     const code = codeMatch?.[1] ?? '1'
-    if (code === '1') return 'Claude Code exited unexpectedly (exit code 1). This usually means Claude Code is not authenticated or has a configuration error. Run `claude` in your terminal to check.'
-    if (code === '127') return 'Claude Code binary not found (exit code 127). Make sure `claude` is installed and available in PATH.'
+    if (code === '1')
+      return 'Claude Code exited unexpectedly (exit code 1). This usually means Claude Code is not authenticated or has a configuration error. Run `claude` in your terminal to check.'
+    if (code === '127')
+      return 'Claude Code binary not found (exit code 127). Make sure `claude` is installed and available in PATH.'
     return `Claude Code process exited with code ${code}.`
   }
   if (lower.includes('claude code executable not found') || lower.includes('claude code native binary not found')) {
@@ -208,7 +215,7 @@ export const generateChatTitle = async (
   issue: Issue,
   model: string,
   modelKey: string,
-  modelUrl?: string,
+  modelUrl?: string
 ): Promise<string> => {
   const prompt = buildChatTitlePrompt(issue)
 
@@ -219,12 +226,12 @@ export const generateChatTitle = async (
     } else {
       const client = new OpenAI({
         apiKey: modelKey,
-        ...(modelUrl ? { baseURL: modelUrl } : {}),
+        ...(modelUrl ? { baseURL: modelUrl } : {})
       })
       const response = await client.chat.completions.create({
         model,
         max_tokens: 64,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: prompt }]
       })
       return response.choices[0]?.message?.content?.trim() ?? issue.title
     }
@@ -234,7 +241,6 @@ export const generateChatTitle = async (
 }
 
 const isAnthropicModel = (model: string): boolean => model.startsWith('claude') && model !== 'claude-code'
-
 
 const findSpanById = (traces: unknown[], targetSpanId: string): any => {
   for (const item of traces as any[]) {
@@ -254,19 +260,19 @@ const findSpanById = (traces: unknown[], targetSpanId: string): any => {
 
 export const fetchIssueDebugContext = async (
   issue: Issue,
-  mcpConfig: McpConfig,
+  mcpConfig: McpConfig
 ): Promise<{ context: string; debugSessionId: string } | undefined> => {
   try {
     const listUrl = new URL(
       `/v0/radar/workspaces/${issue.workspace}/projects/${issue.project}/debug-sessions`,
-      mcpConfig.apiUrl,
+      mcpConfig.apiUrl
     )
     listUrl.searchParams.set('issueComponentHash', issue.componentHash)
     listUrl.searchParams.set('limit', '1')
     listUrl.searchParams.set('sortKey', 'createdAt')
     listUrl.searchParams.set('sortDirection', '-1')
     const listRes = await fetch(listUrl.toString(), {
-      headers: getAuthHeaders(mcpConfig.apiKey, mcpConfig.authType),
+      headers: getAuthHeaders(mcpConfig.apiKey, mcpConfig.authType)
     })
     if (!listRes.ok) return undefined
     const listData = (await listRes.json()) as any
@@ -275,7 +281,7 @@ export const fetchIssueDebugContext = async (
 
     // Find the span ID for this specific issue in the session
     const sessionIssue = (debugSession.issues as any[] | undefined)?.find(
-      (i: any) => i.issueComponentHash === issue.componentHash,
+      (i: any) => i.issueComponentHash === issue.componentHash
     )
     const targetSpanId = sessionIssue?.spanId as string | undefined
 
@@ -287,30 +293,30 @@ export const fetchIssueDebugContext = async (
       const logsFile = (debugSession.s3Files as any[]).find((f: any) => f.dataType === 'OTLP_LOGS')
       const [tracesData, logsData] = await Promise.all([
         tracesFile?.url ? fetch(tracesFile.url).then((r: any) => (r.ok ? r.json() : [])) : Promise.resolve([]),
-        logsFile?.url ? fetch(logsFile.url).then((r: any) => (r.ok ? r.json() : [])) : Promise.resolve([]),
+        logsFile?.url ? fetch(logsFile.url).then((r: any) => (r.ok ? r.json() : [])) : Promise.resolve([])
       ])
       traces = Array.isArray(tracesData) ? tracesData : (tracesData?.data ?? [])
       logs = Array.isArray(logsData) ? logsData : (logsData?.data ?? [])
     } else {
       const tracesUrl = new URL(
         `/v0/radar/workspaces/${issue.workspace}/projects/${issue.project}/debug-sessions/${debugSession._id}/otel-traces`,
-        mcpConfig.apiUrl,
+        mcpConfig.apiUrl
       )
       tracesUrl.searchParams.set('skip', '0')
       tracesUrl.searchParams.set('limit', '300')
       const logsUrl = new URL(
         `/v0/radar/workspaces/${issue.workspace}/projects/${issue.project}/debug-sessions/${debugSession._id}/otel-logs`,
-        mcpConfig.apiUrl,
+        mcpConfig.apiUrl
       )
       logsUrl.searchParams.set('skip', '0')
       logsUrl.searchParams.set('limit', '300')
       const [tracesRes, logsRes] = await Promise.all([
         fetch(tracesUrl.toString(), {
-          headers: getAuthHeaders(mcpConfig.apiKey, mcpConfig.authType),
+          headers: getAuthHeaders(mcpConfig.apiKey, mcpConfig.authType)
         }),
         fetch(logsUrl.toString(), {
-          headers: getAuthHeaders(mcpConfig.apiKey, mcpConfig.authType),
-        }),
+          headers: getAuthHeaders(mcpConfig.apiKey, mcpConfig.authType)
+        })
       ])
       traces = tracesRes.ok ? ((await tracesRes.json()) as any).data : []
       logs = logsRes.ok ? ((await logsRes.json()) as any).data : []
@@ -320,7 +326,7 @@ export const fetchIssueDebugContext = async (
 
     return {
       context: JSON.stringify({ sessionId: debugSession._id, issueSpan, traces, logs }),
-      debugSessionId: debugSession._id,
+      debugSessionId: debugSession._id
     }
   } catch {
     return undefined
@@ -336,7 +342,7 @@ export const analyseIssueContext = async (
   markdown: string,
   model: string,
   modelKey: string,
-  modelUrl?: string,
+  modelUrl?: string
 ): Promise<IssueAnalysis> => {
   const systemPrompt = ANALYSE_ISSUE_SYSTEM_PROMPT
   const userMessage = buildAnalyseIssueUserMessage(markdown)
@@ -350,15 +356,15 @@ export const analyseIssueContext = async (
 
     const openai = new OpenAI({
       apiKey: modelKey,
-      ...(modelUrl ? { baseURL: modelUrl } : {}),
+      ...(modelUrl ? { baseURL: modelUrl } : {})
     })
     const response = await openai.chat.completions.create({
       model,
       max_tokens: 100,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
+        { role: 'user', content: userMessage }
+      ]
     })
     const text = response.choices[0]?.message?.content ?? ''
     return JSON.parse(text) as IssueAnalysis
@@ -366,7 +372,7 @@ export const analyseIssueContext = async (
     // Fall back to a conservative default so the agent still runs
     return {
       fixabilityScore: 70,
-      severity: 'medium',
+      severity: 'medium'
     }
   }
 }
@@ -391,7 +397,7 @@ const extractSpanData = (span: any): SpanData => {
         exception = {
           type: ea['exception.type'],
           message: ea['exception.message'],
-          stacktrace: ea['exception.stacktrace'],
+          stacktrace: ea['exception.stacktrace']
         }
         break
       }
@@ -414,7 +420,7 @@ const extractSpanData = (span: any): SpanData => {
       exception = {
         type: evAttrs['exception.type'],
         message: evAttrs['exception.message'],
-        stacktrace: evAttrs['exception.stacktrace'],
+        stacktrace: evAttrs['exception.stacktrace']
       }
       break
     }
@@ -426,14 +432,18 @@ const SPAN_ATTR_SKIP = new Set([
   'multiplayer.project._id',
   'multiplayer.workspace._id',
   'multiplayer.debug_session._id',
-  'multiplayer.integration._id',
+  'multiplayer.integration._id'
 ])
 
+const safeCapturedText = (value: unknown, maxLength?: number): string => {
+  const text = escapePromptMarkup(String(value))
+  return maxLength === undefined ? text : text.slice(0, maxLength)
+}
 
 export const buildIssueContextDoc = (
   issue: Issue,
   release: Release | undefined,
-  debugContext: string | undefined,
+  debugContext: string | undefined
 ): string => {
   // Extract span data upfront so we can use it throughout the document
   let parsedCtx: { sessionId?: string; issueSpan?: any; traces?: any[]; logs?: any[] } | undefined
@@ -457,7 +467,7 @@ export const buildIssueContextDoc = (
     '',
     `**Component Hash:** \`${issue.componentHash}\``,
     `**Category:** ${issue.category}`,
-    `**Service:** ${issue.service.serviceName}`,
+    `**Service:** ${issue.service.serviceName}`
   ]
 
   if (issue.service.environment) {
@@ -475,52 +485,66 @@ export const buildIssueContextDoc = (
     if (release.releaseNotes) lines.push('', '**Release Notes:**', release.releaseNotes)
   }
 
-  if (effectiveMessage || effectiveType || issue.metadata.filename || issue.metadata.function || issue.metadata.httpMethod) {
-    lines.push('', '## Error Details')
-    if (effectiveMessage) lines.push(`**Message:** ${effectiveMessage}`)
-    if (effectiveType) lines.push(`**Type:** ${effectiveType}`)
-    if (issue.metadata.filename) lines.push(`**File:** ${issue.metadata.filename}`)
-    if (issue.metadata.function) lines.push(`**Function:** ${issue.metadata.function}`)
+  const capturedLines: string[] = []
+
+  if (
+    effectiveMessage ||
+    effectiveType ||
+    issue.metadata.filename ||
+    issue.metadata.function ||
+    issue.metadata.httpMethod
+  ) {
+    capturedLines.push('## Error Details')
+    if (effectiveMessage) capturedLines.push(`**Message:** ${safeCapturedText(effectiveMessage)}`)
+    if (effectiveType) capturedLines.push(`**Type:** ${safeCapturedText(effectiveType)}`)
+    if (issue.metadata.filename) capturedLines.push(`**File:** ${safeCapturedText(issue.metadata.filename)}`)
+    if (issue.metadata.function) capturedLines.push(`**Function:** ${safeCapturedText(issue.metadata.function)}`)
     if (issue.metadata.httpMethod && issue.metadata.httpRoute) {
-      lines.push(`**HTTP:** ${issue.metadata.httpMethod} ${issue.metadata.httpRoute}`)
+      capturedLines.push(
+        `**HTTP:** ${safeCapturedText(issue.metadata.httpMethod)} ${safeCapturedText(issue.metadata.httpRoute)}`
+      )
     }
-    if (issue.metadata.value) lines.push(`**Value:** ${issue.metadata.value}`)
+    if (issue.metadata.value) capturedLines.push(`**Value:** ${safeCapturedText(issue.metadata.value)}`)
   }
 
   if (effectiveStacktrace) {
     const label = spanData?.exception?.stacktrace ? '## Stacktrace (from span)' : '## Stacktrace'
-    lines.push('', label, '```', effectiveStacktrace, '```')
+    if (capturedLines.length > 0) capturedLines.push('')
+    capturedLines.push(label, '```', safeCapturedText(effectiveStacktrace), '```')
   }
 
   if (parsedCtx) {
-    lines.push('', '## Debug Session')
-    if (parsedCtx.sessionId) lines.push(`**Session ID:** \`${parsedCtx.sessionId}\``)
+    if (capturedLines.length > 0) capturedLines.push('')
+    capturedLines.push('## Debug Session')
+    if (parsedCtx.sessionId) capturedLines.push(`**Session ID:** \`${safeCapturedText(parsedCtx.sessionId)}\``)
 
     if (spanData) {
-      lines.push('', '### Issue Span')
-      if (spanData.operation) lines.push(`**Operation:** ${spanData.operation}`)
-      if (spanData.service) lines.push(`**Service:** ${spanData.service}`)
+      capturedLines.push('', '### Issue Span')
+      if (spanData.operation) capturedLines.push(`**Operation:** ${safeCapturedText(spanData.operation)}`)
+      if (spanData.service) capturedLines.push(`**Service:** ${safeCapturedText(spanData.service)}`)
 
       // Span attributes — skip internal multiplayer fields and already-shown exception fields
       const attrEntries = Object.entries(spanData.attributes).filter(
-        ([k, v]) => v != null && v !== '' && !SPAN_ATTR_SKIP.has(k) && !k.startsWith('exception.'),
+        ([k, v]) => v != null && v !== '' && !SPAN_ATTR_SKIP.has(k) && !k.startsWith('exception.')
       )
       if (attrEntries.length > 0) {
-        lines.push('', '**Span Attributes:**')
+        capturedLines.push('', '**Span Attributes:**')
         for (const [k, v] of attrEntries) {
-          lines.push(`- \`${k}\`: ${String(v).slice(0, 500)}`)
+          capturedLines.push(`- \`${safeCapturedText(k)}\`: ${safeCapturedText(v, 500)}`)
         }
       }
 
       if (spanData.exception) {
-        if (spanData.exception.type) lines.push(`**Exception Type:** ${spanData.exception.type}`)
-        if (spanData.exception.message) lines.push(`**Exception Message:** ${spanData.exception.message}`)
+        if (spanData.exception.type)
+          capturedLines.push(`**Exception Type:** ${safeCapturedText(spanData.exception.type)}`)
+        if (spanData.exception.message) {
+          capturedLines.push(`**Exception Message:** ${safeCapturedText(spanData.exception.message)}`)
+        }
       }
     }
 
-
     if (Array.isArray(parsedCtx.logs) && parsedCtx.logs.length > 0) {
-      lines.push('', `### Logs (${parsedCtx.logs.length} entries)`)
+      capturedLines.push('', `### Logs (${parsedCtx.logs.length} entries)`)
       const logLines: string[] = []
       const collectLogs = (items: any[]) => {
         for (const item of items) {
@@ -529,23 +553,39 @@ export const buildIssueContextDoc = (
             for (const record of scope.logRecords ?? scope.log_records ?? []) {
               const severity = record.severityText ?? record.severity_text ?? ''
               const body = record.body?.stringValue ?? record.body?.string_value ?? record.body ?? ''
-              if (body) logLines.push(`- **[${severity}]** ${String(body).slice(0, 200)}`)
+              if (body) logLines.push(`- **[${safeCapturedText(severity)}]** ${safeCapturedText(body, 200)}`)
             }
           }
         }
       }
       collectLogs(parsedCtx.logs)
-      lines.push(...logLines.slice(0, 30))
-      if (logLines.length > 30) lines.push(`  … and ${logLines.length - 30} more log entries`)
+      capturedLines.push(...logLines.slice(0, 30))
+      if (logLines.length > 30) capturedLines.push(`  … and ${logLines.length - 30} more log entries`)
     }
 
     if (Array.isArray(parsedCtx.traces) && parsedCtx.traces.length > 0) {
-      lines.push('', '### Raw OTLP Spans', '```json', JSON.stringify(parsedCtx.traces, null, 2), '```')
+      capturedLines.push(
+        '',
+        '### Raw OTLP Spans',
+        '```json',
+        JSON.stringify(sanitizeCapturedValue(parsedCtx.traces), null, 2),
+        '```'
+      )
     }
 
     if (Array.isArray(parsedCtx.logs) && parsedCtx.logs.length > 0) {
-      lines.push('', '### Raw OTLP Logs', '```json', JSON.stringify(parsedCtx.logs, null, 2), '```')
+      capturedLines.push(
+        '',
+        '### Raw OTLP Logs',
+        '```json',
+        JSON.stringify(sanitizeCapturedValue(parsedCtx.logs), null, 2),
+        '```'
+      )
     }
+  }
+
+  if (capturedLines.length > 0) {
+    lines.push('', '## Captured Observability Data', wrapUntrustedObservabilityData(capturedLines.join('\n')))
   }
 
   lines.push('', '---', '*Generated by multiplayer debugging agent*')
@@ -605,12 +645,12 @@ const openAiTools: OpenAI.Chat.ChatCompletionTool[] = [
         properties: {
           path: {
             type: 'string',
-            description: 'Relative path from the project root',
-          },
+            description: 'Relative path from the project root'
+          }
         },
-        required: ['path'],
-      },
-    },
+        required: ['path']
+      }
+    }
   },
   {
     type: 'function',
@@ -627,16 +667,16 @@ const openAiTools: OpenAI.Chat.ChatCompletionTool[] = [
               type: 'object',
               properties: {
                 filePath: { type: 'string' },
-                newContent: { type: 'string' },
+                newContent: { type: 'string' }
               },
-              required: ['filePath', 'newContent'],
-            },
-          },
+              required: ['filePath', 'newContent']
+            }
+          }
         },
-        required: ['patches'],
-      },
-    },
-  },
+        required: ['patches']
+      }
+    }
+  }
 ]
 
 // ─── Shared Claude Code stream processing ─────────────────────────────────────
@@ -651,7 +691,7 @@ type RunningToolCall = { name: string; input: Record<string, unknown> }
 const processClaudeToolResults = (
   msg: any,
   callbacks: StreamCallbacks,
-  runningToolCalls: Map<string, RunningToolCall>,
+  runningToolCalls: Map<string, RunningToolCall>
 ): void => {
   if (msg.type !== 'user' || !callbacks.onToolCallResult || !Array.isArray(msg.message?.content)) return
 
@@ -671,7 +711,7 @@ const processClaudeToolResults = (
       id,
       ...data,
       status: block.is_error ? 'failed' : 'succeeded',
-      output: { content: outputContent },
+      output: { content: outputContent }
     })
     runningToolCalls.delete(id)
   }
@@ -686,7 +726,7 @@ const processClaudeStreamEvent = (
   callbacks: StreamCallbacks,
   pendingToolCallRef: { current: PendingToolCall | null },
   runningToolCalls: Map<string, RunningToolCall>,
-  onText?: (text: string) => void,
+  onText?: (text: string) => void
 ): void => {
   if (event.type === 'message_start') {
     callbacks.onTurnStart?.()
@@ -702,7 +742,7 @@ const processClaudeStreamEvent = (
       pendingToolCallRef.current = {
         id: event.content_block.id,
         name: event.content_block.name,
-        inputJson: '',
+        inputJson: ''
       }
     }
   } else if (event.type === 'content_block_delta') {
@@ -722,12 +762,12 @@ const processClaudeStreamEvent = (
     callbacks.onToolCall?.({
       id: pendingToolCallRef.current.id,
       name: pendingToolCallRef.current.name,
-      input,
+      input
     })
     if (callbacks.onToolCallResult) {
       runningToolCalls.set(pendingToolCallRef.current.id, {
         name: pendingToolCallRef.current.name,
-        input,
+        input
       })
     }
     pendingToolCallRef.current = null
@@ -743,7 +783,7 @@ const runOpenAiLoop = async (
   projectDir: string,
   abortSignal: AbortSignal | undefined,
   callbacks: StreamCallbacks,
-  handleExtraTool?: (name: string, input: Record<string, unknown>) => Promise<string>,
+  handleExtraTool?: (name: string, input: Record<string, unknown>) => Promise<string>
 ): Promise<{ patches: FilePatch[]; finalContent: string }> => {
   const { onProgress, onToolCall, onToolCallResult, onTurnStart, confirmToolCall } = callbacks
   let filesRead = 0
@@ -763,7 +803,7 @@ const runOpenAiLoop = async (
       model,
       messages,
       tools: openAiTools,
-      tool_choice: 'auto',
+      tool_choice: 'auto'
     })
 
     const choice = response.choices[0]
@@ -795,7 +835,7 @@ const runOpenAiLoop = async (
           onToolCall?.({
             id: toolCall.id,
             name: toolCall.function.name,
-            input: toolInput,
+            input: toolInput
           })
           filesRead++
           result =
@@ -810,7 +850,7 @@ const runOpenAiLoop = async (
           onToolCall?.({
             id: toolCall.id,
             name: toolCall.function.name,
-            input: toolInput,
+            input: toolInput
           })
 
           if (confirmToolCall && CONFIRM_REQUIRED_TOOLS.has('write_patch')) {
@@ -834,7 +874,7 @@ const runOpenAiLoop = async (
           onToolCall?.({
             id: toolCall.id,
             name: toolCall.function.name,
-            input: toolInput,
+            input: toolInput
           })
           onProgress?.(`[${toolCall.function.name}] fetching...`)
           try {
@@ -848,7 +888,7 @@ const runOpenAiLoop = async (
           onToolCall?.({
             id: toolCall.id,
             name: toolCall.function.name,
-            input: toolInput,
+            input: toolInput
           })
           result = `Unknown tool: ${toolCall.function.name}`
           toolStatus = 'failed'
@@ -859,13 +899,13 @@ const runOpenAiLoop = async (
           name: toolCall.function.name,
           input: toolInput,
           status: toolStatus,
-          output: { content: result },
+          output: { content: result }
         })
 
         messages.push({
           role: 'tool',
           tool_call_id: toolCall.id,
-          content: result,
+          content: result
         })
       }
 
@@ -888,16 +928,16 @@ const resolveIssueWithOpenAI = async (
   apiKey: string,
   baseUrl: string | undefined,
   abortSignal: AbortSignal | undefined,
-  callbacks: StreamCallbacks,
+  callbacks: StreamCallbacks
 ): Promise<FilePatch[]> => {
   const client = new OpenAI({
     apiKey,
-    ...(baseUrl ? { baseURL: baseUrl } : {}),
+    ...(baseUrl ? { baseURL: baseUrl } : {})
   })
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: 'system', content: buildDebuggingSystemPrompt() },
-    { role: 'user', content: prompt },
+    { role: 'user', content: prompt }
   ]
 
   const { patches } = await runOpenAiLoop(client, model, messages, projectDir, abortSignal, callbacks)
@@ -917,8 +957,8 @@ const runClaudeCodePrompt = async (prompt: string, model?: string): Promise<stri
       permissionMode: 'acceptEdits',
       settingSources: [],
       maxTurns: 1,
-      ...(model ? { model } : {}),
-    },
+      ...(model ? { model } : {})
+    }
   })) {
     const msg = message as any
     if (msg.type === 'result' && msg.subtype === 'success') {
@@ -934,24 +974,23 @@ const resolveIssueWithClaudeCode = async (
   prompt: string,
   model: string | undefined,
   abortSignal: AbortSignal | undefined,
-  callbacks: StreamCallbacks,
+  callbacks: StreamCallbacks
 ): Promise<FilePatch[]> => {
   const absProjectDir = path.resolve(projectDir)
   const git = simpleGit(absProjectDir)
 
   const pendingToolCall: { current: PendingToolCall | null } = {
-    current: null,
+    current: null
   }
   const runningToolCalls = new Map<string, RunningToolCall>()
 
   callbacks.onProgress?.(`[claude] starting (cwd=${absProjectDir}, cli=${cliPath})`)
 
   // Replace OpenAI-path patch language with direct-edit instructions for Claude Code
-  const claudePrompt = prompt
-    .replace(
-      /please analyze this issue and produce file patches to fix it\. read relevant source files based on the stacktrace and error details above\./gi,
-      'Fix the issue by directly editing the relevant source files using the Edit or Write tools. Read the relevant source files based on the stacktrace and error details above, then apply the fix.',
-    )
+  const claudePrompt = prompt.replace(
+    /please analyze this issue and produce file patches to fix it\. read relevant source files based on the stacktrace and error details above\./gi,
+    'Fix the issue by directly editing the relevant source files using the Edit or Write tools. Read the relevant source files based on the stacktrace and error details above, then apply the fix.'
+  )
 
   for await (const message of query({
     prompt: claudePrompt,
@@ -964,13 +1003,13 @@ const resolveIssueWithClaudeCode = async (
       settings: {
         claudeMdExcludes: ['**'],
         permissions: {
-          allow: ['Bash(*)'],
-        },
+          allow: ['Bash(*)']
+        }
       },
       systemPrompt: {
         type: 'preset',
         preset: 'claude_code',
-        append: buildClaudeCodeDebuggingSystemPrompt(absProjectDir),
+        append: buildClaudeCodeDebuggingSystemPrompt(absProjectDir)
       },
       maxTurns: 1000,
       includePartialMessages: !!(callbacks.onProgress || callbacks.onToolCall),
@@ -978,8 +1017,8 @@ const resolveIssueWithClaudeCode = async (
       stderr: (data: string) => {
         const line = data.trim()
         if (line) callbacks.onProgress?.(`[claude stderr] ${line}`)
-      },
-    },
+      }
+    }
   })) {
     if (abortSignal?.aborted) {
       callbacks.onProgress?.('[aborted]')
@@ -1010,7 +1049,7 @@ const resolveIssueWithClaudeCode = async (
         error_during_execution: 'Error during execution',
         error_max_turns: 'Max turns reached',
         error_max_budget_usd: 'Budget limit exceeded',
-        error_max_structured_output_retries: 'Structured output retries exceeded',
+        error_max_structured_output_retries: 'Structured output retries exceeded'
       }
       const label = subtypeLabel[msg.subtype] ?? msg.subtype
       throw new Error(`Claude Code process exited: ${label}${detail}`)
@@ -1024,7 +1063,7 @@ const resolveIssueWithClaudeCode = async (
 
   return changedFiles.map((filePath) => ({
     filePath,
-    newContent: fs.readFileSync(path.resolve(absProjectDir, filePath), 'utf-8'),
+    newContent: fs.readFileSync(path.resolve(absProjectDir, filePath), 'utf-8')
   }))
 }
 
@@ -1037,11 +1076,11 @@ const continueChatWithOpenAI = async (
   apiKey: string,
   baseUrl: string | undefined,
   abortSignal: AbortSignal | undefined,
-  callbacks: StreamCallbacks,
+  callbacks: StreamCallbacks
 ): Promise<string> => {
   const client = new OpenAI({
     apiKey,
-    ...(baseUrl ? { baseURL: baseUrl } : {}),
+    ...(baseUrl ? { baseURL: baseUrl } : {})
   })
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -1050,9 +1089,9 @@ const continueChatWithOpenAI = async (
       (m) =>
         ({
           role: m.role,
-          content: m.content,
-        }) as OpenAI.Chat.ChatCompletionMessageParam,
-    ),
+          content: m.content
+        }) as OpenAI.Chat.ChatCompletionMessageParam
+    )
   ]
 
   const { finalContent } = await runOpenAiLoop(client, model, messages, projectDir, abortSignal, callbacks)
@@ -1064,7 +1103,7 @@ const continueChatWithClaudeCode = async (
   projectDir: string,
   model: string | undefined,
   abortSignal: AbortSignal | undefined,
-  callbacks: StreamCallbacks,
+  callbacks: StreamCallbacks
 ): Promise<string> => {
   if (!history.length) {
     throw new Error('EMPTY_HISTORY')
@@ -1079,7 +1118,7 @@ const continueChatWithClaudeCode = async (
 
   let response = ''
   const pendingToolCall: { current: PendingToolCall | null } = {
-    current: null,
+    current: null
   }
   const runningToolCalls = new Map<string, RunningToolCall>()
 
@@ -1097,8 +1136,8 @@ const continueChatWithClaudeCode = async (
       stderr: (data: string) => {
         const line = data.trim()
         if (line) callbacks.onProgress?.(`[claude stderr] ${line}`)
-      },
-    },
+      }
+    }
   })) {
     if (abortSignal?.aborted) {
       callbacks.onProgress?.('[aborted]')
@@ -1131,7 +1170,7 @@ export const resolveIssue = async (
   modelKey: string,
   modelUrl: string | undefined,
   abortSignal: AbortSignal | undefined,
-  callbacks: StreamCallbacks,
+  callbacks: StreamCallbacks
 ): Promise<FilePatch[]> => {
   if (model === 'claude-code' || isAnthropicModel(model)) {
     // Claude Code SDK handles tool execution internally — confirmation dialogs are not supported
@@ -1147,7 +1186,7 @@ export const resolveIssue = async (
     modelKey,
     modelUrl,
     abortSignal,
-    callbacks,
+    callbacks
   )
 
   if (patches.length > 0) {
@@ -1163,7 +1202,7 @@ export const generatePrContent = async (
   diffStats: { additions: number; deletions: number },
   model: string,
   modelKey?: string,
-  modelUrl?: string,
+  modelUrl?: string
 ): Promise<{ title: string; body: string }> => {
   const systemPrompt = PR_GENERATION_SYSTEM_PROMPT
 
@@ -1182,15 +1221,15 @@ export const generatePrContent = async (
     } else {
       const openai = new OpenAI({
         apiKey: modelKey,
-        ...(modelUrl ? { baseURL: modelUrl } : {}),
+        ...(modelUrl ? { baseURL: modelUrl } : {})
       })
       const response = await openai.chat.completions.create({
         model,
         max_tokens: 1024,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
+          { role: 'user', content: userMessage }
+        ]
       })
       text = response.choices[0]?.message?.content ?? ''
     }
@@ -1211,7 +1250,7 @@ export const generatePrContent = async (
     body: `Fixes issue \`${issue.componentHash}\`.
     \n\nChanges: +${diffStats.additions}/-${diffStats.deletions} lines.
     [issue](${issue.url})
-    `,
+    `
   }
 }
 
@@ -1222,7 +1261,7 @@ export const continueChat = async (
   modelKey: string,
   modelUrl: string | undefined,
   abortSignal: AbortSignal | undefined,
-  callbacks: StreamCallbacks,
+  callbacks: StreamCallbacks
 ): Promise<string> => {
   if (model === 'claude-code' || isAnthropicModel(model)) {
     const claudeModel = model === 'claude-code' ? undefined : model
