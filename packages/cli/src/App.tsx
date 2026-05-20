@@ -250,26 +250,18 @@ export const App: React.FC<Props> = ({ initialConfig, profileName, onExit, onReg
   const ctrlCToast = ctrlCPending && (
     <box
       position='absolute'
-      top={termHeight - 4}
-      left={0}
-      width={termWidth}
-      alignItems='center'
-      justifyContent='center'
+      top={termHeight - 3}
+      left={1}
+      backgroundColor='#292524'
+      border={true}
+      borderStyle='rounded'
+      borderColor='#f59e0b'
+      paddingLeft={2}
+      paddingRight={2}
+      paddingTop={0}
+      paddingBottom={0}
     >
-      <box
-        flexDirection='column'
-        alignItems='center'
-        backgroundColor='#292524'
-        border={true}
-        borderStyle='rounded'
-        borderColor='#f59e0b'
-        paddingLeft={3}
-        paddingRight={3}
-        paddingTop={0}
-        paddingBottom={0}
-      >
-        <text fg='#f59e0b'>Press Ctrl+C again to exit</text>
-      </box>
+      <text fg='#f59e0b'>Press Ctrl+C again to exit</text>
     </box>
   )
 
