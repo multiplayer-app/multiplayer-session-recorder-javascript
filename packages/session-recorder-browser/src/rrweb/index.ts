@@ -18,6 +18,8 @@ interface IntervalManager {
 export class RecorderBrowserSDK {
   private stopFn?: () => void
   private generation = 0
+  private rrwebReady = false
+  private pendingSnapshot = false
   private config?: SessionRecorderConfigs
   private socketService?: SocketService
   private crashBuffer?: CrashBuffer
@@ -32,10 +34,16 @@ export class RecorderBrowserSDK {
   constructor() {}
 
   /**
-   * Full snapshot.
+   * Full snapshot. Defers when rrweb's internal `recording` flag is still
+   * false (record() called while DOM is loading; init runs on DOMContentLoaded
+   * /load). The deferred snapshot fires on rrweb's first emitted event.
    */
   takeFullSnapshot(): void {
     if (!this.stopFn) {
+      return
+    }
+    if (!this.rrwebReady) {
+      this.pendingSnapshot = true
       return
     }
     record.takeFullSnapshot()
@@ -63,11 +71,26 @@ export class RecorderBrowserSDK {
 
     this.startedAt = new Date().toISOString()
     const gen = ++this.generation
+    this.rrwebReady = false
+    this.pendingSnapshot = false
 
     this.stopFn = record({
       ...this._buildRecordOptions(),
       emit: async (event: eventWithTime) => {
         if (gen !== this.generation) return
+        // rrweb's init() ran (sync or via DOMContentLoaded/load) — safe to call
+        // record.takeFullSnapshot() from now on. Flush any deferred snapshot.
+        if (!this.rrwebReady) {
+          this.rrwebReady = true
+          if (this.pendingSnapshot) {
+            this.pendingSnapshot = false
+            try {
+              record.takeFullSnapshot()
+            } catch (_e) {
+              // unreachable in practice; first event implies recording=true
+            }
+          }
+        }
         const ts = event.timestamp
 
         if (!sessionId) {
@@ -79,7 +102,9 @@ export class RecorderBrowserSDK {
       },
     })
 
-    this.takeFullSnapshot()
+    // rrweb's `record({...})` already emits the initial Meta+FullSnapshot pair
+    // (synchronously when document is interactive/complete, otherwise deferred
+    // to DOMContentLoaded/load). No explicit takeFullSnapshot() needed here.
     this._setupPeriodicSnapshots(sessionId, sessionType)
   }
 
@@ -103,6 +128,8 @@ export class RecorderBrowserSDK {
     this.stopFn?.()
     this.stopFn = undefined
     this.generation++
+    this.rrwebReady = false
+    this.pendingSnapshot = false
     if (!this.config?.useWebsocket) {
       this.socketService?.close()
     }

@@ -117,10 +117,15 @@ export class CrashBufferService implements CrashBuffer {
     const stoppedAt = now
     const startedAt = Math.max(0, stoppedAt - this.windowMs)
 
-    // Always include a full snapshot "anchor" if one exists at/before the window start.
+    // Always include a full snapshot "anchor" plus its preceding Meta.
+    // rrweb emits Meta before FullSnapshot with separate Date.now() timestamps,
+    // so on non-trivial pages Meta.ts < FullSnapshot.ts. Using the anchor's ts
+    // as the window start would exclude the Meta and break replay (no viewport).
     const firstSnapshotAt = await this._safe(async () => {
       const anchor = await this.db.getLastRrwebFullSnapshotBefore(this.tabId, startedAt)
-      return typeof anchor?.ts === 'number' ? anchor.ts : startedAt
+      if (typeof anchor?.ts !== 'number') return startedAt
+      const anchorMeta = await this.db.getLastRrwebMetaBefore(this.tabId, anchor.ts)
+      return typeof anchorMeta?.ts === 'number' ? anchorMeta.ts : anchor.ts
     }, startedAt)
 
     const [allEvents, allSpans] = await Promise.all([
