@@ -115,7 +115,6 @@ const umdBundle = {
   name: 'umd',
   output: {
     filename: 'index.umd.js',
-    chunkFilename: 'chunks/[name].js',
     path: resolve(__dirname, 'dist'),
     library: {
       name: 'SessionRecorder',
@@ -139,7 +138,6 @@ const browserBundle = {
   target: 'web',
   output: {
     filename: 'index.js',
-    chunkFilename: 'chunks/[name].js',
     path: resolve(__dirname, 'dist/browser'),
     library: {
       type: 'umd',
