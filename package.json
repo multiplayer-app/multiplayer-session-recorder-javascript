@@ -8,7 +8,6 @@
     "build": "turbo build",
     "publish": "./scripts/publish.sh",
     "preinstall": "cd ./packages/session-recorder-react-native && yarn",
-    "postinstall": "cd node_modules/bun && node install.js",
     "postversion": "git push && git push --tags",
     "preversion": "npm run lint"
   },
@@ -27,20 +26,9 @@
   "devDependencies": {
     "@changesets/cli": "^2.30.0",
     "@eslint/js": "^9.0.0",
-    "@opentui/core-darwin-x64": "^0.1.95",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "turbo": "^2.5.6"
   },
-  "packageManager": "pnpm@10.33.0",
-  "pnpm": {
-    "ignoredOptionalDependencies": [
-      "@multiplayer-app/cli-darwin-arm64",
-      "@multiplayer-app/cli-darwin-x64",
-      "@multiplayer-app/cli-linux-arm64",
-      "@multiplayer-app/cli-linux-x64",
-      "@multiplayer-app/cli-windows-arm64",
-      "@multiplayer-app/cli-windows-x64"
-    ]
-  }
+  "packageManager": "pnpm@10.33.0"
 }
