@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-app/session-recorder-browser",
-  "version": "2.0.83-beta.0",
+  "version": "2.0.84-beta.0",
   "description": "Multiplayer Fullstack Session Recorder for Browser",
   "author": {
     "name": "Multiplayer Software, Inc.",
@@ -73,7 +73,7 @@
     "webpack-cli": "5.1.4"
   },
   "dependencies": {
-    "@multiplayer-app/session-recorder-common": "2.0.83-beta.0",
+    "@multiplayer-app/session-recorder-common": "2.0.84-beta.0",
     "@opentelemetry/core": "2.0.1",
     "@opentelemetry/exporter-trace-otlp-http": "0.203.0",
     "@opentelemetry/instrumentation": "0.203.0",
