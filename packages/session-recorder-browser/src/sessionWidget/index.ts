@@ -1,4 +1,4 @@
-import { Observable } from 'lib0/observable'
+import { Observable } from '../observable'
 import { insertTrustedHTML, injectStylesIntoShadowRoot, formatTimeForSessionTimer } from '../utils'
 import { SessionWidgetConfig, SessionState, ToastConfig, WidgetTextOverridesConfig } from '../types'
 

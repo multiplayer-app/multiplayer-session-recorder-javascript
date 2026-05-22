@@ -4,7 +4,7 @@ import { PropagateTraceHeaderCorsUrls } from '@opentelemetry/sdk-trace-web'
 import type { MaskTextFn, MaskInputFn, MaskInputOptions } from 'rrweb-snapshot'
 import type { maskTextClass } from '@rrweb/types'
 import { LogData } from '@rrweb/rrweb-plugin-console-record'
-import { Observable } from 'lib0/observable'
+import { Observable } from '../observable'
 
 import type { NavigationRecorderPublicApi } from '../navigation'
 

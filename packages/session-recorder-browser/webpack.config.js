@@ -73,6 +73,7 @@ const baseConfig = {
 
 const esmBundle = {
   ...baseConfig,
+  name: 'esm',
   output: {
     filename: 'index.js',
     path: resolve(__dirname, 'dist'),
@@ -86,15 +87,20 @@ const esmBundle = {
     outputModule: true
   },
   externals: {
-    // '@opentelemetry/auto-instrumentations-web': '@opentelemetry/auto-instrumentations-web',
-    // '@opentelemetry/context-zone': '@opentelemetry/context-zone',
-    // '@opentelemetry/core': '@opentelemetry/core',
-    // '@opentelemetry/exporter-trace-otlp-http': '@opentelemetry/exporter-trace-otlp-http',
-    // '@opentelemetry/instrumentation': '@opentelemetry/instrumentation',
-    // '@opentelemetry/resources': '@opentelemetry/resources',
-    // '@opentelemetry/sdk-trace-web': '@opentelemetry/sdk-trace-web',
-    // '@opentelemetry/semantic-conventions': '@opentelemetry/semantic-conventions',
-    // 'socket.io-client': 'socket.io-client',
+    '@opentelemetry/api': '@opentelemetry/api',
+    '@opentelemetry/core': '@opentelemetry/core',
+    '@opentelemetry/exporter-trace-otlp-http': '@opentelemetry/exporter-trace-otlp-http',
+    '@opentelemetry/instrumentation': '@opentelemetry/instrumentation',
+    '@opentelemetry/instrumentation-fetch': '@opentelemetry/instrumentation-fetch',
+    '@opentelemetry/instrumentation-user-interaction': '@opentelemetry/instrumentation-user-interaction',
+    '@opentelemetry/instrumentation-xml-http-request': '@opentelemetry/instrumentation-xml-http-request',
+    '@opentelemetry/otlp-exporter-base': '@opentelemetry/otlp-exporter-base',
+    '@opentelemetry/otlp-transformer': '@opentelemetry/otlp-transformer',
+    '@opentelemetry/resources': '@opentelemetry/resources',
+    '@opentelemetry/sdk-trace-base': '@opentelemetry/sdk-trace-base',
+    '@opentelemetry/sdk-trace-web': '@opentelemetry/sdk-trace-web',
+    '@opentelemetry/semantic-conventions': '@opentelemetry/semantic-conventions',
+    'socket.io-client': 'socket.io-client',
   },
   plugins: [
     ...baseConfig.plugins,
@@ -106,8 +112,10 @@ const esmBundle = {
 
 const umdBundle = {
   ...baseConfig,
+  name: 'umd',
   output: {
     filename: 'index.umd.js',
+    chunkFilename: 'chunks/[name].js',
     path: resolve(__dirname, 'dist'),
     library: {
       name: 'SessionRecorder',
@@ -115,17 +123,7 @@ const umdBundle = {
     },
     globalObject: 'this'
   },
-  externals: {
-    // '@opentelemetry/auto-instrumentations-web': '@opentelemetry/auto-instrumentations-web',
-    // '@opentelemetry/context-zone': '@opentelemetry/context-zone',
-    // '@opentelemetry/core': '@opentelemetry/core',
-    // '@opentelemetry/exporter-trace-otlp-http': '@opentelemetry/exporter-trace-otlp-http',
-    // '@opentelemetry/instrumentation': '@opentelemetry/instrumentation',
-    // '@opentelemetry/resources': '@opentelemetry/resources',
-    // '@opentelemetry/sdk-trace-web': '@opentelemetry/sdk-trace-web',
-    // '@opentelemetry/semantic-conventions': '@opentelemetry/semantic-conventions',
-    // 'socket.io-client': 'socket.io-client',
-  },
+  externals: {},
   plugins: [
     ...baseConfig.plugins,
     new CleanWebpackPlugin({
@@ -136,10 +134,12 @@ const umdBundle = {
 
 const browserBundle = {
   ...baseConfig,
+  name: 'browser',
   devtool: false,
   target: 'web',
   output: {
     filename: 'index.js',
+    chunkFilename: 'chunks/[name].js',
     path: resolve(__dirname, 'dist/browser'),
     library: {
       type: 'umd',
@@ -176,6 +176,7 @@ const browserBundle = {
 
 const exportersBundle = {
   ...baseConfig,
+  name: 'exporters',
   entry: './src/exporters.ts',
   target: 'web',
   output: {

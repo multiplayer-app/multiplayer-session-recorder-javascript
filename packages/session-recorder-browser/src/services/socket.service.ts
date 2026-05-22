@@ -1,5 +1,5 @@
-import io, { Socket } from 'socket.io-client'
-import { Observable } from 'lib0/observable'
+import type { Socket } from 'socket.io-client'
+import { Observable } from '../observable'
 
 import messagingService from '../services/messaging.service'
 
@@ -99,11 +99,12 @@ export class SocketService extends Observable<SocketServiceEvents> {
     }
   }
 
-  private _initConnection(): void {
+  private async _initConnection(): Promise<void> {
     if (this.isConnecting || this.isConnected || !this.isInitialized) return
     this.attempts++
     this.isConnecting = true
     this.usePostMessage = false
+    const { default: io } = await import(/* webpackChunkName: "socket-io" */ 'socket.io-client')
     this.socket = io(this.options.socketUrl, {
       path: '/v0/radar/ws',
       auth: {

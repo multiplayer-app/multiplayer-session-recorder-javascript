@@ -1,4 +1,4 @@
-import { Observable } from 'lib0/observable'
+import { Observable } from './observable'
 
 import { SessionType, type ISession, type IUserAttributes } from '@multiplayer-app/session-recorder-common'
 
