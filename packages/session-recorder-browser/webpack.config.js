@@ -50,7 +50,7 @@ const baseConfig = {
     ]
   },
   optimization: {
-    minimizer: [...(isProduction ? [new CssMinimizerPlugin()] : [])],
+    minimizer: [...(isProduction ? ['...', new CssMinimizerPlugin()] : [])],
     minimize: true,
     usedExports: true
   },
@@ -136,8 +136,6 @@ const umdBundle = {
 
 const browserBundle = {
   ...baseConfig,
-  mode: 'development',
-  optimization: { minimize: false },
   devtool: false,
   target: 'web',
   output: {

@@ -905,13 +905,33 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   }
 
   private _normalizeError(error: unknown): Error {
-    if (error instanceof Error) return error
-    if (typeof error === 'string') return new Error(error)
+    if (error instanceof Error) {
+      const message = this._normalizePromiseRejectionMessage(error.message)
+      if (message === error.message) return error
+
+      const normalizedError = new Error(message)
+      normalizedError.name = error.name
+      normalizedError.stack = error.stack?.replace(error.message, message)
+
+      return normalizedError
+    }
+    if (typeof error === 'string') return new Error(this._normalizePromiseRejectionMessage(error))
     try {
       return new Error(JSON.stringify(error))
     } catch (_e) {
       return new Error(String(error))
     }
+  }
+
+  private _normalizePromiseRejectionMessage(message: string): string {
+    const prefix = 'Unhandled Promise Rejection:'
+    let normalizedMessage = message.trim()
+
+    while (normalizedMessage.startsWith(prefix)) {
+      normalizedMessage = normalizedMessage.slice(prefix.length).trim()
+    }
+
+    return normalizedMessage || message
   }
 
   private _normalizeErrorInfo(errorInfo?: Record<string, any>): Record<string, any> {
