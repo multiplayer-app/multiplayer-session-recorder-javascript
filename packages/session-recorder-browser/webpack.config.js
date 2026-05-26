@@ -100,7 +100,7 @@ const esmBundle = {
     '@opentelemetry/sdk-trace-base': '@opentelemetry/sdk-trace-base',
     '@opentelemetry/sdk-trace-web': '@opentelemetry/sdk-trace-web',
     '@opentelemetry/semantic-conventions': '@opentelemetry/semantic-conventions',
-    'socket.io-client': 'socket.io-client',
+    'socket.io-client': 'socket.io-client'
   },
   plugins: [
     ...baseConfig.plugins,
@@ -146,6 +146,7 @@ const browserBundle = {
     globalObject: 'this'
   },
   externals: [],
+  optimization: { minimize: false },
   resolve: {
     extensions: ['.ts', '.js'],
     fallback: {
@@ -180,16 +181,9 @@ const exportersBundle = {
   output: {
     filename: 'index.js',
     path: resolve(__dirname, 'dist/exporters'),
-    module: true,
-    library: {
-      type: 'module'
-    },
     globalObject: 'this'
   },
-  experiments: {
-    outputModule: true
-  },
-  optimization: { minimize: true },
+  optimization: { minimize: false },
   externals: [],
   resolve: {
     extensions: ['.ts', '.js'],
