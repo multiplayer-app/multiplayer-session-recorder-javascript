@@ -25,11 +25,13 @@ export const SESSION_ADD_EVENT = 'debug-session:rrweb:add-event'
 // Backend-triggered flush of client-side crash buffer
 export const SESSION_SAVE_BUFFER_EVENT = 'debug-session:save-buffer'
 
+export const SESSION_READY_EVENT = 'debug-session:ready'
+// Deprecated event name for backwards compatibility
+export const SESSION_READY_EVENT_LEGACY = 'debug-session-ready'
+
 export const SOCKET_SET_USER_EVENT = 'socket:set-user'
 
 export const DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE = 100000
-
-export const SESSION_READY_EVENT = 'debug-session-ready'
 
 export const CONTINUOUS_DEBUGGING_TIMEOUT = 60000 // 1 minutes
 
@@ -58,7 +60,7 @@ export const OTEL_IGNORE_URLS = [
   /.*\/v0\/radar\/continuous-debug-sessions\/[^/]+\/cancel$/,
 
   // Remote debug session endpoint
-  /.*\/v0\/radar\/remote-debug-session\/check$/,
+  /.*\/v0\/radar\/remote-debug-session\/check$/
 
   // Or use a more general pattern to catch all radar API endpoints
   // /.*\/v0\/radar\/.*/
