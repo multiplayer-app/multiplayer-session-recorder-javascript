@@ -11,7 +11,7 @@ import {
   ButtonState,
   ContinuousRecordingSaveButtonState,
   getButtonStates,
-  getContinuousRecordingSaveButtonStates
+  getContinuousRecordingSaveButtonStates,
 } from './buttonStateConfigs'
 
 // Import styles as string for shadow DOM injection
@@ -63,7 +63,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       this.buttonDraggabilityObserver?.observe(this.recorderButton, {
         attributes: true,
         attributeOldValue: true,
-        attributeFilter: ['class']
+        attributeFilter: ['class'],
       })
     } else {
       this.buttonDraggabilityObserver?.disconnect()
@@ -98,8 +98,8 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
         message: this._error,
         button: {
           text: 'Close',
-          onClick: () => this.hideToast()
-        }
+          onClick: () => this.hideToast(),
+        },
       })
     }
   }
@@ -175,7 +175,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       this.submitSessionDialog,
       this.toast,
       DEFAULT_WIDGET_TEXT_CONFIG,
-      true // showContinuousRecording default
+      true, // showContinuousRecording default
     )
     this.uiManager.setRecorderButtonProps()
     this.uiManager.setInitialPopoverProps()
@@ -213,7 +213,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   public updateContinuousRecordingState(checked: boolean, disabled: boolean = false) {
     if (!this.isBrowser) return
     const toggleCheckbox = this.initialPopover.querySelector(
-      '#mp-session-debugger-continuous-debugging-checkbox'
+      '#mp-session-debugger-continuous-debugging-checkbox',
     ) as HTMLInputElement
     if (toggleCheckbox) {
       toggleCheckbox.checked = checked
@@ -299,7 +299,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     this._showContinuousRecording = options.showContinuousRecording
     this._widgetTextOverrides = {
       ...this._widgetTextOverrides,
-      ...options.widgetTextOverrides
+      ...options.widgetTextOverrides,
     }
 
     // Recreate UIManager with proper config
@@ -311,7 +311,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       this.submitSessionDialog,
       this.toast,
       this._widgetTextOverrides,
-      this._showContinuousRecording
+      this._showContinuousRecording,
     )
 
     // Re-initialize templates with new config
@@ -336,7 +336,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       const cont = this.initialPopover.querySelector('.mp-session-debugger-continuous-debugging') as HTMLElement
       cont && cont.classList.add('hidden')
       const overlay = this.initialPopover.querySelector(
-        '.mp-session-debugger-continuous-debugging-overlay'
+        '.mp-session-debugger-continuous-debugging-overlay',
       ) as HTMLElement
       overlay && overlay.classList.add('hidden')
     }
@@ -383,7 +383,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
         }
       },
       () => this.updatePopoverPosition(),
-      (e) => this.onRecordingButtonClick(e)
+      (e) => this.onRecordingButtonClick(e),
     )
     this.dragManager.init()
   }
@@ -450,18 +450,18 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
         {
           target: this.overlay,
           selector: '.mp-stop-btn',
-          handler: this.onPause.bind(this) // change to submit dialog
+          handler: this.onPause.bind(this), // change to submit dialog
         },
         {
           target: this.submitSessionDialog,
           selector: '#mp-submit-recording',
-          handler: this.onStop.bind(this)
+          handler: this.onStop.bind(this),
         },
         {
           target: this.submitSessionDialog,
           selector: '#mp-cancel-submission',
-          handler: this.onCancel.bind(this)
-        }
+          handler: this.onCancel.bind(this),
+        },
       )
     }
 
@@ -469,7 +469,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       events.push({
         target: this.initialPopover,
         selector: '.mp-start-recording',
-        handler: this.startRecording.bind(this)
+        handler: this.startRecording.bind(this),
       })
       if (this._showContinuousRecording) {
         events.push(
@@ -477,36 +477,36 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
             event: 'change',
             target: this.initialPopover,
             selector: '#mp-session-debugger-continuous-debugging-checkbox',
-            handler: this.handleContinuousRecordingChange.bind(this)
+            handler: this.handleContinuousRecordingChange.bind(this),
           },
           {
             target: this.initialPopover,
             selector: '#mp-save-continuous-debug-session',
-            handler: this.handleSaveContinuousDebugSession.bind(this)
-          }
+            handler: this.handleSaveContinuousDebugSession.bind(this),
+          },
         )
       }
       events.push(
         {
           target: this.initialPopover,
           selector: '.mp-session-debugger-modal-close',
-          handler: this.handleCloseInitialPopover.bind(this)
+          handler: this.handleCloseInitialPopover.bind(this),
         },
         {
           target: this.finalPopover,
           selector: '.mp-stop-recording',
-          handler: this.handleStopRecording.bind(this)
+          handler: this.handleStopRecording.bind(this),
         },
         {
           target: this.finalPopover,
           selector: '.mp-session-debugger-dismiss-button',
-          handler: this.handleDismissRecording.bind(this)
+          handler: this.handleDismissRecording.bind(this),
         },
         {
           target: this.finalPopover,
           selector: '.mp-session-debugger-modal-close',
-          handler: this.handleCloseFinalPopover.bind(this)
-        }
+          handler: this.handleCloseFinalPopover.bind(this),
+        },
       )
     }
 

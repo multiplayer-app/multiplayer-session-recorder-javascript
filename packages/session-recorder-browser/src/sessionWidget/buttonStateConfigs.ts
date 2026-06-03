@@ -43,61 +43,61 @@ export const buttonStates = {
     icon: RecordIcon,
     tooltip: 'Record an issue',
     classes: [],
-    excludeClasses: ['animate-rotate', 'mp-button-blue']
+    excludeClasses: ['animate-rotate', 'mp-button-blue'],
   },
   [ButtonState.RECORDING]: {
     icon: CapturingIcon,
     tooltip: 'The session is recording. Click to end.',
     classes: [],
-    excludeClasses: ['mp-button-blue', 'animate-rotate']
+    excludeClasses: ['mp-button-blue', 'animate-rotate'],
   },
   [ButtonState.CANCEL]: {
     icon: CloseIcon,
     tooltip: 'Click to cancel',
     classes: [],
-    excludeClasses: ['animate-rotate', 'mp-button-blue']
+    excludeClasses: ['animate-rotate', 'mp-button-blue'],
   },
   [ButtonState.SENT]: {
     icon: CheckmarkIcon,
-    tooltip: "We've sent it over! Thanks!",
+    tooltip: 'We\'ve sent it over! Thanks!',
     classes: ['mp-button-blue'],
-    excludeClasses: ['animate-rotate']
+    excludeClasses: ['animate-rotate'],
   },
   [ButtonState.LOADING]: {
     icon: RecordIcon,
     tooltip: 'Starting to record...',
     classes: [],
-    excludeClasses: ['animate-rotate', 'mp-button-blue']
+    excludeClasses: ['animate-rotate', 'mp-button-blue'],
   },
   [ButtonState.CONTINUOUS_DEBUGGING]: {
     icon: CapturingIcon,
     tooltip: 'You’re continuously recording.',
     classes: [],
-    excludeClasses: ['mp-button-blue', 'animate-rotate']
-  }
+    excludeClasses: ['mp-button-blue', 'animate-rotate'],
+  },
 }
 
 export const continuousRecordingSaveButtonStates = {
   [ContinuousRecordingSaveButtonState.IDLE]: {
     textContent: 'Save recording',
     disabled: false,
-    classes: []
+    classes: [],
   },
   [ContinuousRecordingSaveButtonState.SAVING]: {
     disabled: true,
     textContent: 'Saving recording...',
-    classes: []
+    classes: [],
   },
   [ContinuousRecordingSaveButtonState.SAVED]: {
     disabled: true,
     textContent: 'Saved',
-    classes: []
+    classes: [],
   },
   [ContinuousRecordingSaveButtonState.ERROR]: {
     disabled: true,
     textContent: 'Error saving the recording',
-    classes: []
-  }
+    classes: [],
+  },
 }
 
 const buttonTooltipOverrideKeys: Record<ButtonState, keyof WidgetTextOverridesConfig> = {
@@ -106,14 +106,14 @@ const buttonTooltipOverrideKeys: Record<ButtonState, keyof WidgetTextOverridesCo
   [ButtonState.CANCEL]: 'buttonTooltipCancel',
   [ButtonState.SENT]: 'buttonTooltipSent',
   [ButtonState.LOADING]: 'buttonTooltipLoading',
-  [ButtonState.CONTINUOUS_DEBUGGING]: 'buttonTooltipContinuousDebugging'
+  [ButtonState.CONTINUOUS_DEBUGGING]: 'buttonTooltipContinuousDebugging',
 }
 
 const continuousSaveTextOverrideKeys: Record<ContinuousRecordingSaveButtonState, keyof WidgetTextOverridesConfig> = {
   [ContinuousRecordingSaveButtonState.IDLE]: 'saveLastSnapshotButtonText',
   [ContinuousRecordingSaveButtonState.SAVING]: 'saveContinuousRecordingSavingText',
   [ContinuousRecordingSaveButtonState.SAVED]: 'saveContinuousRecordingSavedText',
-  [ContinuousRecordingSaveButtonState.ERROR]: 'saveContinuousRecordingErrorText'
+  [ContinuousRecordingSaveButtonState.ERROR]: 'saveContinuousRecordingErrorText',
 }
 
 export function getButtonStates(overrides: WidgetTextOverridesConfig): Record<ButtonState, ButtonStateConfig> {
@@ -122,23 +122,23 @@ export function getButtonStates(overrides: WidgetTextOverridesConfig): Record<Bu
     const overrideKey = buttonTooltipOverrideKeys[state]
     resolved[state] = {
       ...buttonStates[state],
-      tooltip: overrides[overrideKey] ?? buttonStates[state].tooltip
+      tooltip: overrides[overrideKey] ?? buttonStates[state].tooltip,
     }
   }
   return resolved
 }
 
 export function getContinuousRecordingSaveButtonStates(
-  overrides: WidgetTextOverridesConfig
+  overrides: WidgetTextOverridesConfig,
 ): Record<ContinuousRecordingSaveButtonState, ContinuousRecordingSaveButtonConfig> {
   const resolved = {
-    ...continuousRecordingSaveButtonStates
+    ...continuousRecordingSaveButtonStates,
   } as Record<ContinuousRecordingSaveButtonState, ContinuousRecordingSaveButtonConfig>
   for (const state of Object.keys(continuousRecordingSaveButtonStates) as ContinuousRecordingSaveButtonState[]) {
     const overrideKey = continuousSaveTextOverrideKeys[state]
     resolved[state] = {
       ...continuousRecordingSaveButtonStates[state],
-      textContent: overrides[overrideKey] ?? continuousRecordingSaveButtonStates[state].textContent
+      textContent: overrides[overrideKey] ?? continuousRecordingSaveButtonStates[state].textContent,
     }
   }
   return resolved

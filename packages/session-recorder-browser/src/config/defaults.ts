@@ -1,7 +1,7 @@
 import {
   SessionRecorderSdk,
   MULTIPLAYER_BASE_API_URL,
-  MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL
+  MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
 } from '@multiplayer-app/session-recorder-common'
 import { MaskingConfig, SessionRecorderConfigs, WidgetButtonPlacement, WidgetTextOverridesConfig } from '../types'
 import { OTEL_MP_SAMPLE_TRACE_RATIO, DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE } from './constants'
@@ -15,7 +15,7 @@ export const DEFAULT_MASKING_CONFIG: MaskingConfig = {
   maskBodyFieldsList: sensitiveFields,
   maskHeadersList: sensitiveHeaders,
   headersToInclude: [],
-  headersToExclude: []
+  headersToExclude: [],
 }
 
 export const DEFAULT_WIDGET_TEXT_CONFIG: WidgetTextOverridesConfig = {
@@ -44,12 +44,12 @@ export const DEFAULT_WIDGET_TEXT_CONFIG: WidgetTextOverridesConfig = {
   buttonTooltipIdle: 'Record an issue',
   buttonTooltipRecording: 'The session is recording. Click to end.',
   buttonTooltipCancel: 'Click to cancel',
-  buttonTooltipSent: "We've sent it over! Thanks!",
+  buttonTooltipSent: 'We\'ve sent it over! Thanks!',
   buttonTooltipLoading: 'Starting to record...',
   buttonTooltipContinuousDebugging: 'You’re continuously recording.',
   saveContinuousRecordingSavingText: 'Saving recording...',
   saveContinuousRecordingSavedText: 'Saved',
-  saveContinuousRecordingErrorText: 'Error saving the recording'
+  saveContinuousRecordingErrorText: 'Error saving the recording',
 }
 
 export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
@@ -92,6 +92,6 @@ export const BASE_CONFIG: Required<SessionRecorderConfigs> = {
   buffering: {
     enabled: true,
     windowMinutes: 0.5,
-    snapshotIntervalMs: 20000
-  }
+    snapshotIntervalMs: 20000,
+  },
 }

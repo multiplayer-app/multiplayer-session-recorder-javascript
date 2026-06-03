@@ -38,7 +38,7 @@ export class UIManager {
     submitSessionDialog: HTMLElement,
     toast: HTMLElement,
     widgetTextOverrides: WidgetTextOverridesConfig,
-    showContinuousRecording: boolean
+    showContinuousRecording: boolean,
   ) {
     this.recorderButton = recorderButton
     this.initialPopover = initialPopover
@@ -87,7 +87,7 @@ export class UIManager {
     this.initialPopover.className = 'mp-session-debugger-popover mp-initial-popover hidden'
     insertTrustedHTML(
       this.initialPopover,
-      initialPopoverTemplate(this.widgetTextOverrides, this.showContinuousRecording)
+      initialPopoverTemplate(this.widgetTextOverrides, this.showContinuousRecording),
     )
   }
 
