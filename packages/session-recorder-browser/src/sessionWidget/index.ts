@@ -2,34 +2,23 @@ import { Observable } from '../observable'
 import { insertTrustedHTML, injectStylesIntoShadowRoot, formatTimeForSessionTimer } from '../utils'
 import { SessionWidgetConfig, SessionState, ToastConfig, WidgetTextOverridesConfig } from '../types'
 
-import {
-  POPOVER_WIDTH,
-  NON_DRAGGABLE_OFFSET,
-  POPOVER_DISTANCE_FROM_BUTTON,
-} from './constants'
+import { POPOVER_WIDTH, NON_DRAGGABLE_OFFSET, POPOVER_DISTANCE_FROM_BUTTON } from './constants'
 import { DEFAULT_WIDGET_TEXT_CONFIG } from '../config'
 import { isBrowser, isBrowserExtension } from '../global'
 import { UIManager } from './UIManager'
 import { DragManager } from './dragManager'
 import {
   ButtonState,
-  buttonStates,
   ContinuousRecordingSaveButtonState,
-  continuousRecordingSaveButtonStates,
+  getButtonStates,
+  getContinuousRecordingSaveButtonStates
 } from './buttonStateConfigs'
 
 // Import styles as string for shadow DOM injection
 import widgetStyles from './styles/index.scss?raw'
 import './styles/button.scss'
 
-type SessionWidgetEvents =
-  | 'start'
-  | 'stop'
-  | 'pause'
-  | 'resume'
-  | 'cancel'
-  | 'save'
-  | 'continuous-debugging';
+type SessionWidgetEvents = 'start' | 'stop' | 'pause' | 'resume' | 'cancel' | 'save' | 'continuous-debugging'
 
 export class SessionWidget extends Observable<SessionWidgetEvents> {
   public readonly recorderButton: HTMLButtonElement
@@ -69,12 +58,12 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
   public set buttonState(newState: ButtonState) {
     this._buttonState = newState
     if (!this.isBrowser) return
-    const { icon, tooltip, classes, excludeClasses } = buttonStates[newState]
+    const { icon, tooltip, classes, excludeClasses } = getButtonStates(this._widgetTextOverrides)[newState]
     if (newState === ButtonState.CANCEL) {
       this.buttonDraggabilityObserver?.observe(this.recorderButton, {
         attributes: true,
         attributeOldValue: true,
-        attributeFilter: ['class'],
+        attributeFilter: ['class']
       })
     } else {
       this.buttonDraggabilityObserver?.disconnect()
@@ -108,8 +97,9 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
         type: 'error',
         message: this._error,
         button: {
-          text: 'Close', onClick: () => this.hideToast(),
-        },
+          text: 'Close',
+          onClick: () => this.hideToast()
+        }
       })
     }
   }
@@ -185,7 +175,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       this.submitSessionDialog,
       this.toast,
       DEFAULT_WIDGET_TEXT_CONFIG,
-      true, // showContinuousRecording default
+      true // showContinuousRecording default
     )
     this.uiManager.setRecorderButtonProps()
     this.uiManager.setInitialPopoverProps()
@@ -194,9 +184,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     this.uiManager.setSubmitSessionDialogProps()
     this.uiManager.setToastProps()
 
-    this.commentTextarea = this.finalPopover.querySelector(
-      '.mp-session-debugger-popover-textarea',
-    )
+    this.commentTextarea = this.finalPopover.querySelector('.mp-session-debugger-popover-textarea')
     this.observeButtonDraggableMode()
   }
 
@@ -222,13 +210,10 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     }
   }
 
-  public updateContinuousRecordingState(
-    checked: boolean,
-    disabled: boolean = false,
-  ) {
+  public updateContinuousRecordingState(checked: boolean, disabled: boolean = false) {
     if (!this.isBrowser) return
     const toggleCheckbox = this.initialPopover.querySelector(
-      '#mp-session-debugger-continuous-debugging-checkbox',
+      '#mp-session-debugger-continuous-debugging-checkbox'
     ) as HTMLInputElement
     if (toggleCheckbox) {
       toggleCheckbox.checked = checked
@@ -236,16 +221,11 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     }
   }
 
-  public updateSaveContinuousDebugSessionState(
-    state: ContinuousRecordingSaveButtonState,
-  ) {
+  public updateSaveContinuousDebugSessionState(state: ContinuousRecordingSaveButtonState) {
     if (!this.isBrowser) return
-    const saveButton = this.initialPopover.querySelector(
-      '#mp-save-continuous-debug-session',
-    ) as HTMLButtonElement
+    const saveButton = this.initialPopover.querySelector('#mp-save-continuous-debug-session') as HTMLButtonElement
     if (saveButton) {
-      const { textContent, disabled } =
-        continuousRecordingSaveButtonStates[state]
+      const { textContent, disabled } = getContinuousRecordingSaveButtonStates(this._widgetTextOverrides)[state]
       saveButton.disabled = disabled
       saveButton.textContent = textContent
     }
@@ -295,22 +275,16 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     if (!this.isBrowser) return
     this.buttonDraggabilityObserver = new MutationObserver((mutationsList) => {
       for (const mutation of mutationsList) {
-        if (
-          mutation.type === 'attributes' &&
-          mutation.attributeName === 'class'
-        ) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
           const oldClassName = mutation.oldValue
           const newClassName = mutation.target['className']
           if (
-            (oldClassName?.includes('no-draggable') &&
-              !newClassName.includes('no-draggable')) ||
-            (newClassName?.includes('no-draggable') &&
-              !oldClassName?.includes('no-draggable'))
+            (oldClassName?.includes('no-draggable') && !newClassName.includes('no-draggable')) ||
+            (newClassName?.includes('no-draggable') && !oldClassName?.includes('no-draggable'))
           ) {
             // draggable mode was changed
             this.initialPopoverVisible = false
             this.finalPopoverVisible = false
-
           }
         }
       }
@@ -325,7 +299,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     this._showContinuousRecording = options.showContinuousRecording
     this._widgetTextOverrides = {
       ...this._widgetTextOverrides,
-      ...options.widgetTextOverrides,
+      ...options.widgetTextOverrides
     }
 
     // Recreate UIManager with proper config
@@ -337,7 +311,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       this.submitSessionDialog,
       this.toast,
       this._widgetTextOverrides,
-      this._showContinuousRecording,
+      this._showContinuousRecording
     )
 
     // Re-initialize templates with new config
@@ -351,12 +325,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     const elements = [this.toast]
 
     if (options.showWidget) {
-      elements.push(
-        this.recorderButton,
-        this.initialPopover,
-        this.finalPopover,
-        this.submitSessionDialog,
-      )
+      elements.push(this.recorderButton, this.initialPopover, this.finalPopover, this.submitSessionDialog)
     } else {
       elements.push(this.overlay, this.submitSessionDialog)
     }
@@ -366,7 +335,9 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     if (!this._showContinuousRecording) {
       const cont = this.initialPopover.querySelector('.mp-session-debugger-continuous-debugging') as HTMLElement
       cont && cont.classList.add('hidden')
-      const overlay = this.initialPopover.querySelector('.mp-session-debugger-continuous-debugging-overlay') as HTMLElement
+      const overlay = this.initialPopover.querySelector(
+        '.mp-session-debugger-continuous-debugging-overlay'
+      ) as HTMLElement
       overlay && overlay.classList.add('hidden')
     }
     if (options.showWidget && options.widgetButtonPlacement) {
@@ -401,7 +372,6 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     document.body.appendChild(rootWrapper)
   }
 
-
   private addRecorderDragFunctionality() {
     if (!this.isBrowser) return
     this.dragManager = new DragManager(
@@ -413,15 +383,14 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
         }
       },
       () => this.updatePopoverPosition(),
-      (e) => this.onRecordingButtonClick(e),
+      (e) => this.onRecordingButtonClick(e)
     )
     this.dragManager.init()
   }
 
   private updatePopoverPosition() {
     if (!this.isBrowser || typeof window === 'undefined') return
-    const { top, right, bottom, left } =
-      this.recorderButton.getBoundingClientRect()
+    const { top, right, bottom, left } = this.recorderButton.getBoundingClientRect()
     const isDraggable = !this.recorderButton.classList.contains('no-draggable')
 
     const POPOVER_HEIGHT = this._isStarted ? 400 : 300
@@ -435,7 +404,12 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     popoverRight = VIEWPORT_WIDTH - right
 
     if (popoverBottom + POPOVER_HEIGHT > VIEWPORT_HEIGHT) {
-      popoverBottom = VIEWPORT_HEIGHT - bottom - POPOVER_HEIGHT - POPOVER_DISTANCE_FROM_BUTTON - (isDraggable ? 0 : NON_DRAGGABLE_OFFSET)
+      popoverBottom =
+        VIEWPORT_HEIGHT -
+        bottom -
+        POPOVER_HEIGHT -
+        POPOVER_DISTANCE_FROM_BUTTON -
+        (isDraggable ? 0 : NON_DRAGGABLE_OFFSET)
     }
 
     if (popoverRight + POPOVER_WIDTH > VIEWPORT_WIDTH) {
@@ -476,65 +450,63 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
         {
           target: this.overlay,
           selector: '.mp-stop-btn',
-          handler: this.onPause.bind(this), // change to submit dialog
+          handler: this.onPause.bind(this) // change to submit dialog
         },
         {
           target: this.submitSessionDialog,
           selector: '#mp-submit-recording',
-          handler: this.onStop.bind(this),
+          handler: this.onStop.bind(this)
         },
         {
           target: this.submitSessionDialog,
           selector: '#mp-cancel-submission',
-          handler: this.onCancel.bind(this),
-        },
+          handler: this.onCancel.bind(this)
+        }
       )
     }
 
     if (this._showWidget) {
-      events.push(
-        {
-          target: this.initialPopover,
-          selector: '.mp-start-recording',
-          handler: this.startRecording.bind(this),
-        },
-      )
+      events.push({
+        target: this.initialPopover,
+        selector: '.mp-start-recording',
+        handler: this.startRecording.bind(this)
+      })
       if (this._showContinuousRecording) {
         events.push(
           {
             event: 'change',
             target: this.initialPopover,
             selector: '#mp-session-debugger-continuous-debugging-checkbox',
-            handler: this.handleContinuousRecordingChange.bind(this),
+            handler: this.handleContinuousRecordingChange.bind(this)
           },
           {
             target: this.initialPopover,
             selector: '#mp-save-continuous-debug-session',
-            handler: this.handleSaveContinuousDebugSession.bind(this),
-          },
+            handler: this.handleSaveContinuousDebugSession.bind(this)
+          }
         )
       }
       events.push(
         {
           target: this.initialPopover,
           selector: '.mp-session-debugger-modal-close',
-          handler: this.handleCloseInitialPopover.bind(this),
+          handler: this.handleCloseInitialPopover.bind(this)
         },
         {
           target: this.finalPopover,
           selector: '.mp-stop-recording',
-          handler: this.handleStopRecording.bind(this),
+          handler: this.handleStopRecording.bind(this)
         },
         {
           target: this.finalPopover,
           selector: '.mp-session-debugger-dismiss-button',
-          handler: this.handleDismissRecording.bind(this),
+          handler: this.handleDismissRecording.bind(this)
         },
         {
           target: this.finalPopover,
           selector: '.mp-session-debugger-modal-close',
-          handler: this.handleCloseFinalPopover.bind(this),
-        },
+          handler: this.handleCloseFinalPopover.bind(this)
+        }
       )
     }
 
@@ -561,9 +533,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
       this.onCancel()
     }
     this.initialPopoverVisible = false
-    this.buttonState = this._continuousRecording
-      ? ButtonState.CONTINUOUS_DEBUGGING
-      : ButtonState.IDLE
+    this.buttonState = this._continuousRecording ? ButtonState.CONTINUOUS_DEBUGGING : ButtonState.IDLE
     if (typeof document !== 'undefined') {
       document.removeEventListener('click', this.handleClickOutside)
     }
@@ -583,7 +553,6 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     }
   }
 
-
   private handleDismissRecording() {
     if (!this.isBrowser) return
     this.onCancel()
@@ -595,19 +564,13 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     }
   }
 
-
   private resetRecordingButton() {
     setTimeout(() => {
       this.buttonState = ButtonState.IDLE
     }, 1500)
   }
 
-  private addListener(
-    element: HTMLElement | null,
-    selector: string,
-    handler: EventListener,
-    event: string = 'click',
-  ) {
+  private addListener(element: HTMLElement | null, selector: string, handler: EventListener, event: string = 'click') {
     element?.querySelector(selector)?.addEventListener(event, handler)
   }
 
@@ -640,9 +603,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
         this.onPause()
       }
     } else {
-      this.buttonState = this._initialPopoverVisible
-        ? ButtonState.IDLE
-        : ButtonState.CANCEL
+      this.buttonState = this._initialPopoverVisible ? ButtonState.IDLE : ButtonState.CANCEL
       this.initialPopoverVisible = !this._initialPopoverVisible
     }
 
@@ -655,12 +616,7 @@ export class SessionWidget extends Observable<SessionWidgetEvents> {
     }
   }
 
-  private updateButton(
-    innerHTML: string,
-    tooltip: string,
-    excludeClasses?: string[],
-    classes?: string[],
-  ) {
+  private updateButton(innerHTML: string, tooltip: string, excludeClasses?: string[], classes?: string[]) {
     if (!this.isBrowser || !this.recorderButton) return
     insertTrustedHTML(this.recorderButton, `${innerHTML}`)
     this.recorderButton.dataset['tooltip'] = tooltip

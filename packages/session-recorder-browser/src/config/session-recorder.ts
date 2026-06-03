@@ -1,13 +1,7 @@
 import { SessionRecorderConfigs, SessionRecorderOptions, WidgetButtonPlacement } from '../types'
 import { BASE_CONFIG } from './defaults'
 import { getMaskingConfig } from './masking'
-import {
-  isValidString,
-  isValidNumber,
-  isValidBoolean,
-  isValidArray,
-  isValidEnum,
-} from './validators'
+import { isValidString, isValidNumber, isValidBoolean, isValidArray, isValidEnum } from './validators'
 
 const getWidgetTextOverridesConfig = (config: any, defaultConfig: any) => {
   if (!config || typeof config !== 'object') {
@@ -15,10 +9,22 @@ const getWidgetTextOverridesConfig = (config: any, defaultConfig: any) => {
   }
 
   return {
-    initialTitleWithContinuous: isValidString(config.initialTitleWithContinuous, defaultConfig.initialTitleWithContinuous),
-    initialTitleWithoutContinuous: isValidString(config.initialTitleWithoutContinuous, defaultConfig.initialTitleWithoutContinuous),
-    initialDescriptionWithContinuous: isValidString(config.initialDescriptionWithContinuous, defaultConfig.initialDescriptionWithContinuous),
-    initialDescriptionWithoutContinuous: isValidString(config.initialDescriptionWithoutContinuous, defaultConfig.initialDescriptionWithoutContinuous),
+    initialTitleWithContinuous: isValidString(
+      config.initialTitleWithContinuous,
+      defaultConfig.initialTitleWithContinuous
+    ),
+    initialTitleWithoutContinuous: isValidString(
+      config.initialTitleWithoutContinuous,
+      defaultConfig.initialTitleWithoutContinuous
+    ),
+    initialDescriptionWithContinuous: isValidString(
+      config.initialDescriptionWithContinuous,
+      defaultConfig.initialDescriptionWithContinuous
+    ),
+    initialDescriptionWithoutContinuous: isValidString(
+      config.initialDescriptionWithoutContinuous,
+      defaultConfig.initialDescriptionWithoutContinuous
+    ),
     continuousRecordingLabel: isValidString(config.continuousRecordingLabel, defaultConfig.continuousRecordingLabel),
     startRecordingButtonText: isValidString(config.startRecordingButtonText, defaultConfig.startRecordingButtonText),
     finalTitle: isValidString(config.finalTitle, defaultConfig.finalTitle),
@@ -27,14 +33,44 @@ const getWidgetTextOverridesConfig = (config: any, defaultConfig: any) => {
     saveButtonText: isValidString(config.saveButtonText, defaultConfig.saveButtonText),
     cancelButtonText: isValidString(config.cancelButtonText, defaultConfig.cancelButtonText),
     continuousOverlayTitle: isValidString(config.continuousOverlayTitle, defaultConfig.continuousOverlayTitle),
-    continuousOverlayDescription: isValidString(config.continuousOverlayDescription, defaultConfig.continuousOverlayDescription),
-    saveLastSnapshotButtonText: isValidString(config.saveLastSnapshotButtonText, defaultConfig.saveLastSnapshotButtonText),
+    continuousOverlayDescription: isValidString(
+      config.continuousOverlayDescription,
+      defaultConfig.continuousOverlayDescription
+    ),
+    saveLastSnapshotButtonText: isValidString(
+      config.saveLastSnapshotButtonText,
+      defaultConfig.saveLastSnapshotButtonText
+    ),
     submitDialogTitle: isValidString(config.submitDialogTitle, defaultConfig.submitDialogTitle),
     submitDialogSubtitle: isValidString(config.submitDialogSubtitle, defaultConfig.submitDialogSubtitle),
     submitDialogCommentLabel: isValidString(config.submitDialogCommentLabel, defaultConfig.submitDialogCommentLabel),
-    submitDialogCommentPlaceholder: isValidString(config.submitDialogCommentPlaceholder, defaultConfig.submitDialogCommentPlaceholder),
+    submitDialogCommentPlaceholder: isValidString(
+      config.submitDialogCommentPlaceholder,
+      defaultConfig.submitDialogCommentPlaceholder
+    ),
     submitDialogSubmitText: isValidString(config.submitDialogSubmitText, defaultConfig.submitDialogSubmitText),
     submitDialogCancelText: isValidString(config.submitDialogCancelText, defaultConfig.submitDialogCancelText),
+    buttonTooltipIdle: isValidString(config.buttonTooltipIdle, defaultConfig.buttonTooltipIdle),
+    buttonTooltipRecording: isValidString(config.buttonTooltipRecording, defaultConfig.buttonTooltipRecording),
+    buttonTooltipCancel: isValidString(config.buttonTooltipCancel, defaultConfig.buttonTooltipCancel),
+    buttonTooltipSent: isValidString(config.buttonTooltipSent, defaultConfig.buttonTooltipSent),
+    buttonTooltipLoading: isValidString(config.buttonTooltipLoading, defaultConfig.buttonTooltipLoading),
+    buttonTooltipContinuousDebugging: isValidString(
+      config.buttonTooltipContinuousDebugging,
+      defaultConfig.buttonTooltipContinuousDebugging
+    ),
+    saveContinuousRecordingSavingText: isValidString(
+      config.saveContinuousRecordingSavingText,
+      defaultConfig.saveContinuousRecordingSavingText
+    ),
+    saveContinuousRecordingSavedText: isValidString(
+      config.saveContinuousRecordingSavedText,
+      defaultConfig.saveContinuousRecordingSavedText
+    ),
+    saveContinuousRecordingErrorText: isValidString(
+      config.saveContinuousRecordingErrorText,
+      defaultConfig.saveContinuousRecordingErrorText
+    )
   }
 }
 
@@ -59,7 +95,11 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     inlineImages: isValidBoolean(c.inlineImages, BASE_CONFIG.inlineImages),
     inlineStylesheet: isValidBoolean(c.inlineStylesheet, BASE_CONFIG.inlineStylesheet),
     recordNavigation: isValidBoolean(c.recordNavigation, BASE_CONFIG.recordNavigation),
-    widgetButtonPlacement: isValidEnum<WidgetButtonPlacement>(c.widgetButtonPlacement, BASE_CONFIG.widgetButtonPlacement, Object.values(WidgetButtonPlacement) as WidgetButtonPlacement[]),
+    widgetButtonPlacement: isValidEnum<WidgetButtonPlacement>(
+      c.widgetButtonPlacement,
+      BASE_CONFIG.widgetButtonPlacement,
+      Object.values(WidgetButtonPlacement) as WidgetButtonPlacement[]
+    ),
     ignoreUrls: isValidArray(c.ignoreUrls, BASE_CONFIG.ignoreUrls),
     sampleTraceRatio: isValidNumber(c.sampleTraceRatio, BASE_CONFIG.sampleTraceRatio),
     propagateTraceHeaderCorsUrls: c.propagateTraceHeaderCorsUrls || BASE_CONFIG.propagateTraceHeaderCorsUrls,
@@ -76,7 +116,7 @@ export const getSessionRecorderConfig = (c: SessionRecorderOptions): SessionReco
     buffering: {
       enabled: c.buffering?.enabled ?? BASE_CONFIG.buffering.enabled,
       windowMinutes: c.buffering?.windowMinutes ?? BASE_CONFIG.buffering.windowMinutes,
-      snapshotIntervalMs: c.buffering?.snapshotIntervalMs ?? BASE_CONFIG.buffering.snapshotIntervalMs,
-    },
+      snapshotIntervalMs: c.buffering?.snapshotIntervalMs ?? BASE_CONFIG.buffering.snapshotIntervalMs
+    }
   }
 }

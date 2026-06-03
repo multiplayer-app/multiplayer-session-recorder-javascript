@@ -38,7 +38,7 @@ export class UIManager {
     submitSessionDialog: HTMLElement,
     toast: HTMLElement,
     widgetTextOverrides: WidgetTextOverridesConfig,
-    showContinuousRecording: boolean,
+    showContinuousRecording: boolean
   ) {
     this.recorderButton = recorderButton
     this.initialPopover = initialPopover
@@ -56,7 +56,7 @@ export class UIManager {
    */
   public setRecorderButtonProps() {
     this.recorderButton.className = 'mp-session-debugger-button'
-    this.recorderButton.dataset.tooltip = 'Record an issue'
+    this.recorderButton.dataset.tooltip = this.widgetTextOverrides.buttonTooltipIdle ?? 'Record an issue'
     insertTrustedHTML(this.recorderButton, `${RecordIcon}`)
   }
 
@@ -84,9 +84,11 @@ export class UIManager {
    * The popover includes a logo, heading, and start recording button.
    */
   public setInitialPopoverProps() {
-    this.initialPopover.className =
-      'mp-session-debugger-popover mp-initial-popover hidden'
-    insertTrustedHTML(this.initialPopover, initialPopoverTemplate(this.widgetTextOverrides, this.showContinuousRecording))
+    this.initialPopover.className = 'mp-session-debugger-popover mp-initial-popover hidden'
+    insertTrustedHTML(
+      this.initialPopover,
+      initialPopoverTemplate(this.widgetTextOverrides, this.showContinuousRecording)
+    )
   }
 
   /**
@@ -97,7 +99,6 @@ export class UIManager {
     this.finalPopover.className = 'mp-session-debugger-popover hidden'
     insertTrustedHTML(this.finalPopover, finalPopoverTemplate(this.widgetTextOverrides))
   }
-
 
   /**
    * Updates the popover button to reflect a loading state.
@@ -115,7 +116,9 @@ export class UIManager {
     }
 
     button.classList.toggle('disabled', isLoading)
-    button.textContent = isLoading ? 'Starting to record...' : 'Start recording'
+    button.textContent = isLoading
+      ? (this.widgetTextOverrides.buttonTooltipLoading ?? 'Starting to record...')
+      : (this.widgetTextOverrides.startRecordingButtonText ?? 'Start recording')
   }
 
   public setTimerValue(time: string) {

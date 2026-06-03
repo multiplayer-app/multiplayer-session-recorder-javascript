@@ -362,6 +362,24 @@ export interface WidgetTextOverridesConfig {
   submitDialogSubmitText?: string
   /** Text for the cancel button in dialog */
   submitDialogCancelText?: string
+  /** Tooltip when the recorder button is idle */
+  buttonTooltipIdle?: string
+  /** Tooltip while a session is recording */
+  buttonTooltipRecording?: string
+  /** Tooltip when cancel is available */
+  buttonTooltipCancel?: string
+  /** Tooltip after the recording was sent */
+  buttonTooltipSent?: string
+  /** Tooltip while the recorder is starting */
+  buttonTooltipLoading?: string
+  /** Tooltip during continuous debugging */
+  buttonTooltipContinuousDebugging?: string
+  /** Label while a continuous recording is being saved */
+  saveContinuousRecordingSavingText?: string
+  /** Label after a continuous recording was saved */
+  saveContinuousRecordingSavedText?: string
+  /** Label when saving a continuous recording failed */
+  saveContinuousRecordingErrorText?: string
 }
 
 /**
