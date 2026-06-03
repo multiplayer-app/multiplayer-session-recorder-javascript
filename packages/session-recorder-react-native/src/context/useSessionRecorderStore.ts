@@ -1,10 +1,10 @@
-import { SessionType } from '@multiplayer-app/session-recorder-common';
-import { SessionState } from '../types';
-import { useStoreSelector } from './useStoreSelector';
+import { SessionType } from '@multiplayer-app/session-recorder-common'
+import { SessionState } from '../types'
+import { useStoreSelector } from './useStoreSelector'
 import {
   type SessionRecorderState,
   sessionRecorderStore,
-} from './SessionRecorderStore';
+} from './SessionRecorderStore'
 
 /**
  * Select a derived slice from the shared Session Recorder store.
@@ -16,39 +16,39 @@ import {
  */
 export function useSessionRecorderStore<TSlice>(
   selector: (s: SessionRecorderState) => TSlice,
-  equalityFn?: (a: TSlice, b: TSlice) => boolean
+  equalityFn?: (a: TSlice, b: TSlice) => boolean,
 ): TSlice {
   return useStoreSelector<SessionRecorderState, TSlice>(
     sessionRecorderStore,
     selector,
-    equalityFn
-  );
+    equalityFn,
+  )
 }
 
 /**
  * Read the current session recording state (started, paused, stopped).
  */
 export function useSessionRecordingState() {
-  return useSessionRecorderStore<SessionState | null>((s) => s.sessionState);
+  return useSessionRecorderStore<SessionState | null>((s) => s.sessionState)
 }
 
 /**
  * Read the current session type (MANUAL/CONTINUOUS).
  */
 export function useSessionType() {
-  return useSessionRecorderStore<SessionType | null>((s) => s.sessionType);
+  return useSessionRecorderStore<SessionType | null>((s) => s.sessionType)
 }
 
 /**
  * Check whether the Session Recorder has been initialized.
  */
 export function useIsInitialized() {
-  return useSessionRecorderStore<boolean>((s) => s.isInitialized);
+  return useSessionRecorderStore<boolean>((s) => s.isInitialized)
 }
 
 /**
  * Read the current widget modal visibility.
  */
 export function useWidgetModalVisible() {
-  return useSessionRecorderStore<boolean>((s) => s.isWidgetModalVisible);
+  return useSessionRecorderStore<boolean>((s) => s.isWidgetModalVisible)
 }

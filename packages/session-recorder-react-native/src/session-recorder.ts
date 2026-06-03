@@ -2,13 +2,13 @@ import {
   SessionType,
   type ISession,
   type IUserAttributes,
-} from '@multiplayer-app/session-recorder-common';
-import { Observable } from 'lib0/observable';
-import { type eventWithTime } from '@rrweb/types';
+} from '@multiplayer-app/session-recorder-common'
+import { Observable } from 'lib0/observable'
+import { type eventWithTime } from '@rrweb/types'
 
-import { TracerReactNativeSDK } from './otel';
-import { RecorderReactNativeSDK } from './recorder';
-import { logger } from './utils';
+import { TracerReactNativeSDK } from './otel'
+import { RecorderReactNativeSDK } from './recorder'
+import { logger } from './utils'
 
 import {
   SessionState,
@@ -16,152 +16,149 @@ import {
   type SessionRecorderConfigs,
   type SessionRecorderOptions,
   type EventRecorder,
-} from './types';
+} from './types'
 import {
   SESSION_STOPPED_EVENT,
   REMOTE_SESSION_RECORDING_START,
   REMOTE_SESSION_RECORDING_STOP,
   SESSION_SAVE_BUFFER_EVENT,
-} from './config';
-import { getFormattedDate, isSessionActive, getNavigatorInfo } from './utils';
+} from './config'
+import { getFormattedDate, isSessionActive, getNavigatorInfo } from './utils'
 import {
   setShouldRecordHttpData,
   setMaxCapturingHttpPayloadSize,
-} from './patch';
-import { BASE_CONFIG, getSessionRecorderConfig } from './config';
+} from './patch'
+import { BASE_CONFIG, getSessionRecorderConfig } from './config'
 
-import { StorageService } from './services/storage.service';
-import { NetworkService } from './services/network.service';
-import { CrashBufferService } from './services/crashBuffer.service';
+import { StorageService } from './services/storage.service'
+import { NetworkService } from './services/network.service'
+import { CrashBufferService } from './services/crashBuffer.service'
 import {
   ApiService,
   type StartSessionRequest,
   type StopSessionRequest,
-} from './services/api.service';
-import { SocketService } from './services/socket.service';
+} from './services/api.service'
+import { SocketService } from './services/socket.service'
 
-type SessionRecorderEvents = 'state-change' | 'init';
+type SessionRecorderEvents = 'state-change' | 'init'
 
 class SessionRecorder
   extends Observable<SessionRecorderEvents>
   implements ISessionRecorder, EventRecorder
 {
-  private _configs: SessionRecorderConfigs;
-  private _apiService = new ApiService();
-  private _socketService = new SocketService();
-  private _tracer = new TracerReactNativeSDK();
-  private _recorder = new RecorderReactNativeSDK();
-  private _storageService = StorageService.getInstance();
-  private _networkService = NetworkService.getInstance();
-  private _crashBuffer = CrashBufferService.getInstance();
-  private _isFlushingBuffer: boolean = false;
-  private _startRequestController: AbortController | null = null;
+  private _configs: SessionRecorderConfigs
+  private _apiService = new ApiService()
+  private _socketService = new SocketService()
+  private _tracer = new TracerReactNativeSDK()
+  private _recorder = new RecorderReactNativeSDK()
+  private _storageService = StorageService.getInstance()
+  private _networkService = NetworkService.getInstance()
+  private _crashBuffer = CrashBufferService.getInstance()
+  private _isFlushingBuffer: boolean = false
+  private _startRequestController: AbortController | null = null
 
   // Whether the session recorder is initialized
-  private _isInitialized = false;
+  private _isInitialized = false
   get isInitialized(): boolean {
-    return this._isInitialized;
+    return this._isInitialized
   }
   set isInitialized(isInitialized: boolean) {
-    this._isInitialized = isInitialized;
+    this._isInitialized = isInitialized
   }
 
   // Session ID and state are stored in AsyncStorage
-  private _sessionId: string | null = null;
+  private _sessionId: string | null = null
   get sessionId(): string | null {
-    return this._sessionId;
+    return this._sessionId
   }
   set sessionId(sessionId: string | null) {
-    this._sessionId = sessionId;
+    this._sessionId = sessionId
     if (sessionId) {
-      this._storageService.saveSessionId(sessionId);
+      this._storageService.saveSessionId(sessionId)
     }
   }
 
-  private _sessionType: SessionType = SessionType.MANUAL;
+  private _sessionType: SessionType = SessionType.MANUAL
   get sessionType(): SessionType {
-    return this._sessionType;
+    return this._sessionType
   }
   set sessionType(sessionType: SessionType) {
-    this._sessionType = sessionType;
-    this._storageService.saveSessionType(sessionType);
+    this._sessionType = sessionType
+    this._storageService.saveSessionType(sessionType)
   }
 
   get continuousRecording(): boolean {
-    return this.sessionType === SessionType.CONTINUOUS;
+    return this.sessionType === SessionType.CONTINUOUS
   }
 
-  private _sessionState: SessionState | null = null;
+  private _sessionState: SessionState | null = null
   get sessionState(): SessionState | null {
-    return this._sessionState || SessionState.stopped;
+    return this._sessionState || SessionState.stopped
   }
   set sessionState(state: SessionState | null) {
-    this._sessionState = state;
-    this.emit('state-change', [
-      state || SessionState.stopped,
-      this.sessionType,
-    ]);
+    this._sessionState = state
+    this.emit('state-change', [state || SessionState.stopped, this.sessionType])
     if (state) {
-      this._storageService.saveSessionState(state);
+      this._storageService.saveSessionState(state)
     }
   }
 
-  private _session: ISession | null = null;
+  private _session: ISession | null = null
   get session(): ISession | null {
-    return this._session;
+    return this._session
   }
   set session(session: ISession | null) {
-    this._session = session;
+    this._session = session
     if (session) {
-      this._storageService.saveSessionObject(session);
+      this._storageService.saveSessionObject(session)
     }
   }
 
-  private _sessionAttributes: Record<string, any> | null = null;
+  private _sessionAttributes: Record<string, any> | null = null
   get sessionAttributes(): Record<string, any> {
-    return this._sessionAttributes || {};
+    return this._sessionAttributes || {}
   }
   set sessionAttributes(attributes: Record<string, any> | null) {
-    this._sessionAttributes = attributes;
+    this._sessionAttributes = attributes
   }
 
-  private _userAttributes: IUserAttributes | null = null;
+  private _userAttributes: IUserAttributes | null = null
   get userAttributes(): IUserAttributes | null {
-    return this._userAttributes;
+    return this._userAttributes
   }
   set userAttributes(userAttributes: IUserAttributes | null) {
-    this._userAttributes = userAttributes;
+    this._userAttributes = userAttributes
   }
   /**
    * Error message getter and setter
    */
   public get error(): string {
-    return this._error || '';
+    return this._error || ''
   }
 
   public set error(v: string) {
-    this._error = v;
+    this._error = v
   }
-  private _error: string = '';
+  private _error: string = ''
 
   /**
    * React Native doesn't have HTML elements, so we return null
    */
   public get sessionWidgetButtonElement(): any {
-    return null;
+    return null
   }
 
   public get config(): SessionRecorderConfigs {
-    return this._configs;
+    return this._configs
   }
   /**
    * Initialize debugger with default or custom configurations
    */
   constructor() {
-    super();
-    this._configs = BASE_CONFIG;
+    super()
+    this._configs = BASE_CONFIG
     // Initialize with stored session data if available
-    StorageService.initialize();
+    StorageService.initialize()
   }
 
   /**
@@ -169,14 +166,14 @@ class SessionRecorder
    */
   public captureException(
     error: unknown,
-    errorInfo?: Record<string, any>
+    errorInfo?: Record<string, any>,
   ): void {
     try {
-      const normalizedError = this._normalizeError(error);
-      const normalizedErrorInfo = this._normalizeErrorInfo(errorInfo);
-      this._tracer.captureException(normalizedError, normalizedErrorInfo);
+      const normalizedError = this._normalizeError(error)
+      const normalizedErrorInfo = this._normalizeErrorInfo(errorInfo)
+      this._tracer.captureException(normalizedError, normalizedErrorInfo)
     } catch (e: any) {
-      this.error = e?.message || 'Failed to capture exception';
+      this.error = e?.message || 'Failed to capture exception'
     }
   }
 
@@ -187,16 +184,16 @@ class SessionRecorder
       this._isFlushingBuffer ||
       !this._configs?.buffering?.enabled
     ) {
-      return null;
+      return null
     }
 
-    this._isFlushingBuffer = true;
+    this._isFlushingBuffer = true
 
     try {
       const { events, spans, startedAt, stoppedAt } =
-        await this._crashBuffer.snapshot();
+        await this._crashBuffer.snapshot()
       if (events.length === 0 && spans.length === 0) {
-        return null;
+        return null
       }
 
       await Promise.all([
@@ -211,24 +208,24 @@ class SessionRecorder
           resourceAttributes: getNavigatorInfo(),
           userAttributes: this._userAttributes || undefined,
         }),
-      ]);
+      ])
     } catch (_e) {
       // swallow: flush is best-effort; never throw into app code
     } finally {
-      await this._crashBuffer.clear();
-      this._isFlushingBuffer = false;
+      await this._crashBuffer.clear()
+      this._isFlushingBuffer = false
     }
   }
 
   private _toCrashBufferSessionIso(ts: number): string {
-    return new Date(ts).toISOString();
+    return new Date(ts).toISOString()
   }
 
   private async _createExceptionSession(span: any): Promise<void> {
     try {
-      const session = await this._apiService.createErrorSession({ span });
+      const session = await this._apiService.createErrorSession({ span })
       if (session?._id) {
-        void this._flushBuffer(session._id);
+        void this._flushBuffer(session._id)
       }
     } catch (_ignored) {
       // best-effort
@@ -237,29 +234,29 @@ class SessionRecorder
 
   private async _loadStoredSessionData(): Promise<void> {
     try {
-      await StorageService.initialize();
-      const storedData = await this._storageService.getAllSessionData();
+      await StorageService.initialize()
+      const storedData = await this._storageService.getAllSessionData()
       if (isSessionActive(storedData.sessionObject, storedData.sessionType)) {
-        this.session = storedData.sessionObject;
-        this.sessionId = storedData.sessionId;
-        this.sessionType = storedData.sessionType || SessionType.MANUAL;
-        this.sessionState = storedData.sessionState;
+        this.session = storedData.sessionObject
+        this.sessionId = storedData.sessionId
+        this.sessionType = storedData.sessionType || SessionType.MANUAL
+        this.sessionState = storedData.sessionState
       } else {
-        this.session = null;
-        this.sessionId = null;
-        this.sessionState = null;
-        this.sessionType = SessionType.MANUAL;
+        this.session = null
+        this.sessionId = null
+        this.sessionState = null
+        this.sessionType = SessionType.MANUAL
       }
     } catch (error) {
       logger.error(
         'SessionRecorder',
         'Failed to load stored session data',
-        error
-      );
-      this.session = null;
-      this.sessionId = null;
-      this.sessionState = null;
-      this.sessionType = SessionType.MANUAL;
+        error,
+      )
+      this.session = null
+      this.sessionId = null
+      this.sessionState = null
+      this.sessionType = SessionType.MANUAL
     }
   }
 
@@ -268,51 +265,51 @@ class SessionRecorder
    * @param configs - custom configurations for session debugger
    */
   public async init(configs: SessionRecorderOptions): Promise<void> {
-    if (this._isInitialized) return;
-    this._isInitialized = true;
-    this._configs = getSessionRecorderConfig({ ...this._configs, ...configs });
-    logger.configure(this._configs.logger);
-    await this._loadStoredSessionData();
-    setMaxCapturingHttpPayloadSize(this._configs.maxCapturingHttpPayloadSize);
+    if (this._isInitialized) return
+    this._isInitialized = true
+    this._configs = getSessionRecorderConfig({ ...this._configs, ...configs })
+    logger.configure(this._configs.logger)
+    await this._loadStoredSessionData()
+    setMaxCapturingHttpPayloadSize(this._configs.maxCapturingHttpPayloadSize)
     setShouldRecordHttpData(
       this._configs.captureBody,
-      this._configs.captureHeaders
-    );
+      this._configs.captureHeaders,
+    )
 
     // Crash buffer wiring (RN): set BEFORE tracer init so early spans don't get exported.
-    const bufferEnabled = Boolean(this._configs.buffering?.enabled);
+    const bufferEnabled = Boolean(this._configs.buffering?.enabled)
     const windowMs = Math.max(
       10_000,
-      (this._configs.buffering?.windowMinutes || 0.5) * 60 * 1000
-    );
+      (this._configs.buffering?.windowMinutes || 0.5) * 60 * 1000,
+    )
     if (bufferEnabled) {
       // Drop any buffer persisted by a previous app launch: the stored FullSnapshot
       // refers to a view hierarchy that no longer exists, and carrying old timestamps
       // forward inflates the reported session duration on flush. The CrashBufferService
       // serializes its ops via an internal chain, so appends triggered after this
       // clear are guaranteed to run afterwards.
-      void this._crashBuffer.clear();
+      void this._crashBuffer.clear()
     }
     this._tracer.setCrashBuffer(
       bufferEnabled ? this._crashBuffer : undefined,
-      windowMs
-    );
+      windowMs,
+    )
 
-    this._tracer.init(this._configs);
-    this._apiService.init(this._configs);
+    this._tracer.init(this._configs)
+    this._apiService.init(this._configs)
     this._socketService.init({
       apiKey: this._configs.apiKey,
       socketUrl: this._configs.apiBaseUrl,
       keepAlive: this._configs.useWebsocket,
       clientId: this._tracer.clientId,
-    });
+    })
 
     this._recorder.init(
       this._configs,
       this._socketService,
       bufferEnabled ? this._crashBuffer : undefined,
-      { enabled: bufferEnabled, windowMs }
-    );
+      { enabled: bufferEnabled, windowMs },
+    )
 
     this._crashBuffer.on('error-span-appended', (payload) => {
       if (
@@ -320,25 +317,25 @@ class SessionRecorder
         this.sessionId ||
         this.sessionState !== SessionState.stopped
       ) {
-        return;
+        return
       }
-      this._createExceptionSession(payload.span);
-    });
+      this._createExceptionSession(payload.span)
+    })
 
-    await this._networkService.init();
-    this._setupNetworkCallbacks();
-    this._registerSocketServiceListeners();
+    await this._networkService.init()
+    this._setupNetworkCallbacks()
+    this._registerSocketServiceListeners()
 
     if (
       this.sessionId &&
       (this.sessionState === SessionState.started ||
         this.sessionState === SessionState.paused)
     ) {
-      this._start();
+      this._start()
     } else {
-      this._startBufferOnlyRecording();
+      this._startBufferOnlyRecording()
     }
-    this.emit('init', []);
+    this.emit('init', [])
   }
 
   private _startBufferOnlyRecording(): void {
@@ -352,27 +349,27 @@ class SessionRecorder
       !this._configs?.buffering?.enabled ||
       this.sessionState !== SessionState.stopped
     ) {
-      return;
+      return
     }
 
     const windowMs = Math.max(
       10_000,
-      (this._configs.buffering.windowMinutes || 0.5) * 60 * 1000
-    );
+      (this._configs.buffering.windowMinutes || 0.5) * 60 * 1000,
+    )
 
     // Wire buffer into tracer + recorder (only used when sessionId is null).
-    this._tracer.setCrashBuffer(this._crashBuffer, windowMs);
+    this._tracer.setCrashBuffer(this._crashBuffer, windowMs)
     this._recorder.init(this._configs, this._socketService, this._crashBuffer, {
       enabled: true,
       windowMs,
-    });
+    })
 
     // Start capturing events without an active debug session id.
     try {
-      this._recorder.stop();
+      this._recorder.stop()
       // eslint-disable-next-line no-empty
     } catch (_e) {}
-    this._recorder.start(null, SessionType.MANUAL);
+    this._recorder.start(null, SessionType.MANUAL)
   }
 
   /**
@@ -380,39 +377,39 @@ class SessionRecorder
    */
   private _registerSocketServiceListeners(): void {
     this._socketService.on(SESSION_STOPPED_EVENT, () => {
-      this._stop();
-      this._clearSession();
-    });
+      this._stop()
+      this._clearSession()
+    })
 
     this._socketService.on(REMOTE_SESSION_RECORDING_START, (payload: any) => {
       logger.info(
         'SessionRecorder',
         'Remote session recording started',
-        payload
-      );
+        payload,
+      )
       if (this.sessionState === SessionState.stopped) {
-        this.start();
+        this.start()
       }
-    });
+    })
 
     this._socketService.on(REMOTE_SESSION_RECORDING_STOP, (payload: any) => {
       logger.info(
         'SessionRecorder',
         'Remote session recording stopped',
-        payload
-      );
+        payload,
+      )
       if (this.sessionState !== SessionState.stopped) {
-        this.stop();
+        this.stop()
       }
-    });
+    })
 
     this._socketService.on(SESSION_SAVE_BUFFER_EVENT, (payload: any) => {
       // Only honor backend save-buffer requests while in buffer-only mode. If a session
       // is already recording (manual/continuous), the client is streaming directly and
       // should ignore this event.
-      if (this.sessionState !== SessionState.stopped) return;
-      this._flushBuffer(payload?.debugSession?._id);
-    });
+      if (this.sessionState !== SessionState.stopped) return
+      this._flushBuffer(payload?.debugSession?._id)
+    })
   }
 
   /**
@@ -423,20 +420,20 @@ class SessionRecorder
       if (!state.isConnected && this.sessionState === SessionState.started) {
         logger.info(
           'SessionRecorder',
-          'Network went offline - pausing session recording'
-        );
-        this.pause();
+          'Network went offline - pausing session recording',
+        )
+        this.pause()
       } else if (
         state.isConnected &&
         this.sessionState === SessionState.paused
       ) {
         logger.info(
           'SessionRecorder',
-          'Network came back online - resuming session recording'
-        );
-        this.resume();
+          'Network came back online - resuming session recording',
+        )
+        this.resume()
       }
-    });
+    })
   }
 
   /**
@@ -446,17 +443,17 @@ class SessionRecorder
    */
   public async start(
     type: SessionType = SessionType.MANUAL,
-    session?: ISession
+    session?: ISession,
   ): Promise<void> {
-    this._checkOperation('start');
+    this._checkOperation('start')
 
     // Check if offline - don't start recording if offline
     if (!this._networkService.isOnline()) {
       logger.warn(
         'SessionRecorder',
-        'Cannot start session recording - device is offline'
-      );
-      throw new Error('Cannot start session recording while offline');
+        'Cannot start session recording - device is offline',
+      )
+      throw new Error('Cannot start session recording while offline')
     }
 
     // If continuous recording is disabled, force plain mode
@@ -464,15 +461,15 @@ class SessionRecorder
       type === SessionType.CONTINUOUS &&
       !this._configs?.showContinuousRecording
     ) {
-      type = SessionType.MANUAL;
+      type = SessionType.MANUAL
     }
-    logger.info('SessionRecorder', 'Starting session with type:', type);
-    this.sessionType = type;
-    this._startRequestController = new AbortController();
+    logger.info('SessionRecorder', 'Starting session with type:', type)
+    this.sessionType = type
+    this._startRequestController = new AbortController()
     if (session) {
-      this._setupSessionAndStart(session, true);
+      this._setupSessionAndStart(session, true)
     } else {
-      await this._createSessionAndStart();
+      await this._createSessionAndStart()
     }
   }
 
@@ -482,21 +479,21 @@ class SessionRecorder
    */
   public async stop(comment?: string): Promise<void> {
     try {
-      this._checkOperation('stop');
-      const sid = this.sessionId;
-      this._stop();
+      this._checkOperation('stop')
+      const sid = this.sessionId
+      this._stop()
       if (this.continuousRecording) {
-        await this._apiService.stopContinuousDebugSession(sid!);
-        this.sessionType = SessionType.MANUAL;
+        await this._apiService.stopContinuousDebugSession(sid!)
+        this.sessionType = SessionType.MANUAL
       } else {
         const request: StopSessionRequest = {
           sessionAttributes: { comment },
           stoppedAt: Date.now(),
-        };
-        await this._apiService.stopSession(sid!, request);
+        }
+        await this._apiService.stopSession(sid!, request)
       }
     } catch (error: any) {
-      this.error = error.message;
+      this.error = error.message
     }
   }
 
@@ -505,10 +502,10 @@ class SessionRecorder
    */
   public async pause(): Promise<void> {
     try {
-      this._checkOperation('pause');
-      this._pause();
+      this._checkOperation('pause')
+      this._pause()
     } catch (error: any) {
-      this.error = error.message;
+      this.error = error.message
     }
   }
 
@@ -517,10 +514,10 @@ class SessionRecorder
    */
   public async resume(): Promise<void> {
     try {
-      this._checkOperation('resume');
-      this._resume();
+      this._checkOperation('resume')
+      this._resume()
     } catch (error: any) {
-      this.error = error.message;
+      this.error = error.message
     }
   }
 
@@ -529,17 +526,17 @@ class SessionRecorder
    */
   public async cancel(): Promise<void> {
     try {
-      this._checkOperation('cancel');
-      const sid = this.sessionId;
-      this._stop();
+      this._checkOperation('cancel')
+      const sid = this.sessionId
+      this._stop()
       if (this.continuousRecording) {
-        await this._apiService.stopContinuousDebugSession(sid!);
-        this.sessionType = SessionType.MANUAL;
+        await this._apiService.stopContinuousDebugSession(sid!)
+        this.sessionType = SessionType.MANUAL
       } else {
-        await this._apiService.cancelSession(sid!);
+        await this._apiService.cancelSession(sid!)
       }
     } catch (error: any) {
-      this.error = error.message;
+      this.error = error.message
     }
   }
 
@@ -548,12 +545,12 @@ class SessionRecorder
    */
   public async save(): Promise<any> {
     try {
-      this._checkOperation('save');
+      this._checkOperation('save')
       if (
         !this.continuousRecording ||
         !this._configs?.showContinuousRecording
       ) {
-        return;
+        return
       }
 
       const res = await this._apiService.saveContinuousDebugSession(
@@ -563,12 +560,12 @@ class SessionRecorder
           resourceAttributes: getNavigatorInfo(),
           stoppedAt: Date.now(),
           name: this._getSessionName(),
-        }
-      );
+        },
+      )
 
-      return res;
+      return res
     } catch (error: any) {
-      this.error = error.message;
+      this.error = error.message
     }
   }
 
@@ -577,7 +574,7 @@ class SessionRecorder
    * @param attributes - the attributes to set
    */
   public setSessionAttributes(attributes: Record<string, any>): void {
-    this._sessionAttributes = attributes;
+    this._sessionAttributes = attributes
   }
 
   /**
@@ -586,16 +583,16 @@ class SessionRecorder
    */
   public setUserAttributes(userAttributes: IUserAttributes | null): void {
     if (!this._userAttributes && !userAttributes) {
-      return;
+      return
     }
-    this._userAttributes = userAttributes;
+    this._userAttributes = userAttributes
 
     const data = {
       userAttributes: this._userAttributes,
       clientId: this._tracer.clientId,
-    };
+    }
 
-    this._socketService.setUser(data);
+    this._socketService.setUser(data)
   }
 
   /**
@@ -604,11 +601,11 @@ class SessionRecorder
    * @returns {Promise<void>}
    */
   public async checkRemoteContinuousSession(
-    sessionPayload?: Omit<ISession, '_id' | 'shortId'>
+    sessionPayload?: Omit<ISession, '_id' | 'shortId'>,
   ): Promise<void> {
-    this._checkOperation('autoStartRemoteContinuousSession');
+    this._checkOperation('autoStartRemoteContinuousSession')
     if (!this._configs?.showContinuousRecording) {
-      return;
+      return
     }
     const payload = {
       sessionAttributes: {
@@ -620,17 +617,17 @@ class SessionRecorder
         ...(sessionPayload?.resourceAttributes || {}),
       },
       ...(this._userAttributes ? { userAttributes: this._userAttributes } : {}),
-    };
+    }
 
-    const { state } = await this._apiService.checkRemoteSession(payload);
+    const { state } = await this._apiService.checkRemoteSession(payload)
 
     if (state == 'START') {
       if (this.sessionState !== SessionState.started) {
-        await this.start(SessionType.CONTINUOUS);
+        await this.start(SessionType.CONTINUOUS)
       }
     } else if (state == 'STOP') {
       if (this.sessionState !== SessionState.stopped) {
-        await this.stop();
+        await this.stop()
       }
     }
   }
@@ -639,7 +636,7 @@ class SessionRecorder
    * Create a new session and start it
    */
   private async _createSessionAndStart(): Promise<void> {
-    const signal = this._startRequestController?.signal;
+    const signal = this._startRequestController?.signal
     try {
       const payload = {
         sessionAttributes: this.sessionAttributes,
@@ -648,26 +645,26 @@ class SessionRecorder
         ...(this._userAttributes
           ? { userAttributes: this._userAttributes }
           : {}),
-      };
+      }
       const request: StartSessionRequest = !this.continuousRecording
         ? payload
-        : { debugSessionData: payload };
+        : { debugSessionData: payload }
 
       const session = this.continuousRecording
         ? await this._apiService.startContinuousDebugSession(request, signal)
-        : await this._apiService.startSession(request, signal);
+        : await this._apiService.startSession(request, signal)
 
       if (session) {
         session.sessionType = this.continuousRecording
           ? SessionType.CONTINUOUS
-          : SessionType.MANUAL;
-        this._setupSessionAndStart(session, false);
+          : SessionType.MANUAL
+        this._setupSessionAndStart(session, false)
       }
     } catch (error: any) {
-      this.error = error.message;
-      logger.error('SessionRecorder', 'Error creating session:', error.message);
+      this.error = error.message
+      logger.error('SessionRecorder', 'Error creating session:', error.message)
       if (this.continuousRecording) {
-        this.sessionType = SessionType.MANUAL;
+        this.sessionType = SessionType.MANUAL
       }
     }
   }
@@ -676,20 +673,20 @@ class SessionRecorder
    * Start tracing and recording for the session
    */
   private _start(): void {
-    this.sessionState = SessionState.started;
+    this.sessionState = SessionState.started
     // eslint-disable-next-line no-self-assign
-    this.sessionType = this.sessionType;
+    this.sessionType = this.sessionType
 
     if (this.sessionId) {
       // Switch from buffer-only recording to session recording cleanly.
       try {
-        this._recorder.stop();
+        this._recorder.stop()
         // eslint-disable-next-line no-empty
       } catch (_e) {}
-      this._tracer.start(this.sessionId, this.sessionType);
-      this._recorder.start(this.sessionId, this.sessionType);
+      this._tracer.start(this.sessionId, this.sessionType)
+      this._recorder.start(this.sessionId, this.sessionType)
       if (this.session) {
-        this._socketService.subscribeToSession(this.session);
+        this._socketService.subscribeToSession(this.session)
       }
     }
   }
@@ -698,32 +695,32 @@ class SessionRecorder
    * Stop tracing and recording for the session
    */
   private _stop(): void {
-    this.sessionState = SessionState.stopped;
-    this._socketService.unsubscribeFromSession(true);
-    this._tracer.stop();
-    this._recorder.stop();
+    this.sessionState = SessionState.stopped
+    this._socketService.unsubscribeFromSession(true)
+    this._tracer.stop()
+    this._recorder.stop()
     // Clear session identity synchronously. The buffer-restart path and the
     // error-span-appended listener both gate on `this.sessionId === null`;
     // deferring this to `_clearSession()` (after the network stopSession
     // call) left them seeing a stale id and silently no-oping. Callers that
     // need the id for the stop/cancel API must capture it before _stop().
-    this.session = null;
-    this.sessionId = null;
+    this.session = null
+    this.sessionId = null
     // Each recorder start assigns fresh node IDs, so the next buffer
     // segment must not carry events from the previous generation. The
     // crash buffer's opChain queues this clear before any subsequent
     // appendEvent, so the fresh FullSnapshot can't be wiped.
-    void this._crashBuffer?.clear();
-    this._startBufferOnlyRecording();
+    void this._crashBuffer?.clear()
+    this._startBufferOnlyRecording()
   }
 
   /**
    * Pause the session tracing and recording
    */
   private _pause(): void {
-    this._tracer.stop();
-    this._recorder.stop();
-    this.sessionState = SessionState.paused;
+    this._tracer.stop()
+    this._recorder.stop()
+    this.sessionState = SessionState.paused
   }
 
   /**
@@ -731,29 +728,29 @@ class SessionRecorder
    */
   private _resume(): void {
     if (this.sessionId) {
-      this._tracer.start(this.sessionId, this.sessionType);
+      this._tracer.start(this.sessionId, this.sessionType)
       try {
-        this._recorder.stop();
+        this._recorder.stop()
         // eslint-disable-next-line no-empty
       } catch (_e) {}
-      this._recorder.start(this.sessionId, this.sessionType);
+      this._recorder.start(this.sessionId, this.sessionType)
     }
-    this.sessionState = SessionState.started;
+    this.sessionState = SessionState.started
   }
 
   private _setupSessionAndStart(
     session: ISession,
-    configureExporters: boolean = true
+    configureExporters: boolean = true,
   ): void {
     if (configureExporters && session.tempApiKey) {
-      this._configs.apiKey = session.tempApiKey;
-      this._tracer.setApiKey(session.tempApiKey);
-      this._apiService.setApiKey(session.tempApiKey);
-      this._socketService.updateConfigs({ apiKey: session.tempApiKey });
+      this._configs.apiKey = session.tempApiKey
+      this._tracer.setApiKey(session.tempApiKey)
+      this._apiService.setApiKey(session.tempApiKey)
+      this._socketService.updateConfigs({ apiKey: session.tempApiKey })
     }
 
-    this._setSession(session);
-    this._start();
+    this._setSession(session)
+    this._start()
   }
 
   /**
@@ -764,15 +761,15 @@ class SessionRecorder
     this.session = {
       ...session,
       createdAt: session.createdAt || new Date().toISOString(),
-    };
-    this.sessionId = session?.shortId || session?._id;
+    }
+    this.sessionId = session?.shortId || session?._id
   }
 
   private _clearSession(): void {
-    this.session = null;
-    this.sessionId = null;
-    this.sessionState = SessionState.stopped;
-    this._storageService.clearSessionData();
+    this.session = null
+    this.sessionId = null
+    this.sessionState = SessionState.stopped
+    this._storageService.clearSessionData()
   }
 
   /**
@@ -789,71 +786,71 @@ class SessionRecorder
       | 'resume'
       | 'save'
       | 'autoStartRemoteContinuousSession',
-    _payload?: any
+    _payload?: any,
   ): void {
     if (!this._isInitialized) {
       throw new Error(
-        'Configuration not initialized. Call init() before performing any actions.'
-      );
+        'Configuration not initialized. Call init() before performing any actions.',
+      )
     }
     switch (action) {
       case 'start':
         if (this.sessionState === SessionState.started) {
-          throw new Error('Session is already started.');
+          throw new Error('Session is already started.')
         }
-        break;
+        break
       case 'stop':
         if (
           this.sessionState !== SessionState.paused &&
           this.sessionState !== SessionState.started
         ) {
-          throw new Error('Cannot stop. Session is not currently started.');
+          throw new Error('Cannot stop. Session is not currently started.')
         }
-        break;
+        break
       case 'cancel':
         if (this.sessionState === SessionState.stopped) {
-          throw new Error('Cannot cancel. Session has already been stopped.');
+          throw new Error('Cannot cancel. Session has already been stopped.')
         }
-        break;
+        break
       case 'pause':
         if (this.sessionState !== SessionState.started) {
-          throw new Error('Cannot pause. Session is not running.');
+          throw new Error('Cannot pause. Session is not running.')
         }
-        break;
+        break
       case 'resume':
         if (this.sessionState !== SessionState.paused) {
-          throw new Error('Cannot resume. Session is not paused.');
+          throw new Error('Cannot resume. Session is not paused.')
         }
-        break;
+        break
       case 'save':
         if (!this.continuousRecording) {
           throw new Error(
-            'Cannot save continuous recording session. Continuous recording is not enabled.'
-          );
+            'Cannot save continuous recording session. Continuous recording is not enabled.',
+          )
         }
         if (this.sessionState !== SessionState.started) {
           throw new Error(
-            'Cannot save continuous recording session. Session is not started.'
-          );
+            'Cannot save continuous recording session. Session is not started.',
+          )
         }
-        break;
+        break
       case 'autoStartRemoteContinuousSession':
         if (this.sessionState !== SessionState.stopped) {
           throw new Error(
-            'Cannot start remote continuous session. Session is not stopped.'
-          );
+            'Cannot start remote continuous session. Session is not stopped.',
+          )
         }
-        break;
+        break
     }
   }
   // Session attributes
   setSessionAttribute(key: string, value: any): void {
     if (this._session) {
       if (!this._session.sessionAttributes) {
-        this._session.sessionAttributes = {};
+        this._session.sessionAttributes = {}
       }
-      this._session.sessionAttributes[key] = value;
-      this._session.updatedAt = new Date().toISOString();
+      this._session.sessionAttributes[key] = value
+      this._session.updatedAt = new Date().toISOString()
     }
   }
 
@@ -864,11 +861,11 @@ class SessionRecorder
    */
   recordEvent(event: eventWithTime): void {
     if (!this._isInitialized || this.sessionState !== SessionState.started) {
-      return;
+      return
     }
 
     // Forward the event to the recorder SDK
-    this._recorder.recordEvent(event);
+    this._recorder.recordEvent(event)
   }
 
   /**
@@ -877,7 +874,7 @@ class SessionRecorder
    */
   setViewShotRef(ref: any): void {
     if (this._recorder) {
-      this._recorder.setViewShotRef(ref);
+      this._recorder.setViewShotRef(ref)
     }
   }
 
@@ -887,7 +884,7 @@ class SessionRecorder
    */
   setNavigationRef(ref: any): void {
     if (this._recorder) {
-      this._recorder.setNavigationRef(ref);
+      this._recorder.setNavigationRef(ref)
     }
   }
 
@@ -895,7 +892,7 @@ class SessionRecorder
    * Cleanup resources and unsubscribe from network monitoring
    */
   cleanup(): void {
-    this._networkService.cleanup();
+    this._networkService.cleanup()
   }
 
   /**
@@ -904,12 +901,12 @@ class SessionRecorder
    * @returns the normalized error
    */
   private _normalizeError(error: unknown): Error {
-    if (error instanceof Error) return error;
-    if (typeof error === 'string') return new Error(error);
+    if (error instanceof Error) return error
+    if (typeof error === 'string') return new Error(error)
     try {
-      return new Error(JSON.stringify(error));
+      return new Error(JSON.stringify(error))
     } catch (_e) {
-      return new Error(String(error));
+      return new Error(String(error))
     }
   }
 
@@ -919,13 +916,13 @@ class SessionRecorder
    * @returns the normalized error info
    */
   private _normalizeErrorInfo(
-    errorInfo?: Record<string, any>
+    errorInfo?: Record<string, any>,
   ): Record<string, any> {
-    if (!errorInfo) return {};
+    if (!errorInfo) return {}
     try {
-      return JSON.parse(JSON.stringify(errorInfo));
+      return JSON.parse(JSON.stringify(errorInfo))
     } catch (_e) {
-      return { errorInfo: String(errorInfo) };
+      return { errorInfo: String(errorInfo) }
     }
   }
 
@@ -938,11 +935,11 @@ class SessionRecorder
       this.sessionAttributes?.userName ||
       this._userAttributes?.userName ||
       this._userAttributes?.name ||
-      '';
+      ''
     return userName
       ? `${userName}'s session on ${getFormattedDate(date, { month: 'short', day: 'numeric' })}`
-      : `Session on ${getFormattedDate(date)}`;
+      : `Session on ${getFormattedDate(date)}`
   }
 }
 
-export default new SessionRecorder();
+export default new SessionRecorder()

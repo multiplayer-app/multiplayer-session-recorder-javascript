@@ -2,17 +2,17 @@
 // Define a lightweight type that includes only the members we read.
 export type OptionalExpoConstants =
   | {
-      expoVersion?: string;
-      platform?: { ios?: unknown; android?: unknown };
+      expoVersion?: string
+      platform?: { ios?: unknown; android?: unknown }
       expoConfig?: {
-        name?: string;
-        version?: string;
-        ios?: { buildNumber?: string | number; bundleIdentifier?: string };
-        android?: { versionCode?: string | number; package?: string };
-      };
+        name?: string
+        version?: string
+        ios?: { buildNumber?: string | number; bundleIdentifier?: string }
+        android?: { versionCode?: string | number; package?: string }
+      }
     }
-  | undefined;
+  | undefined
 
-const OptionalConstants: OptionalExpoConstants = undefined;
+const OptionalConstants: OptionalExpoConstants = undefined
 
-export default OptionalConstants;
+export default OptionalConstants

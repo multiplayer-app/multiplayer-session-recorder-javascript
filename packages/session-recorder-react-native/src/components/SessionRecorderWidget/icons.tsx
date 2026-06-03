@@ -1,9 +1,9 @@
-import React from 'react';
-import Svg, { Path, Circle } from 'react-native-svg';
+import React from 'react'
+import Svg, { Path, Circle } from 'react-native-svg'
 
 interface IconProps {
-  size?: number;
-  color?: string;
+  size?: number
+  color?: string
 }
 
 export const RecordIcon: React.FC<IconProps> = ({
@@ -18,7 +18,7 @@ export const RecordIcon: React.FC<IconProps> = ({
       fill={color}
     />
   </Svg>
-);
+)
 
 export const CapturingIcon: React.FC<IconProps> = ({
   size = 24,
@@ -36,7 +36,7 @@ export const CapturingIcon: React.FC<IconProps> = ({
       opacity="0.2"
     />
   </Svg>
-);
+)
 
 export const PausedIcon: React.FC<IconProps> = ({
   size = 24,
@@ -51,7 +51,7 @@ export const PausedIcon: React.FC<IconProps> = ({
       strokeLinejoin="round"
     />
   </Svg>
-);
+)
 
 export const CheckmarkIcon: React.FC<IconProps> = ({
   size = 24,
@@ -65,7 +65,7 @@ export const CheckmarkIcon: React.FC<IconProps> = ({
       fill={color}
     />
   </Svg>
-);
+)
 
 export const LogoIcon: React.FC<IconProps> = ({
   size = 30,
@@ -77,4 +77,4 @@ export const LogoIcon: React.FC<IconProps> = ({
       fill={color}
     />
   </Svg>
-);
+)

@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native'
 
 export const sharedStyles = StyleSheet.create({
   // Popover styles
@@ -165,4 +165,4 @@ export const sharedStyles = StyleSheet.create({
   saveButton: {
     backgroundColor: '#473cfb',
   },
-});
+})

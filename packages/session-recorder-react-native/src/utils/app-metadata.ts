@@ -7,11 +7,11 @@
 // It extracts metadata from app.json, app.config.js, or package.json
 
 export interface AppMetadata {
-  name?: string;
-  version?: string;
-  bundleId?: string;
-  buildNumber?: string;
-  displayName?: string;
+  name?: string
+  version?: string
+  bundleId?: string
+  buildNumber?: string
+  displayName?: string
 }
 
 // Auto-detected values from project configuration files
@@ -21,11 +21,11 @@ export const APP_METADATA: AppMetadata = {
   bundleId: undefined,
   buildNumber: undefined,
   displayName: undefined,
-};
+}
 
 /**
  * Get auto-detected app metadata
  */
 export function getAutoDetectedAppMetadata(): AppMetadata {
-  return { ...APP_METADATA };
+  return { ...APP_METADATA }
 }

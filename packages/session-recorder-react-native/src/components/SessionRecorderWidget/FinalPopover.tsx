@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'
 import {
   View,
   Text,
@@ -6,19 +6,19 @@ import {
   TextInput,
   ScrollView,
   Keyboard,
-} from 'react-native';
-import { type TextOverridesOptions } from '../../types';
-import { sharedStyles } from './styles';
-import ModalHeader from './ModalHeader';
-import { logger } from '../../utils';
+} from 'react-native'
+import { type TextOverridesOptions } from '../../types'
+import { sharedStyles } from './styles'
+import ModalHeader from './ModalHeader'
+import { logger } from '../../utils'
 
 interface FinalPopoverProps extends React.PropsWithChildren {
-  isOnline: boolean;
-  textOverrides: TextOverridesOptions;
-  onStopRecording: (comment: string) => void;
-  onCancelSession: () => void;
-  onClose: () => void;
-  isSubmitting: boolean;
+  isOnline: boolean
+  textOverrides: TextOverridesOptions
+  onStopRecording: (comment: string) => void
+  onCancelSession: () => void
+  onClose: () => void
+  isSubmitting: boolean
 }
 
 const FinalPopover: React.FC<FinalPopoverProps> = ({
@@ -29,15 +29,15 @@ const FinalPopover: React.FC<FinalPopoverProps> = ({
   isSubmitting,
   children,
 }) => {
-  const [comment, setComment] = useState('');
+  const [comment, setComment] = useState('')
 
   const handleStopRecording = async () => {
     try {
-      await onStopRecording(comment);
+      await onStopRecording(comment)
     } catch (error) {
-      logger.error('FinalPopover', 'Failed to save session', error);
+      logger.error('FinalPopover', 'Failed to save session', error)
     }
-  };
+  }
 
   return (
     <View style={sharedStyles.popoverContent}>
@@ -90,7 +90,7 @@ const FinalPopover: React.FC<FinalPopoverProps> = ({
         </View>
       </ScrollView>
     </View>
-  );
-};
+  )
+}
 
-export default FinalPopover;
+export default FinalPopover

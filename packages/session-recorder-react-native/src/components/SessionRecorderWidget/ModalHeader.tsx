@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, Pressable, Linking } from 'react-native';
-import { sharedStyles } from './styles';
-import { LogoIcon } from './icons';
+import React from 'react'
+import { View, Pressable, Linking } from 'react-native'
+import { sharedStyles } from './styles'
+import { LogoIcon } from './icons'
 
 interface ModalHeaderProps {
-  children?: React.ReactNode;
+  children?: React.ReactNode
 }
 
 const ModalHeader: React.FC<ModalHeaderProps> = ({ children }) => {
@@ -20,7 +20,7 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({ children }) => {
         {children}
       </View>
     </View>
-  );
-};
+  )
+}
 
-export default ModalHeader;
+export default ModalHeader

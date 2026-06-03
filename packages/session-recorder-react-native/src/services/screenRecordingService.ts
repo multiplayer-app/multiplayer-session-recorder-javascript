@@ -1,28 +1,28 @@
 import SessionRecorderNative, {
   type MaskingOptions,
-} from '../native/SessionRecorderNative';
-import { logger } from '../utils';
+} from '../native/SessionRecorderNative'
+import { logger } from '../utils'
 
 export interface ScreenRecordingConfig {
   /** Whether screen masking is enabled */
-  enabled: boolean;
+  enabled: boolean
   /** Whether to mask text inputs (UITextField, UITextView, React Native text components) */
-  maskTextInputs?: boolean;
+  maskTextInputs?: boolean
   /** Whether to mask images (UIImageView, React Native Image components) */
-  maskImages?: boolean;
+  maskImages?: boolean
   /** Whether to mask buttons (UIButton) */
-  maskButtons?: boolean;
+  maskButtons?: boolean
   /** Whether to mask labels (UILabel) */
-  maskLabels?: boolean;
+  maskLabels?: boolean
   /** Whether to mask web views (WKWebView) */
-  maskWebViews?: boolean;
+  maskWebViews?: boolean
   /** Whether to mask sandboxed views (system views that don't belong to current process) */
-  maskSandboxedViews?: boolean;
+  maskSandboxedViews?: boolean
 }
 
 export class ScreenRecordingService {
-  private config: ScreenRecordingConfig;
-  private isAvailable: boolean = false;
+  private config: ScreenRecordingConfig
+  private isAvailable: boolean = false
 
   constructor(
     config: ScreenRecordingConfig = {
@@ -33,10 +33,10 @@ export class ScreenRecordingService {
       maskLabels: false,
       maskWebViews: false,
       maskSandboxedViews: false,
-    }
+    },
   ) {
-    this.config = config;
-    this.checkAvailability();
+    this.config = config
+    this.checkAvailability()
   }
 
   /**
@@ -49,25 +49,25 @@ export class ScreenRecordingService {
         SessionRecorderNative &&
         typeof SessionRecorderNative.captureAndMask === 'function'
       ) {
-        this.isAvailable = true;
+        this.isAvailable = true
         logger.info(
           'ScreenRecordingService',
-          'Screen masking native module is available'
-        );
+          'Screen masking native module is available',
+        )
       } else {
-        this.isAvailable = false;
+        this.isAvailable = false
         logger.warn(
           'ScreenRecordingService',
-          'Screen masking native module is not available - auto-linking may still be in progress'
-        );
+          'Screen masking native module is not available - auto-linking may still be in progress',
+        )
       }
     } catch (error) {
-      this.isAvailable = false;
+      this.isAvailable = false
       logger.error(
         'ScreenRecordingService',
         'Error checking screen masking availability:',
-        error
-      );
+        error,
+      )
     }
   }
 
@@ -78,26 +78,26 @@ export class ScreenRecordingService {
     if (!this.isAvailable || !this.config.enabled) {
       logger.warn(
         'ScreenRecordingService',
-        'Screen masking is not available or disabled'
-      );
-      return null;
+        'Screen masking is not available or disabled',
+      )
+      return null
     }
 
     try {
       const maskingOptions: MaskingOptions = {
         ...this.config,
         ...options,
-      };
+      }
       const maskedImageBase64 =
-        await SessionRecorderNative.captureAndMaskWithOptions(maskingOptions);
-      return maskedImageBase64;
+        await SessionRecorderNative.captureAndMaskWithOptions(maskingOptions)
+      return maskedImageBase64
     } catch (error) {
       logger.error(
         'ScreenRecordingService',
         'Failed to capture masked screen:',
-        error
-      );
-      return null;
+        error,
+      )
+      return null
     }
   }
 
@@ -108,21 +108,21 @@ export class ScreenRecordingService {
     if (!this.isAvailable || !this.config.enabled) {
       logger.warn(
         'ScreenRecordingService',
-        'Screen masking is not available or disabled'
-      );
-      return null;
+        'Screen masking is not available or disabled',
+      )
+      return null
     }
 
     try {
-      const maskedImageBase64 = await SessionRecorderNative.captureAndMask();
-      return maskedImageBase64;
+      const maskedImageBase64 = await SessionRecorderNative.captureAndMask()
+      return maskedImageBase64
     } catch (error) {
       logger.error(
         'ScreenRecordingService',
         'Failed to capture masked screen (basic):',
-        error
-      );
-      return null;
+        error,
+      )
+      return null
     }
   }
 
@@ -130,27 +130,27 @@ export class ScreenRecordingService {
    * Update the masking configuration
    */
   updateConfig(config: Partial<ScreenRecordingConfig>): void {
-    this.config = { ...this.config, ...config };
+    this.config = { ...this.config, ...config }
     logger.info(
       'ScreenRecordingService',
-      'Screen masking configuration updated'
-    );
+      'Screen masking configuration updated',
+    )
   }
 
   /**
    * Check if screen masking is available
    */
   isScreenRecordingAvailable(): boolean {
-    return this.isAvailable && this.config.enabled;
+    return this.isAvailable && this.config.enabled
   }
 
   /**
    * Get the current configuration
    */
   getConfig(): ScreenRecordingConfig {
-    return { ...this.config };
+    return { ...this.config }
   }
 }
 
 // Create a singleton instance
-export const screenRecordingService = new ScreenRecordingService();
+export const screenRecordingService = new ScreenRecordingService()

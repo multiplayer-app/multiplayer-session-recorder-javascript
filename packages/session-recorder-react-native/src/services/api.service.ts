@@ -2,54 +2,54 @@ import type {
   IUserAttributes,
   ISessionAttributes,
   IResourceAttributes,
-} from '@multiplayer-app/session-recorder-common';
-import { type ApiServiceConfig } from '../types';
-import type { eventWithTime } from '@rrweb/types';
+} from '@multiplayer-app/session-recorder-common'
+import { type ApiServiceConfig } from '../types'
+import type { eventWithTime } from '@rrweb/types'
 
 export interface StartSessionRequest {
-  name?: string;
-  stoppedAt?: string | number;
-  sessionAttributes?: ISessionAttributes;
-  resourceAttributes?: IResourceAttributes;
-  userAttributes?: IUserAttributes;
-  debugSessionData?: Record<string, any>;
-  tags?: { key?: string; value: string }[];
+  name?: string
+  stoppedAt?: string | number
+  sessionAttributes?: ISessionAttributes
+  resourceAttributes?: IResourceAttributes
+  userAttributes?: IUserAttributes
+  debugSessionData?: Record<string, any>
+  tags?: { key?: string; value: string }[]
 }
 
 export interface StopSessionRequest {
-  sessionAttributes?: ISessionAttributes;
-  stoppedAt: string | number;
+  sessionAttributes?: ISessionAttributes
+  stoppedAt: string | number
 }
 
 export interface CheckRemoteSessionRequest {
-  sessionAttributes?: ISessionAttributes;
-  resourceAttributes?: IResourceAttributes;
-  userAttributes?: IUserAttributes;
+  sessionAttributes?: ISessionAttributes
+  resourceAttributes?: IResourceAttributes
+  userAttributes?: IUserAttributes
 }
 
 export interface CreateErrorSpanSessionRequest {
-  span: any;
+  span: any
 }
 
 export class ApiService {
-  private config?: ApiServiceConfig;
-  private baseUrl: string = 'https://api.multiplayer.app';
+  private config?: ApiServiceConfig
+  private baseUrl: string = 'https://api.multiplayer.app'
 
   constructor() {
     this.config = {
       apiKey: '',
       apiBaseUrl: '',
       exporterEndpoint: '',
-    };
+    }
   }
 
   init(config: ApiServiceConfig): void {
     this.config = {
       ...this.config,
       ...config,
-    };
+    }
     if (config.apiBaseUrl) {
-      this.baseUrl = config.apiBaseUrl;
+      this.baseUrl = config.apiBaseUrl
     }
   }
 
@@ -59,7 +59,7 @@ export class ApiService {
    */
   public updateConfigs(config: Partial<ApiServiceConfig>) {
     if (this.config) {
-      this.config = { ...this.config, ...config };
+      this.config = { ...this.config, ...config }
     }
   }
 
@@ -69,7 +69,7 @@ export class ApiService {
    */
   setApiKey(apiKey: string): void {
     if (this.config) {
-      this.config.apiKey = apiKey;
+      this.config.apiKey = apiKey
     }
   }
 
@@ -80,34 +80,34 @@ export class ApiService {
    */
   createErrorSession(
     request: CreateErrorSpanSessionRequest,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<any> {
     return this.makeRequest(
       '/debug-sessions/error-span/start',
       'POST',
       request,
-      signal
-    );
+      signal,
+    )
   }
 
   updateSessionAttributes(
     sessionId: string,
     requestBody: {
-      name?: string;
-      startedAt?: string;
-      stoppedAt?: string;
-      userAttributes?: IUserAttributes;
-      sessionAttributes?: ISessionAttributes;
-      resourceAttributes?: IResourceAttributes;
+      name?: string
+      startedAt?: string
+      stoppedAt?: string
+      userAttributes?: IUserAttributes
+      sessionAttributes?: ISessionAttributes
+      resourceAttributes?: IResourceAttributes
     },
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<any> {
     return this.makeRequest(
       `/debug-sessions/${sessionId}`,
       'PATCH',
       requestBody,
-      signal
-    );
+      signal,
+    )
   }
 
   /**
@@ -119,14 +119,14 @@ export class ApiService {
   exportEvents(
     sessionId: string,
     requestBody: { events: eventWithTime[] },
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<any> {
     return this.makeRequest(
       `/debug-sessions/${sessionId}/rrweb-events`,
       'POST',
       requestBody,
-      signal
-    );
+      signal,
+    )
   }
 
   /**
@@ -136,9 +136,9 @@ export class ApiService {
    */
   startSession(
     request: StartSessionRequest,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<any> {
-    return this.makeRequest('/debug-sessions/start', 'POST', request, signal);
+    return this.makeRequest('/debug-sessions/start', 'POST', request, signal)
   }
 
   /**
@@ -150,8 +150,8 @@ export class ApiService {
     return this.makeRequest(
       `/debug-sessions/${sessionId}/stop`,
       'PATCH',
-      request
-    );
+      request,
+    )
   }
 
   /**
@@ -159,7 +159,7 @@ export class ApiService {
    * @param sessionId - ID of the session to cancel
    */
   cancelSession(sessionId: string): Promise<any> {
-    return this.makeRequest(`/debug-sessions/${sessionId}/cancel`, 'DELETE');
+    return this.makeRequest(`/debug-sessions/${sessionId}/cancel`, 'DELETE')
   }
 
   /**
@@ -169,14 +169,14 @@ export class ApiService {
    */
   startContinuousDebugSession(
     request: StartSessionRequest,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<any> {
     return this.makeRequest(
       '/continuous-debug-sessions/start',
       'POST',
       request,
-      signal
-    );
+      signal,
+    )
   }
 
   /**
@@ -188,14 +188,14 @@ export class ApiService {
   saveContinuousDebugSession(
     sessionId: string,
     request: StartSessionRequest,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<any> {
     return this.makeRequest(
       `/continuous-debug-sessions/${sessionId}/save`,
       'POST',
       request,
-      signal
-    );
+      signal,
+    )
   }
 
   /**
@@ -205,8 +205,8 @@ export class ApiService {
   stopContinuousDebugSession(sessionId: string): Promise<any> {
     return this.makeRequest(
       `/continuous-debug-sessions/${sessionId}/cancel`,
-      'DELETE'
-    );
+      'DELETE',
+    )
   }
 
   /**
@@ -214,14 +214,14 @@ export class ApiService {
    */
   checkRemoteSession(
     requestBody: CheckRemoteSessionRequest,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<{ state: 'START' | 'STOP' }> {
     return this.makeRequest(
       '/remote-debug-session/check',
       'POST',
       requestBody,
-      signal
-    );
+      signal,
+    )
   }
 
   /**
@@ -235,9 +235,9 @@ export class ApiService {
     path: string,
     method: string,
     body?: any,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<any> {
-    const url = `${this.baseUrl}/v0/radar${path}`;
+    const url = `${this.baseUrl}/v0/radar${path}`
     const params = {
       method,
       body: body ? JSON.stringify(body) : null,
@@ -245,28 +245,28 @@ export class ApiService {
         'Content-Type': 'application/json',
         ...(this.config?.apiKey && { 'X-Api-Key': this.config.apiKey }),
       },
-    };
+    }
 
     try {
       const response = await fetch(url, {
         ...params,
         signal,
-      });
+      })
 
       if (!response.ok) {
-        throw new Error('Network response was not ok: ' + response.statusText);
+        throw new Error('Network response was not ok: ' + response.statusText)
       }
 
       if (response.status === 204) {
-        return null;
+        return null
       }
 
-      return await response.json();
+      return await response.json()
     } catch (error: any) {
       if (error?.name === 'AbortError') {
-        throw new Error('Request aborted');
+        throw new Error('Request aborted')
       }
-      throw new Error('Error making request: ' + error.message);
+      throw new Error('Error making request: ' + error.message)
     }
   }
 }

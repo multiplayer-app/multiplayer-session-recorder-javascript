@@ -1,4 +1,4 @@
-import { Dimensions } from 'react-native';
+import { Dimensions } from 'react-native'
 import {
   NodeType,
   EventType,
@@ -6,8 +6,8 @@ import {
   type mutationData,
   type eventWithTime,
   type serializedNodeWithId,
-} from '@rrweb/types';
-import { getAppMetadata } from './platform';
+} from '@rrweb/types'
+import { getAppMetadata } from './platform'
 
 /**
  * Creates a meta event to mark the start of recording
@@ -17,8 +17,8 @@ import { getAppMetadata } from './platform';
  * @returns MetaEvent object
  */
 export function createRecordingMetaEvent(): eventWithTime {
-  const screenDimensions = Dimensions.get('window');
-  const metadata = getAppMetadata();
+  const screenDimensions = Dimensions.get('window')
+  const metadata = getAppMetadata()
 
   return {
     type: EventType.Meta,
@@ -29,7 +29,7 @@ export function createRecordingMetaEvent(): eventWithTime {
       height: screenDimensions.height,
     },
     timestamp: Date.now(),
-  };
+  }
 }
 
 /**
@@ -48,7 +48,7 @@ export function createFullSnapshotEvent(
   height: number,
   captureFormat: string = 'jpg',
   nodeIdCounter: { current: number },
-  timestamp?: number
+  timestamp?: number,
 ): eventWithTime {
   // Create a virtual DOM node representing the screen as an image
   const imageNode: serializedNodeWithId = {
@@ -62,7 +62,7 @@ export function createFullSnapshotEvent(
       style: `width: ${width}px; height: ${height}px;`,
     },
     childNodes: [],
-  };
+  }
 
   // Create the root container
   const rootNode: serializedNodeWithId = {
@@ -73,7 +73,7 @@ export function createFullSnapshotEvent(
       style: `width: ${width}px; height: ${height}px; position: relative;`,
     },
     childNodes: [imageNode],
-  };
+  }
 
   const domNode: serializedNodeWithId = {
     type: NodeType.Document,
@@ -130,7 +130,7 @@ export function createFullSnapshotEvent(
       },
     ],
     id: nodeIdCounter.current++,
-  };
+  }
 
   return {
     type: EventType.FullSnapshot,
@@ -139,7 +139,7 @@ export function createFullSnapshotEvent(
       initialOffset: { left: 0, top: 0 },
     },
     timestamp: timestamp || Date.now(),
-  };
+  }
 }
 
 /**
@@ -152,7 +152,7 @@ export function createFullSnapshotEvent(
 export function createIncrementalSnapshotWithImageUpdate(
   base64Image: string,
   captureFormat: string = 'jpg',
-  timestamp?: number
+  timestamp?: number,
 ): eventWithTime {
   const mutationData: mutationData = {
     source: IncrementalSource.Mutation,
@@ -167,13 +167,13 @@ export function createIncrementalSnapshotWithImageUpdate(
     ],
     removes: [],
     adds: [],
-  };
+  }
 
   return {
     type: EventType.IncrementalSnapshot,
     data: mutationData,
     timestamp: timestamp || Date.now(),
-  };
+  }
 }
 
 /**
@@ -190,7 +190,7 @@ export function createImageNode(
   width: number,
   height: number,
   captureFormat: string = 'jpg',
-  nodeId: number
+  nodeId: number,
 ): serializedNodeWithId {
   return {
     type: NodeType.Element,
@@ -203,7 +203,7 @@ export function createImageNode(
       style: `width: ${width}px; height: ${height}px;`,
     },
     childNodes: [],
-  };
+  }
 }
 
 /**
@@ -218,7 +218,7 @@ export function createDocumentNode(
   imageNode: serializedNodeWithId,
   width: number,
   height: number,
-  nodeIdCounter: { current: number }
+  nodeIdCounter: { current: number },
 ): serializedNodeWithId {
   // Create the root container
   const rootNode: serializedNodeWithId = {
@@ -229,7 +229,7 @@ export function createDocumentNode(
       style: `width: ${width}px; height: ${height}px; position: relative;`,
     },
     childNodes: [imageNode],
-  };
+  }
 
   return {
     type: NodeType.Document,
@@ -284,7 +284,7 @@ export function createDocumentNode(
       },
     ],
     id: nodeIdCounter.current++,
-  };
+  }
 }
 
 /**
@@ -297,20 +297,20 @@ export function createDocumentNode(
  */
 export function generateScreenHash(
   base64Image: string,
-  sampleSize: number = 100
+  sampleSize: number = 100,
 ): string {
   // Use a simple hash that samples the beginning, middle, and end of the base64 string
   // This is much faster than comparing the entire string
-  const start = base64Image.substring(0, sampleSize);
+  const start = base64Image.substring(0, sampleSize)
   const middle = base64Image.substring(
     Math.floor(base64Image.length / 2) - sampleSize / 2,
-    Math.floor(base64Image.length / 2) + sampleSize / 2
-  );
-  const end = base64Image.substring(base64Image.length - sampleSize);
+    Math.floor(base64Image.length / 2) + sampleSize / 2,
+  )
+  const end = base64Image.substring(base64Image.length - sampleSize)
 
   // Combine samples and create a simple hash
-  const combined = start + middle + end;
-  return simpleHash(combined);
+  const combined = start + middle + end
+  return simpleHash(combined)
 }
 
 /**
@@ -319,11 +319,11 @@ export function generateScreenHash(
  * @returns Hash value as string
  */
 export function simpleHash(str: string): string {
-  let hash = 0;
+  let hash = 0
   for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32-bit integer
+    const char = str.charCodeAt(i)
+    hash = (hash << 5) - hash + char
+    hash = hash & hash // Convert to 32-bit integer
   }
-  return Math.abs(hash).toString(36);
+  return Math.abs(hash).toString(36)
 }

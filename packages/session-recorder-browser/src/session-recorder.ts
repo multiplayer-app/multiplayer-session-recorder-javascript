@@ -1,6 +1,10 @@
 import { Observable } from './observable'
 
-import { SessionType, type ISession, type IUserAttributes } from '@multiplayer-app/session-recorder-common'
+import {
+  SessionType,
+  type ISession,
+  type IUserAttributes,
+} from '@multiplayer-app/session-recorder-common'
 
 import { TracerBrowserSDK } from './otel'
 import { RecorderBrowserSDK } from './rrweb'
@@ -14,7 +18,12 @@ import {
   getOrCreateTabId,
 } from './utils'
 
-import { SessionState, SessionRecorderOptions, SessionRecorderConfigs, SessionRecorderEvents } from './types'
+import {
+  SessionState,
+  SessionRecorderOptions,
+  SessionRecorderConfigs,
+  SessionRecorderEvents,
+} from './types'
 
 import {
   BASE_CONFIG,
@@ -33,11 +42,18 @@ import {
   SESSION_READY_EVENT,
 } from './config'
 
-import { setShouldRecordHttpData, setMaxCapturingHttpPayloadSize } from './patch'
+import {
+  setShouldRecordHttpData,
+  setMaxCapturingHttpPayloadSize,
+} from './patch'
 import { recorderEventBus } from './eventBus'
 import { SessionWidget } from './sessionWidget'
 import messagingService from './services/messaging.service'
-import { ApiService, StartSessionRequest, StopSessionRequest } from './services/api.service'
+import {
+  ApiService,
+  StartSessionRequest,
+  StopSessionRequest,
+} from './services/api.service'
 import { SocketService } from './services/socket.service'
 import { IndexedDBService } from './services/indexedDb.service'
 import { CrashBufferService } from './services/crashBuffer.service'
@@ -46,7 +62,10 @@ import { ContinuousRecordingSaveButtonState } from './sessionWidget/buttonStateC
 import { ISessionRecorder } from './types'
 import { NavigationRecorder, NavigationRecorderPublicApi } from './navigation'
 
-export class SessionRecorder extends Observable<SessionRecorderEvents> implements ISessionRecorder {
+export class SessionRecorder
+  extends Observable<SessionRecorderEvents>
+  implements ISessionRecorder
+{
   private _configs: SessionRecorderConfigs
   private _apiService = new ApiService()
   private _socketService = new SocketService()
@@ -101,11 +120,17 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   }
   set sessionState(state: SessionState | null) {
     this._sessionState = state
-    this._sessionWidget.updateState(this._sessionState, this.continuousRecording)
+    this._sessionWidget.updateState(
+      this._sessionState,
+      this.continuousRecording,
+    )
     messagingService.sendMessage('state-change', this._sessionState)
     setStoredItem(SESSION_STATE_PROP_NAME, state)
     // Emit observable event to support React wrapper
-    this.emit('state-change', [this._sessionState || SessionState.stopped, this.sessionType])
+    this.emit('state-change', [
+      this._sessionState || SessionState.stopped,
+      this.sessionType,
+    ])
   }
 
   private _session: ISession | null = null
@@ -164,10 +189,18 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     super()
     // Safety: avoid accessing storage in SSR/non-browser environments
     const isBrowser = typeof window !== 'undefined'
-    const sessionLocal = isBrowser ? getStoredItem(SESSION_PROP_NAME, true) : null
-    const sessionIdLocal = isBrowser ? getStoredItem(SESSION_ID_PROP_NAME) : null
-    const sessionStateLocal = isBrowser ? getStoredItem(SESSION_STATE_PROP_NAME) : null
-    const sessionTypeLocal = isBrowser ? getStoredItem(SESSION_TYPE_PROP_NAME) : null
+    const sessionLocal = isBrowser
+      ? getStoredItem(SESSION_PROP_NAME, true)
+      : null
+    const sessionIdLocal = isBrowser
+      ? getStoredItem(SESSION_ID_PROP_NAME)
+      : null
+    const sessionStateLocal = isBrowser
+      ? getStoredItem(SESSION_STATE_PROP_NAME)
+      : null
+    const sessionTypeLocal = isBrowser
+      ? getStoredItem(SESSION_TYPE_PROP_NAME)
+      : null
 
     if (isSessionActive(sessionLocal, sessionTypeLocal)) {
       this.session = sessionLocal
@@ -204,8 +237,14 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     // Keep TTL large to avoid any accidental data loss.
     void this._bufferDb.sweepStaleTabs(10 * 60 * 60 * 1000)
 
-    setMaxCapturingHttpPayloadSize(this._configs.maxCapturingHttpPayloadSize || DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE)
-    setShouldRecordHttpData(this._configs.captureBody, this._configs.captureHeaders)
+    setMaxCapturingHttpPayloadSize(
+      this._configs.maxCapturingHttpPayloadSize ||
+        DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
+    )
+    setShouldRecordHttpData(
+      this._configs.captureBody,
+      this._configs.captureHeaders,
+    )
 
     this._setupCrashBuffer()
     this._tracer.init(this._configs)
@@ -231,7 +270,11 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       this._recorder.init(this._configs, this._socketService)
     }
 
-    if (this.sessionId && (this.sessionState === SessionState.started || this.sessionState === SessionState.paused)) {
+    if (
+      this.sessionId &&
+      (this.sessionState === SessionState.started ||
+        this.sessionState === SessionState.paused)
+    ) {
       this._start()
     } else {
       this._startBufferOnlyRecording()
@@ -248,7 +291,12 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       const windowMinutes = this._configs.buffering.windowMinutes || 0.5
       const windowMs = Math.max(10_000, windowMinutes * 60 * 1000)
       const ready = this._bufferDb.clearTab(this._tabId).catch(() => undefined)
-      this._crashBuffer = new CrashBufferService(this._bufferDb, this._tabId, windowMs, ready)
+      this._crashBuffer = new CrashBufferService(
+        this._bufferDb,
+        this._tabId,
+        windowMs,
+        ready,
+      )
       this._recorder.setCrashBuffer(this._crashBuffer)
       this._tracer.setCrashBuffer(this._crashBuffer)
 
@@ -284,7 +332,8 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
 
     let hasFocus = true
     try {
-      hasFocus = typeof document.hasFocus === 'function' ? document.hasFocus() : true
+      hasFocus =
+        typeof document.hasFocus === 'function' ? document.hasFocus() : true
     } catch (_e) {
       hasFocus = true
     }
@@ -307,7 +356,11 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     // stop, leaving the buffer with no FullSnapshot and silently breaking
     // exception-triggered flushBuffer. `_recorder.restart(null, ...)` passes
     // null explicitly, so it's safe regardless of `this.sessionId`.
-    if (!this._crashBuffer || !this._configs?.buffering?.enabled || this.sessionState !== SessionState.stopped) {
+    if (
+      !this._crashBuffer ||
+      !this._configs?.buffering?.enabled ||
+      this.sessionState !== SessionState.stopped
+    ) {
       return
     }
     void this._recorder.restart(null, SessionType.MANUAL)
@@ -322,15 +375,22 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       if (!this.continuousRecording || !this._configs.showContinuousRecording) {
         return
       }
-      this._sessionWidget.updateSaveContinuousDebugSessionState(ContinuousRecordingSaveButtonState.SAVING)
-      const res = await this._apiService.saveContinuousDebugSession(this.sessionId!, {
-        sessionAttributes: this.sessionAttributes,
-        resourceAttributes: getNavigatorInfo(),
-        stoppedAt: this._recorder.stoppedAt,
-        name: this._getSessionName(),
-      })
+      this._sessionWidget.updateSaveContinuousDebugSessionState(
+        ContinuousRecordingSaveButtonState.SAVING,
+      )
+      const res = await this._apiService.saveContinuousDebugSession(
+        this.sessionId!,
+        {
+          sessionAttributes: this.sessionAttributes,
+          resourceAttributes: getNavigatorInfo(),
+          stoppedAt: this._recorder.stoppedAt,
+          name: this._getSessionName(),
+        },
+      )
 
-      this._sessionWidget.updateSaveContinuousDebugSessionState(ContinuousRecordingSaveButtonState.SAVED)
+      this._sessionWidget.updateSaveContinuousDebugSessionState(
+        ContinuousRecordingSaveButtonState.SAVED,
+      )
 
       const sessionUrl = res?.url
       this._sessionWidget.showToast(
@@ -348,10 +408,14 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
       return res
     } catch (error: any) {
       this.error = error.message
-      this._sessionWidget.updateSaveContinuousDebugSessionState(ContinuousRecordingSaveButtonState.ERROR)
+      this._sessionWidget.updateSaveContinuousDebugSessionState(
+        ContinuousRecordingSaveButtonState.ERROR,
+      )
     } finally {
       setTimeout(() => {
-        this._sessionWidget.updateSaveContinuousDebugSessionState(ContinuousRecordingSaveButtonState.IDLE)
+        this._sessionWidget.updateSaveContinuousDebugSessionState(
+          ContinuousRecordingSaveButtonState.IDLE,
+        )
       }, 3000)
     }
   }
@@ -361,10 +425,16 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    * @param type - the type of session to start
    * @param session - the session to start
    */
-  public start(type: SessionType = SessionType.MANUAL, session?: ISession): void {
+  public start(
+    type: SessionType = SessionType.MANUAL,
+    session?: ISession,
+  ): void {
     this._checkOperation('start')
     // If continuous recording is disabled, force plain mode
-    if (type === SessionType.CONTINUOUS && !this._configs.showContinuousRecording) {
+    if (
+      type === SessionType.CONTINUOUS &&
+      !this._configs.showContinuousRecording
+    ) {
       type = SessionType.MANUAL
     }
     this.sessionType = type
@@ -485,7 +555,10 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
   /**
    * Capture an exception manually and send it as an error trace.
    */
-  public captureException(error: unknown, errorInfo?: Record<string, any>): void {
+  public captureException(
+    error: unknown,
+    errorInfo?: Record<string, any>,
+  ): void {
     try {
       const normalizedError = this._normalizeError(error)
       const normalizedErrorInfo = this._normalizeErrorInfo(errorInfo)
@@ -495,21 +568,27 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     }
   }
 
-  private async _flushBuffer(session: ISession, force: boolean = false): Promise<any> {
+  private async _flushBuffer(
+    session: ISession,
+    force: boolean = false,
+  ): Promise<any> {
     if (!session || !this._crashBuffer || this._isFlushingBuffer) {
       return null
     }
 
     this._isFlushingBuffer = true
     try {
-      const { events, spans, startedAt, stoppedAt } = await this._crashBuffer.snapshot()
+      const { events, spans, startedAt, stoppedAt } =
+        await this._crashBuffer.snapshot()
       if (events.length === 0 && spans.length === 0 && !force) {
         return null
       }
 
       await Promise.all([
         this._tracer.exportTraces(spans.map((s) => s.span)),
-        this._apiService.exportEvents(session._id, { events: events.map((e) => e.event) }),
+        this._apiService.exportEvents(session._id, {
+          events: events.map((e) => e.event),
+        }),
         this._apiService.updateSessionAttributes(session._id, {
           startedAt: this._toCrashBufferSessionIso(startedAt),
           stoppedAt: this._toCrashBufferSessionIso(stoppedAt),
@@ -537,7 +616,9 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    * @param {ISession} [sessionPayload]
    * @returns {Promise<void>}
    */
-  public async checkRemoteContinuousSession(sessionPayload?: Omit<ISession, '_id' | 'shortId'>): Promise<void> {
+  public async checkRemoteContinuousSession(
+    sessionPayload?: Omit<ISession, '_id' | 'shortId'>,
+  ): Promise<void> {
     this._checkOperation('autoStartRemoteContinuousSession')
     if (!this._configs.showContinuousRecording) {
       return
@@ -623,7 +704,10 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    * Handle the safe stop event
    */
   private _handleStop(comment?: string): void {
-    if (this.sessionState === SessionState.started || this.sessionState === SessionState.paused) {
+    if (
+      this.sessionState === SessionState.started ||
+      this.sessionState === SessionState.paused
+    ) {
       this.stop(comment)
     }
   }
@@ -648,7 +732,10 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    * Handle the safe cancel event
    */
   private _handleCancel(): void {
-    if (this.sessionState === SessionState.started || this.sessionState === SessionState.paused) {
+    if (
+      this.sessionState === SessionState.started ||
+      this.sessionState === SessionState.paused
+    ) {
       this.cancel()
     }
   }
@@ -657,7 +744,10 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    * Handle the safe save event
    */
   private _handleSave(): void {
-    if (this.sessionState === SessionState.started && this.continuousRecording) {
+    if (
+      this.sessionState === SessionState.started &&
+      this.continuousRecording
+    ) {
       this.save()
     }
   }
@@ -740,16 +830,22 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
         sessionAttributes: this.sessionAttributes,
         resourceAttributes: getNavigatorInfo(),
         name: this._getSessionName(),
-        ...(this._userAttributes ? { userAttributes: this._userAttributes } : {}),
+        ...(this._userAttributes
+          ? { userAttributes: this._userAttributes }
+          : {}),
       }
-      const request: StartSessionRequest = !this.continuousRecording ? payload : { debugSessionData: payload }
+      const request: StartSessionRequest = !this.continuousRecording
+        ? payload
+        : { debugSessionData: payload }
 
       const session = this.continuousRecording
         ? await this._apiService.startContinuousDebugSession(request, signal)
         : await this._apiService.startSession(request, signal)
 
       if (session) {
-        session.sessionType = this.continuousRecording ? SessionType.CONTINUOUS : SessionType.MANUAL
+        session.sessionType = this.continuousRecording
+          ? SessionType.CONTINUOUS
+          : SessionType.MANUAL
         this._setupSessionAndStart(session, false)
       }
     } catch (error: any) {
@@ -772,11 +868,16 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     this._tracer.start(this.sessionId, this.sessionType)
     // Ensure we switch from buffer-only recording to session recording cleanly.
     void this._recorder.restart(this.sessionId, this.sessionType)
-    this._navigationRecorder.start({ sessionId: this.sessionId, sessionType: this.sessionType })
+    this._navigationRecorder.start({
+      sessionId: this.sessionId,
+      sessionType: this.sessionType,
+    })
 
     if (this.session) {
       this._socketService.subscribeToSession(this.session)
-      this._sessionWidget.seconds = getTimeDifferenceInSeconds(this.session?.startedAt)
+      this._sessionWidget.seconds = getTimeDifferenceInSeconds(
+        this.session?.startedAt,
+      )
       if (this.session?.url) {
         recorderEventBus.emit(SESSION_AUTO_CREATED, this.session.url)
       }
@@ -802,8 +903,12 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     // rrweb assigns new node IDs on each record() call, so the next buffer
     // segment must not carry events from the previous generation. Await the
     // clear so its IDB tx can't race past the fresh FullSnapshot.
-    const cleared = this._crashBuffer ? this._crashBuffer.clear() : Promise.resolve()
-    void cleared.catch(() => undefined).then(() => this._startBufferOnlyRecording())
+    const cleared = this._crashBuffer
+      ? this._crashBuffer.clear()
+      : Promise.resolve()
+    void cleared
+      .catch(() => undefined)
+      .then(() => this._startBufferOnlyRecording())
   }
 
   /**
@@ -826,7 +931,10 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     this.sessionState = SessionState.started
   }
 
-  private _setupSessionAndStart(session: ISession, configureExporters: boolean = true): void {
+  private _setupSessionAndStart(
+    session: ISession,
+    configureExporters: boolean = true,
+  ): void {
     if (configureExporters && session.tempApiKey) {
       this._configs.apiKey = session.tempApiKey
       this._socketService.updateConfigs({ apiKey: this._configs.apiKey })
@@ -844,7 +952,10 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    * @param sessionId - the session ID to set or clear
    */
   private _setSession(session: ISession): void {
-    this.session = { ...session, startedAt: session.startedAt || new Date().toISOString() }
+    this.session = {
+      ...session,
+      startedAt: session.startedAt || new Date().toISOString(),
+    }
     this.sessionId = session?.shortId || session?._id
   }
 
@@ -859,11 +970,21 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    * @param action - action being checked ('init', 'start', 'stop', 'cancel', 'pause', 'resume')
    */
   private _checkOperation(
-    action: 'init' | 'start' | 'stop' | 'cancel' | 'pause' | 'resume' | 'save' | 'autoStartRemoteContinuousSession',
+    action:
+      | 'init'
+      | 'start'
+      | 'stop'
+      | 'cancel'
+      | 'pause'
+      | 'resume'
+      | 'save'
+      | 'autoStartRemoteContinuousSession',
     payload?: any,
   ): void {
     if (!this._isInitialized) {
-      throw new Error('Configuration not initialized. Call init() before performing any actions.')
+      throw new Error(
+        'Configuration not initialized. Call init() before performing any actions.',
+      )
     }
     switch (action) {
       case 'start':
@@ -872,7 +993,10 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
         }
         break
       case 'stop':
-        if (this.sessionState !== SessionState.paused && this.sessionState !== SessionState.started) {
+        if (
+          this.sessionState !== SessionState.paused &&
+          this.sessionState !== SessionState.started
+        ) {
           throw new Error('Cannot stop. Session is not currently started.')
         }
         break
@@ -893,15 +1017,21 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
         break
       case 'save':
         if (!this.continuousRecording) {
-          throw new Error('Cannot save continuous recording session. Continuous recording is not enabled.')
+          throw new Error(
+            'Cannot save continuous recording session. Continuous recording is not enabled.',
+          )
         }
         if (this.sessionState !== SessionState.started) {
-          throw new Error('Cannot save continuous recording session. Session is not started.')
+          throw new Error(
+            'Cannot save continuous recording session. Session is not started.',
+          )
         }
         break
       case 'autoStartRemoteContinuousSession':
         if (this.sessionState !== SessionState.stopped) {
-          throw new Error('Cannot start remote continuous session. Session is not stopped.')
+          throw new Error(
+            'Cannot start remote continuous session. Session is not stopped.',
+          )
         }
         break
     }
@@ -918,7 +1048,8 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
 
       return normalizedError
     }
-    if (typeof error === 'string') return new Error(this._normalizePromiseRejectionMessage(error))
+    if (typeof error === 'string')
+      return new Error(this._normalizePromiseRejectionMessage(error))
     try {
       return new Error(JSON.stringify(error))
     } catch (_e) {
@@ -937,7 +1068,9 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
     return normalizedMessage || message
   }
 
-  private _normalizeErrorInfo(errorInfo?: Record<string, any>): Record<string, any> {
+  private _normalizeErrorInfo(
+    errorInfo?: Record<string, any>,
+  ): Record<string, any> {
     if (!errorInfo) return {}
     try {
       return JSON.parse(JSON.stringify(errorInfo))
@@ -952,7 +1085,10 @@ export class SessionRecorder extends Observable<SessionRecorderEvents> implement
    */
   private _getSessionName(date: Date = new Date()): string {
     const userName =
-      this.sessionAttributes?.userName || this._userAttributes?.userName || this._userAttributes?.name || ''
+      this.sessionAttributes?.userName ||
+      this._userAttributes?.userName ||
+      this._userAttributes?.name ||
+      ''
     return userName
       ? `${userName}'s session on ${getFormattedDate(date, { month: 'short', day: 'numeric' })}`
       : `Session on ${getFormattedDate(date)}`

@@ -1,22 +1,22 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, Pressable, Switch } from 'react-native';
-import { SessionType } from '@multiplayer-app/session-recorder-common';
-import { type TextOverridesOptions } from '../../types';
-import { sharedStyles } from './styles';
-import ModalHeader from './ModalHeader';
-import { CapturingIcon } from './icons';
-import { logger } from '../../utils';
+import React, { useMemo, useState } from 'react'
+import { View, Text, Pressable, Switch } from 'react-native'
+import { SessionType } from '@multiplayer-app/session-recorder-common'
+import { type TextOverridesOptions } from '../../types'
+import { sharedStyles } from './styles'
+import ModalHeader from './ModalHeader'
+import { CapturingIcon } from './icons'
+import { logger } from '../../utils'
 
 interface InitialPopoverProps extends React.PropsWithChildren {
-  isContinuous: boolean;
-  showContinuousRecording: boolean;
-  textOverrides: TextOverridesOptions;
-  onStartRecording: (sessionType: SessionType) => void;
-  onStopRecording: (comment?: string) => void;
-  onSaveContinuousSession: () => void;
-  onClose: () => void;
-  isSubmitting: boolean;
-  isOnline: boolean;
+  isContinuous: boolean
+  showContinuousRecording: boolean
+  textOverrides: TextOverridesOptions
+  onStartRecording: (sessionType: SessionType) => void
+  onStopRecording: (comment?: string) => void
+  onSaveContinuousSession: () => void
+  onClose: () => void
+  isSubmitting: boolean
+  isOnline: boolean
 }
 
 const InitialPopover: React.FC<InitialPopoverProps> = ({
@@ -29,55 +29,51 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
   isOnline,
   children,
 }) => {
-  const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [continuousRecording, setContinuousRecording] = useState(isContinuous);
+  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [continuousRecording, setContinuousRecording] = useState(isContinuous)
 
   const handleStartRecording = async () => {
     try {
-      setLoading(true);
-      await onStartRecording(SessionType.MANUAL);
+      setLoading(true)
+      await onStartRecording(SessionType.MANUAL)
     } catch (error) {
-      logger.error('InitialPopover', 'Failed to start recording', error);
+      logger.error('InitialPopover', 'Failed to start recording', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleToggleContinuousRecording = async (value: boolean) => {
     try {
-      setLoading(true);
-      setContinuousRecording(value);
+      setLoading(true)
+      setContinuousRecording(value)
       if (value) {
-        await onStartRecording(SessionType.CONTINUOUS);
+        await onStartRecording(SessionType.CONTINUOUS)
       } else {
-        await onStopRecording();
+        await onStopRecording()
       }
     } catch (error) {
       logger.error(
         'InitialPopover',
         'Failed to toggle continuous recording',
-        error
-      );
+        error,
+      )
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleSaveContinuousSession = async () => {
     try {
-      setSaving(true);
-      await onSaveContinuousSession();
+      setSaving(true)
+      await onSaveContinuousSession()
     } catch (error) {
-      logger.error(
-        'InitialPopover',
-        'Failed to save continuous session',
-        error
-      );
+      logger.error('InitialPopover', 'Failed to save continuous session', error)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const textContent = useMemo(() => {
     return {
@@ -88,8 +84,8 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
       description: showContinuousRecording
         ? textOverrides.initialDescriptionWithContinuous
         : textOverrides.initialDescriptionWithoutContinuous,
-    };
-  }, [showContinuousRecording, textOverrides]);
+    }
+  }, [showContinuousRecording, textOverrides])
 
   return (
     <View style={sharedStyles.popoverContent}>
@@ -161,7 +157,7 @@ const InitialPopover: React.FC<InitialPopoverProps> = ({
         )}
       </View>
     </View>
-  );
-};
+  )
+}
 
-export default InitialPopover;
+export default InitialPopover

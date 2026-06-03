@@ -4,7 +4,7 @@
 
 export const getFormattedDate = (
   date: number | Date,
-  options?: any
+  options?: any,
 ): string => {
   return new Date(date).toLocaleDateString(
     'en-US',
@@ -15,6 +15,6 @@ export const getFormattedDate = (
       hour: 'numeric',
       minute: '2-digit',
       second: '2-digit',
-    }
-  );
-};
+    },
+  )
+}

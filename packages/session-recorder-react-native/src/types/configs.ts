@@ -1,8 +1,8 @@
-import { type PropagateTraceHeaderCorsUrls } from '@opentelemetry/instrumentation-xml-http-request/build/src/types';
+import { type PropagateTraceHeaderCorsUrls } from '@opentelemetry/instrumentation-xml-http-request/build/src/types'
 import {
   type MaskingOptions,
   type SessionRecorderOptions,
-} from './session-recorder';
+} from './session-recorder'
 
 /**
  * Utility type that makes all properties required recursively
@@ -16,7 +16,7 @@ export type DeepRequired<T> = T extends Function
       ? Array<DeepRequired<NonNullable<U>>>
       : T extends object
         ? { -readonly [K in keyof T]-?: DeepRequired<NonNullable<T[K]>> }
-        : NonNullable<T>;
+        : NonNullable<T>
 
 /**
  * Fully resolved configuration interface
@@ -30,11 +30,11 @@ export interface SessionRecorderConfigs extends DeepRequired<SessionRecorderOpti
  */
 export interface BaseConfig {
   /** API key for authentication */
-  apiKey: string;
+  apiKey: string
   /** Base URL for the API calls */
-  apiBaseUrl: string;
+  apiBaseUrl: string
   /** OTLP collector endpoint for traces */
-  exporterEndpoint: string;
+  exporterEndpoint: string
 }
 
 /**
@@ -50,7 +50,7 @@ export type TracerReactNativeMasking = Pick<
   | 'maskHeadersList'
   | 'headersToInclude'
   | 'headersToExclude'
->;
+>
 
 /**
  * Configuration interface for the Tracer class
@@ -58,27 +58,27 @@ export type TracerReactNativeMasking = Pick<
  */
 export interface TracerReactNativeConfig extends BaseConfig {
   /** Application name */
-  application: string;
+  application: string
   /** Application version */
-  version: string;
+  version: string
   /** Environment (e.g., 'production', 'staging') */
-  environment: string;
+  environment: string
   /** URLs to ignore during tracing */
-  ignoreUrls: Array<string | RegExp>;
+  ignoreUrls: Array<string | RegExp>
   /** Trace ID ratio for sampling */
-  sampleTraceRatio: number;
+  sampleTraceRatio: number
   /** URLs for CORS trace header propagation */
-  propagateTraceHeaderCorsUrls: PropagateTraceHeaderCorsUrls;
+  propagateTraceHeaderCorsUrls: PropagateTraceHeaderCorsUrls
   /** Whether to schematize document span payload */
-  schemifyDocSpanPayload: boolean;
+  schemifyDocSpanPayload: boolean
   /** Maximum size for capturing HTTP payload */
-  maxCapturingHttpPayloadSize: number;
+  maxCapturingHttpPayloadSize: number
   /** If true, captures body in traces */
-  captureBody: boolean;
+  captureBody: boolean
   /** If true, captures headers in traces */
-  captureHeaders: boolean;
+  captureHeaders: boolean
   /** Configuration for masking sensitive data in session recordings */
-  masking: TracerReactNativeMasking;
+  masking: TracerReactNativeMasking
 }
 
 /**
@@ -93,7 +93,7 @@ export type RecorderMaskingConfig = Pick<
   | 'maskLabels'
   | 'maskWebViews'
   | 'maskSandboxedViews'
->;
+>
 
 /**
  * Configuration interface for the Recorder class
@@ -101,19 +101,19 @@ export type RecorderMaskingConfig = Pick<
  */
 export interface RecorderConfig extends BaseConfig {
   /** Whether to record gestures */
-  recordGestures?: boolean;
+  recordGestures?: boolean
   /** Whether to record navigation */
-  recordNavigation?: boolean;
+  recordNavigation?: boolean
   /** Whether to record screen */
-  recordScreen?: boolean;
+  recordScreen?: boolean
   /** Buffering options used by recorder runtime behavior */
   buffering?: {
-    enabled?: boolean;
-    windowMinutes?: number;
-    snapshotIntervalMs?: number;
-  };
+    enabled?: boolean
+    windowMinutes?: number
+    snapshotIntervalMs?: number
+  }
   /** Configuration for masking sensitive data in screen recordings */
-  masking?: RecorderMaskingConfig;
+  masking?: RecorderMaskingConfig
 }
 
 /**

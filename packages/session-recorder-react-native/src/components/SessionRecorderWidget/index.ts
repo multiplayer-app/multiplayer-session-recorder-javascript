@@ -1,3 +1,3 @@
-import SessionRecorderWidget from './SessionRecorderWidget';
+import SessionRecorderWidget from './SessionRecorderWidget'
 
-export default SessionRecorderWidget;
+export default SessionRecorderWidget

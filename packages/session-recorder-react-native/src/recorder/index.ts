@@ -1,92 +1,90 @@
-import { EventType, type eventWithTime } from '@rrweb/types';
-import { SessionType } from '@multiplayer-app/session-recorder-common';
+import { EventType, type eventWithTime } from '@rrweb/types'
+import { SessionType } from '@multiplayer-app/session-recorder-common'
 
-import { logger } from '../utils';
-import { type RecorderConfig, type EventRecorder } from '../types';
-import { SocketService } from '../services/socket.service';
-import { CrashBufferService } from '../services/crashBuffer.service';
+import { logger } from '../utils'
+import { type RecorderConfig, type EventRecorder } from '../types'
+import { SocketService } from '../services/socket.service'
+import { CrashBufferService } from '../services/crashBuffer.service'
 
-import { ScreenRecorder } from './screenRecorder';
-import { GestureRecorder } from './gestureRecorder';
-import { NavigationRecorder } from './navigationRecorder';
+import { ScreenRecorder } from './screenRecorder'
+import { GestureRecorder } from './gestureRecorder'
+import { NavigationRecorder } from './navigationRecorder'
 
 export class RecorderReactNativeSDK implements EventRecorder {
-  private isRecording = false;
-  private generation = 0;
-  private config?: RecorderConfig;
-  private screenRecorder: ScreenRecorder;
-  private gestureRecorder: GestureRecorder;
-  private navigationRecorder: NavigationRecorder;
-  private recordedEvents: eventWithTime[] = [];
-  private socketService!: SocketService;
-  private crashBuffer?: CrashBufferService;
-  private bufferingEnabled: boolean = false;
-  private bufferWindowMs: number = 2 * 60 * 1000;
-  private sessionId: string | null = null;
-  private sessionType: SessionType = SessionType.MANUAL;
+  private isRecording = false
+  private generation = 0
+  private config?: RecorderConfig
+  private screenRecorder: ScreenRecorder
+  private gestureRecorder: GestureRecorder
+  private navigationRecorder: NavigationRecorder
+  private recordedEvents: eventWithTime[] = []
+  private socketService!: SocketService
+  private crashBuffer?: CrashBufferService
+  private bufferingEnabled: boolean = false
+  private bufferWindowMs: number = 2 * 60 * 1000
+  private sessionId: string | null = null
+  private sessionType: SessionType = SessionType.MANUAL
 
   constructor() {
-    this.screenRecorder = new ScreenRecorder();
-    this.gestureRecorder = new GestureRecorder();
-    this.navigationRecorder = new NavigationRecorder();
+    this.screenRecorder = new ScreenRecorder()
+    this.gestureRecorder = new GestureRecorder()
+    this.navigationRecorder = new NavigationRecorder()
   }
 
   init(
     config: RecorderConfig,
     socketService: SocketService,
     crashBuffer?: CrashBufferService,
-    buffering?: { enabled: boolean; windowMs: number }
+    buffering?: { enabled: boolean; windowMs: number },
   ): void {
-    this.config = config;
-    this.socketService = socketService;
-    this.crashBuffer = crashBuffer;
-    this.bufferingEnabled = Boolean(buffering?.enabled);
+    this.config = config
+    this.socketService = socketService
+    this.crashBuffer = crashBuffer
+    this.bufferingEnabled = Boolean(buffering?.enabled)
     this.bufferWindowMs = Math.max(
       10_000,
-      buffering?.windowMs || 0.5 * 60 * 1000
-    );
-    this.screenRecorder.init(config, this);
-    this.navigationRecorder.init(config, this.screenRecorder);
-    this.gestureRecorder.init(config, this, this.screenRecorder);
+      buffering?.windowMs || 0.5 * 60 * 1000,
+    )
+    this.screenRecorder.init(config, this)
+    this.navigationRecorder.init(config, this.screenRecorder)
+    this.gestureRecorder.init(config, this, this.screenRecorder)
   }
 
   start(sessionId: string | null, sessionType: SessionType): void {
     if (!this.config) {
       throw new Error(
-        'Configuration not initialized. Call init() before start().'
-      );
+        'Configuration not initialized. Call init() before start().',
+      )
     }
 
-    this.sessionId = sessionId;
-    this.sessionType = sessionType;
-    this.isRecording = true;
-    this.generation++;
+    this.sessionId = sessionId
+    this.sessionType = sessionType
+    this.isRecording = true
+    this.generation++
 
     // Emit recording started meta event
 
     if (this.config.recordScreen) {
-      this.screenRecorder.setBufferOnlyMode(
-        !sessionId && this.bufferingEnabled
-      );
-      this.screenRecorder.start();
+      this.screenRecorder.setBufferOnlyMode(!sessionId && this.bufferingEnabled)
+      this.screenRecorder.start()
     }
 
     if (this.config.recordGestures) {
-      this.gestureRecorder.start();
+      this.gestureRecorder.start()
     }
 
     if (this.config.recordNavigation) {
-      this.navigationRecorder.start();
+      this.navigationRecorder.start()
     }
   }
 
   stop(): void {
-    this.isRecording = false;
-    this.generation++;
-    this.gestureRecorder.stop();
-    this.navigationRecorder.stop();
-    this.screenRecorder.stop();
-    this.socketService?.close();
+    this.isRecording = false
+    this.generation++
+    this.gestureRecorder.stop()
+    this.navigationRecorder.stop()
+    this.screenRecorder.stop()
+    this.socketService?.close()
   }
 
   /**
@@ -96,11 +94,11 @@ export class RecorderReactNativeSDK implements EventRecorder {
    * would bleed across sessions (different node-id mirrors).
    */
   getGeneration(): number {
-    return this.generation;
+    return this.generation
   }
 
   setNavigationRef(ref: any): void {
-    this.navigationRecorder.setNavigationRef(ref);
+    this.navigationRecorder.setNavigationRef(ref)
   }
 
   /**
@@ -108,7 +106,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
    * @param ref - React Native View ref for screen capture
    */
   setViewShotRef(ref: any): void {
-    this.screenRecorder.setViewShotRef(ref);
+    this.screenRecorder.setViewShotRef(ref)
   }
 
   /**
@@ -117,7 +115,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
    */
   recordEvent(event: eventWithTime): void {
     if (!this.isRecording) {
-      return;
+      return
     }
 
     // Buffer-only mode (no active debug session): persist locally.
@@ -132,17 +130,13 @@ export class RecorderReactNativeSDK implements EventRecorder {
             timestamp: event.timestamp,
           },
         },
-        this.bufferWindowMs
-      );
-      return;
+        this.bufferWindowMs,
+      )
+      return
     }
 
     if (this.socketService) {
-      logger.debug(
-        'RecorderReactNativeSDK',
-        'Sending to socket service',
-        event
-      );
+      logger.debug('RecorderReactNativeSDK', 'Sending to socket service', event)
       // Skip packing to avoid blob creation issues in Hermes
       // const packedEvent = pack(event)
       this.socketService.send({
@@ -151,7 +145,7 @@ export class RecorderReactNativeSDK implements EventRecorder {
         timestamp: event.timestamp,
         debugSessionId: this.sessionId,
         debugSessionType: this.sessionType,
-      });
+      })
     }
   }
 
@@ -166,13 +160,13 @@ export class RecorderReactNativeSDK implements EventRecorder {
     x: number,
     y: number,
     target?: string,
-    pressure?: number
+    pressure?: number,
   ): void {
     if (!this.isRecording) {
-      return;
+      return
     }
 
-    this.gestureRecorder.recordTouchStart(x, y, target, pressure);
+    this.gestureRecorder.recordTouchStart(x, y, target, pressure)
   }
 
   /**
@@ -186,13 +180,13 @@ export class RecorderReactNativeSDK implements EventRecorder {
     x: number,
     y: number,
     target?: string,
-    pressure?: number
+    pressure?: number,
   ): void {
     if (!this.isRecording) {
-      return;
+      return
     }
 
-    this.gestureRecorder.recordTouchMove(x, y, target, pressure);
+    this.gestureRecorder.recordTouchMove(x, y, target, pressure)
   }
 
   /**
@@ -206,13 +200,13 @@ export class RecorderReactNativeSDK implements EventRecorder {
     x: number,
     y: number,
     target?: string,
-    pressure?: number
+    pressure?: number,
   ): void {
     if (!this.isRecording) {
-      return;
+      return
     }
 
-    this.gestureRecorder.recordTouchEnd(x, y, target, pressure);
+    this.gestureRecorder.recordTouchEnd(x, y, target, pressure)
   }
 
   /**
@@ -220,14 +214,14 @@ export class RecorderReactNativeSDK implements EventRecorder {
    * @returns Array of recorded rrweb events
    */
   getRecordedEvents(): eventWithTime[] {
-    return [...this.recordedEvents];
+    return [...this.recordedEvents]
   }
 
   /**
    * Clear all recorded events
    */
   clearRecordedEvents(): void {
-    this.recordedEvents = [];
+    this.recordedEvents = []
   }
 
   /**
@@ -238,6 +232,6 @@ export class RecorderReactNativeSDK implements EventRecorder {
     return {
       totalEvents: this.recordedEvents.length,
       isRecording: this.isRecording,
-    };
+    }
   }
 }

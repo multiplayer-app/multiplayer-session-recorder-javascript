@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react'
 import {
   Animated,
   Pressable,
@@ -7,16 +7,16 @@ import {
   Modal,
   PanResponder,
   Platform,
-} from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+} from 'react-native'
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MODAL_HEIGHT = SCREEN_HEIGHT * 0.7;
+const { height: SCREEN_HEIGHT } = Dimensions.get('window')
+const MODAL_HEIGHT = SCREEN_HEIGHT * 0.7
 
 interface ModalContainerProps {
-  isVisible: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
+  isVisible: boolean
+  onClose: () => void
+  children: React.ReactNode
 }
 
 const ModalContainer: React.FC<ModalContainerProps> = ({
@@ -24,11 +24,11 @@ const ModalContainer: React.FC<ModalContainerProps> = ({
   onClose,
   children,
 }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
-  const [visible, setVisible] = useState<boolean>(isVisible);
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const translateY = useRef(new Animated.Value(0)).current
+  const [visible, setVisible] = useState<boolean>(isVisible)
 
-  const SWIPE_THRESHOLD = 100; // Distance to trigger close
+  const SWIPE_THRESHOLD = 100 // Distance to trigger close
 
   const animateClose = () => {
     Animated.parallel([
@@ -43,16 +43,16 @@ const ModalContainer: React.FC<ModalContainerProps> = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      setVisible(false);
-      onClose();
-    });
-  };
+      setVisible(false)
+      onClose()
+    })
+  }
 
   useEffect(() => {
     if (isVisible) {
-      setVisible(true);
+      setVisible(true)
       // Start from bottom and animate to position
-      translateY.setValue(MODAL_HEIGHT);
+      translateY.setValue(MODAL_HEIGHT)
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -64,7 +64,7 @@ const ModalContainer: React.FC<ModalContainerProps> = ({
           duration: 300,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start()
     } else if (visible) {
       // If external isVisible turned false, animate close then hide
       Animated.parallel([
@@ -79,10 +79,10 @@ const ModalContainer: React.FC<ModalContainerProps> = ({
           useNativeDriver: true,
         }),
       ]).start(() => {
-        setVisible(false);
-      });
+        setVisible(false)
+      })
     }
-  }, [isVisible, fadeAnim, translateY, visible]);
+  }, [isVisible, fadeAnim, translateY, visible])
 
   // PanResponder for swipe-to-dismiss functionality
   const panResponder = useRef(
@@ -90,24 +90,24 @@ const ModalContainer: React.FC<ModalContainerProps> = ({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         // Only respond to downward swipes
-        return gestureState.dy > 10;
+        return gestureState.dy > 10
       },
       onPanResponderGrant: () => {
         // Reset any ongoing animations
-        translateY.stopAnimation();
+        translateY.stopAnimation()
       },
       onPanResponderMove: (_, gestureState) => {
         // Only allow downward movement
         if (gestureState.dy > 0) {
-          translateY.setValue(gestureState.dy);
+          translateY.setValue(gestureState.dy)
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        const { dy, vy } = gestureState;
+        const { dy, vy } = gestureState
 
         // If swiped down with sufficient distance or velocity, close modal
         if (dy > SWIPE_THRESHOLD || vy > 500) {
-          animateClose();
+          animateClose()
         } else {
           // Snap back to original position
           Animated.spring(translateY, {
@@ -115,11 +115,11 @@ const ModalContainer: React.FC<ModalContainerProps> = ({
             useNativeDriver: true,
             tension: 100,
             friction: 8,
-          }).start();
+          }).start()
         }
       },
-    })
-  ).current;
+    }),
+  ).current
 
   return (
     <Modal
@@ -142,8 +142,8 @@ const ModalContainer: React.FC<ModalContainerProps> = ({
         </Animated.View>
       </SafeAreaProvider>
     </Modal>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   backdrop: {
@@ -184,6 +184,6 @@ const styles = StyleSheet.create({
       },
     }),
   },
-});
+})
 
-export default ModalContainer;
+export default ModalContainer

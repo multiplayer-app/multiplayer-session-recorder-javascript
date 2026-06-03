@@ -2,18 +2,18 @@ import {
   SessionRecorderSdk,
   MULTIPLAYER_BASE_API_URL,
   MULTIPLAYER_OTEL_DEFAULT_TRACES_EXPORTER_HTTP_URL,
-} from '@multiplayer-app/session-recorder-common';
+} from '@multiplayer-app/session-recorder-common'
 import {
   LogLevel,
   WidgetButtonPlacement,
   type SessionRecorderConfigs,
-} from '../types';
+} from '../types'
 import {
   OTEL_MP_SAMPLE_TRACE_RATIO,
   DEFAULT_MAX_HTTP_CAPTURING_PAYLOAD_SIZE,
-} from './constants';
+} from './constants'
 
-const { mask, sensitiveFields, sensitiveHeaders } = SessionRecorderSdk;
+const { mask, sensitiveFields, sensitiveHeaders } = SessionRecorderSdk
 
 export const DEFAULT_MASKING_CONFIG: SessionRecorderConfigs['masking'] = {
   isContentMaskingEnabled: true,
@@ -30,7 +30,7 @@ export const DEFAULT_MASKING_CONFIG: SessionRecorderConfigs['masking'] = {
   maskWebViews: false,
   maskTextInputs: false,
   maskSandboxedViews: false,
-};
+}
 
 export const DEFAULT_WIDGET_TEXT_CONFIG: SessionRecorderConfigs['widget']['textOverrides'] =
   {
@@ -59,7 +59,7 @@ export const DEFAULT_WIDGET_TEXT_CONFIG: SessionRecorderConfigs['widget']['textO
     submitDialogCommentPlaceholder: 'Add a message...',
     submitDialogSubmitText: 'Save',
     submitDialogCancelText: 'Cancel',
-  };
+  }
 
 export const BASE_CONFIG: SessionRecorderConfigs = {
   apiKey: '',
@@ -110,4 +110,4 @@ export const BASE_CONFIG: SessionRecorderConfigs = {
     windowMinutes: 0.5,
     snapshotIntervalMs: 20000,
   },
-};
+}

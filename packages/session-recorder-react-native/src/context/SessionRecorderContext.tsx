@@ -4,36 +4,36 @@ import React, {
   useEffect,
   useCallback,
   type PropsWithChildren,
-} from 'react';
-import { type SessionRecorderOptions, SessionState } from '../types';
-import sessionRecorder from '../session-recorder';
-import { ScreenRecorderView } from '../components/ScreenRecorderView';
-import SessionRecorderWidget from '../components/SessionRecorderWidget';
-import { SessionType } from '@multiplayer-app/session-recorder-common';
+} from 'react'
+import { type SessionRecorderOptions, SessionState } from '../types'
+import sessionRecorder from '../session-recorder'
+import { ScreenRecorderView } from '../components/ScreenRecorderView'
+import SessionRecorderWidget from '../components/SessionRecorderWidget'
+import { SessionType } from '@multiplayer-app/session-recorder-common'
 import {
   sessionRecorderStore,
   type SessionRecorderState,
-} from './SessionRecorderStore';
-import { useStoreSelector } from './useStoreSelector';
+} from './SessionRecorderStore'
+import { useStoreSelector } from './useStoreSelector'
 
 interface SessionRecorderContextType {
-  instance: typeof sessionRecorder;
-  openWidgetModal: () => void;
-  closeWidgetModal: () => void;
-  startSession: (sessionType?: SessionType) => Promise<void>;
-  stopSession: (comment?: string) => Promise<void>;
-  pauseSession: () => Promise<void>;
-  resumeSession: () => Promise<void>;
-  cancelSession: () => Promise<void>;
-  saveSession: () => Promise<void>;
+  instance: typeof sessionRecorder
+  openWidgetModal: () => void
+  closeWidgetModal: () => void
+  startSession: (sessionType?: SessionType) => Promise<void>
+  stopSession: (comment?: string) => Promise<void>
+  pauseSession: () => Promise<void>
+  resumeSession: () => Promise<void>
+  cancelSession: () => Promise<void>
+  saveSession: () => Promise<void>
 }
 
 const SessionRecorderContext = createContext<SessionRecorderContextType | null>(
-  null
-);
+  null,
+)
 
 export interface SessionRecorderProviderProps extends PropsWithChildren {
-  options?: SessionRecorderOptions;
+  options?: SessionRecorderOptions
 }
 
 export const SessionRecorderProvider: React.FC<
@@ -41,74 +41,74 @@ export const SessionRecorderProvider: React.FC<
 > = ({ children, options }) => {
   const isInitialized = useStoreSelector<SessionRecorderState, boolean>(
     sessionRecorderStore,
-    (s) => s.isInitialized
-  );
+    (s) => s.isInitialized,
+  )
 
   useEffect(() => {
     if (options) {
-      sessionRecorder.init(options);
+      sessionRecorder.init(options)
     }
     sessionRecorderStore.setState({
       isInitialized: sessionRecorder.isInitialized,
-    });
-  }, []);
+    })
+  }, [])
 
   useEffect(() => {
     sessionRecorderStore.setState({
       sessionState: sessionRecorder.sessionState,
       sessionType: sessionRecorder.sessionType,
-    });
+    })
     const onStateChange = (
       sessionState: SessionState,
-      sessionType: SessionType
+      sessionType: SessionType,
     ) => {
-      sessionRecorderStore.setState({ sessionState, sessionType });
-    };
+      sessionRecorderStore.setState({ sessionState, sessionType })
+    }
     const onInit = () => {
-      sessionRecorderStore.setState({ isInitialized: true });
-    };
-    sessionRecorder.on('state-change', onStateChange);
-    sessionRecorder.on('init', onInit);
+      sessionRecorderStore.setState({ isInitialized: true })
+    }
+    sessionRecorder.on('state-change', onStateChange)
+    sessionRecorder.on('init', onInit)
     return () => {
-      sessionRecorder.off('state-change', onStateChange);
-      sessionRecorder.off('init', onInit);
-    };
-  }, []);
+      sessionRecorder.off('state-change', onStateChange)
+      sessionRecorder.off('init', onInit)
+    }
+  }, [])
 
   const startSession = useCallback(
     (sessionType: SessionType = SessionType.MANUAL) => {
-      return sessionRecorder.start(sessionType);
+      return sessionRecorder.start(sessionType)
     },
-    []
-  );
+    [],
+  )
 
   const stopSession = useCallback((comment?: string) => {
-    return sessionRecorder.stop(comment);
-  }, []);
+    return sessionRecorder.stop(comment)
+  }, [])
 
   const pauseSession = useCallback(() => {
-    return sessionRecorder.pause();
-  }, []);
+    return sessionRecorder.pause()
+  }, [])
 
   const resumeSession = useCallback(() => {
-    return sessionRecorder.resume();
-  }, []);
+    return sessionRecorder.resume()
+  }, [])
 
   const cancelSession = useCallback(() => {
-    return sessionRecorder.cancel();
-  }, []);
+    return sessionRecorder.cancel()
+  }, [])
 
   const saveSession = useCallback(() => {
-    return sessionRecorder.save();
-  }, []);
+    return sessionRecorder.save()
+  }, [])
 
   const openWidgetModal = useCallback(() => {
-    sessionRecorderStore.setState({ isWidgetModalVisible: true });
-  }, []);
+    sessionRecorderStore.setState({ isWidgetModalVisible: true })
+  }, [])
 
   const closeWidgetModal = useCallback(() => {
-    sessionRecorderStore.setState({ isWidgetModalVisible: false });
-  }, []);
+    sessionRecorderStore.setState({ isWidgetModalVisible: false })
+  }, [])
 
   return (
     <SessionRecorderContext.Provider
@@ -129,15 +129,15 @@ export const SessionRecorderProvider: React.FC<
         <SessionRecorderWidget />
       )}
     </SessionRecorderContext.Provider>
-  );
-};
+  )
+}
 
 export const useSessionRecorder = (): SessionRecorderContextType => {
-  const context = useContext(SessionRecorderContext);
+  const context = useContext(SessionRecorderContext)
   if (!context) {
     throw new Error(
-      'useSessionRecorder must be used within a SessionRecorderProvider'
-    );
+      'useSessionRecorder must be used within a SessionRecorderProvider',
+    )
   }
-  return context;
-};
+  return context
+}
