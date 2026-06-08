@@ -114,6 +114,11 @@ export class SessionRecorder
     return this.sessionType === SessionType.CONTINUOUS
   }
 
+  // Guards against overlapping start() calls. `_checkOperation('start')` only
+  // rejects once sessionState is `started`, but `_createSessionAndStart` is
+  // async, so two rapid starts could both pass and create duplicate sessions.
+  private _startInProgress = false
+
   private _sessionState: SessionState | null = null
   get sessionState(): SessionState | null {
     return this._sessionState || SessionState.stopped
@@ -429,7 +434,9 @@ export class SessionRecorder
     type: SessionType = SessionType.MANUAL,
     session?: ISession,
   ): void {
+    if (this._startInProgress) return
     this._checkOperation('start')
+    this._startInProgress = true
     // If continuous recording is disabled, force plain mode
     if (
       type === SessionType.CONTINUOUS &&
@@ -849,6 +856,7 @@ export class SessionRecorder
         this._setupSessionAndStart(session, false)
       }
     } catch (error: any) {
+      this._startInProgress = false
       this.error = error.message
       this.sessionState = SessionState.stopped
       if (this.continuousRecording) {
@@ -861,6 +869,7 @@ export class SessionRecorder
    * Start tracing and recording for the session
    */
   private _start(): void {
+    this._startInProgress = false
     this.sessionState = SessionState.started
     // eslint-disable-next-line no-self-assign
     this.sessionType = this.sessionType
