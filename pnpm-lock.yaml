@@ -34,7 +34,7 @@ importers:
   packages/session-recorder-browser:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.88
+        specifier: 2.0.89
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -192,7 +192,7 @@ importers:
   packages/session-recorder-node:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.88
+        specifier: 2.0.89
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -226,10 +226,10 @@ importers:
   packages/session-recorder-react:
     dependencies:
       '@multiplayer-app/session-recorder-browser':
-        specifier: 2.0.88
+        specifier: 2.0.89
         version: link:../session-recorder-browser
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.88
+        specifier: 2.0.89
         version: link:../session-recorder-common
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -254,7 +254,7 @@ importers:
   packages/session-recorder-react-native:
     dependencies:
       '@multiplayer-app/session-recorder-common':
-        specifier: 2.0.88
+        specifier: 2.0.89
         version: link:../session-recorder-common
       '@opentelemetry/core':
         specifier: 2.0.1
@@ -10059,7 +10059,9 @@ snapshots:
       metro-runtime: 0.83.5
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/normalize-colors@0.81.1': {}
 
