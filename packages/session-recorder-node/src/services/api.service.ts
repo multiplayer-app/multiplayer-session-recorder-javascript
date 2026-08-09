@@ -175,7 +175,7 @@ export class ApiService {
     signal?: AbortSignal,
   ): Promise<{ state: 'START' | 'STOP' }> {
     return this.makeRequest(
-      '/remote-debug-session/check',
+      '/remote-session-recording/check',
       'POST',
       requestBody,
       signal,
