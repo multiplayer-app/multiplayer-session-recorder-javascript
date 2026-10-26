@@ -129,7 +129,7 @@ export class ApiService {
     requestBody: CheckRemoteSessionRequest,
     signal?: AbortSignal,
   ): Promise<{ state: 'START' | 'STOP' }> {
-    return this.makeRequest('/remote-debug-session/check', 'POST', requestBody, signal)
+    return this.makeRequest('/remote-session-recording/check', 'POST', requestBody, signal)
   }
 
   updateSessionAttributes(
